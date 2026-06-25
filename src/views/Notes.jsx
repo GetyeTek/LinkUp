@@ -180,8 +180,7 @@ const Notes = ({ currentUser, onClose }) => {
         
         const link = document.createElement('a');
         link.href = downloadUrl;
-        link.setAttribute('download', filename);
-        link.target = '_blank'; 
+        link.target = '_self'; 
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
