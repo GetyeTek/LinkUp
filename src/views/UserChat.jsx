@@ -267,8 +267,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         
         const link = document.createElement('a');
         link.href = downloadUrl;
-        link.setAttribute('download', filename);
-        link.target = '_blank'; // Breaks out of iframe sandboxes securely
+        link.target = '_self'; 
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
