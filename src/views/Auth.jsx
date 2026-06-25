@@ -14,8 +14,8 @@ const Auth = () => {
         try {
             setError(null);
             
-            // Send OAuth flow to an isolated callback route
-            const targetRedirect = window.location.origin + '/?conduit_oauth=true';
+            // Send OAuth flow back to exactly where the user is (Handles IDE or GitHub subfolders)
+            const targetRedirect = window.location.href.split('?')[0].split('#')[0] + '?conduit_oauth=true';
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
