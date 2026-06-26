@@ -2,12 +2,51 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './config/supabaseClient.js';
 import Auth from './views/Auth.jsx';
 
-// Gatekeeper for claiming usernames
-const UsernameGate = ({ userProfile, onComplete }) => {
+// Unified Onboarding Gatekeeper (Handles Display Name & Username)
+const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
+  const [sureName, setSureName] = useState('');
+  const [fatherName, setFatherName] = useState('');
   const [username, setUsername] = useState('');
   const [status, setStatus] = useState('idle'); // idle, checking, available, taken, invalid, error
   const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
+  useEffect(() => {
+    if (initialized) return;
+    
+    // 1. Extract existing full name from profile or session metadata
+    const initialFullName = userProfile?.full_name || sessionUser?.user_metadata?.full_name || sessionUser?.user_metadata?.name || '';
+    const parts = initialFullName.trim().split(' ');
+    
+    let defaultSure = '';
+    let defaultFather = '';
+    
+    if (parts.length > 0 && parts[0]) {
+      defaultSure = parts[0];
+      if (parts.length > 1) {
+        defaultFather = parts.slice(1).join(' ');
+      }
+    }
+    
+    setSureName(defaultSure);
+    setFatherName(defaultFather);
+
+    // 2. Generate a smart username suggestion
+    let baseForUsername = initialFullName || sessionUser?.email?.split('@')[0] || '';
+    let suggestion = baseForUsername.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0, 20);
+    // Trim leading underscores
+    while(suggestion.startsWith('_')) suggestion = suggestion.substring(1);
+    // Pad if too short
+    if (suggestion.length > 0 && suggestion.length < 3) suggestion = suggestion.padEnd(3, 'x');
+    
+    if (suggestion) {
+        setUsername(suggestion);
+    }
+    
+    setInitialized(true);
+  }, [userProfile, sessionUser, initialized]);
+
+  // Handle Username Validation
   useEffect(() => {
     if (!username) {
       setStatus('idle');
@@ -38,10 +77,16 @@ const UsernameGate = ({ userProfile, onComplete }) => {
   }, [username]);
 
   const handleClaim = async () => {
-    if (status !== 'available') return;
+    if (status !== 'available' || sureName.trim().length < 2) return;
     setLoading(true);
+    
+    const finalFullName = fatherName.trim() ? `${sureName.trim()} ${fatherName.trim()}` : sureName.trim();
+    
     const { error } = await supabase.from('profiles')
-      .update({ username })
+      .update({ 
+          username: username,
+          full_name: finalFullName
+      })
       .eq('id', userProfile.id);
 
     if (error) {
@@ -49,51 +94,88 @@ const UsernameGate = ({ userProfile, onComplete }) => {
       setStatus('error');
       setLoading(false);
     } else {
-      onComplete(username);
+      onComplete(username, finalFullName);
     }
   };
 
+  const avatarUrl = userProfile?.avatar_url || sessionUser?.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+  const displayFullName = `${sureName} ${fatherName}`.trim() || 'Scholar';
+
   return (
-    <div className="username-gate-overlay">
+    <div className="onboarding-overlay">
       <div className="ambient-elegant-bg"></div>
-      <div className="username-gate-card">
-        <div className="gate-icon"><i className="fas fa-at"></i></div>
-        <h2>Claim Your Handle</h2>
-        <p>Your unique identity on LinkUp. Use letters, numbers, and underscores.</p>
-        
-        <div className={`gate-input-wrapper status-${status}`}>
-          <span className="gate-prefix">@</span>
-          <input 
-            type="text" 
-            placeholder="scholar_joe"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            disabled={loading}
-            maxLength={20}
-          />
-          <div className="gate-status-icon">
-            {status === 'checking' && <i className="fas fa-circle-notch fa-spin"></i>}
-            {status === 'available' && <i className="fas fa-check"></i>}
-            {status === 'taken' && <i className="fas fa-times"></i>}
-            {status === 'invalid' && <i className="fas fa-exclamation"></i>}
+      <div className="onboarding-card">
+        <h2 className="onboarding-title">Set up your profile</h2>
+        <p className="onboarding-subtitle">Review your details and secure your unique handle.</p>
+
+        <div className="onboarding-preview">
+          <img src={avatarUrl} alt="Profile Preview" />
+          <div className="preview-info">
+            <h3>{displayFullName}</h3>
+            <p>@{username || 'handle'}</p>
           </div>
         </div>
 
-        <div className="gate-hint">
-          {status === 'invalid' && "3-20 characters. Lowercase, numbers, underscores only."}
-          {status === 'taken' && "This handle is already taken."}
-          {status === 'error' && "Connection error. Try again."}
-          {status === 'available' && "Looks great! It's all yours."}
-          {status === 'idle' && "Choose wisely."}
-        </div>
+        <div className="onboarding-form">
+          <div className="input-row">
+            <div className="input-group-sm">
+              <label>Sure Name</label>
+              <input 
+                type="text" 
+                placeholder="First name"
+                value={sureName}
+                onChange={e => setSureName(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div className="input-group-sm">
+              <label>Father Name <span className="optional-tag">(Opt)</span></label>
+              <input 
+                type="text" 
+                placeholder="Last name"
+                value={fatherName}
+                onChange={e => setFatherName(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          </div>
 
-        <button 
-          className="gate-submit-btn" 
-          disabled={status !== 'available' || loading}
-          onClick={handleClaim}
-        >
-          {loading ? <i className="fas fa-circle-notch fa-spin"></i> : "Secure Handle"}
-        </button>
+          <div className="input-group-sm handle-group">
+            <label>LinkUp Handle</label>
+            <div className={`handle-input-wrapper status-${status}`}>
+              <span className="handle-prefix">@</span>
+              <input 
+                type="text" 
+                placeholder="scholar_joe"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                disabled={loading}
+                maxLength={20}
+              />
+              <div className="handle-status-icon">
+                {status === 'checking' && <i className="fas fa-circle-notch fa-spin"></i>}
+                {status === 'available' && <i className="fas fa-check"></i>}
+                {status === 'taken' && <i className="fas fa-times"></i>}
+                {status === 'invalid' && <i className="fas fa-exclamation"></i>}
+              </div>
+            </div>
+            <div className="handle-hint">
+              {status === 'invalid' && "3-20 chars. Lowercase, numbers, underscores."}
+              {status === 'taken' && "This handle is already taken."}
+              {status === 'error' && "Connection error. Try again."}
+              {status === 'available' && "Looks great! It's all yours."}
+              {status === 'idle' && "Choose your unique identity."}
+            </div>
+          </div>
+
+          <button 
+            className="onboarding-submit-btn" 
+            disabled={status !== 'available' || sureName.trim().length < 2 || loading}
+            onClick={handleClaim}
+          >
+            {loading ? <i className="fas fa-circle-notch fa-spin"></i> : "Enter LinkUp"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -236,10 +318,10 @@ const App = () => {
     return <Auth />;
   }
 
-  // The Username Gatekeeper (Catches both legacy and new users without a handle)
+  // The Onboarding Gatekeeper (Unified name and handle verification)
   if (userProfile && !userProfile.username) {
-    return <UsernameGate userProfile={userProfile} onComplete={(newUsername) => {
-      setUserProfile({ ...userProfile, username: newUsername });
+    return <OnboardingGate userProfile={userProfile} sessionUser={session?.user} onComplete={(newUsername, newFullName) => {
+      setUserProfile({ ...userProfile, username: newUsername, full_name: newFullName });
     }} />;
   }
 
