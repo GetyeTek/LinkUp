@@ -2,6 +2,103 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './config/supabaseClient.js';
 import Auth from './views/Auth.jsx';
 
+// Gatekeeper for claiming usernames
+const UsernameGate = ({ userProfile, onComplete }) => {
+  const [username, setUsername] = useState('');
+  const [status, setStatus] = useState('idle'); // idle, checking, available, taken, invalid, error
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!username) {
+      setStatus('idle');
+      return;
+    }
+
+    const cleanUsername = username.toLowerCase().trim();
+    if (username !== cleanUsername) setUsername(cleanUsername);
+
+    // Regex check matching our DB constraint
+    if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
+      setStatus('invalid');
+      return;
+    }
+
+    const checkAvailability = async () => {
+      setStatus('checking');
+      const { data, error } = await supabase.rpc('check_username_available', { req_username: cleanUsername });
+      if (error) {
+        setStatus('error');
+      } else {
+        setStatus(data ? 'available' : 'taken');
+      }
+    };
+
+    const timer = setTimeout(checkAvailability, 500);
+    return () => clearTimeout(timer);
+  }, [username]);
+
+  const handleClaim = async () => {
+    if (status !== 'available') return;
+    setLoading(true);
+    const { error } = await supabase.from('profiles')
+      .update({ username })
+      .eq('id', userProfile.id);
+
+    if (error) {
+      console.error(error);
+      setStatus('error');
+      setLoading(false);
+    } else {
+      onComplete(username);
+    }
+  };
+
+  return (
+    <div className="username-gate-overlay">
+      <div className="ambient-elegant-bg"></div>
+      <div className="username-gate-card">
+        <div className="gate-icon"><i className="fas fa-at"></i></div>
+        <h2>Claim Your Handle</h2>
+        <p>Your unique identity on LinkUp. Use letters, numbers, and underscores.</p>
+        
+        <div className={`gate-input-wrapper status-${status}`}>
+          <span className="gate-prefix">@</span>
+          <input 
+            type="text" 
+            placeholder="scholar_joe"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            disabled={loading}
+            maxLength={20}
+          />
+          <div className="gate-status-icon">
+            {status === 'checking' && <i className="fas fa-circle-notch fa-spin"></i>}
+            {status === 'available' && <i className="fas fa-check"></i>}
+            {status === 'taken' && <i className="fas fa-times"></i>}
+            {status === 'invalid' && <i className="fas fa-exclamation"></i>}
+          </div>
+        </div>
+
+        <div className="gate-hint">
+          {status === 'invalid' && "3-20 characters. Lowercase, numbers, underscores only."}
+          {status === 'taken' && "This handle is already taken."}
+          {status === 'error' && "Connection error. Try again."}
+          {status === 'available' && "Looks great! It's all yours."}
+          {status === 'idle' && "Choose wisely."}
+        </div>
+
+        <button 
+          className="gate-submit-btn" 
+          disabled={status !== 'available' || loading}
+          onClick={handleClaim}
+        >
+          {loading ? <i className="fas fa-circle-notch fa-spin"></i> : "Secure Handle"}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Placeholder imports for views we will create in the next session
 import Home from './views/Home.jsx';
 import Discover from './views/Discover.jsx';
@@ -137,6 +234,13 @@ const App = () => {
   // The Auth Gateway Interceptor
   if (!session) {
     return <Auth />;
+  }
+
+  // The Username Gatekeeper (Catches both legacy and new users without a handle)
+  if (userProfile && !userProfile.username) {
+    return <UsernameGate userProfile={userProfile} onComplete={(newUsername) => {
+      setUserProfile({ ...userProfile, username: newUsername });
+    }} />;
   }
 
   return (
