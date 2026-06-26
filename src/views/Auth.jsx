@@ -9,6 +9,7 @@ const Auth = () => {
     const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [notice, setNotice] = useState(null); // { title, message, type, actionLabel }
 
     const handleGoogleAuth = async () => {
         try {
@@ -46,21 +47,55 @@ const Auth = () => {
 
         try {
             if (isSignUp) {
-                // Pass full_name to raw_user_meta_data so our PostgreSQL trigger picks it up!
-                const { error } = await supabase.auth.signUp({
+                // 1. Pre-check: Does this email already exist?
+                const { data: checkData, error: checkError } = await supabase.rpc('check_email_provider', { 
+                    req_email: email.toLowerCase().trim() 
+                });
+
+                if (!checkError && checkData && checkData[0]?.email_exists) {
+                    const provider = checkData[0].provider;
+                    if (provider === 'google') {
+                        setNotice({
+                            title: 'Linked via Google',
+                            message: 'This email is already associated with a Google account. Please use the Google button to sign in.',
+                            type: 'google',
+                            actionLabel: 'Got it'
+                        });
+                        setLoading(false);
+                        return;
+                    } else {
+                        setNotice({
+                            title: 'Already a Member',
+                            message: 'An account with this email already exists. Would you like to sign in instead?',
+                            type: 'exists',
+                            actionLabel: 'Switch to Sign In'
+                        });
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                // 2. Fresh Sign Up
+                const { error: signUpError } = await supabase.auth.signUp({
                     email,
                     password,
                     options: { data: { full_name: fullName } }
                 });
-                if (error) throw error;
-                // Auto login might happen or require verification depending on Supabase settings
-                alert('Success! If email confirmations are enabled, check your inbox.');
+                if (signUpError) throw signUpError;
+                
+                setNotice({
+                    title: 'Account Created',
+                    message: 'Registration successful. If we sent a verification link, please check your inbox to continue.',
+                    type: 'success',
+                    actionLabel: 'Continue'
+                });
             } else {
-                const { error } = await supabase.auth.signInWithPassword({
+                // Standard Sign-In
+                const { error: signInError } = await supabase.auth.signInWithPassword({
                     email,
                     password,
                 });
-                if (error) throw error;
+                if (signInError) throw signInError;
             }
         } catch (err) {
             setError(err.message);
@@ -72,6 +107,26 @@ const Auth = () => {
     return (
         <div className="auth-root">
             <div className="ambient-elegant-bg"></div>
+
+            {notice && (
+                <div className="auth-notice-overlay" onClick={() => setNotice(null)}>
+                    <div className="auth-notice-card" onClick={e => e.stopPropagation()}>
+                        <div className={`notice-icon ${notice.type}`}>
+                            {notice.type === 'google' && <i className="fab fa-google"></i>}
+                            {notice.type === 'exists' && <i className="fas fa-user-check"></i>}
+                            {notice.type === 'success' && <i className="fas fa-paper-plane"></i>}
+                        </div>
+                        <h2>{notice.title}</h2>
+                        <p>{notice.message}</p>
+                        <button className="notice-btn" onClick={() => {
+                            if (notice.type === 'exists') setIsSignUp(false);
+                            setNotice(null);
+                        }}>
+                            {notice.actionLabel}
+                        </button>
+                    </div>
+                </div>
+            )}
             
             <div className="auth-card">
                 <header className="auth-header">
