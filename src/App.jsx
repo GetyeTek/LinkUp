@@ -269,8 +269,17 @@ const App = () => {
         const hashParams = new URLSearchParams(window.parent.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
+        const type = hashParams.get('type');
+        
         if (accessToken && refreshToken) {
           supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          
+          // Manually intercept the recovery flag since Supabase listener can't see the parent URL
+          if (type === 'recovery') {
+            setRequiresPasswordReset(true);
+          }
+          
+          // Clear the hash from the IDE URL bar so it doesn't trigger again on reload
           window.parent.history.replaceState(null, '', window.parent.location.pathname + window.parent.location.search);
         }
       }
