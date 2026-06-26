@@ -191,11 +191,59 @@ import Profile from './views/Profile.jsx';
 import ActivityHub from './views/ActivityHub.jsx';
 import MironChat from './views/MironChat.jsx';
 
+const UpdatePasswordGate = ({ onComplete }) => {
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleUpdate = async () => {
+    if (password.length < 6) {
+      alert("Password must be at least 6 characters.");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+    if (error) {
+      alert(error.message);
+    } else {
+      onComplete();
+    }
+  };
+
+  return (
+    <div className="onboarding-overlay">
+      <div className="ambient-elegant-bg"></div>
+      <div className="onboarding-card">
+        <h2 className="onboarding-title">Secure your account</h2>
+        <p className="onboarding-subtitle">Enter a new password for your account.</p>
+
+        <div className="onboarding-form" style={{ marginTop: '1rem' }}>
+          <div className="input-group-sm">
+            <label>New Password</label>
+            <input 
+              type="password" 
+              placeholder="Min. 6 characters"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          <button className="onboarding-submit-btn" disabled={loading} onClick={handleUpdate}>
+            {loading ? <i className="fas fa-circle-notch fa-spin"></i> : "Update Password"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   console.log("App Component Rendering...");
   const [session, setSession] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+  const [requiresPasswordReset, setRequiresPasswordReset] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
 
   useEffect(() => {
@@ -231,6 +279,7 @@ const App = () => {
     const fetchProfile = async (userId) => {
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (data) setUserProfile(data);
+      setIsProfileLoaded(true);
     };
 
     const updateLastSeen = async () => {
@@ -258,10 +307,14 @@ const App = () => {
     // 2. Listen for login/logout events in realtime
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (_event === 'PASSWORD_RECOVERY') {
+        setRequiresPasswordReset(true);
+      }
       if (session) {
         fetchProfile(session.user.id);
       } else {
         setUserProfile(null);
+        setIsProfileLoaded(false);
       }
     });
 
@@ -304,7 +357,7 @@ const App = () => {
   };
 
   // The Minimalist Auth Gate Loader
-  if (isCheckingAuth) {
+  if (isCheckingAuth || (session && !isProfileLoaded)) {
     return (
       <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0c0c0c', color: '#42d7b8', flexDirection: 'column', gap: '1rem' }}>
         <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '2rem' }}></i>
@@ -316,6 +369,11 @@ const App = () => {
   // The Auth Gateway Interceptor
   if (!session) {
     return <Auth />;
+  }
+
+  // Password Reset Interceptor
+  if (requiresPasswordReset) {
+    return <UpdatePasswordGate onComplete={() => setRequiresPasswordReset(false)} />;
   }
 
   // The Onboarding Gatekeeper (Unified name and handle verification)
