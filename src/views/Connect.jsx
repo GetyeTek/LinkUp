@@ -3,14 +3,141 @@ import { supabase } from '../config/supabaseClient.js';
 import UserChat from './UserChat.jsx';
 import Notes from './Notes.jsx';
 
+// Inline Component: Discovery Screen
+const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
+    const [suggestions, setSuggestions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchStatus, setSearchStatus] = useState('idle'); // idle, searching, found, not_found
+    const [searchResults, setSearchResults] = useState([]);
+
+    useEffect(() => {
+        const fetchDiscovery = async () => {
+            const { data } = await supabase.rpc('get_social_discovery', { req_user_id: currentUser.id });
+            if (data) setSuggestions(data);
+            setLoading(false);
+        };
+        fetchDiscovery();
+    }, [currentUser.id]);
+
+    const handleSearch = async () => {
+        if (!searchTerm.trim()) return;
+        setSearchStatus('searching');
+        const { data, error } = await supabase.rpc('find_user_by_any_identity', { 
+            search_term: searchTerm.trim(),
+            req_user_id: currentUser.id
+        });
+        
+        if (data && data.length > 0) {
+            setSearchResults(data);
+            setSearchStatus('found');
+        } else {
+            setSearchStatus('not_found');
+        }
+    };
+
+    return (
+        <div className="discovery-screen">
+            <header className="discovery-header">
+                <button className="icon-button" onClick={onClose} style={{color: 'white'}}>
+                    <i className="fas fa-arrow-left"></i>
+                </button>
+                <h2>Discover Peers</h2>
+            </header>
+
+            <div className="discovery-body">
+                <div className="add-friend-trigger" onClick={() => { setIsSheetOpen(true); setSearchStatus('idle'); setSearchTerm(''); }}>
+                    <div className="icon-box"><i className="fas fa-user-plus"></i></div>
+                    <div>
+                        <div style={{fontSize: '1rem'}}>Add Connection</div>
+                        <div style={{fontSize: '0.75rem', color: '#888', fontWeight: '400'}}>Search by Phone, Email, or @handle</div>
+                    </div>
+                </div>
+
+                {suggestions.length > 0 && (
+                    <div className="suggestion-section">
+                        <h3 className="section-title" style={{marginBottom: '0.5rem'}}>Suggested Classmates</h3>
+                        {suggestions.map(user => (
+                            <div className="peer-card" key={user.id} onClick={() => onStartChat(user)}>
+                                <img src={user.avatar_url || 'https://via.placeholder.com/150'} className="peer-avatar" alt="Avatar" />
+                                <div className="peer-info">
+                                    <div className="peer-name">{user.full_name}</div>
+                                    <div className="peer-meta">
+                                        <span className={`peer-tier-badge tier-${user.tier}`}>
+                                            {user.tier === 1 ? 'Classmate' : user.tier === 2 ? 'Campus' : 'Global'}
+                                        </span>
+                                        <span>@{user.username}</span>
+                                    </div>
+                                </div>
+                                <i className="fas fa-paper-plane" style={{color: 'var(--text-secondary-dark)'}}></i>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                
+                {!loading && suggestions.length === 0 && (
+                    <div style={{textAlign: 'center', color: '#666', marginTop: '2rem', fontStyle: 'italic'}}>
+                        No new suggestions right now.
+                    </div>
+                )}
+            </div>
+
+            {isSheetOpen && (
+                <>
+                    <div className="bottom-sheet-backdrop" onClick={() => setIsSheetOpen(false)}></div>
+                    <div className="bottom-sheet">
+                        <div className="sheet-handle"></div>
+                        <h3 className="sheet-title">Find Someone</h3>
+                        <p className="sheet-subtitle">Enter their exact phone number, email, or partial @username.</p>
+                        
+                        <div className="sheet-input-group">
+                            <i className="fas fa-search"></i>
+                            <input 
+                                type="text" 
+                                className="sheet-input" 
+                                placeholder="e.g. 0912..., @scholar, or email"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                                autoFocus
+                            />
+                        </div>
+
+                        <button className="sheet-btn" onClick={handleSearch} disabled={searchStatus === 'searching' || !searchTerm.trim()}>
+                            {searchStatus === 'searching' ? <i className="fas fa-circle-notch fa-spin"></i> : 'Search Network'}
+                        </button>
+
+                        {searchStatus === 'not_found' && (
+                            <div className="not-found-state">
+                                <i className="fas fa-user-slash"></i> No active users matched that identity.
+                            </div>
+                        )}
+
+                        {searchStatus === 'found' && searchResults.map(res => (
+                            <div className="search-result-card" key={res.id} onClick={() => { setIsSheetOpen(false); onStartChat(res); }}>
+                                <img src={res.avatar_url} className="peer-avatar" style={{width: '40px', height: '40px'}} alt="Avatar" />
+                                <div className="peer-info">
+                                    <div className="peer-name" style={{color: '#fff'}}>{res.full_name}</div>
+                                    <div className="peer-meta">@{res.username}</div>
+                                </div>
+                                <i className="fas fa-comment-dots" style={{color: 'var(--accent-teal)'}}></i>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
 const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
     const [activeView, setActiveView] = useState('messages');
     const [activeChat, setActiveChat] = useState(null);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
     const [conversations, setConversations] = useState([]);
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
-    const [showDirectory, setShowDirectory] = useState(false);
-    const [allUsers, setAllUsers] = useState([]);
+    const [showDiscovery, setShowDiscovery] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
 
     useEffect(() => {
@@ -60,17 +187,11 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
         if (error) console.error("Error fetching chats:", error);
     };
 
-    const fetchAllUsers = async () => {
-        setShowDirectory(true);
-        const { data } = await supabase.from('profiles').select('*').neq('id', currentUser.id).limit(20);
-        if (data) setAllUsers(data);
-    };
-
     const startDirectMessage = async (targetUser) => {
         // 1. Check if DM already exists locally
-        const existing = conversations.find(c => c.type === 'dm' && c.other_user_name === targetUser.full_name);
+        const existing = conversations.find(c => c.type === 'dm' && c.other_user_id === targetUser.id);
         if (existing) {
-            setShowDirectory(false);
+            setShowDiscovery(false);
             setActiveChat(existing);
             return;
         }
@@ -85,13 +206,14 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
             return;
         }
 
-        setShowDirectory(false);
+        setShowDiscovery(false);
         fetchConversations();
         
         // Construct temporary object to open chat immediately
         setActiveChat({
             conversation_id: newConvId,
             type: 'dm',
+            other_user_id: targetUser.id,
             other_user_name: targetUser.full_name,
             other_user_avatar: targetUser.avatar_url
         });
@@ -133,11 +255,6 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
                             </div>
                         </div>
                     </div>
-                    {activeView === 'messages' && (
-                        <button className="icon-button" style={{color: 'var(--accent-teal)'}} onClick={fetchAllUsers}>
-                            <i className="fas fa-plus"></i>
-                        </button>
-                    )}
                 </div>
             </header>
 
@@ -178,22 +295,7 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
                             </div>
                         </div>
 
-                        {showDirectory ? (
-                            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
-                                <h3 style={{ fontSize: '0.8rem', color: '#888', marginBottom: '10px', textTransform: 'uppercase' }}>Network Directory</h3>
-                                {allUsers.map(u => (
-                                    <div key={u.id} className="messages-list-item" onClick={() => startDirectMessage(u)}>
-                                        <img src={u.avatar_url} alt="Avatar" />
-                                        <div className="message-info">
-                                            <div className="name">{u.full_name}</div>
-                                            <div className="last-message" style={{color: 'var(--accent-teal)'}}>Tap to start chatting</div>
-                                        </div>
-                                    </div>
-                                ))}
-                                <button style={{ width: '100%', padding: '10px', marginTop: '10px', background: 'transparent', border: '1px solid #444', color: '#fff', borderRadius: '8px' }} onClick={() => setShowDirectory(false)}>Cancel</button>
-                            </div>
-                        ) : (
-                            conversations.filter(c => c.type !== 'notes').map(chat => {
+                        {conversations.filter(c => c.type !== 'notes').map(chat => {
                                 const title = chat.type === 'dm' ? chat.other_user_name : chat.title;
                                 const avatar = chat.type === 'dm' ? chat.other_user_avatar : chat.avatar_url;
                                 return (
@@ -214,12 +316,24 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
                                         </div>
                                     </div>
                                 )
-                            })
-                        )}
+                            })}
                     </div>
                 </div>
             </div>
             
+            {/* The FAB specifically for the Connect Tab */}
+            <div className="connect-fab" onClick={() => setShowDiscovery(true)}>
+                <i className="fas fa-comment-medical"></i>
+            </div>
+
+            {showDiscovery && (
+                <DiscoveryScreen 
+                    currentUser={currentUser} 
+                    onClose={() => setShowDiscovery(false)} 
+                    onStartChat={startDirectMessage} 
+                />
+            )}
+
             {activeChat && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} />}
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
         </div>
