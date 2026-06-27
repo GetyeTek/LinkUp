@@ -8,9 +8,28 @@
 .onboarding-subtitle { font-size: 0.85rem; color: #aaa; margin: 0; text-align: center; line-height: 1.4; }
 
 .onboarding-preview { display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 0 20px rgba(0,0,0,0.2); }
-.onboarding-preview img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-teal); box-shadow: 0 0 15px rgba(66, 215, 184, 0.2); }
+.onboarding-avatar-wrapper { position: relative; width: 64px; height: 64px; flex-shrink: 0; cursor: pointer; border-radius: 50%; overflow: hidden; border: 2px solid var(--accent-teal); box-shadow: 0 0 15px rgba(66, 215, 184, 0.2); }
+.onboarding-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-edit-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; opacity: 0; transition: opacity 0.2s; font-size: 1.2rem; }
+.onboarding-avatar-wrapper:hover .avatar-edit-overlay { opacity: 1; }
+
 .preview-info h3 { font-size: 1rem; font-weight: 600; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;}
 .preview-info p { font-family: 'Roboto Mono', monospace; font-size: 0.8rem; color: var(--accent-teal); margin: 2px 0 0; }
+
+.cropper-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.cropper-card { background: #121212; padding: 2rem; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 1.5rem; align-items: center; width: 100%; max-width: 360px; box-shadow: 0 30px 60px rgba(0,0,0,0.5); animation: popModal 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.cropper-card h3 { color: white; margin: 0; font-size: 1.2rem; }
+.cropper-viewport { width: 256px; height: 256px; position: relative; overflow: hidden; background: #000; border-radius: 12px; cursor: grab; }
+.cropper-viewport:active { cursor: grabbing; }
+.cropper-image { position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%; object-fit: cover; pointer-events: none; }
+.cropper-mask { position: absolute; inset: 0; box-shadow: 0 0 0 200px rgba(0,0,0,0.7); border-radius: 50%; pointer-events: none; border: 2px solid var(--accent-teal); }
+.cropper-controls { display: flex; align-items: center; gap: 1rem; width: 100%; color: #888; }
+.cropper-controls input[type="range"] { flex: 1; accent-color: var(--accent-teal); }
+.cropper-actions { display: flex; gap: 1rem; width: 100%; }
+.cropper-actions button { flex: 1; padding: 12px; border-radius: 12px; font-weight: 600; cursor: pointer; border: none; font-family: 'Poppins', sans-serif; transition: transform 0.2s; }
+.cropper-actions button:active { transform: scale(0.95); }
+.btn-crop-cancel { background: rgba(255,255,255,0.1); color: white; }
+.btn-crop-save { background: var(--accent-teal); color: black; }
 
 .onboarding-form { display: flex; flex-direction: column; gap: 1.25rem; }
 .input-row { display: flex; gap: 1rem; }
