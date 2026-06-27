@@ -7,6 +7,7 @@ const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
   const [src, setSrc] = useState('');
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [dim, setDim] = useState({ w: 256, h: 256 }); // Tracks perfect scale dimensions
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const imgRef = useRef(null);
@@ -16,6 +17,14 @@ const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
       setSrc(url);
       return () => URL.revokeObjectURL(url);
   }, [imageFile]);
+
+  // Synchronize CSS rendering dimensions perfectly with Canvas rendering dimensions
+  const handleImageLoad = (e) => {
+      const nw = e.target.naturalWidth;
+      const nh = e.target.naturalHeight;
+      const scaleBase = Math.max(256 / nw, 256 / nh);
+      setDim({ w: nw * scaleBase, h: nh * scaleBase });
+  };
 
   const handleStart = (clientX, clientY) => {
       setIsDragging(true);
@@ -37,16 +46,14 @@ const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
       const ctx = canvas.getContext('2d');
       
       const img = imgRef.current;
-      const nw = img.naturalWidth;
-      const nh = img.naturalHeight;
-      const scaleBase = Math.max(256 / nw, 256 / nh);
-      const rw = nw * scaleBase;
-      const rh = nh * scaleBase;
+      const rw = dim.w;
+      const rh = dim.h;
 
       ctx.clearRect(0, 0, 256, 256);
-      ctx.translate(128, 128); // center of canvas
+      ctx.translate(128, 128); // Move origin to center
       ctx.scale(zoom, zoom);
       ctx.translate(pos.x, pos.y);
+      // Draw centered around the origin
       ctx.drawImage(img, -rw / 2, -rh / 2, rw, rh);
 
       canvas.toBlob((blob) => {
@@ -72,8 +79,11 @@ const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
                       ref={imgRef}
                       src={src} 
                       draggable={false}
+                      onLoad={handleImageLoad}
                       style={{
-                          transform: `translate(calc(-50% + ${pos.x * zoom}px), calc(-50% + ${pos.y * zoom}px)) scale(${zoom})`
+                          width: `${dim.w}px`,
+                          height: `${dim.h}px`,
+                          transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px)) scale(${zoom})`
                       }}
                       className="cropper-image"
                       alt="Crop Source"
@@ -97,14 +107,15 @@ const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
 // Unified Onboarding Gatekeeper (Handles Display Name & Username)
 const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
   const [sureName, setSureName] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [croppedAvatar, setCroppedAvatar] = useState(null);
-  const fileInputRef = useRef(null);
   const [fatherName, setFatherName] = useState('');
   const [username, setUsername] = useState('');
   const [status, setStatus] = useState('idle'); // idle, checking, available, taken, invalid, error
   const [loading, setLoading] = useState(false);
+  const [claimError, setClaimError] = useState(null);
   const [initialized, setInitialized] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [croppedAvatar, setCroppedAvatar] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (initialized) return;
@@ -181,6 +192,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
   const handleClaim = async () => {
     if (status !== 'available' || sureName.trim().length < 2) return;
     setLoading(true);
+    setClaimError(null);
     
     const finalFullName = fatherName.trim() ? `${sureName.trim()} ${fatherName.trim()}` : sureName.trim();
     
@@ -189,7 +201,6 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     
     try {
         if (croppedAvatar?.blob) {
-            // Convert Blob to ArrayBuffer to prevent IDE 'postMessage' cloning errors
             const arrayBuffer = await croppedAvatar.blob.arrayBuffer();
             const filePath = `${userProfile.id}/avatar_${Date.now()}.png`;
             const { error: uploadError } = await supabase.storage
@@ -211,10 +222,13 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
           .eq('id', userProfile.id);
 
         if (error) throw error;
-        onComplete(username, finalFullName);
+        
+        // Pass the new avatar URL directly to App.js so it bypasses reload
+        onComplete(username, finalFullName, finalAvatarUrl);
     } catch (err) {
         console.error("Profile update failed:", err);
         setStatus('error');
+        setClaimError(err.message || "Something went wrong saving your profile. Please try again.");
         setLoading(false);
     }
   };
@@ -243,13 +257,15 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
 
         <div className="onboarding-preview">
           <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleFileChange} />
-          <div className="onboarding-avatar-wrapper" onClick={() => fileInputRef.current?.click()}>
-              <img src={displayAvatar} alt="Profile Preview" />
-              <div className="avatar-edit-overlay"><i className="fas fa-camera"></i></div>
+          <div className="onboarding-avatar-container" onClick={() => fileInputRef.current?.click()}>
+              <div className="onboarding-avatar-wrapper">
+                  <img src={displayAvatar} alt="Profile Preview" />
+              </div>
+              <div className="avatar-edit-badge" title="Change Avatar"><i className="fas fa-pencil"></i></div>
           </div>
           <div className="preview-info">
             <h3>{displayFullName}</h3>
-            <p>@{username || 'handle'}</p>
+            <p>@{username || 'username'}</p>
           </div>
         </div>
 
@@ -278,7 +294,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
           </div>
 
           <div className="input-group-sm handle-group">
-            <label>LinkUp Handle</label>
+            <label>Username</label>
             <div className={`handle-input-wrapper status-${status}`}>
               <span className="handle-prefix">@</span>
               <input 
@@ -298,12 +314,14 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
             </div>
             <div className="handle-hint">
               {status === 'invalid' && "3-20 chars. Lowercase, numbers, underscores."}
-              {status === 'taken' && "This handle is already taken."}
+              {status === 'taken' && "This username is already taken."}
               {status === 'error' && "Connection error. Try again."}
               {status === 'available' && "Looks great! It's all yours."}
               {status === 'idle' && "Choose your unique identity."}
             </div>
           </div>
+
+          {claimError && <div className="onboarding-error-alert">{claimError}</div>}
 
           <button 
             className="onboarding-submit-btn" 
@@ -524,8 +542,8 @@ const App = () => {
 
   // The Onboarding Gatekeeper (Unified name and handle verification)
   if (userProfile && !userProfile.username) {
-    return <OnboardingGate userProfile={userProfile} sessionUser={session?.user} onComplete={(newUsername, newFullName) => {
-      setUserProfile({ ...userProfile, username: newUsername, full_name: newFullName });
+    return <OnboardingGate userProfile={userProfile} sessionUser={session?.user} onComplete={(newUsername, newFullName, newAvatarUrl) => {
+      setUserProfile({ ...userProfile, username: newUsername, full_name: newFullName, avatar_url: newAvatarUrl });
     }} />;
   }
 
