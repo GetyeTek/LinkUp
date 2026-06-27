@@ -230,7 +230,7 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
     };
 
     return (
-        <div className={`tab-content active ${isHeaderCollapsed ? 'header-collapsed' : ''}`} id="connect-content">
+        <div className={`tab-content active ${isHeaderCollapsed ? 'header-collapsed' : ''} ${activeView === 'for-you' ? 'for-you-active' : ''}`} id="connect-content">
             <header className="interactive-header">
                 <div className="large-title-row">
                     <h2 className="large-title">Social Hub</h2>
@@ -245,20 +245,81 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
                 <div className="main-nav-row">
                     <div className="orbiter-container">
                         <div className="icon-orbiter">
-                            <div className={`option ${activeView === 'for-you' ? 'active' : ''}`} onClick={() => setActiveView('for-you')}>
+                            <div className={`option ${activeView === 'for-you' ? 'active' : ''}`} onClick={() => { setActiveView('for-you'); setIsHeaderCollapsed(false); }}>
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-star"></i></div>
                                 <span className="text-label">For You</span>
                             </div>
-                            <div className={`option ${activeView === 'messages' ? 'active' : ''}`} onClick={() => setActiveView('messages')}>
+                            <div className={`option ${activeView === 'messages' ? 'active' : ''}`} onClick={() => { setActiveView('messages'); setIsHeaderCollapsed(false); }}>
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-paper-plane"></i></div>
                                 <span className="text-label">Messages</span>
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                {/* Embedded Filter Pills specifically for the For You academic feed */}
+                <div className="filter-pills-container">
+                    <div className="filter-pills">
+                        <div className="chip active">All</div>
+                        <div className="chip">Study Groups</div>
+                        <div className="chip">Q&A Forum</div>
+                        <div className="chip">Miron Tips</div>
+                    </div>
+                </div>
             </header>
 
             <div className="content-panel">
+                
+                {/* --- FOR YOU: THE ACADEMIC SNAP FEED --- */}
+                <div id="for-you-view" className={`hub-view feed-container ${activeView === 'for-you' ? 'active' : ''}`} onScroll={handleScroll}>
+                    
+                    <section className="feed-slide">
+                        <div className="card-content-wrapper">
+                            <div className="mission-card">
+                                <canvas className="stars-canvas"></canvas>
+                                <div className="mission-content">
+                                    <div className="portal-graphic"><div className="portal-ring"></div></div>
+                                    <p className="kicker">// LIVE STUDY GROUP</p>
+                                    <h2 className="title">Calculus II: Integrals</h2>
+                                    <p style={{color: '#aaa', fontSize: '0.9rem', marginTop: '15px'}}>3 classmates from your department are studying this right now.</p>
+                                    <button className="story-cta-btn" style={{ color: 'var(--bg-dark)', background: 'var(--accent-teal)', border: 'none' }}>
+                                        Join Session <i className="fas fa-arrow-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="feed-slide">
+                        <div className="card-content-wrapper">
+                            <div className="story-card">
+                                <div className="background-image" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80')" }}></div>
+                                <div className="content-overlay" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 100%)' }}>
+                                    <p className="kicker"><i className="fas fa-question-circle"></i> Q&A Forum</p>
+                                    <h2 className="title" style={{ color: 'white' }}>How do you derive the Navier-Stokes equations?</h2>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px'}}>
+                                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" style={{width: '28px', height: '28px', borderRadius: '50%', border: '1px solid #42d7b8'}} alt="Asker" />
+                                        <span style={{fontSize: '0.85rem', color: '#ccc'}}>Asked by Dawit</span>
+                                    </div>
+                                    <button className="story-cta-btn" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
+                                        Help a Peer <i className="fas fa-hands-helping"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="feed-slide">
+                        <div className="card-content-wrapper">
+                            <div className="action-slide-content">
+                                <i className="fas fa-brain action-icon"></i>
+                                <p className="action-prompt">Miron noticed your mock exam scores in <strong style={{color: 'white'}}>Projectile Motion</strong> are dropping...</p>
+                                <button className="action-cta-btn">Review Topic with Miron</button>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
                 <div id="messages-view" className={`hub-view ${activeView === 'messages' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
                     <div className="messages-list">
                         
