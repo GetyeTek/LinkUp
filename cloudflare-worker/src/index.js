@@ -12,6 +12,8 @@ export default {
 
     // 1. CORS Handling
     const incomingOrigin = request.headers.get('Origin') || '*';
+    // Capture whatever headers the browser is asking to use
+    const requestedHeaders = request.headers.get('Access-Control-Request-Headers');
     
     if (request.method === 'OPTIONS') {
       console.log(`[Gateway] 🛡️ Resolving CORS Preflight for Origin: ${incomingOrigin}`);
@@ -19,7 +21,8 @@ export default {
         headers: {
           'Access-Control-Allow-Origin': incomingOrigin,
           'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, accept-encoding, x-supabase-api-version',
+          // Mirror the requested headers back to the browser or use a robust fallback
+          'Access-Control-Allow-Headers': requestedHeaders || 'authorization, x-client-info, apikey, content-type, prefer, range, x-supabase-api-version',
           'Access-Control-Allow-Credentials': 'true',
           'Access-Control-Max-Age': '86400',
         }
@@ -75,8 +78,8 @@ export default {
       // Ensure the frontend receives the correct CORS headers back
       responseHeaders.set('Access-Control-Allow-Origin', incomingOrigin);
       responseHeaders.set('Access-Control-Allow-Credentials', 'true');
-      // Allow the frontend to see these specific headers if needed
-      responseHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range');
+      // Allow the frontend to see these specific headers (crucial for pagination and versions)
+      responseHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range, content-length, x-supabase-api-version');
 
       return new Response(response.body, {
         status: response.status,
