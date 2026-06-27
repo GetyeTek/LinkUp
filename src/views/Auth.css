@@ -225,6 +225,37 @@
     text-decoration: underline; 
 }
 
+/* Commitment Note styling for Auth and Onboarding */
+.commitment-note {
+    background: rgba(255, 171, 64, 0.05);
+    border: 1px solid rgba(255, 171, 64, 0.2);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 1rem;
+    animation: slideUpMode 0.4s ease;
+}
+
+.commitment-note i {
+    color: #ffab40;
+    font-size: 1rem;
+    margin-top: 2px;
+}
+
+.commitment-note p {
+    font-size: 0.75rem;
+    color: #bbb;
+    line-height: 1.4;
+    margin: 0;
+    text-align: left;
+}
+
+.commitment-note strong {
+    color: #ffab40;
+    font-weight: 600;
+}
+
 /* Error State */
 .auth-error {
     background: rgba(255, 71, 87, 0.1);
