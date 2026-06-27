@@ -1,8 +1,7 @@
 import { supabase } from './supabaseClient.js';
 
 // --- SECURE PROXY ROUTING ---
-// NOTE: Replace this placeholder with the actual URL Cloudflare gives you after deployment
-const GATEWAY_BASE = 'https://[YOUR_CLOUDFLARE_URL_HERE]';
+const GATEWAY_BASE = 'https://linkup-gateway.getyeteklu2.workers.dev';
 
 export const API_ENDPOINT = `${GATEWAY_BASE}/functions/v1/book-reader`;
 export const MIRON_ENDPOINT = `${GATEWAY_BASE}/functions/v1/miron-athena`;
