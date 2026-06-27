@@ -303,6 +303,30 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
                             </div>
                         </div>
 
+                        {/* Admin Featured Post 1 */}
+                        <div className="activity-card">
+                            <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80" className="activity-image" alt="Workshop" />
+                            <div className="activity-content">
+                                <div className="activity-tag" style={{color: '#ffab40'}}>Featured Event</div>
+                                <h2 className="activity-headline">Global Research & Methodology Workshop</h2>
+                                <p className="activity-snippet">Join top researchers from across the globe this Friday to learn about the future of STEM. Limited seats available for LinkUp scholars.</p>
+                                <button className="claim-btn" style={{marginTop: '1rem', width: '100%', background: '#ffab40', color: '#000'}}>Register Interest</button>
+                            </div>
+                        </div>
+
+                        {/* Admin Featured Post 2 */}
+                        <div className="activity-card">
+                            <img src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80" className="activity-image" alt="Scholarship" />
+                            <div className="activity-content">
+                                <div className="activity-tag">Admin Update</div>
+                                <h2 className="activity-headline">2026 Innovation Scholarships are Open</h2>
+                                <p className="activity-snippet">Check your eligibility criteria for this year's regional innovation grants. Applications close in 14 days.</p>
+                                <div style={{marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '0.8rem', color: '#888'}}>
+                                    <i className="fas fa-paperclip" style={{marginRight: '8px'}}></i> eligibility_guidelines_v2.pdf
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
                 <div id="messages-view" className={`hub-view ${activeView === 'messages' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
