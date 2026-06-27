@@ -8,6 +8,7 @@ const Auth = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
+    const [phone, setPhone] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [notice, setNotice] = useState(null); // { title, message, type, actionLabel }
@@ -113,7 +114,7 @@ const Auth = () => {
                 const { error: signUpError } = await supabase.auth.signUp({
                     email,
                     password,
-                    options: { data: { full_name: fullName } }
+                    options: { data: { full_name: fullName, phone: phone } }
                 });
                 if (signUpError) throw signUpError;
                 
@@ -200,6 +201,26 @@ const Auth = () => {
                         />
                         <i className="fas fa-envelope input-icon"></i>
                     </div>
+
+                    {isSignUp && !isForgotPassword && (
+                        <>
+                            <div className="input-group">
+                                <input 
+                                    type="tel" 
+                                    className="auth-input" 
+                                    placeholder="Phone (e.g. 0912...)" 
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    required
+                                />
+                                <i className="fas fa-phone input-icon"></i>
+                            </div>
+                            <div className="commitment-note">
+                                <i className="fas fa-shield-halved"></i>
+                                <p><strong>Secure Identity:</strong> Please provide an accurate number. It is used for <strong>rewards</strong>, account recovery, and regional study groups.</p>
+                            </div>
+                        </>
+                    )}
 
                     {!isForgotPassword && (
                         <>
