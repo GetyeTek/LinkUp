@@ -21,9 +21,6 @@
 
 .onboarding-error-alert { background: rgba(255, 95, 95, 0.1); border: 1px solid rgba(255, 95, 95, 0.3); color: #ff5f5f; padding: 12px; border-radius: 12px; font-size: 0.85rem; text-align: center; margin-top: 10px; font-weight: 500; }
 
-.preview-info h3 { font-size: 1rem; font-weight: 600; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;}
-.preview-info p { font-family: 'Roboto Mono', monospace; font-size: 0.8rem; color: var(--accent-teal); margin: 2px 0 0; }
-
 .cropper-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; padding: 1rem; }
 .cropper-card { background: #121212; padding: 2rem; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 1.5rem; align-items: center; width: 100%; max-width: 360px; box-shadow: 0 30px 60px rgba(0,0,0,0.5); animation: popModal 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 .cropper-card h3 { color: white; margin: 0; font-size: 1.2rem; }
