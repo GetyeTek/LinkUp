@@ -111,6 +111,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
   const [sureName, setSureName] = useState('');
   const [fatherName, setFatherName] = useState('');
   const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
   const [status, setStatus] = useState('idle');
   const [loading, setLoading] = useState(false);
   const [claimError, setClaimError] = useState(null);
@@ -159,6 +160,9 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     
     setSureName(defaultSure);
     setFatherName(defaultFather);
+    
+    // Set phone if it exists in metadata or profile
+    setPhone(userProfile?.phone || sessionUser?.user_metadata?.phone || '');
 
     // 2. Generate a smart username suggestion
     let baseForUsername = initialFullName || sessionUser?.email?.split('@')[0] || '';
@@ -228,7 +232,12 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
 
   // Move from Phase 1 to Phase 2
   const handleNextPhase = () => {
-      if (status !== 'available' || sureName.trim().length < 2) return;
+      // Validate identity fields before allowing move to Phase 2
+      const isPhoneValid = /^(09|07|\+251)\d{7,10}$/.test(phone.replace(/\s/g, ''));
+      if (status !== 'available' || sureName.trim().length < 2 || !isPhoneValid) {
+          if (!isPhoneValid && phone.length > 0) setClaimError("Please enter a valid phone number (09... or 07...)");
+          return;
+      }
       setPhase(2);
   };
 
@@ -257,6 +266,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
               username: username,
               full_name: finalFullName,
               avatar_url: finalAvatarUrl,
+              phone: phone,
               university_id: academicData.university_id || null,
               program: academicData.program || null,
               department: academicData.department || null,
@@ -353,14 +363,32 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                     {status === 'invalid' && <i className="fas fa-exclamation"></i>}
                   </div>
                 </div>
-                <div className="handle-hint">
-                  {status === 'invalid' && "3-20 chars. Lowercase, numbers, underscores."}
-                  {status === 'taken' && "This username is already taken."}
-                  {status === 'error' && "Connection error. Try again."}
-                  {status === 'available' && "Looks great! It's all yours."}
-                  {status === 'idle' && "Choose your unique identity."}
-                </div>
-              </div>
+                            <div className="handle-hint">
+              {status === 'invalid' && "3-20 chars. Lowercase, numbers, underscores."}
+              {status === 'taken' && "This username is already taken."}
+              {status === 'error' && "Connection error. Try again."}
+              {status === 'available' && "Looks great! It's all yours."}
+              {status === 'idle' && "Choose your unique identity."}
+            </div>
+          </div>
+
+          <div className="input-group-sm">
+            <label>Phone Number</label>
+            <div className="handle-input-wrapper">
+              <span className="handle-prefix" style={{fontSize: '0.9rem'}}><i className="fas fa-phone"></i></span>
+              <input 
+                type="tel" 
+                placeholder="09... or 07..."
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div className="commitment-note" style={{marginTop: '10px', marginBottom: '0'}}>
+                <i className="fas fa-circle-info"></i>
+                <p>Used for <strong>rewards</strong> and secure account access.</p>
+            </div>
+          </div>
 
               {claimError && <div className="onboarding-error-alert">{claimError}</div>}
 
