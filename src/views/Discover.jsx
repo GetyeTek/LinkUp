@@ -98,35 +98,44 @@ const Discover = ({ onOpenActivity }) => {
                 </section>
             </div>
 
-            {/* Sub Tab: Feeds (Now Traditional News Feed) */}
+            {/* Sub Tab: Feeds (Full Immersive Discovery Snap Feed) */}
             <div className={`discover-sub-tab ${activeSubTab === 'feeds' ? 'active' : ''}`} id="discover-feeds">
-                <div className="news-feed-container">
+                <div className="feed-container">
                     
-                    <div className="news-card">
-                        <img src="https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80" className="news-image" alt="Campus News" />
-                        <div className="news-content">
-                            <div className="news-tag">Campus Bulletin</div>
-                            <h2 className="news-headline">New AI Research Lab Opens at Addis Ababa University</h2>
-                            <p className="news-snippet">The new facility will provide students with state-of-the-art GPUs for machine learning research and data science.</p>
+                    <section className="feed-slide">
+                        <div className="card-content-wrapper">
+                            <div className="mission-card">
+                                <canvas className="stars-canvas"></canvas>
+                                <div className="mission-content">
+                                    <div className="portal-graphic"><div className="portal-ring"></div></div>
+                                    <p className="kicker">// GLOBAL CHALLENGE</p>
+                                    <h2 className="title">The P vs NP Problem</h2>
+                                    <p style={{color: '#aaa', fontSize: '0.85rem', marginTop: '1rem'}}>Can every problem whose solution can be quickly verified also be solved quickly?</p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div className="news-card">
-                        <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80" className="news-image" alt="Tech Trends" />
-                        <div className="news-content">
-                            <div className="news-tag">Global Tech Trends</div>
-                            <h2 className="news-headline">Quantum Computing Breakthrough Achieved</h2>
-                            <p className="news-snippet">Researchers have successfully entangled particles over a record distance, paving the way for next-generation encryption.</p>
+                    <section className="feed-slide">
+                        <div className="card-content-wrapper">
+                            <div className="story-card">
+                                <div className="background-image" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80')" }}></div>
+                                <div className="content-overlay" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 100%)' }}>
+                                    <p className="kicker"><i className="fas fa-atom"></i> Tech Trends</p>
+                                    <h2 className="title" style={{ color: 'white' }}>Quantum Computing Breakthrough</h2>
+                                    <button className="story-cta-btn" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>Read Article <i className="fas fa-arrow-right"></i></button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div className="news-card">
-                        <div className="news-content" style={{borderLeft: '4px solid var(--accent-teal)'}}>
-                            <div className="news-tag">GibiNews Announcement</div>
-                            <h2 className="news-headline">LinkUp Study Groups are now Live!</h2>
-                            <p className="news-snippet">Welcome to the new era of academic networking. Head over to the Connect tab to join live study sessions with your peers.</p>
+                    </section>
+
+                    <section className="feed-slide">
+                        <div className="action-slide-content">
+                            <i className="fas fa-microchip action-icon"></i>
+                            <p className="action-prompt">New AI Research Lab Opens at Addis Ababa University.</p>
+                            <button className="action-cta-btn">View Campus Map</button>
                         </div>
-                    </div>
+                    </section>
 
                 </div>
             </div>
