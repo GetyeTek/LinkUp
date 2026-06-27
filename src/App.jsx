@@ -189,10 +189,12 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     
     try {
         if (croppedAvatar?.blob) {
+            // Convert Blob to ArrayBuffer to prevent IDE 'postMessage' cloning errors
+            const arrayBuffer = await croppedAvatar.blob.arrayBuffer();
             const filePath = `${userProfile.id}/avatar_${Date.now()}.png`;
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(filePath, croppedAvatar.blob, { contentType: 'image/png', upsert: true });
+                .upload(filePath, arrayBuffer, { contentType: 'image/png', upsert: true });
             
             if (uploadError) throw uploadError;
             
