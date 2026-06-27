@@ -1,6 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const supabaseUrl = 'https://ryaxynjczfwqyqvpmorl.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5YXh5bmpjemZ3cXlxdnBtb3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NDkwMTEsImV4cCI6MjA5NzEyNTAxMX0.739vHhzkh4as9K4afPylbaMBsupGR_rFTgpATDYiWOY';
+// --- SECURE PROXY ROUTING ---
+// NOTE: Replace this placeholder with the actual URL Cloudflare gives you after deployment
+const supabaseUrl = 'https://[YOUR_CLOUDFLARE_URL_HERE]';
+
+// Fake proprietary key to mask Supabase signature.
+// The Cloudflare Worker intercepts this and injects the real Supabase key server-side.
+const supabaseAnonKey = 'lk_live_9a38f2e7b1c4d9e0a2f8d73b';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
