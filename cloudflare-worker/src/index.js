@@ -10,14 +10,17 @@ export default {
     const url = new URL(request.url);
     console.log(`[Gateway] 🚀 Incoming Request: ${request.method} ${url.pathname}`);
 
-    // 1. CORS Preflight (Crucial for browser security checks)
+    // 1. CORS Handling
+    const incomingOrigin = request.headers.get('Origin') || '*';
+    
     if (request.method === 'OPTIONS') {
-      console.log('[Gateway] 🛡️ Resolving CORS Preflight');
+      console.log(`[Gateway] 🛡️ Resolving CORS Preflight for Origin: ${incomingOrigin}`);
       return new Response(null, {
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': incomingOrigin,
           'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, accept-encoding',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, accept-encoding, x-supabase-api-version',
+          'Access-Control-Allow-Credentials': 'true',
           'Access-Control-Max-Age': '86400',
         }
       });
@@ -25,56 +28,55 @@ export default {
 
     // 2. Map request to the real Supabase backend
     const targetUrl = new URL(url.pathname + url.search, REAL_SUPABASE_URL);
-    console.log(`[Gateway] 🔀 Routing to: ${targetUrl.toString()}`);
+    console.log(`[Gateway] 🔀 Routing ${request.method} to: ${targetUrl.toString()}`);
 
     const modifiedHeaders = new Headers(request.headers);
 
     // 3. The Scrubbing Engine (Swap Dummy Keys for Real Keys)
     let keysSwapped = false;
+    
+    // Check apikey header
     if (modifiedHeaders.get('apikey') === DUMMY_KEY) {
       modifiedHeaders.set('apikey', REAL_ANON_KEY);
       keysSwapped = true;
     }
     
+    // Check Authorization header (Supabase uses "Bearer [KEY]")
     const authHeader = modifiedHeaders.get('authorization');
     if (authHeader && authHeader.includes(DUMMY_KEY)) {
-      modifiedHeaders.set('authorization', `Bearer ${REAL_ANON_KEY}`);
+      const updatedAuth = authHeader.replace(DUMMY_KEY, REAL_ANON_KEY);
+      modifiedHeaders.set('authorization', updatedAuth);
       keysSwapped = true;
     }
 
     if (keysSwapped) {
-      console.log('[Gateway] 🔑 Security Swap: Successfully replaced frontend dummy keys with real backend credentials.');
-    } else {
-      console.log('[Gateway] ⚠️ Warning: No dummy key found in headers. Proceeding as generic request.');
+      console.log('[Gateway] 🔑 Security Swap: Successfully replaced dummy key with REAL_ANON_KEY.');
     }
 
-    // 4. Forwarding (Native support for REST and WebSockets)
+    // 4. Forwarding
     const init = {
       method: request.method,
       headers: modifiedHeaders,
       redirect: 'manual'
     };
 
-    // Body cannot be attached to GET or HEAD requests
     if (request.method !== 'GET' && request.method !== 'HEAD') {
+      // Clone the stream to avoid "body already used" errors if logging/parsing happened
       init.body = request.body;
     }
 
     try {
-      console.log('[Gateway] ⏳ Executing fetch to backend...');
       const response = await fetch(targetUrl.toString(), init);
       console.log(`[Gateway] ✅ Backend responded with HTTP ${response.status}`);
       
-      // Native WebSocket Passthrough (For Supabase Realtime/Chat)
-      if (response.status === 101) {
-         console.log('[Gateway] ⚡ WebSocket Upgrade Detected! Establishing direct realtime proxy tunnel.');
-         return response;
-      }
+      if (response.status === 101) return response;
 
-      // Standard HTTP Response: Clone and inject wildcard CORS so frontend doesn't block it
       const responseHeaders = new Headers(response.headers);
-      responseHeaders.set('Access-Control-Allow-Origin', '*');
-      responseHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version');
+      // Ensure the frontend receives the correct CORS headers back
+      responseHeaders.set('Access-Control-Allow-Origin', incomingOrigin);
+      responseHeaders.set('Access-Control-Allow-Credentials', 'true');
+      // Allow the frontend to see these specific headers if needed
+      responseHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range');
 
       return new Response(response.body, {
         status: response.status,
