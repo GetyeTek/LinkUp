@@ -10,22 +10,40 @@ export default {
     const url = new URL(request.url);
     console.log(`[Gateway] 🚀 Incoming Request: ${request.method} ${url.pathname}`);
 
-    // 1. CORS Handling
-    const incomingOrigin = request.headers.get('Origin') || '*';
-    // Capture whatever headers the browser is asking to use
+    // 1. Security: Strict Origin Whitelist
+    const ALLOWED_ORIGINS = [
+      'https://getyeteklu2.github.io', // Your Production Site
+      'http://localhost:8080',         // Your Local Dev (from your logs)
+      'http://localhost:5173',         // Vite Default
+      'http://localhost:3000'
+    ];
+
+    const incomingOrigin = request.headers.get('Origin');
     const requestedHeaders = request.headers.get('Access-Control-Request-Headers');
-    
+
+    // If the origin is unlisted, we treat it as an unauthorized proxy attempt
+    const isAllowed = ALLOWED_ORIGINS.includes(incomingOrigin);
+    const corsOrigin = isAllowed ? incomingOrigin : 'https://unauthorized-origin-blocked';
+
     if (request.method === 'OPTIONS') {
-      console.log(`[Gateway] 🛡️ Resolving CORS Preflight for Origin: ${incomingOrigin}`);
+      console.log(`[Gateway] 🛡️ Preflight: ${incomingOrigin} (Allowed: ${isAllowed})`);
       return new Response(null, {
         headers: {
-          'Access-Control-Allow-Origin': incomingOrigin,
+          'Access-Control-Allow-Origin': corsOrigin,
           'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-          // Mirror the requested headers back to the browser or use a robust fallback
           'Access-Control-Allow-Headers': requestedHeaders || 'authorization, x-client-info, apikey, content-type, prefer, range, x-supabase-api-version',
           'Access-Control-Allow-Credentials': 'true',
           'Access-Control-Max-Age': '86400',
         }
+      });
+    }
+
+    // Block non-OPTIONS requests from unauthorized origins
+    if (incomingOrigin && !isAllowed) {
+      console.error(`[Gateway] ⛔ Blocked unauthorized request from: ${incomingOrigin}`);
+      return new Response(JSON.stringify({ error: "Unauthorized environment" }), { 
+        status: 403, 
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': corsOrigin } 
       });
     }
 
@@ -76,7 +94,7 @@ export default {
 
       const responseHeaders = new Headers(response.headers);
       // Ensure the frontend receives the correct CORS headers back
-      responseHeaders.set('Access-Control-Allow-Origin', incomingOrigin);
+      responseHeaders.set('Access-Control-Allow-Origin', corsOrigin);
       responseHeaders.set('Access-Control-Allow-Credentials', 'true');
       // Allow the frontend to see these specific headers (crucial for pagination and versions)
       responseHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range, content-length, x-supabase-api-version');
