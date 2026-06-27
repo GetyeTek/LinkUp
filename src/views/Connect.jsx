@@ -270,55 +270,40 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
 
             <div className="content-panel">
                 
-                {/* --- FOR YOU: THE ACADEMIC SNAP FEED --- */}
-                <div id="for-you-view" className={`hub-view feed-container ${activeView === 'for-you' ? 'active' : ''}`} onScroll={handleScroll}>
-                    
-                    <section className="feed-slide">
-                        <div className="card-content-wrapper">
-                            <div className="mission-card">
-                                <canvas className="stars-canvas"></canvas>
-                                <div className="mission-content">
-                                    <div className="portal-graphic"><div className="portal-ring"></div></div>
-                                    <p className="kicker">// LIVE STUDY GROUP</p>
-                                    <h2 className="title">Calculus II: Integrals</h2>
-                                    <p style={{color: '#aaa', fontSize: '0.9rem', marginTop: '15px'}}>3 classmates from your department are studying this right now.</p>
-                                    <button className="story-cta-btn" style={{ color: 'var(--bg-dark)', background: 'var(--accent-teal)', border: 'none' }}>
-                                        Join Session <i className="fas fa-arrow-right"></i>
-                                    </button>
+                {/* --- FOR YOU: THE ACADEMIC ACTIVITY FEED (Tweet-style List) --- */}
+                <div id="for-you-view" className={`hub-view ${activeView === 'for-you' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
+                    <div className="activity-list-container">
+                        
+                        <div className="activity-card">
+                            <div className="activity-content" style={{borderLeft: '4px solid var(--accent-teal)'}}>
+                                <div className="activity-tag">Live Study Group</div>
+                                <h2 className="activity-headline">Calculus II: Power Series</h2>
+                                <p className="activity-snippet">3 classmates from your department are studying this right now. Join and share notes!</p>
+                                <button className="claim-btn claimable" style={{marginTop: '1rem', width: '100%'}}>Join Session</button>
+                            </div>
+                        </div>
+
+                        <div className="activity-card">
+                            <div className="activity-content">
+                                <div className="activity-tag">Peer Question</div>
+                                <h2 className="activity-headline">How do you derive the Navier-Stokes equations?</h2>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0'}}>
+                                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" style={{width: '24px', height: '24px', borderRadius: '50%'}} alt="Asker" />
+                                    <span style={{fontSize: '0.8rem', color: '#888'}}>Asked by Dawit</span>
                                 </div>
+                                <p className="activity-snippet">Struggling with the continuity equation part. Any help?</p>
                             </div>
                         </div>
-                    </section>
 
-                    <section className="feed-slide">
-                        <div className="card-content-wrapper">
-                            <div className="story-card">
-                                <div className="background-image" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80')" }}></div>
-                                <div className="content-overlay" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 100%)' }}>
-                                    <p className="kicker"><i className="fas fa-question-circle"></i> Q&A Forum</p>
-                                    <h2 className="title" style={{ color: 'white' }}>How do you derive the Navier-Stokes equations?</h2>
-                                    <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px'}}>
-                                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" style={{width: '28px', height: '28px', borderRadius: '50%', border: '1px solid #42d7b8'}} alt="Asker" />
-                                        <span style={{fontSize: '0.85rem', color: '#ccc'}}>Asked by Dawit</span>
-                                    </div>
-                                    <button className="story-cta-btn" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
-                                        Help a Peer <i className="fas fa-hands-helping"></i>
-                                    </button>
-                                </div>
+                        <div className="activity-card">
+                            <div className="activity-content" style={{background: 'rgba(66, 215, 184, 0.05)'}}>
+                                <div className="activity-tag" style={{color: 'var(--cyber-gold)'}}>Miron Insight</div>
+                                <h2 className="activity-headline">Strengthen Projectile Motion</h2>
+                                <p className="activity-snippet">I noticed your quiz scores in this topic are dropping. Shall we do a quick 5-minute review?</p>
                             </div>
                         </div>
-                    </section>
 
-                    <section className="feed-slide">
-                        <div className="card-content-wrapper">
-                            <div className="action-slide-content">
-                                <i className="fas fa-brain action-icon"></i>
-                                <p className="action-prompt">Miron noticed your mock exam scores in <strong style={{color: 'white'}}>Projectile Motion</strong> are dropping...</p>
-                                <button className="action-cta-btn">Review Topic with Miron</button>
-                            </div>
-                        </div>
-                    </section>
-
+                    </div>
                 </div>
                 <div id="messages-view" className={`hub-view ${activeView === 'messages' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
                     <div className="messages-list">
