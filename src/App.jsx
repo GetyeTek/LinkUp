@@ -2,9 +2,104 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './config/supabaseClient.js';
 import Auth from './views/Auth.jsx';
 
+// Zero-Dependency HTML5 Canvas Avatar Cropper
+const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
+  const [src, setSrc] = useState('');
+  const [zoom, setZoom] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const imgRef = useRef(null);
+
+  useEffect(() => {
+      const url = URL.createObjectURL(imageFile);
+      setSrc(url);
+      return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
+
+  const handleStart = (clientX, clientY) => {
+      setIsDragging(true);
+      dragStart.current = { x: clientX - pos.x, y: clientY - pos.y };
+  };
+
+  const handleMove = (clientX, clientY) => {
+      if (!isDragging) return;
+      setPos({ x: clientX - dragStart.current.x, y: clientY - dragStart.current.y });
+  };
+
+  const handleEnd = () => setIsDragging(false);
+
+  const generateCrop = () => {
+      if (!imgRef.current) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      
+      const img = imgRef.current;
+      const nw = img.naturalWidth;
+      const nh = img.naturalHeight;
+      const scaleBase = Math.max(256 / nw, 256 / nh);
+      const rw = nw * scaleBase;
+      const rh = nh * scaleBase;
+
+      ctx.clearRect(0, 0, 256, 256);
+      ctx.translate(128, 128); // center of canvas
+      ctx.scale(zoom, zoom);
+      ctx.translate(pos.x, pos.y);
+      ctx.drawImage(img, -rw / 2, -rh / 2, rw, rh);
+
+      canvas.toBlob((blob) => {
+          onSave(blob);
+      }, 'image/png');
+  };
+
+  return (
+      <div className="cropper-overlay">
+          <div className="cropper-card">
+              <h3>Adjust Profile Picture</h3>
+              <div 
+                  className="cropper-viewport"
+                  onMouseDown={e => handleStart(e.clientX, e.clientY)}
+                  onMouseMove={e => handleMove(e.clientX, e.clientY)}
+                  onMouseUp={handleEnd}
+                  onMouseLeave={handleEnd}
+                  onTouchStart={e => handleStart(e.touches[0].clientX, e.touches[0].clientY)}
+                  onTouchMove={e => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
+                  onTouchEnd={handleEnd}
+              >
+                  <img 
+                      ref={imgRef}
+                      src={src} 
+                      draggable={false}
+                      style={{
+                          transform: `translate(calc(-50% + ${pos.x * zoom}px), calc(-50% + ${pos.y * zoom}px)) scale(${zoom})`
+                      }}
+                      className="cropper-image"
+                      alt="Crop Source"
+                  />
+                  <div className="cropper-mask"></div>
+              </div>
+              <div className="cropper-controls">
+                  <i className="fas fa-search-minus"></i>
+                  <input type="range" min="1" max="3" step="0.01" value={zoom} onChange={e => setZoom(parseFloat(e.target.value))} />
+                  <i className="fas fa-search-plus"></i>
+              </div>
+              <div className="cropper-actions">
+                  <button className="btn-crop-cancel" onClick={onCancel}>Cancel</button>
+                  <button className="btn-crop-save" onClick={generateCrop}>Apply</button>
+              </div>
+          </div>
+      </div>
+  );
+};
+
 // Unified Onboarding Gatekeeper (Handles Display Name & Username)
 const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
   const [sureName, setSureName] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [croppedAvatar, setCroppedAvatar] = useState(null);
+  const fileInputRef = useRef(null);
   const [fatherName, setFatherName] = useState('');
   const [username, setUsername] = useState('');
   const [status, setStatus] = useState('idle'); // idle, checking, available, taken, invalid, error
@@ -76,40 +171,80 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     return () => clearTimeout(timer);
   }, [username]);
 
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+    e.target.value = null;
+  };
+
   const handleClaim = async () => {
     if (status !== 'available' || sureName.trim().length < 2) return;
     setLoading(true);
     
     const finalFullName = fatherName.trim() ? `${sureName.trim()} ${fatherName.trim()}` : sureName.trim();
     
-    const { error } = await supabase.from('profiles')
-      .update({ 
-          username: username,
-          full_name: finalFullName
-      })
-      .eq('id', userProfile.id);
+    // Dynamic Fallback: Use Google Auth avatar, or generate a beautiful initial-based placeholder
+    let finalAvatarUrl = sessionUser?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(finalFullName)}&background=1e1e1e&color=42d7b8&size=256`;
+    
+    try {
+        if (croppedAvatar?.blob) {
+            const filePath = `${userProfile.id}/avatar_${Date.now()}.png`;
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, croppedAvatar.blob, { contentType: 'image/png', upsert: true });
+            
+            if (uploadError) throw uploadError;
+            
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            finalAvatarUrl = publicUrl;
+        }
 
-    if (error) {
-      console.error(error);
-      setStatus('error');
-      setLoading(false);
-    } else {
-      onComplete(username, finalFullName);
+        const { error } = await supabase.from('profiles')
+          .update({ 
+              username: username,
+              full_name: finalFullName,
+              avatar_url: finalAvatarUrl
+          })
+          .eq('id', userProfile.id);
+
+        if (error) throw error;
+        onComplete(username, finalFullName);
+    } catch (err) {
+        console.error("Profile update failed:", err);
+        setStatus('error');
+        setLoading(false);
     }
   };
 
-  const avatarUrl = userProfile?.avatar_url || sessionUser?.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+  const displayAvatar = croppedAvatar?.url || userProfile?.avatar_url || sessionUser?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(sureName || 'Scholar')}&background=1e1e1e&color=42d7b8&size=256`;
   const displayFullName = `${sureName} ${fatherName}`.trim() || 'Scholar';
 
   return (
     <div className="onboarding-overlay">
+      {selectedFile && (
+          <AvatarCropperModal 
+              imageFile={selectedFile} 
+              onCancel={() => setSelectedFile(null)} 
+              onSave={(blob) => {
+                  const url = URL.createObjectURL(blob);
+                  setCroppedAvatar({ blob, url });
+                  setSelectedFile(null);
+              }}
+          />
+      )}
+      
       <div className="ambient-elegant-bg"></div>
       <div className="onboarding-card">
         <h2 className="onboarding-title">Set up your profile</h2>
         <p className="onboarding-subtitle">Review your details and secure your unique handle.</p>
 
         <div className="onboarding-preview">
-          <img src={avatarUrl} alt="Profile Preview" />
+          <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleFileChange} />
+          <div className="onboarding-avatar-wrapper" onClick={() => fileInputRef.current?.click()}>
+              <img src={displayAvatar} alt="Profile Preview" />
+              <div className="avatar-edit-overlay"><i className="fas fa-camera"></i></div>
+          </div>
           <div className="preview-info">
             <h3>{displayFullName}</h3>
             <p>@{username || 'handle'}</p>
