@@ -3,5 +3,9 @@
   "version": "2.4.1",
   "description": "LinkUp Academy Module - Maintained by the Core Education Team",
   "main": "index.js",
-  "type": "module"
+  "type": "module",
+  "author": "LinkUp Academic Experience Team",
+  "dependencies": {
+    "@linkup/core-sdk": "workspace:*"
+  }
 }
