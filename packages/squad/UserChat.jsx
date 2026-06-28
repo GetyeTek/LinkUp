@@ -155,7 +155,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         setPendingAttachment(null);
 
         if (editingMessage) {
-            console.group(`✏️ [UserChat] Editing Message: ${editingMessage.id}`);
+            console.group(`[Squad:Chat] Message UPDATE transaction: ${editingMessage.id}`);
             setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, text: msgText, is_edited: true } : m));
             const response = await supabase.from('messages').update({ text: msgText, is_edited: true }).eq('id', editingMessage.id).select();
             console.log("Edit Response:", response);
@@ -204,14 +204,14 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                     size: file.size
                 }];
             } catch (err) {
-                console.error("❌ Media upload failed:", err);
+                console.error("[Squad:Media] Asset upload transaction failed:", err);
                 setIsUploading(false);
                 return; // Abort send if upload fails
             }
             setIsUploading(false);
         }
 
-        console.group(`📤 [UserChat] Sending Message`);
+        console.group(`[Squad:Chat] Dispatching payload`);
         console.log("Text:", msgText, "Attachments:", finalAttachments);
 
         const { data, error } = await supabase.from('messages').insert({
@@ -230,7 +230,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
 
     const deleteMessage = async (msgId) => {
         if (!window.confirm("Delete this message for everyone?")) return;
-        console.group(`🗑️ [UserChat] Deleting Message: ${msgId}`);
+        console.group(`[Squad:Chat] Executing DELETE for node: ${msgId}`);
         
         const msgToDelete = messages.find(m => m.id === msgId);
         
@@ -243,7 +243,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             if (msgToDelete?.attachments && msgToDelete.attachments.length > 0) {
                 const paths = msgToDelete.attachments.map(att => att.path).filter(Boolean);
                 if (paths.length > 0) {
-                    console.log("🧹 Cleaning up media:", paths);
+                    console.log("[Squad:Media] Purging orphaned assets:", paths);
                     await supabase.storage.from('chat_media').remove(paths);
                 }
             }
@@ -251,7 +251,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             const response = await supabase.from('messages').delete().eq('id', msgId).select();
             console.log("Delete Response:", response);
         } catch (err) {
-            console.error("❌ Deletion cleanup failed:", err);
+            console.error("[Squad:Chat] Deletion synchronization failed:", err);
         }
         console.groupEnd();
     };
@@ -272,7 +272,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         link.click();
         document.body.removeChild(link);
         
-        console.log("🚀 [UserChat] Native download triggered for:", filename);
+        console.log(`[Squad:Media] Instantiating secure download stream for: ${filename}`);
     };
 
     const startEditing = (msg) => {
@@ -309,7 +309,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    console.log("🎯 [UserChat] Target locked in view, flashing...");
+                    console.log("[Squad:UI] Viewport intersection confirmed, executing highlight.");
                     el.classList.add('msg-highlight-flash');
                     
                     // Clean up: remove class after animation and disconnect observer
