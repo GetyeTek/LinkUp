@@ -5,6 +5,10 @@
   "main": "index.js",
   "type": "module",
   "author": "LinkUp News Discovery Squad",
+  "scripts": {
+    "build": "echo 'Building Gibi News Module...'",
+    "dev": "echo 'Starting Gibi News Dev Server...'"
+  },
   "dependencies": {
     "@linkup/core-sdk": "workspace:*"
   }
