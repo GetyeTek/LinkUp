@@ -1,5 +1,6 @@
 /* --- WIDE VIEW EXAM SESSION --- */
 .exam-session-overlay {
+    --cyber-gold: #b1d34b;
     position: fixed;
     inset: 0;
     z-index: 3000;
