@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>LinkUp - Complete App</title>
+    <title>LinkUp | Unified Platform</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,10 +14,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    <script>eruda.init(); console.log("Eruda Initialized");</script>
+    <script>
+      if (window.location.search.includes('debug=true')) {
+        eruda.init();
+        console.log("[Platform:Boot] Diagnostics mode enabled.");
+      }
+    </script>
   </head>
   <body>
-    <script>console.log("HTML Body Loaded. Waiting for React...");</script>
+    <script>console.log("[Platform:Boot] DOM Ready. Initializing host container...");</script>
     <div id="root"></div>
     <script type="module" src="src/main.jsx"></script>
   </body>
