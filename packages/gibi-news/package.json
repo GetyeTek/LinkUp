@@ -1,0 +1,7 @@
+{
+  "name": "@linkup/gibi-news",
+  "version": "1.0.0",
+  "description": "LinkUp News & Discovery Module",
+  "main": "index.js",
+  "type": "module"
+}
