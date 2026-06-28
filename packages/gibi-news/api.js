@@ -2,7 +2,7 @@ import { supabase } from '@linkup-platform/sdk-core';
 
 // Specific endpoint for the News Team
 const NEWS_GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev'; 
-const DUMMY_KEY = 'lk_live_9a38f2e7b1c4d9e0a2f8d73b';
+const DUMMY_KEY = 'gn_pub_8f72c3b4a5e68d9e0a2f8d73b';
 
 export const invokeNews = async (payload) => {
     const { data: { session } } = await supabase.auth.getSession();
