@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-import { supabase } from '../config/supabaseClient.js';
+import { supabase, usePlatform } from '@linkup/core-sdk';
 
-const Profile = ({ userProfile }) => {
+const Profile = () => {
+    const { user: userProfile } = usePlatform();
     const [overlays, setOverlays] = useState({ observatory: false, mission: false });
     
     const handleLogout = async () => {
