@@ -4,8 +4,14 @@ export default {
     const REAL_SUPABASE_URL = 'https://ryaxynjczfwqyqvpmorl.supabase.co';
     const REAL_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5YXh5bmpjemZ3cXlxdnBtb3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NDkwMTEsImV4cCI6MjA5NzEyNTAxMX0.739vHhzkh4as9K4afPylbaMBsupGR_rFTgpATDYiWOY';
     
-    // The fake key the frontend sends to trick sniffers
-    const DUMMY_KEY = 'lk_live_9a38f2e7b1c4d9e0a2f8d73b';
+    // Valid Tenant Signatures (Fake keys from micro-frontends)
+    const VALID_TENANT_KEYS = [
+      'sys_pub_5e22b8c9d0a18d9e0a2f8d73b', // Core SDK
+      'gn_pub_8f72c3b4a5e68d9e0a2f8d73b',  // News Module
+      'ha_pub_4b91e8c7d6f58d9e0a2f8d73b',  // Academy Module
+      'sq_pub_2d66a1b8c9e08d9e0a2f8d73b',  // Squad Module
+      'plt_pub_1a99f3c4d5e68d9e0a2f8d73b'  // Platform Services
+    ];
 
     const url = new URL(request.url);
     console.log(`[Gateway] 🚀 Incoming Request: ${request.method} ${url.pathname}`);
@@ -54,21 +60,27 @@ export default {
 
     const modifiedHeaders = new Headers(request.headers);
 
-    // 3. The Scrubbing Engine (Swap Dummy Keys for Real Keys)
+    // 3. The Scrubbing Engine (Tenant Resolution)
     let keysSwapped = false;
+    const reqApiKey = modifiedHeaders.get('apikey');
     
-    // Check apikey header
-    if (modifiedHeaders.get('apikey') === DUMMY_KEY) {
+    // Swap apikey header if it matches ANY known tenant key
+    if (reqApiKey && VALID_TENANT_KEYS.includes(reqApiKey)) {
       modifiedHeaders.set('apikey', REAL_ANON_KEY);
       keysSwapped = true;
     }
     
-    // Check Authorization header (Supabase uses "Bearer [KEY]")
+    // Check Authorization header
     const authHeader = modifiedHeaders.get('authorization');
-    if (authHeader && authHeader.includes(DUMMY_KEY)) {
-      const updatedAuth = authHeader.replace(DUMMY_KEY, REAL_ANON_KEY);
-      modifiedHeaders.set('authorization', updatedAuth);
-      keysSwapped = true;
+    if (authHeader) {
+      for (const tenantKey of VALID_TENANT_KEYS) {
+        if (authHeader.includes(tenantKey)) {
+          const updatedAuth = authHeader.replace(tenantKey, REAL_ANON_KEY);
+          modifiedHeaders.set('authorization', updatedAuth);
+          keysSwapped = true;
+          break;
+        }
+      }
     }
 
     if (keysSwapped) {
