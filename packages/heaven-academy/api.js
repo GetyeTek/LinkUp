@@ -3,7 +3,7 @@ import { supabase } from '@linkup-platform/sdk-core';
 // Dedicated endpoint for Education/RAG Services
 // When you create your new worker, just change this URL here.
 const ACADEMY_GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
-const DUMMY_KEY = 'lk_live_9a38f2e7b1c4d9e0a2f8d73b';
+const DUMMY_KEY = 'ha_pub_4b91e8c7d6f58d9e0a2f8d73b';
 
 export const invokeBookReader = async (payload, signal = null) => {
     const { data: { session } } = await supabase.auth.getSession();
