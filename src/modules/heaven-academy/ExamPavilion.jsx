@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { invokeBookReader } from '../../config/api.js';
+import { invokeBookReader } from '../../src/config/api.js';
 import './ExamPavilion.css';
 import ExamSession from './ExamSession.jsx';
 
