@@ -156,16 +156,16 @@ const Notes = ({ currentUser, onClose }) => {
                     .filter(Boolean); // Only get valid paths
 
                 if (paths.length > 0) {
-                    console.log("🧹 [Notes] Cleaning up storage files:", paths);
+                    console.log("[Squad:Vault] Purging associated storage files:", paths);
                     await supabase.storage.from('user_notes').remove(paths);
                 }
             }
 
             // 4. Delete the database record
             await supabase.from('messages').delete().eq('id', id);
-            console.log("✅ [Notes] Message and associated files deleted.");
+            console.log("[Squad:Vault] Resource purge successful.");
         } catch (err) {
-            console.error("❌ [Notes] Deletion cleanup failed:", err);
+            console.error("[Squad:Vault] Resource purge failed:", err);
         }
     };
 
