@@ -1,4 +1,4 @@
-import { supabase } from '@linkup/core-sdk';
+import { supabase } from '@linkup-platform/sdk-core';
 
 // Specific endpoint for the News Team
 const NEWS_GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev'; 
