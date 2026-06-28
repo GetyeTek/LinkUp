@@ -550,12 +550,13 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
 
 // Modules & Sub-Apps
 import Home from './Home.jsx';
-import Discover from '../modules/gibi-news/Discover.jsx';
-import Study from '../modules/heaven-academy/Study.jsx';
-import Connect from '../modules/squad/Connect.jsx';
 import Profile from './Profile.jsx';
-
 import ActivityHub from './ActivityHub.jsx';
+import { lazy, Suspense } from 'react';
+
+const Discover = lazy(() => import('@linkup/gibi-news'));
+const Study = lazy(() => import('@linkup/heaven-academy'));
+const Connect = lazy(() => import('@linkup/squad'));
 import MironChat from './MironChat.jsx';
 
 const UpdatePasswordGate = ({ onComplete }) => {
@@ -722,14 +723,27 @@ const App = () => {
   };
 
   const renderContent = () => {
-    switch(activeTab) {
-      case 'home': return <Home onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
-      case 'discover': return <Discover onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
-      case 'study': return <Study onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
-      case 'connect': return <Connect onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} currentUser={session?.user} />;
-      case 'profile': return <Profile onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
-      default: return <Home onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
-    }
+    const content = (() => {
+      switch(activeTab) {
+        case 'home': return <Home onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
+        case 'discover': return <Discover onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
+        case 'study': return <Study onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
+        case 'connect': return <Connect onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} currentUser={session?.user} />;
+        case 'profile': return <Profile onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
+        default: return <Home onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
+      }
+    })();
+
+    return (
+      <Suspense fallback={
+        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#42d7b8', fontFamily: 'Roboto Mono, monospace', fontSize: '0.9rem', letterSpacing: '2px', flexDirection: 'column', gap: '1rem' }}>
+          <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '2rem' }}></i>
+          <div>LOADING MODULE</div>
+        </div>
+      }>
+        {content}
+      </Suspense>
+    );
   };
 
   // The Minimalist Auth Gate Loader
