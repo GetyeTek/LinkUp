@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { invokeBookReader } from '../../../config/api.js';
+import { invokeBookReader } from '../../../src/config/api.js';
 import './BookReader.css';
 import { renderBookBlock } from './subjects/Registry.jsx';
-import BookLoader from '../../../shared/ui/BookLoader.jsx';
-import ReportModal from '../../../shared/ui/ReportModal.jsx';
+import BookLoader from '../../../src/shared/ui/BookLoader.jsx';
+import ReportModal from '../../../src/shared/ui/ReportModal.jsx';
 
 // --- RECURSIVE TOC NODE COMPONENT ---
 const TOCNode = ({ node, depth = 0, onNavigate, closeToc }) => {
