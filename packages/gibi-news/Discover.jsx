@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePlatform } from '@linkup/core-sdk';
+import './Discover.css';
 
 const Discover = () => {
     const { shell, user } = usePlatform();
