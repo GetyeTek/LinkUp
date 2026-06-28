@@ -15,9 +15,8 @@
     --linkoin-gold-glow: rgba(255, 215, 0, 0.4);
     --radius-main: 20px;
     --nav-height: 55px;
-    --cyber-gold: #b1d34b;
     --progress-percentage: 76%;
-    --warning-glow: #ffab40;
+    --shell-warning: #ffab40;
     --glass-bg: rgba(30, 30, 30, 0.5);
     --glass-border: rgba(255, 255, 255, 0.1);
 }
@@ -74,13 +73,13 @@ body.library-open { overflow: hidden; }
 .priority-scroll-wrapper::-webkit-scrollbar { display: none; }
 .priority-track { display: flex; gap: 1rem; padding: 0 1.5rem; }
 .priority-card { width: 250px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between; min-height: 140px; }
-.priority-card.is-urgent { border-left: 4px solid var(--warning-glow); }
+.priority-card.is-urgent { border-left: 4px solid var(--shell-warning); }
 .priority-card .card-header { display: flex; align-items: center; gap: 0.75rem; }
 .priority-card .icon { color: var(--text-secondary-dark); }
 .priority-card .category { font-size: 0.85rem; color: var(--text-secondary-dark); }
 .priority-card .title { font-size: 1.1rem; font-weight: 600; margin-top: 0.5rem; }
 .priority-card .countdown { font-family: 'Roboto Mono', monospace; font-size: 1.5rem; font-weight: 700; align-self: flex-end; }
-.priority-card .countdown.is-urgent-text { color: var(--warning-glow); }
+.priority-card .countdown.is-urgent-text { color: var(--shell-warning); }
 .priority-card .countdown .label { font-size: 0.8rem; color: var(--text-secondary-dark); margin-left: 0.25rem; }
 .next-task-container { min-height: 90px; cursor: pointer; display: flex; align-items: center; overflow: hidden; }
 #next-task-content { display: flex; align-items: center; gap: 1rem; width: 100%; transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out; }
