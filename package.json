@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "build:platform": "vite build",
     "lint": "turbo run lint",
     "preview": "vite preview"
   },
