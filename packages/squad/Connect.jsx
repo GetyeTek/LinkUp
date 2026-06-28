@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../src/config/supabaseClient.js';
+import { supabase, usePlatform } from '@linkup/core-sdk';
 import UserChat from './UserChat.jsx';
 import Notes from './Notes.jsx';
 
@@ -131,7 +131,9 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
     );
 };
 
-const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
+const Connect = () => {
+    const { shell, user: userProfile, sessionUser: currentUser } = usePlatform();
+    const onOpenActivity = shell.openActivity;
     const [activeView, setActiveView] = useState('messages');
     const [activeChat, setActiveChat] = useState(null);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
@@ -333,7 +335,7 @@ const Connect = ({ onOpenActivity, userProfile, currentUser }) => {
                     <div className="messages-list">
                         
                         {/* Static Miron Entry (Bot) */}
-                        <div className="messages-list-item miron-chat-card" onClick={() => window.dispatchEvent(new CustomEvent('open-full-miron-chat'))}>
+                        <div className="messages-list-item miron-chat-card" onClick={() => shell.openMiron(null)}>
                             <div className="miron-avatar-orb">
                                 <span className="material-symbols-outlined">auto_awesome</span>
                             </div>
