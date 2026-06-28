@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import { invokeMiron } from '../config/api.js';
-import { getComponent } from '@linkup/core-sdk';
+import { getComponent } from '@linkup-platform/sdk-core';
 import './MironChat.css';
 
 const InlineChatQuiz = ({ quiz, onSubmit }) => {
