@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, usePlatform } from '@linkup/core-sdk';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './Connect.css';
 import UserChat from './UserChat.jsx';
 import Notes from './Notes.jsx';
