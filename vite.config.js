@@ -7,28 +7,22 @@ export default defineConfig({
   base: '/LinkUp/',
   resolve: {
     alias: {
-      '@linkup/core-sdk': '/packages/core-sdk/src',
+      '@linkup-platform/sdk-core': '/packages/core-sdk/src',
       '@linkup/gibi-news': '/packages/gibi-news',
       '@linkup/heaven-academy': '/packages/heaven-academy',
       '@linkup/squad': '/packages/squad'
     }
   },
   build: {
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('packages/gibi-news')) {
-            return 'module-gibi-news';
-          }
-          if (id.includes('packages/heaven-academy')) {
-            return 'module-heaven-academy';
-          }
-          if (id.includes('packages/squad')) {
-            return 'module-squad';
-          }
-          if (id.includes('node_modules')) {
-            return 'vendor-core';
-          }
+          if (id.includes('packages/gibi-news')) return 'app.discovery.bundle';
+          if (id.includes('packages/heaven-academy')) return 'app.academic.bundle';
+          if (id.includes('packages/squad')) return 'app.social.bundle';
+          if (id.includes('packages/core-sdk')) return 'sys.platform.sdk';
+          if (id.includes('node_modules')) return 'sys.vendor';
         }
       }
     }
