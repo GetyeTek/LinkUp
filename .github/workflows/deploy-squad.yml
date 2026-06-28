@@ -1,4 +1,4 @@
-name: Deploy Social Graph (Squad)
+name: Sync-Social-Graph
 on:
   push:
     branches: [ main ]
