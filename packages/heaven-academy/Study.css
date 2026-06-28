@@ -1,7 +1,7 @@
 /* --- LinkUp Academy Scoped Styles --- */
 .notification-btn { position: relative; font-size: 1.3rem; color: var(--text-primary-dark); }
 .notification-badge { position: absolute; top: -2px; right: -4px; background-color: var(--accent-teal); color: var(--bg-dark); border-radius: 50%; min-width: 18px; height: 18px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--bg-dark); box-shadow: 0 0 8px rgba(66, 215, 184, 0.5); }
-.study-hub-view { position: relative; display: flex; height: 100%; flex-direction: column; width: 100%;}
+.study-hub-view { --cyber-gold: #b1d34b; position: relative; display: flex; height: 100%; flex-direction: column; width: 100%;}
 .study-hub-content { flex-grow: 1; overflow-y: auto; }
 .study-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; flex-shrink: 0; z-index: 20; position: sticky; top: 0; background-color: rgba(12,12,12, 0.7); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .study-header h2 { font-size: 1.8rem; font-weight: 700; }
