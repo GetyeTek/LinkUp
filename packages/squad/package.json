@@ -10,6 +10,6 @@
     "dev": "echo 'Starting Squad Dev Server...'"
   },
   "dependencies": {
-    "@linkup/core-sdk": "workspace:*"
+    "@linkup/core-sdk": "*"
   }
 }
