@@ -8,7 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@linkup-platform/sdk-core': '/packages/core-sdk/src',
-      '@linkup/gibi-news': '/packages/gibi-news',
+      '@linkup-enterprise/discovery-feed': '/packages/gibi-news',
       '@linkup/heaven-academy': '/packages/heaven-academy',
       '@linkup/squad': '/packages/squad'
     }
