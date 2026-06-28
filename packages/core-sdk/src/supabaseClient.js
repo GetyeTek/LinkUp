@@ -6,6 +6,6 @@ const supabaseUrl = 'https://linkup-gateway.getyeteklu2.workers.dev';
 
 // Fake proprietary key to mask Supabase signature.
 // The Cloudflare Worker intercepts this and injects the real Supabase key server-side.
-const supabaseAnonKey = 'lk_live_9a38f2e7b1c4d9e0a2f8d73b';
+const supabaseAnonKey = 'sys_pub_5e22b8c9d0a18d9e0a2f8d73b';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
