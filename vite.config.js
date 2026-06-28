@@ -5,6 +5,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/LinkUp/',
+  resolve: {
+    alias: {
+      '@linkup/gibi-news': '/packages/gibi-news',
+      '@linkup/heaven-academy': '/packages/heaven-academy',
+      '@linkup/squad': '/packages/squad'
+    }
+  },
   build: {
     rollupOptions: {
       output: {
