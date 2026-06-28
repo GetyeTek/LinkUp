@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { invokeBookReader } from '../../../src/config/api.js';
+import { invokeBookReader } from '../api.js';
 import './BookReader.css';
 import { renderBookBlock } from './subjects/Registry.jsx';
 import BookLoader from '../../../src/shared/ui/BookLoader.jsx';
