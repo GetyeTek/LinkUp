@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { marked } from 'https://esm.sh/marked';
-import { invokeBookReader } from '../../src/config/api.js';
+import { invokeBookReader } from './api.js';
 import { renderBookBlock } from './BookReader/subjects/Registry.jsx';
 import BookReader from './BookReader/BookReader.jsx';
 import ReportModal from '../../src/shared/ui/ReportModal.jsx';
