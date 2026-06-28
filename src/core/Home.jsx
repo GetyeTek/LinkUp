@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { usePlatform } from '@linkup/core-sdk';
+import { usePlatform } from '@linkup-platform/sdk-core';
 
 const Home = () => {
     const { shell, user: userProfile } = usePlatform();
