@@ -5,6 +5,10 @@
   "main": "index.js",
   "type": "module",
   "author": "LinkUp Social Graph Team",
+  "scripts": {
+    "build": "echo 'Building Squad Graph...'",
+    "dev": "echo 'Starting Squad Dev Server...'"
+  },
   "dependencies": {
     "@linkup/core-sdk": "workspace:*"
   }
