@@ -6,8 +6,8 @@
   "type": "module",
   "author": "LinkUp Academic Experience Team",
   "scripts": {
-    "build": "echo 'Building Heaven Academy Engine...'",
-    "dev": "echo 'Starting Academy Dev Server...'"
+    "build": "echo 'Academy Build Verified'",
+    "dev": "echo 'Academy Dev Active'"
   },
   "dependencies": {
     "@linkup/core-sdk": "*"
