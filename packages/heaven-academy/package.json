@@ -5,6 +5,10 @@
   "main": "index.js",
   "type": "module",
   "author": "LinkUp Academic Experience Team",
+  "scripts": {
+    "build": "echo 'Building Heaven Academy Engine...'",
+    "dev": "echo 'Starting Academy Dev Server...'"
+  },
   "dependencies": {
     "@linkup/core-sdk": "workspace:*"
   }
