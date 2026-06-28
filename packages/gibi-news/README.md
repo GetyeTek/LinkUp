@@ -6,4 +6,4 @@ This micro-frontend handles global news, event discovery, and organizational upd
 ### Architecture
 - Renders full-screen immersive snap feeds.
 - Intercepts local scrolling arrays.
-- Consumes `@linkup/core-sdk` for auth token injection.
+- Consumes `@linkup-platform/sdk-core` for auth token injection.
