@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { invokeBookReader } from '../api.js';
 import './BookReader.css';
 import { renderBookBlock } from './subjects/Registry.jsx';
-import BookLoader from '../../../src/shared/ui/BookLoader.jsx';
-import ReportModal from '../../../src/shared/ui/ReportModal.jsx';
+import BookLoader from '../components/BookLoader.jsx';
+import ReportModal from '../components/ReportModal.jsx';
+import { usePlatform } from '@linkup/core-sdk';
 
 // --- RECURSIVE TOC NODE COMPONENT ---
 const TOCNode = ({ node, depth = 0, onNavigate, closeToc }) => {
@@ -72,6 +73,8 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const pageCountRef = useRef(null);
     const menuRef = useRef(null);
     const miniFlowRef = useRef(null);
+
+    const { shell } = usePlatform();
 
     // Mini Miron Local States
     const [miniMironText, setMiniMironText] = useState(null);
@@ -568,10 +571,8 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     };
 
     const handleMiniExpand = () => {
-        // Dispatch system-wide event triggering full screen Miron with this passage
-        window.dispatchEvent(new CustomEvent('open-full-miron-chat', {
-            detail: { text: miniMironText }
-        }));
+        // Use platform bridge to trigger Miron
+        shell.openMiron(miniMironText);
         setMiniMironText(null); // Close the mini overlay
     };
 
@@ -1090,7 +1091,7 @@ const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onRepor
                         <i className="fas fa-sparkles"></i> Explain
                     </button>
                     {q.exam_meta && (
-                        <button className="bpq-btn-goto" onClick={() => window.dispatchEvent(new CustomEvent('open-exam-from-book', { detail: { exam: q.exam_meta } }))}>
+                        <button className="bpq-btn-goto" onClick={() => window.dispatchEvent(new CustomEvent('heaven-academy:open-exam', { detail: { exam: q.exam_meta } }))}>
                             Go To Exam <i className="fas fa-arrow-right"></i>
                         </button>
                     )}
