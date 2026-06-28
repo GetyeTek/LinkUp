@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js';
+import { supabase } from '@linkup/core-sdk';
 
 // --- SECURE PROXY ROUTING ---
 const GATEWAY_BASE = 'https://linkup-gateway.getyeteklu2.workers.dev';
