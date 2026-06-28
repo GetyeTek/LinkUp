@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-// We need to import ColorThief if we want that logic, but for React it's better to use a library or skip for now.
-// Keeping structure identical to original.
+import { usePlatform } from '@linkup/core-sdk';
 
-const Discover = ({ onOpenActivity }) => {
+const Discover = () => {
+    const { shell, user } = usePlatform();
+    const onOpenActivity = shell.openActivity;
     const [activeSubTab, setActiveSubTab] = useState('explore'); // 'explore' or 'feeds'
     const [appsCollapsed, setAppsCollapsed] = useState(false);
     
