@@ -4,7 +4,7 @@ import './BookReader.css';
 import { renderBookBlock } from './subjects/Registry.jsx';
 import BookLoader from '../components/BookLoader.jsx';
 import ReportModal from '../components/ReportModal.jsx';
-import { usePlatform } from '@linkup/core-sdk';
+import { usePlatform } from '@linkup-platform/sdk-core';
 
 // --- RECURSIVE TOC NODE COMPONENT ---
 const TOCNode = ({ node, depth = 0, onNavigate, closeToc }) => {
@@ -594,7 +594,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     };
 
     const handleAIExplore = (pageIdx, targetIdx) => {
-        console.group(`🧠 [AI Context Analyzer] Page ${pageIdx + 1} | Target Block ${targetIdx}`);
+        console.group(`%c[Academy-RAG]%c Context Sync: Page ${pageIdx + 1} | Block ${targetIdx}`, 'color: #42d7b8', 'color: inherit');
         
         const pageContent = pages[pageIdx].content_json || [];
         const collectedBlocks = [];
