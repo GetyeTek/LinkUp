@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import { invokeMiron } from '../config/api.js';
-import { renderBookBlock } from '@linkup/heaven-academy/BookReader/subjects/Registry.jsx';
+import { getComponent } from '@linkup/core-sdk';
 import './MironChat.css';
 
 const InlineChatQuiz = ({ quiz, onSubmit }) => {
@@ -195,7 +195,11 @@ const MironChat = ({ onClose, initialContext }) => {
                                                 <span>Page {snap.page_number}</span>
                                             </div>
                                             <div className="snapshot-content">
-                                                {snap.blocks.map((b, i) => renderBookBlock(b, i, {}))}
+                                                {snap.blocks.map((b, i) => {
+                                                    const Renderer = getComponent('book-block-renderer');
+                                                    if (Renderer) return Renderer(b, i, {});
+                                                    return <div key={i} style={{color: 'red'}}>[Rendering Engine Disconnected]</div>;
+                                                })}
                                             </div>
                                         </div>
                                     );
