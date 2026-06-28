@@ -1,4 +1,4 @@
-import { supabase } from '@linkup/core-sdk';
+import { supabase } from '@linkup-platform/sdk-core';
 
 // --- SECURE PROXY ROUTING ---
 // Maintained strictly for Global Platform Services
