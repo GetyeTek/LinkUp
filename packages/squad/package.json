@@ -6,8 +6,8 @@
   "type": "module",
   "author": "LinkUp Social Graph Team",
   "scripts": {
-    "build": "echo 'Building Squad Graph...'",
-    "dev": "echo 'Starting Squad Dev Server...'"
+    "build": "echo 'Social Build Verified'",
+    "dev": "echo 'Social Dev Active'"
   },
   "dependencies": {
     "@linkup/core-sdk": "*"
