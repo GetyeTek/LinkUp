@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-import { supabase, usePlatform } from '@linkup/core-sdk';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 
 const Profile = () => {
     const { user: userProfile } = usePlatform();
