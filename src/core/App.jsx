@@ -606,7 +606,7 @@ const UpdatePasswordGate = ({ onComplete }) => {
 };
 
 const App = () => {
-  console.log("App Component Rendering...");
+  
   const [session, setSession] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -709,7 +709,7 @@ const App = () => {
     if (!session) return;
     
     const prefetchTimer = setTimeout(() => {
-      console.log("🚀 [Architect] Background Prefetching Modules...");
+      console.log("%c[Platform:Shell] Initiating federated module prefetch sequence...", "color: #888;");
       import('@linkup/gibi-news').catch(() => {});
       import('@linkup/heaven-academy').catch(() => {});
       import('@linkup/squad').catch(() => {});
