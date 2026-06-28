@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { marked } from 'https://esm.sh/marked';
-import { invokeBookReader } from '../../config/api.js';
+import { invokeBookReader } from '../../src/config/api.js';
 import { renderBookBlock } from './BookReader/subjects/Registry.jsx';
 import BookReader from './BookReader/BookReader.jsx';
-import ReportModal from '../../shared/ui/ReportModal.jsx';
+import ReportModal from '../../src/shared/ui/ReportModal.jsx';
 import './ExamSession.css';
 
 const getNormalizedMatchingData = (q) => {
