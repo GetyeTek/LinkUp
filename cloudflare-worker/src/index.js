@@ -12,8 +12,9 @@ export default {
 
     // 1. Security: Strict Origin Whitelist
     const ALLOWED_ORIGINS = [
-      'https://getyeteklu2.github.io', // Your Production Site
-      'http://localhost:8080',         // Your Local Dev (from your logs)
+      'https://getyetek.github.io',    // Your Actual GitHub Pages Production Site
+      'https://getyeteklu2.github.io', // Fallback
+      'http://localhost:8080',         // Your Local Dev
       'http://localhost:5173',         // Vite Default
       'http://localhost:3000'
     ];
