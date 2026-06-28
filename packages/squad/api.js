@@ -2,7 +2,7 @@ import { supabase } from '@linkup/core-sdk';
 
 // High-concurrency Social Gateway
 const SQUAD_GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
-const DUMMY_KEY = 'lk_live_9a38f2e7b1c4d9e0a2f8d73b';
+const DUMMY_KEY = 'sq_pub_2d66a1b8c9e08d9e0a2f8d73b';
 
 export const invokeSocial = async (payload) => {
     const { data: { session } } = await supabase.auth.getSession();
