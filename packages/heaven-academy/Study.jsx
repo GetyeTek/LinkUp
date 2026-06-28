@@ -5,8 +5,11 @@ import BookShelf from './components/BookShelf.jsx';
 import BookCard from './components/BookCard.jsx';
 import ExamPavilion from './ExamPavilion.jsx';
 import ExamSession from './ExamSession.jsx';
+import { usePlatform } from '@linkup/core-sdk';
 
-const Study = ({ onOpenActivity }) => {
+const Study = () => {
+    const { shell, user: userProfile } = usePlatform();
+    const onOpenActivity = shell.openActivity;
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
     const [activeExamFromBook, setActiveExamFromBook] = useState(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
@@ -75,11 +78,11 @@ const Study = ({ onOpenActivity }) => {
         return () => cancelAnimationFrame(animationFrameId);
     }, []);
 
-    // Global listener for opening ExamSession directly from BookReader inline questions
+    // Local Module listener for opening ExamSession directly from BookReader inline questions
     useEffect(() => {
         const handleOpenExam = (e) => setActiveExamFromBook(e.detail.exam);
-        window.addEventListener('open-exam-from-book', handleOpenExam);
-        return () => window.removeEventListener('open-exam-from-book', handleOpenExam);
+        window.addEventListener('heaven-academy:open-exam', handleOpenExam);
+        return () => window.removeEventListener('heaven-academy:open-exam', handleOpenExam);
     }, []);
 
     return (
