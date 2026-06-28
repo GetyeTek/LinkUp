@@ -701,6 +701,23 @@ const App = () => {
       clearInterval(presenceInterval);
     };
   }, []);
+
+  // 3. BACKGROUND PREFETCHING (The Enterprise Secret)
+  // Silently downloads the Micro-Frontend modules into RAM 3 seconds after the user logs in.
+  // This eliminates the network delay on slow connections while maintaining architectural separation.
+  useEffect(() => {
+    if (!session) return;
+    
+    const prefetchTimer = setTimeout(() => {
+      console.log("🚀 [Architect] Background Prefetching Modules...");
+      import('@linkup/gibi-news').catch(() => {});
+      import('@linkup/heaven-academy').catch(() => {});
+      import('@linkup/squad').catch(() => {});
+    }, 3000);
+    
+    return () => clearTimeout(prefetchTimer);
+  }, [session]);
+
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [mironContext, setMironContext] = useState(null); // null means closed, object holds selection context
 
