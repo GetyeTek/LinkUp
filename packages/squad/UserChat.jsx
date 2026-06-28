@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@linkup/core-sdk';
+import { supabase } from '@linkup-platform/sdk-core';
 import './UserChat.css';
 
 const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
