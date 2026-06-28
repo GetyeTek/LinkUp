@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../config/supabaseClient.js';
+import { supabase, PlatformProvider } from '@linkup/core-sdk';
 import Auth from './Auth.jsx';
 
 // Zero-Dependency HTML5 Canvas Avatar Cropper
@@ -742,12 +742,12 @@ const App = () => {
   const renderContent = () => {
     const content = (() => {
       switch(activeTab) {
-        case 'home': return <Home onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
-        case 'discover': return <Discover onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
-        case 'study': return <Study onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
-        case 'connect': return <Connect onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} currentUser={session?.user} />;
-        case 'profile': return <Profile onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
-        default: return <Home onOpenActivity={() => setIsActivityOpen(true)} userProfile={userProfile} />;
+        case 'home': return <Home />;
+        case 'discover': return <Discover />;
+        case 'study': return <Study />;
+        case 'connect': return <Connect />;
+        case 'profile': return <Profile />;
+        default: return <Home />;
       }
     })();
 
@@ -792,6 +792,7 @@ const App = () => {
 
   return (
     <div className="app-container">
+      <PlatformProvider value={{ user: userProfile, sessionUser: session?.user, shell: { openActivity: () => setIsActivityOpen(true), openMiron: (text) => setMironContext({ text }) } }}>
       <main className="main-content">
         {renderContent()}
       </main>
@@ -865,6 +866,7 @@ const App = () => {
           </li>
         </nav>
       </footer>
+      </PlatformProvider>
     </div>
   );
 };
