@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { usePlatform } from '@linkup/core-sdk';
 
-const Home = ({ onOpenActivity, userProfile }) => {
+const Home = () => {
+    const { shell, user: userProfile } = usePlatform();
+    const onOpenActivity = shell.openActivity;
     const [greeting, setGreeting] = useState('Hello');
     const firstName = userProfile?.full_name?.split(' ')[0] || 'Scholar';
     const avatarUrl = userProfile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80';
