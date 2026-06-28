@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, PlatformProvider } from '@linkup/core-sdk';
+import { supabase, PlatformProvider } from '@linkup-platform/sdk-core';
 import Auth from './Auth.jsx';
 
 // Zero-Dependency HTML5 Canvas Avatar Cropper
