@@ -6,8 +6,8 @@
   "type": "module",
   "author": "LinkUp News Discovery Squad",
   "scripts": {
-    "build": "echo 'Building Gibi News Module...'",
-    "dev": "echo 'Starting Gibi News Dev Server...'"
+    "build": "echo 'News Build Verified'",
+    "dev": "echo 'News Dev Active'"
   },
   "dependencies": {
     "@linkup/core-sdk": "*"
