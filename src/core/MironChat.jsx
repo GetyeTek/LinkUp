@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import { invokeMiron } from '../config/api.js';
-import { renderBookBlock } from '../modules/heaven-academy/BookReader/subjects/Registry.jsx';
+import { renderBookBlock } from '@linkup/heaven-academy/BookReader/subjects/Registry.jsx';
 import './MironChat.css';
 
 const InlineChatQuiz = ({ quiz, onSubmit }) => {
