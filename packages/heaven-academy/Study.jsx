@@ -5,7 +5,7 @@ import BookShelf from './components/BookShelf.jsx';
 import BookCard from './components/BookCard.jsx';
 import ExamPavilion from './ExamPavilion.jsx';
 import ExamSession from './ExamSession.jsx';
-import { usePlatform } from '@linkup/core-sdk';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './Study.css';
 
 const Study = () => {
