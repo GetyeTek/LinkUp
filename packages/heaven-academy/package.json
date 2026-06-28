@@ -10,6 +10,6 @@
     "dev": "echo 'Academy Dev Active'"
   },
   "dependencies": {
-    "@linkup/core-sdk": "*"
+    "@linkup-platform/sdk-core": "^2.4.1"
   }
 }
