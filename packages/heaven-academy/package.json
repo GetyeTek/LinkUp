@@ -10,6 +10,6 @@
     "dev": "echo 'Starting Academy Dev Server...'"
   },
   "dependencies": {
-    "@linkup/core-sdk": "workspace:*"
+    "@linkup/core-sdk": "*"
   }
 }
