@@ -1,4 +1,4 @@
-import { supabase } from '../../src/config/supabaseClient.js';
+import { supabase } from '@linkup/core-sdk';
 
 // High-concurrency Social Gateway
 const SQUAD_GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
