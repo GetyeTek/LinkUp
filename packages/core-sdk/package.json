@@ -1,0 +1,8 @@
+{
+  "name": "@linkup/core-sdk",
+  "version": "1.0.0",
+  "description": "LinkUp Platform Foundation SDK",
+  "main": "src/index.js",
+  "type": "module",
+  "author": "Platform & Architecture Team"
+}
