@@ -11,7 +11,7 @@ const ExamPavilion = ({ university, onClose }) => {
 
     useEffect(() => {
         const controller = new AbortController();
-        console.group(`%c ARCHIVE DIAGNOSTICS: ${university.name} `, 'background: #42d7b8; color: #000; font-weight: bold;');
+        console.group(`%c[Academy-Engine] ARCHIVE DIAGNOSTICS: ${university.name}`, 'color: #30bda6; font-weight: bold;');
         setLoading(true);
 
         invokeBookReader({ action: 'list_exams', university_id: university.id }, controller.signal)
