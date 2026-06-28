@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../../config/supabaseClient.js';
+import { supabase } from '../../src/config/supabaseClient.js';
 import './Notes.css';
 
 const Notes = ({ currentUser, onClose }) => {
