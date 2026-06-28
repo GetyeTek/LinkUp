@@ -3,5 +3,9 @@
   "version": "1.0.0",
   "description": "LinkUp News & Discovery Module",
   "main": "index.js",
-  "type": "module"
+  "type": "module",
+  "author": "LinkUp News Discovery Squad",
+  "dependencies": {
+    "@linkup/core-sdk": "workspace:*"
+  }
 }
