@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { usePlatform } from '@linkup/core-sdk';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './Discover.css';
 
 const Discover = () => {
@@ -13,6 +13,7 @@ const Discover = () => {
     const [indicatorStyle, setIndicatorStyle] = useState({});
 
     useEffect(() => {
+        console.log("%c[GN_Feed] >> Initializing Discovery Feed...", "color: #ffab40; font-family: monospace;");
         // Calculate indicator position
         if (navRef.current) {
             const activeEl = navRef.current.querySelector('.nav-item.active');
