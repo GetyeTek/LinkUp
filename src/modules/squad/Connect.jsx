@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../config/supabaseClient.js';
+import { supabase } from '../../src/config/supabaseClient.js';
 import UserChat from './UserChat.jsx';
 import Notes from './Notes.jsx';
 
