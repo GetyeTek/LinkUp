@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../../config/supabaseClient.js';
+import { supabase } from '../../src/config/supabaseClient.js';
 import './UserChat.css';
 
 const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
