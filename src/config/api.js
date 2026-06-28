@@ -7,7 +7,7 @@ const GATEWAY_BASE = 'https://linkup-gateway.getyeteklu2.workers.dev';
 export const MIRON_ENDPOINT = `${GATEWAY_BASE}/functions/v1/miron-athena`;
 
 // The fake key that tricks sniffers. The Worker replaces this securely.
-const DUMMY_KEY = 'lk_live_9a38f2e7b1c4d9e0a2f8d73b';
+const DUMMY_KEY = 'plt_pub_1a99f3c4d5e68d9e0a2f8d73b';
 
 export const invokeMiron = async (payload) => {
     const { data: { session } } = await supabase.auth.getSession();
