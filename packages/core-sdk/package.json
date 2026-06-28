@@ -4,5 +4,9 @@
   "description": "LinkUp Platform Foundation SDK",
   "main": "src/index.js",
   "type": "module",
-  "author": "Platform & Architecture Team"
+  "author": "Platform & Architecture Team",
+  "scripts": {
+    "build": "echo 'Core SDK ready.'",
+    "dev": "echo 'Core SDK ready.'"
+  }
 }
