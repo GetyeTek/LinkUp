@@ -1,4 +1,4 @@
-import { supabase } from '@linkup/core-sdk';
+import { supabase } from '@linkup-platform/sdk-core';
 
 // Dedicated endpoint for Education/RAG Services
 // When you create your new worker, just change this URL here.
