@@ -3,5 +3,9 @@
   "version": "1.1.0",
   "description": "LinkUp Social Connect Module",
   "main": "index.js",
-  "type": "module"
+  "type": "module",
+  "author": "LinkUp Social Graph Team",
+  "dependencies": {
+    "@linkup/core-sdk": "workspace:*"
+  }
 }
