@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../config/supabaseClient.js';
+import { supabase } from '@linkup/core-sdk';
 import './Auth.css';
 
 const Auth = () => {
