@@ -6,6 +6,7 @@ import BookCard from './components/BookCard.jsx';
 import ExamPavilion from './ExamPavilion.jsx';
 import ExamSession from './ExamSession.jsx';
 import { usePlatform } from '@linkup/core-sdk';
+import './Study.css';
 
 const Study = () => {
     const { shell, user: userProfile } = usePlatform();
