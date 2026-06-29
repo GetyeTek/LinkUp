@@ -68,14 +68,14 @@ const ExamPavilion = ({ university, onClose }) => {
         <div className="pavilion-overlay">
             <header className="pavilion-header">
                 <div className="pav-uni-identity">
+                    <button className="icon-button" style={{ color: 'white' }} onClick={onClose}>
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
                     <div className="pav-emblem-sm"><i className="fas fa-landmark"></i></div>
-                    <div className="pav-header-text">
+                    <div className="pav-header-text" style={{ flex: 1 }}>
                         <h1>{university.name}</h1>
                         <p>Academic Pavilion</p>
                     </div>
-                    <button className="icon-button" style={{ marginLeft: 'auto', color: 'white' }} onClick={onClose}>
-                        <i className="fas fa-times"></i>
-                    </button>
                 </div>
             </header>
 
