@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import AvatarCropperModal from './components/AvatarCropperModal.jsx';
 import './Profile.css';
 
 const Profile = () => {
@@ -24,22 +25,28 @@ const Profile = () => {
     const PROGRAMS = ['Regular', 'Extension'];
     const STREAMS = ['Natural Science', 'Social Science'];
 
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [croppedAvatar, setCroppedAvatar] = useState(null);
+    const [usernameStatus, setUsernameStatus] = useState('idle');
+    const fileInputRef = useRef(null);
+
     // Host-managed Identity State
     const [editForm, setEditForm] = useState({
-        full_name: '', username: '', email: '', phone: '', university_id: '', 
+        sureName: '', fatherName: '', username: '', email: '', phone: '', university_id: '', 
         program: '', department: '', freshman_stream: '', target_department: '', year: ''
     });
 
     useEffect(() => {
-        // Fetch Universities list
         supabase.from('universities').select('id, name').order('name')
             .then(({ data }) => { if (data) setUniversities(data); });
     }, []);
 
     useEffect(() => {
         if (userProfile) {
+            const parts = (userProfile.full_name || '').trim().split(' ');
             setEditForm({
-                full_name: userProfile.full_name || '',
+                sureName: parts[0] || '',
+                fatherName: parts.slice(1).join(' ') || '',
                 username: userProfile.username || '',
                 email: sessionUser?.email || '',
                 phone: userProfile.phone || '',
@@ -53,9 +60,56 @@ const Profile = () => {
         }
     }, [userProfile, sessionUser]);
 
+    useEffect(() => {
+        if (!editForm.username) {
+            setUsernameStatus('idle');
+            return;
+        }
+
+        const cleanUsername = editForm.username.toLowerCase().trim();
+        
+        if (userProfile && cleanUsername === userProfile.username?.toLowerCase()) {
+            setUsernameStatus('available');
+            return;
+        }
+
+        if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
+            setUsernameStatus('invalid');
+            return;
+        }
+
+        const checkAvailability = async () => {
+            setUsernameStatus('checking');
+            const { data, error } = await supabase.rpc('check_username_available', { req_username: cleanUsername });
+            if (error) setUsernameStatus('error');
+            else setUsernameStatus(data ? 'available' : 'taken');
+        };
+
+        const timer = setTimeout(checkAvailability, 500);
+        return () => clearTimeout(timer);
+    }, [editForm.username, userProfile]);
+
     const handleSaveProfile = async () => {
         setSaving(true);
-        // Handle Email Update separately via Auth API
+
+        let finalAvatarUrl = userProfile.avatar_url;
+        
+        if (croppedAvatar?.blob) {
+            const arrayBuffer = await croppedAvatar.blob.arrayBuffer();
+            const filePath = `${userProfile.id}/avatar_${Date.now()}.png`;
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, arrayBuffer, { contentType: 'image/png', upsert: true });
+            
+            if (uploadError) {
+                alert(`Avatar upload failed: ${uploadError.message}`);
+                setSaving(false);
+                return;
+            }
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            finalAvatarUrl = publicUrl;
+        }
+
         if (editForm.email !== sessionUser?.email) {
             const { error: authError } = await supabase.auth.updateUser({ email: editForm.email });
             if (authError) {
@@ -67,9 +121,12 @@ const Profile = () => {
             }
         }
 
-        // Profile Table Update
+        const finalFullName = editForm.fatherName.trim() ? `${editForm.sureName.trim()} ${editForm.fatherName.trim()}` : editForm.sureName.trim();
+
         const profileData = {
-            full_name: editForm.full_name,
+            full_name: finalFullName,
+            username: editForm.username.toLowerCase().trim(),
+            avatar_url: finalAvatarUrl,
             phone: editForm.phone,
             university_id: editForm.university_id || null,
             program: editForm.program || null,
@@ -317,85 +374,140 @@ const Profile = () => {
             {/* --- HOST APP: IDENTITY MANAGER --- */}
             {isEditingProfile && (
                 <div className="profile-edit-overlay">
+                    {selectedFile && (
+                        <AvatarCropperModal 
+                            imageFile={selectedFile} 
+                            onCancel={() => setSelectedFile(null)} 
+                            onSave={(blob) => {
+                                const url = URL.createObjectURL(blob);
+                                setCroppedAvatar({ blob, url });
+                                setSelectedFile(null);
+                            }}
+                        />
+                    )}
                     <div className="profile-edit-card">
-                        <header className="pe-header">
-                            <h2>Account Settings</h2>
-                            <button className="icon-button" onClick={() => setIsEditingProfile(false)} disabled={saving}><i className="fas fa-times"></i></button>
+                        <header className="pe-header" style={{ justifyContent: 'flex-start', gap: '1.5rem' }}>
+                            <button className="icon-button" onClick={() => setIsEditingProfile(false)} disabled={saving}>
+                                <i className="fas fa-chevron-left"></i>
+                            </button>
+                            <h2>Account & Registry</h2>
+                            <div style={{ width: '40px' }}></div>
                         </header>
                         
                         <div className="pe-body">
-                            <div className="pe-avatar-section">
-                                <img src={userProfile?.avatar_url || 'https://via.placeholder.com/150'} alt="Profile" className="pe-avatar-preview" />
-                                <div className="pe-avatar-info">
-                                    <h3>{editForm.full_name || 'Scholar'}</h3>
+                            <div className="onboarding-preview">
+                                <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
+                                    e.target.value = null;
+                                }} />
+                                <div className="onboarding-avatar-container" onClick={() => fileInputRef.current?.click()}>
+                                    <div className="onboarding-avatar-wrapper">
+                                        <img src={croppedAvatar?.url || userProfile?.avatar_url || 'https://via.placeholder.com/150'} alt="Profile Preview" />
+                                    </div>
+                                    <div className="avatar-edit-badge" title="Change Avatar"><i className="fas fa-pencil"></i></div>
+                                </div>
+                                <div className="preview-info">
+                                    <h3>{editForm.sureName} {editForm.fatherName}</h3>
                                     <p>@{editForm.username}</p>
                                 </div>
                             </div>
-
-                            <div className="pe-form-grid">
-                                <div className="pe-input-group pe-full-width">
-                                    <label>Full Name</label>
-                                    <input className="pe-input" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} />
-                                </div>
-                                
-                                <div className="pe-input-group">
-                                    <label>Email Address</label>
-                                    <input className="pe-input" type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
-                                </div>
-                                
-                                <div className="pe-input-group">
-                                    <label>Phone Number</label>
-                                    <input className="pe-input" type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+                            
+                            <div className="onboarding-form" style={{ marginTop: '2rem' }}>
+                                <div className="input-row">
+                                    <div className="input-group-sm">
+                                        <label>Sure Name</label>
+                                        <input type="text" value={editForm.sureName} onChange={e => setEditForm({...editForm, sureName: e.target.value})} disabled={saving} />
+                                    </div>
+                                    <div className="input-group-sm">
+                                        <label>Father Name <span className="optional-tag">(Opt)</span></label>
+                                        <input type="text" value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} disabled={saving} />
+                                    </div>
                                 </div>
 
-                                <div className="pe-input-group pe-full-width">
+                                <div className="input-group-sm handle-group">
+                                    <label>Username</label>
+                                    <div className={`handle-input-wrapper status-${usernameStatus}`}>
+                                        <span className="handle-prefix">@</span>
+                                        <input type="text" value={editForm.username} onChange={e => setEditForm({...editForm, username: e.target.value})} disabled={saving} maxLength={20} />
+                                        <div className="handle-status-icon">
+                                            {usernameStatus === 'checking' && <i className="fas fa-circle-notch fa-spin"></i>}
+                                            {usernameStatus === 'available' && <i className="fas fa-check"></i>}
+                                            {usernameStatus === 'taken' && <i className="fas fa-times"></i>}
+                                            {usernameStatus === 'invalid' && <i className="fas fa-exclamation"></i>}
+                                        </div>
+                                    </div>
+                                    <div className="handle-hint">
+                                        {usernameStatus === 'invalid' && "3-20 chars. Lowercase, numbers, underscores."}
+                                        {usernameStatus === 'taken' && "This username is already taken."}
+                                        {usernameStatus === 'error' && "Connection error. Try again."}
+                                        {usernameStatus === 'available' && "Looks great! It's all yours."}
+                                    </div>
+                                </div>
+
+                                <div className="input-row">
+                                    <div className="input-group-sm">
+                                        <label>Email Address</label>
+                                        <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} disabled={saving} />
+                                    </div>
+                                    <div className="input-group-sm">
+                                        <label>Phone Number</label>
+                                        <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} disabled={saving} />
+                                    </div>
+                                </div>
+
+                                <div className="input-group-sm" style={{ marginTop: '1rem' }}>
                                     <label>University</label>
-                                    <select className="pe-select" value={editForm.university_id} onChange={e => setEditForm({...editForm, university_id: e.target.value})}>
+                                    <select className="wizard-select" style={{ marginTop: '0.5rem' }} value={editForm.university_id} onChange={e => setEditForm({...editForm, university_id: e.target.value})}>
                                         <option value="" disabled>Select your university...</option>
                                         {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                     </select>
                                 </div>
 
-                                <div className="pe-input-group">
+                                <div className="input-group-sm" style={{ marginTop: '1rem' }}>
                                     <label>Program Type</label>
-                                    <select className="pe-select" value={editForm.program} onChange={e => setEditForm({...editForm, program: e.target.value})}>
-                                        <option value="" disabled>Select program...</option>
-                                        {PROGRAMS.map(p => <option key={p} value={p}>{p}</option>)}
-                                    </select>
+                                    <div className="wizard-options-grid single-col">
+                                        {PROGRAMS.map(o => (
+                                            <div key={o} className={`wizard-option-card ${editForm.program === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, program: o})}>{o}</div>
+                                        ))}
+                                    </div>
                                 </div>
 
-                                <div className="pe-input-group">
+                                <div className="input-group-sm" style={{ marginTop: '1rem' }}>
                                     <label>Department</label>
-                                    <select className="pe-select" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})}>
-                                        <option value="" disabled>Select department...</option>
-                                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                                    </select>
+                                    <div className="wizard-options-grid">
+                                        {DEPARTMENTS.map(o => (
+                                            <div key={o} className={`wizard-option-card ${editForm.department === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, department: o})}>{o}</div>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 {editForm.department === 'Freshman' ? (
                                     <>
-                                        <div className="pe-input-group">
+                                        <div className="input-group-sm" style={{ marginTop: '1rem' }}>
                                             <label>Freshman Stream</label>
-                                            <select className="pe-select" value={editForm.freshman_stream} onChange={e => setEditForm({...editForm, freshman_stream: e.target.value})}>
-                                                <option value="" disabled>Select stream...</option>
-                                                {STREAMS.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
+                                            <div className="wizard-options-grid single-col">
+                                                {STREAMS.map(o => (
+                                                    <div key={o} className={`wizard-option-card ${editForm.freshman_stream === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, freshman_stream: o})}>{o}</div>
+                                                ))}
+                                            </div>
                                         </div>
-                                        <div className="pe-input-group">
+                                        <div className="input-group-sm" style={{ marginTop: '1rem' }}>
                                             <label>Target Department</label>
-                                            <select className="pe-select" value={editForm.target_department} onChange={e => setEditForm({...editForm, target_department: e.target.value})}>
-                                                <option value="" disabled>Select target...</option>
-                                                {DEPARTMENTS.filter(d => d !== 'Freshman').map(d => <option key={d} value={d}>{d}</option>)}
-                                            </select>
+                                            <div className="wizard-options-grid">
+                                                {DEPARTMENTS.filter(d => d !== 'Freshman').map(o => (
+                                                    <div key={o} className={`wizard-option-card ${editForm.target_department === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, target_department: o})}>{o}</div>
+                                                ))}
+                                            </div>
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="pe-input-group">
+                                    <div className="input-group-sm" style={{ marginTop: '1rem' }}>
                                         <label>Year of Study</label>
-                                        <select className="pe-select" value={editForm.year} onChange={e => setEditForm({...editForm, year: e.target.value})}>
-                                            <option value="" disabled>Select year...</option>
-                                            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                                        </select>
+                                        <div className="wizard-options-grid">
+                                            {YEARS.map(o => (
+                                                <div key={o} className={`wizard-option-card ${editForm.year === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, year: o})}>{o}</div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -403,7 +515,7 @@ const Profile = () => {
                         
                         <footer className="pe-footer">
                             <button className="pe-btn cancel" onClick={() => setIsEditingProfile(false)} disabled={saving}>Cancel</button>
-                            <button className="pe-btn save" onClick={handleSaveProfile} disabled={saving}>
+                            <button className="pe-btn save" onClick={handleSaveProfile} disabled={saving || usernameStatus === 'taken' || usernameStatus === 'invalid'}>
                                 {saving ? <i className="fas fa-circle-notch fa-spin"></i> : "Save Changes"}
                             </button>
                         </footer>
