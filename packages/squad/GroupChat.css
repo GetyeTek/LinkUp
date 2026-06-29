@@ -24,7 +24,119 @@
 .squad-send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-teal); border: none; color: #000; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: transform 0.2s; }
 .squad-send-btn:active:not(:disabled) { transform: scale(0.9); }
 .squad-send-btn:disabled { background: rgba(255,255,255,0.1); color: #666; cursor: not-allowed; }
-.squad-ctx-menu { position: fixed; background: rgba(18,18,24,0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 4px; z-index: 5000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-.squad-ctx-btn { background: transparent; border: none; padding: 10px 16px; color: #fff; font-family: 'Poppins', sans-serif; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; cursor: pointer; width: 100%; border-radius: 8px; }
+/* --- SMART CONTEXT MENU --- */
+.squad-ctx-menu { 
+    position: fixed; 
+    background: rgba(18, 18, 24, 0.95); 
+    backdrop-filter: blur(25px); 
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+    border-radius: 14px; 
+    padding: 6px; 
+    z-index: 5000; 
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 150px;
+    animation: menuPopFixed 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform-origin: top left;
+}
+
+@keyframes menuPopFixed {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.squad-ctx-btn { 
+    background: transparent; 
+    border: none; 
+    padding: 10px 14px; 
+    color: #e0e0e0; 
+    font-family: 'Poppins', sans-serif; 
+    font-size: 0.85rem; 
+    font-weight: 500;
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    cursor: pointer; 
+    width: 100%; 
+    border-radius: 10px; 
+    transition: all 0.2s ease;
+    text-align: left;
+}
+.squad-ctx-btn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 .squad-ctx-btn.delete { color: #ff5f5f; }
-.squad-ctx-btn.delete:hover { background: rgba(255,95,95,0.1); }
+.squad-ctx-btn.delete:hover { background: rgba(255, 95, 95, 0.1); color: #ff7675; }
+
+/* --- REPLY QUOTES --- */
+.squad-reply-quote {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    display: flex;
+    margin-bottom: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border-left: 3px solid var(--accent-teal);
+}
+
+.mine .squad-reply-quote { background: rgba(255, 255, 255, 0.15); border-left-color: #000; }
+.theirs .squad-reply-quote { background: rgba(255, 255, 255, 0.05); }
+
+.squad-reply-quote.is-deleted { opacity: 0.5; border-left-color: #ff5f5f; cursor: default; }
+
+.sq-quote-content { padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.sq-quote-user { font-size: 0.75rem; font-weight: 700; color: var(--accent-teal); }
+.mine .sq-quote-user { color: #000; }
+.sq-quote-text { font-size: 0.8rem; color: #a0a0a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.8; }
+.mine .sq-quote-text { color: #000; opacity: 0.7; }
+
+/* --- EDIT / REPLY DOCK HEADERS --- */
+.squad-input-mode-header {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 8px 15px;
+    border-radius: 12px 12px 0 0;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: none;
+    gap: 12px;
+    animation: slideUpMode 0.3s ease;
+    margin-bottom: -10px;
+    padding-bottom: 18px;
+}
+
+@keyframes slideUpMode {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.squad-input-mode-header .mode-border { width: 3px; align-self: stretch; background: var(--accent-teal); border-radius: 3px; }
+.squad-input-mode-header .mode-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; cursor: pointer; }
+.squad-input-mode-header .mode-user { font-weight: 700; color: var(--accent-teal); font-size: 0.75rem; }
+.squad-input-mode-header .mode-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8rem; color: #888; }
+
+.squad-input-mode-header.edit-mode { background: rgba(255, 171, 64, 0.05); }
+.squad-input-mode-header.edit-mode .mode-border { background: #ffab40; }
+.squad-input-mode-header.edit-mode .mode-user { color: #ffab40; }
+.squad-mode-icon { display: flex; align-items: center; justify-content: center; color: #ffab40; font-size: 0.9rem; padding: 0 4px; filter: drop-shadow(0 0 5px rgba(255, 171, 64, 0.3)); }
+
+/* Highlight Animation for scrolling */
+@keyframes highlightSquadMsg {
+    0% { background: transparent; transform: scale(1); }
+    15% { background: rgba(66, 215, 184, 0.4); filter: brightness(1.2) drop-shadow(0 0 20px rgba(66, 215, 184, 0.6)); transform: scale(1.02); }
+    30% { background: rgba(66, 215, 184, 0.2); transform: scale(1.01); }
+    100% { background: transparent; transform: scale(1); }
+}
+
+.squad-msg-highlight-flash .squad-bubble {
+    animation: highlightSquadMsg 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    z-index: 50;
+}
+
+.squad-time-meta { font-size: 0.65rem; color: #a0a0a0; margin-top: 5px; display: flex; align-items: center; gap: 4px; }
+.squad-time-meta.mine-meta { justify-content: flex-end; color: rgba(0,0,0,0.6); }
+
+.squad-loading-state { text-align: center; margin: auto; color: var(--accent-teal); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.squad-loading-state i { font-size: 2rem; }
+.squad-loading-state p { color: #888; font-size: 0.9rem; margin: 0; }
