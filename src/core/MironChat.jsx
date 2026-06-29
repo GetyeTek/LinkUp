@@ -154,16 +154,16 @@ const MironChat = ({ onClose, initialContext }) => {
         <div className="miron-chat-overlay">
             <div className="athena-bg"></div>
 
-            <header className="athena-header">
+            <header className="athena-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
+                <button className="athena-close" onClick={onClose} style={{ background: 'transparent' }}>
+                    <i className="fas fa-chevron-left"></i>
+                </button>
                 <div className="athena-brand">
                     <div className="athena-orb">
                         <i className="fa-solid fa-sparkles" style={{fontSize: '0.8rem'}}></i>
                     </div>
                     <h1 className="athena-title">Miron</h1>
                 </div>
-                <button className="athena-close" onClick={onClose}>
-                    <i className="fas fa-times"></i>
-                </button>
             </header>
 
             <main className="athena-flow" ref={flowRef}>
