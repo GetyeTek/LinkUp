@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './UserChat.css';
 
 const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
+    const { user: userProfile } = usePlatform();
     const [activeConvId, setActiveConvId] = useState(chat.conversation_id);
     const [messages, setMessages] = useState([]);
     const [otherReadAt, setOtherReadAt] = useState(null);
@@ -392,10 +393,10 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                                 {repliedMsg ? (
                                     <div className="reply-quote" onClick={(e) => { e.stopPropagation(); scrollToMessage(m.reply_to_id); }}>
                                         <div className="reply-quote-bar"></div>
-                                        <div className="reply-quote-content">
+                                                                                <div className="reply-quote-content">
                                             <div className="reply-quote-user">
-    {!repliedMsg.sender_id ? 'Deleted Account' : (repliedMsg.sender_id === currentUser.id ? currentUser.user_metadata.full_name : chatTitle)}
-</div>
+                                                {!repliedMsg.sender_id ? 'Deleted Account' : (repliedMsg.sender_id === currentUser.id ? (userProfile?.full_name || 'You') : chatTitle)}
+                                            </div>
                                             <div className="reply-quote-text">{repliedMsg.text}</div>
                                         </div>
                                     </div>
@@ -458,7 +459,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                         <div className="reply-preview-border"></div>
                         <div className="reply-preview-info" onClick={() => scrollToMessage(replyingTo.id)} style={{ cursor: 'pointer' }}>
                             <span className="reply-user">
-    Replying to {!replyingTo.sender_id ? 'Deleted Account' : (replyingTo.sender_id === currentUser.id ? currentUser.user_metadata.full_name : chatTitle)}
+    Replying to {!replyingTo.sender_id ? 'Deleted Account' : (replyingTo.sender_id === currentUser.id ? (userProfile?.full_name || 'Yourself') : chatTitle)}
 </span>
                             <span className="reply-text">{replyingTo.text}</span>
                         </div>
