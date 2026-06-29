@@ -54,8 +54,21 @@
 .tc-footer { display: flex; flex-direction: column; gap: 8px; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; }
 .tc-footer-bottom { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #888; }
 .tc-reference { font-size: 0.7rem; color: #666; font-style: italic; display: flex; align-items: center; gap: 6px; }
-.tc-link { color: #888; text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 0.2s; }
-.tc-link:hover { color: var(--accent-teal); }
+.tc-link { 
+    color: var(--text-secondary-dark); 
+    text-decoration: underline; 
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(255, 255, 255, 0.2);
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+    transition: all 0.2s; 
+}
+.tc-link:hover { 
+    color: var(--accent-teal); 
+    text-decoration-color: var(--accent-teal);
+}
 .card-content-wrapper { width: 100%; height: 100%; border-radius: var(--radius-main); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
 .action-slide-content { background-color: var(--surface-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px; width: 100%; height: 100%; }
 .action-slide-content .action-icon { font-size: 4rem; color: var(--accent-teal); margin-bottom: 24px; }
