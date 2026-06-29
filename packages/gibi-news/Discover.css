@@ -37,8 +37,23 @@
 .app-label { font-size: 0.7rem; color: var(--text-secondary-dark); font-weight: 500; line-height: 1.2; }
 .icon-color-1 { background: linear-gradient(45deg, #42d7b8, #1a9c8b); } .icon-color-2 { background: linear-gradient(45deg, #9b59b6, #7a3c9b); } .icon-color-3 { background: linear-gradient(45deg, #f1c40f, #c7a10d); } .icon-color-4 { background: linear-gradient(45deg, #e74c3c, #c0392b); } .icon-color-5 { background: linear-gradient(45deg, #3498db, #2980b9); } .icon-color-6 { background: linear-gradient(45deg, #52606d, #3e4c59); }
 
-.feed-container { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; }
-.feed-slide { height: 100%; width: 100%; scroll-snap-align: start; scroll-snap-stop: always; position: relative; padding: 1rem; }
+.feed-container { height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem; padding-bottom: 6rem; }
+.feed-slide { height: 450px; width: 100%; flex-shrink: 0; position: relative; }
+
+/* Telegram Style Cards */
+.telegram-card { background: var(--surface-dark); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+.tc-image { width: 100%; max-height: 250px; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.tc-content { padding: 1.25rem; position: relative; }
+.tc-header { font-weight: 700; color: var(--accent-teal); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+.tc-text-wrapper { position: relative; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.tc-text-wrapper.collapsed { max-height: 140px; }
+.tc-text { font-size: 0.95rem; line-height: 1.6; color: #e0e0e0; white-space: pre-wrap; word-break: break-word; }
+.tc-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 60px; background: linear-gradient(transparent, var(--surface-dark)); pointer-events: none; }
+.tc-show-more { background: rgba(66, 215, 184, 0.1); color: var(--accent-teal); border: 1px solid rgba(66, 215, 184, 0.2); border-radius: 8px; font-weight: 600; cursor: pointer; padding: 0.5rem 0; width: 100%; text-align: center; margin-top: 0.5rem; transition: transform 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.tc-show-more:active { transform: scale(0.98); }
+.tc-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; font-size: 0.75rem; color: #888; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; }
+.tc-link { color: #888; text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 0.2s; }
+.tc-link:hover { color: var(--accent-teal); }
 .card-content-wrapper { width: 100%; height: 100%; border-radius: var(--radius-main); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
 .action-slide-content { background-color: var(--surface-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px; width: 100%; height: 100%; }
 .action-slide-content .action-icon { font-size: 4rem; color: var(--accent-teal); margin-bottom: 24px; }
