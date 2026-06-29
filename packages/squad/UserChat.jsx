@@ -395,8 +395,8 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                                         <div className="reply-quote-bar"></div>
                                                                                 <div className="reply-quote-content">
                                             <div className="reply-quote-user">
-                                                {!repliedMsg.sender_id ? 'Deleted Account' : (repliedMsg.sender_id === currentUser.id ? (userProfile?.full_name || 'You') : chatTitle)}
-                                            </div>
+    {!repliedMsg.sender_id ? 'Deleted Account' : chatTitle}
+</div>
                                             <div className="reply-quote-text">{repliedMsg.text}</div>
                                         </div>
                                     </div>
@@ -459,7 +459,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                         <div className="reply-preview-border"></div>
                         <div className="reply-preview-info" onClick={() => scrollToMessage(replyingTo.id)} style={{ cursor: 'pointer' }}>
                             <span className="reply-user">
-    Replying to {!replyingTo.sender_id ? 'Deleted Account' : (replyingTo.sender_id === currentUser.id ? (userProfile?.full_name || 'Yourself') : chatTitle)}
+    Replying to {!replyingTo.sender_id ? 'Deleted Account' : chatTitle}
 </span>
                             <span className="reply-text">{replyingTo.text}</span>
                         </div>
