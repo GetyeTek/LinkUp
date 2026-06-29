@@ -169,50 +169,23 @@ const Discover = () => {
             <div className={`discover-sub-tab ${activeSubTab === 'feeds' ? 'active' : ''}`} id="discover-feeds">
                 <div className="feed-container">
                     
-                    <section className="feed-slide">
-                        <div className="card-content-wrapper">
-                            <div className="mission-card">
-                                <canvas className="stars-canvas"></canvas>
-                                <div className="mission-content">
-                                    <div className="portal-graphic"><div className="portal-ring"></div></div>
-                                    <p className="kicker">// GLOBAL CHALLENGE</p>
-                                    <h2 className="title">The P vs NP Problem</h2>
-                                    <p style={{color: '#aaa', fontSize: '0.85rem', marginTop: '1rem'}}>Can every problem whose solution can be quickly verified also be solved quickly?</p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className="feed-slide">
-                        <div className="card-content-wrapper">
-                            <div className="story-card">
-                                <div className="background-image" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80')" }}></div>
-                                <div className="content-overlay" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 100%)' }}>
-                                    <p className="kicker"><i className="fas fa-atom"></i> Tech Trends</p>
-                                    <h2 className="title" style={{ color: 'white' }}>Quantum Computing Breakthrough</h2>
-                                    <button className="story-cta-btn" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>Read Article <i className="fas fa-arrow-right"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className="feed-slide">
-                        <div className="action-slide-content">
-                            <i className="fas fa-microchip action-icon"></i>
-                            <p className="action-prompt">New AI Research Lab Opens at Addis Ababa University.</p>
-                            <button className="action-cta-btn">View Campus Map</button>
-                        </div>
-                    </section>
-
                     {/* LIVE SCRAPED TELEGRAM FEED INJECTION */}
                     {newsLoading ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent-teal)' }}>
                             <i className="fas fa-circle-notch fa-spin fa-2x"></i>
                         </div>
                     ) : (
-                        liveNews.map(post => (
-                            <TelegramCard key={post.id} post={post} />
-                        ))
+                        liveNews.length > 0 ? (
+                            liveNews.map(post => (
+                                <TelegramCard key={post.id} post={post} />
+                            ))
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#888' }}>
+                                <i className="fas fa-satellite-dish" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}></i>
+                                <p>Scanning frequencies...</p>
+                                <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>No live updates found. Make sure the sync worker has run.</p>
+                            </div>
+                        )
                     )}
 
                 </div>
