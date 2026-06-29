@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import './Profile.css';
 
 const Profile = () => {
     const { user: userProfile } = usePlatform();
@@ -288,7 +289,7 @@ const Profile = () => {
                                     <input className="pe-input" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                                 </div>
                             </div>
-                            <div style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
+                            <div className="pe-registry-zone">
                                 <div className="pe-zone-title" style={{color: '#ffab40'}}><i className="fas fa-university"></i> Zone 2: Academic Registry</div>
                                 <div className="pe-input-group">
                                     <label>Department</label>
@@ -298,6 +299,7 @@ const Profile = () => {
                                     <label>Year of Study</label>
                                     <input className="pe-input" value={editForm.year} onChange={e => setEditForm({...editForm, year: e.target.value})} />
                                 </div>
+                                <p className="pe-hint" style={{color: 'rgba(255,171,64,0.6)'}}>This data synchronizes your Miron AI learning path.</p>
                             </div>
                         </div>
                         <footer className="pe-footer">
