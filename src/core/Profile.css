@@ -60,6 +60,59 @@
 
 
 
+/* --- HIGH-FIDELITY ACCOUNT EDITOR FIXES --- */
+.profile-edit-overlay .input-group-sm input,
+.profile-edit-overlay .wizard-select {
+    background: rgba(255, 255, 255, 0.08); /* Lighter for visibility */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 14px 16px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.profile-edit-overlay .input-group-sm input:focus,
+.profile-edit-overlay .wizard-select:focus {
+    border-color: var(--accent-teal);
+    background: rgba(66, 215, 184, 0.05);
+    box-shadow: 0 0 0 3px rgba(66, 215, 184, 0.1);
+}
+
+.profile-edit-overlay .handle-input-wrapper {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Collapsible Chip Dropdown Styling */
+.pe-dropdown-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 14px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    color: #fff;
+}
+
+.pe-dropdown-summary:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.pe-dropdown-summary.expanded {
+    border-color: var(--accent-teal);
+    background: rgba(66, 215, 184, 0.05);
+    box-shadow: 0 0 0 3px rgba(66, 215, 184, 0.1);
+}
+
+.pe-dropdown-summary .is-empty { color: #888; }
+.pe-dropdown-summary i { color: #aaa; transition: transform 0.3s ease; }
+.pe-dropdown-summary.expanded i { color: var(--accent-teal); }
+
 .pe-footer { 
     padding: 1.25rem 1.5rem calc(1.25rem + env(safe-area-inset-bottom)); 
     background: rgba(12, 12, 12, 0.95); 
