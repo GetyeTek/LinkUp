@@ -394,8 +394,8 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                                         <div className="reply-quote-bar"></div>
                                         <div className="reply-quote-content">
                                             <div className="reply-quote-user">
-                                                {repliedMsg.sender_id === currentUser.id ? 'You' : (!repliedMsg.sender_id ? 'Deleted Account' : chatTitle)}
-                                            </div>
+    {!repliedMsg.sender_id ? 'Deleted Account' : (repliedMsg.sender_id === currentUser.id ? currentUser.user_metadata.full_name : chatTitle)}
+</div>
                                             <div className="reply-quote-text">{repliedMsg.text}</div>
                                         </div>
                                     </div>
@@ -457,7 +457,9 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                     <div className="input-mode-header">
                         <div className="reply-preview-border"></div>
                         <div className="reply-preview-info" onClick={() => scrollToMessage(replyingTo.id)} style={{ cursor: 'pointer' }}>
-                            <span className="reply-user">Replying to {replyingTo.sender_id === currentUser.id ? 'yourself' : chatTitle}</span>
+                            <span className="reply-user">
+    Replying to {!replyingTo.sender_id ? 'Deleted Account' : (replyingTo.sender_id === currentUser.id ? currentUser.user_metadata.full_name : chatTitle)}
+</span>
                             <span className="reply-text">{replyingTo.text}</span>
                         </div>
                         <button className="icon-button" onClick={() => setReplyingTo(null)}>
