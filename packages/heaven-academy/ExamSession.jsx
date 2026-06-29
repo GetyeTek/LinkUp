@@ -142,17 +142,19 @@ const ExamSession = ({ exam, onClose }) => {
     return (
         <div className="exam-session-overlay">
             <header className="session-header">
-                <div className="session-title-box">
-                    <p>{examMeta.code}</p>
-                    <h1>{examMeta.name}</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button className="icon-button exit-session-btn" onClick={onClose} title="Exit Exam" style={{ opacity: 1 }}>
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
+                    <div className="session-title-box">
+                        <p>{examMeta.code}</p>
+                        <h1>{examMeta.name}</h1>
+                    </div>
                 </div>
                 <div className="session-header-actions">
                     <div className={`timer-pill ${timeLeft < 300 ? 'urgent' : ''}`}>
                         {formatTime(timeLeft)}
                     </div>
-                    <button className="icon-button exit-session-btn" onClick={onClose} title="Exit Exam">
-                        <i className="fas fa-times"></i>
-                    </button>
                 </div>
             </header>
 
