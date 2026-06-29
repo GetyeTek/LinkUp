@@ -44,7 +44,7 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
         <div className="discovery-screen">
             <header className="discovery-header">
                 <button className="icon-button" onClick={onClose} style={{color: 'white'}}>
-                    <i className="fas fa-arrow-left"></i>
+                    <i className="fas fa-chevron-left"></i>
                 </button>
                 <h2>Discover Peers</h2>
             </header>
