@@ -13,6 +13,32 @@ const Profile = () => {
     
     const plexusRef = useRef(null);
     const starsRef = useRef(null);
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+    // Host-managed Identity State
+    const [editForm, setEditForm] = useState({
+        full_name: '', username: '', phone: '', department: '', year: ''
+    });
+
+    useEffect(() => {
+        if (userProfile) {
+            setEditForm({
+                full_name: userProfile.full_name || '',
+                username: userProfile.username || '',
+                phone: userProfile.phone || '',
+                department: userProfile.department || '',
+                year: userProfile.year || ''
+            });
+        }
+    }, [userProfile]);
+
+    const handleSaveProfile = async () => {
+        const { error } = await supabase.from('profiles').update(editForm).eq('id', userProfile.id);
+        if (!error) {
+            setIsEditingProfile(false);
+            window.location.reload(); 
+        }
+    };
 
     // Helper to toggle overlays
     const toggleOverlay = (name, isOpen) => {
@@ -167,7 +193,9 @@ const Profile = () => {
                     <div className="settings-group">
                         <h2 className="section-title"><span>Settings</span></h2>
                         <div className="settings-list">
-                            <a href="#" className="list-item"><i className="fas fa-user-pen list-item-icon"></i><span className="list-item-text">Account</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
+                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); setIsEditingProfile(true); }}>
+                                <i className="fas fa-user-pen list-item-icon"></i><span className="list-item-text">Account & Registry</span><i className="fas fa-chevron-right list-item-chevron"></i>
+                            </a>
                             <a href="#" className="list-item"><i className="fas fa-palette list-item-icon"></i><span className="list-item-text">Appearance</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
                             <a href="#" className="list-item"><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">Privacy & Security</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
                             <a href="#" className="list-item"><i className="fas fa-info-circle list-item-icon"></i><span className="list-item-text">Support & About</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
@@ -234,6 +262,51 @@ const Profile = () => {
                     </div>
                 </div>
             </div>
+
+            {/* --- HOST APP: IDENTITY MANAGER --- */}
+            {isEditingProfile && (
+                <div className="profile-edit-overlay">
+                    <div className="profile-edit-card">
+                        <header className="pe-header">
+                            <h2>Account Settings</h2>
+                            <button className="icon-button" onClick={() => setIsEditingProfile(false)}><i className="fas fa-times"></i></button>
+                        </header>
+                        <div className="pe-body">
+                            <div>
+                                <div className="pe-zone-title"><i className="fas fa-fingerprint"></i> Zone 1: Identity</div>
+                                <div className="pe-input-group">
+                                    <label>Full Name</label>
+                                    <input className="pe-input" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} />
+                                </div>
+                                <div className="pe-input-group">
+                                    <label>Username</label>
+                                    <input className="pe-input" value={editForm.username} disabled title="Username is protected by platform cooldown." />
+                                    <span className="pe-hint">Handle is unique to your academic identity.</span>
+                                </div>
+                                <div className="pe-input-group">
+                                    <label>Phone Number</label>
+                                    <input className="pe-input" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+                                </div>
+                            </div>
+                            <div style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
+                                <div className="pe-zone-title" style={{color: '#ffab40'}}><i className="fas fa-university"></i> Zone 2: Academic Registry</div>
+                                <div className="pe-input-group">
+                                    <label>Department</label>
+                                    <input className="pe-input" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} />
+                                </div>
+                                <div className="pe-input-group">
+                                    <label>Year of Study</label>
+                                    <input className="pe-input" value={editForm.year} onChange={e => setEditForm({...editForm, year: e.target.value})} />
+                                </div>
+                            </div>
+                        </div>
+                        <footer className="pe-footer">
+                            <button className="pe-btn cancel" onClick={() => setIsEditingProfile(false)}>Cancel</button>
+                            <button className="pe-btn save" onClick={handleSaveProfile}>Save Changes</button>
+                        </footer>
+                    </div>
+                </div>
+            )}
 
             {/* --- MISSION CONTROL OVERLAY --- */}
             <div className={`fullscreen-overlay ${overlays.mission ? 'is-active' : ''}`} id="mission-overlay">
