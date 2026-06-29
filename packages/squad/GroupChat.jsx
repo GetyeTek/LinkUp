@@ -165,7 +165,10 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
                 ) : (
                     messages.map(m => {
                         const isMine = m.sender_id === currentUser.id;
-                        const sender = members[m.sender_id] || { name: 'Portal Guest', role: 'member' };
+                        const isDeletedAccount = !m.sender_id;
+                        const sender = isDeletedAccount 
+                            ? { name: 'Deleted Account', role: 'member' } 
+                            : (members[m.sender_id] || { name: 'Unknown User', role: 'member' });
                         const isMenuOpen = activeMenu?.msg?.id === m.id;
                         
                         const repliedMsg = m.reply_to_id ? messages.find(msg => msg.id === m.reply_to_id) : null;
