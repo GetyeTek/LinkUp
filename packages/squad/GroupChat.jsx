@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './GroupChat.css';
 
-const GroupChat = ({ chat, currentUser, onClose }) => {
+const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const { user: userProfile } = usePlatform();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -168,7 +168,7 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
                 ) : messages.length === 0 ? (
                     <div className="squad-empty-state">
                         <i className="fas fa-user-group"></i>
-                        <p>No messages yet. Start the discussion!</p>
+                        <p>{chat.is_preview ? "No messages yet. Join to start the discussion!" : "No messages yet. Start the discussion!"}</p>
                     </div>
                 ) : (
                     messages.map(m => {
@@ -190,6 +190,7 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
                                 style={{ zIndex: isMenuOpen ? 100 : 1 }}
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    if (chat.is_preview) return; // Read-only context for preview
                                     if (isMenuOpen) {
                                         setActiveMenu(null);
                                         return;
@@ -279,46 +280,54 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
             )}
 
             <footer className="squad-input-area" style={{ padding: '0 1.5rem calc(1rem + env(safe-area-inset-bottom))', background: 'linear-gradient(to top, #08080c 80%, transparent)' }}>
-                {editingMessage && (
-                    <div className="squad-input-mode-header edit-mode">
-                        <div className="mode-border"></div>
-                        <div className="squad-mode-icon"><i className="fa-solid fa-pen"></i></div>
-                        <div className="mode-info">
-                            <span className="mode-user">Editing message</span>
-                            <span className="mode-text">{editingMessage.text}</span>
-                        </div>
-                        <button className="icon-button" onClick={() => { setEditingMessage(null); setInput(''); }}>
-                            <i className="fa-solid fa-times"></i>
-                        </button>
-                    </div>
-                )}
-                {replyingTo && (
-                    <div className="squad-input-mode-header">
-                        <div className="mode-border"></div>
-                        <div className="mode-info" onClick={() => scrollToMessage(replyingTo.id)}>
-                            <span className="mode-user">
-    Replying to {!replyingTo.sender_id ? 'Deleted Account' : (members[replyingTo.sender_id]?.name || 'Unknown User')}
-</span>
-                            <span className="mode-text">{replyingTo.text}</span>
-                        </div>
-                        <button className="icon-button" onClick={() => setReplyingTo(null)}>
-                            <i className="fa-solid fa-times"></i>
-                        </button>
-                    </div>
-                )}
-                
-                <div className="squad-dock">
-                    <input 
-                        type="text" 
-                        placeholder="Squad message..." 
-                        value={input} 
-                        onChange={e => setInput(e.target.value)} 
-                        onKeyPress={e => e.key === 'Enter' && handleSend()} 
-                    />
-                    <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim()}>
-                        <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
+                {chat.is_preview ? (
+                    <button className="squad-join-full-btn" onClick={() => onJoin(chat.conversation_id)} disabled={isJoining}>
+                        {isJoining ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Squad'}
                     </button>
-                </div>
+                ) : (
+                    <>
+                        {editingMessage && (
+                            <div className="squad-input-mode-header edit-mode">
+                                <div className="mode-border"></div>
+                                <div className="squad-mode-icon"><i className="fa-solid fa-pen"></i></div>
+                                <div className="mode-info">
+                                    <span className="mode-user">Editing message</span>
+                                    <span className="mode-text">{editingMessage.text}</span>
+                                </div>
+                                <button className="icon-button" onClick={() => { setEditingMessage(null); setInput(''); }}>
+                                    <i className="fa-solid fa-times"></i>
+                                </button>
+                            </div>
+                        )}
+                        {replyingTo && (
+                            <div className="squad-input-mode-header">
+                                <div className="mode-border"></div>
+                                <div className="mode-info" onClick={() => scrollToMessage(replyingTo.id)}>
+                                    <span className="mode-user">
+            Replying to {!replyingTo.sender_id ? 'Deleted Account' : (members[replyingTo.sender_id]?.name || 'Unknown User')}
+        </span>
+                                    <span className="mode-text">{replyingTo.text}</span>
+                                </div>
+                                <button className="icon-button" onClick={() => setReplyingTo(null)}>
+                                    <i className="fa-solid fa-times"></i>
+                                </button>
+                            </div>
+                        )}
+                        
+                        <div className="squad-dock">
+                            <input 
+                                type="text" 
+                                placeholder="Squad message..." 
+                                value={input} 
+                                onChange={e => setInput(e.target.value)} 
+                                onKeyPress={e => e.key === 'Enter' && handleSend()} 
+                            />
+                            <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim()}>
+                                <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
+                            </button>
+                        </div>
+                    </>
+                )}
             </footer>
         </div>
     );
