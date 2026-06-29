@@ -1,6 +1,54 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePlatform } from '@linkup-platform/sdk-core';
+import { fetchLiveNewsFeed } from './api.js';
 import './Discover.css';
+
+const TelegramCard = ({ post }) => {
+    const [expanded, setExpanded] = useState(false);
+    const cardRef = useRef(null);
+
+    // Auto-collapse logic via Intersection Observer
+    useEffect(() => {
+        const observer = new IntersectionObserver(([entry]) => {
+            // If the card is completely out of the viewport and currently expanded, reset it
+            if (!entry.isIntersecting && expanded) {
+                setExpanded(false);
+            }
+        }, { threshold: 0 }); // 0 means triggers the moment it's out of view
+
+        if (cardRef.current) observer.observe(cardRef.current);
+        return () => observer.disconnect();
+    }, [expanded]);
+
+    // Threshold check (250 chars)
+    const isLong = post.full_text && post.full_text.length > 250;
+
+    return (
+        <div className="telegram-card" ref={cardRef}>
+            {post.image_url && <img src={post.image_url} alt="News Media" className="tc-image" />}
+            <div className="tc-content">
+                <div className="tc-header">
+                    <i className="fas fa-bullhorn"></i> {post.channel === 'tikvahuniversity' ? 'Tikvah University' : post.channel}
+                </div>
+                <div className={`tc-text-wrapper ${expanded ? 'expanded' : (isLong ? 'collapsed' : '')}`}>
+                    <div className="tc-text">{post.full_text}</div>
+                    {!expanded && isLong && <div className="tc-fade"></div>}
+                </div>
+                {!expanded && isLong && (
+                    <button className="tc-show-more" onClick={() => setExpanded(true)}>
+                        Show more <i className="fas fa-chevron-down"></i>
+                    </button>
+                )}
+                <div className="tc-footer">
+                    <a href={post.post_url} target="_blank" rel="noreferrer" className="tc-link">
+                        <i className="fab fa-telegram"></i> View Official Post
+                    </a>
+                    <span className="tc-time">{new Date(post.telegram_timestamp).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const Discover = () => {
     const { shell, user } = usePlatform();
@@ -8,9 +56,25 @@ const Discover = () => {
     const [activeSubTab, setActiveSubTab] = useState('explore'); // 'explore' or 'feeds'
     const [appsCollapsed, setAppsCollapsed] = useState(false);
     
+    const [liveNews, setLiveNews] = useState([]);
+    const [newsLoading, setNewsLoading] = useState(true);
+
     // Ref for the indicator animation
     const navRef = useRef(null);
     const [indicatorStyle, setIndicatorStyle] = useState({});
+
+    useEffect(() => {
+        // Fetch Live Telegram News
+        fetchLiveNewsFeed()
+            .then(data => {
+                if (data.news) setLiveNews(data.news);
+                setNewsLoading(false);
+            })
+            .catch(err => {
+                console.error("Failed to load live feed:", err);
+                setNewsLoading(false);
+            });
+    }, []);
 
     useEffect(() => {
         console.log("%c[GN_Feed] >> Initializing Discovery Feed...", "color: #ffab40; font-family: monospace;");
@@ -139,6 +203,17 @@ const Discover = () => {
                             <button className="action-cta-btn">View Campus Map</button>
                         </div>
                     </section>
+
+                    {/* LIVE SCRAPED TELEGRAM FEED INJECTION */}
+                    {newsLoading ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent-teal)' }}>
+                            <i className="fas fa-circle-notch fa-spin fa-2x"></i>
+                        </div>
+                    ) : (
+                        liveNews.map(post => (
+                            <TelegramCard key={post.id} post={post} />
+                        ))
+                    )}
 
                 </div>
             </div>
