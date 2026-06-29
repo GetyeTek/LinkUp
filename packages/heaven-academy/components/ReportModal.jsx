@@ -26,13 +26,13 @@ const ReportModal = ({ questionId, source, onClose }) => {
     return (
         <div className="report-modal-overlay">
             <div className="report-modal-card">
-                <header className="report-header">
+                <header className="report-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
+                    <button className="report-close" onClick={onClose} disabled={status === 'loading'} style={{ marginLeft: '-0.5rem' }}>
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
                     <div className="report-title">
                         <i className="fas fa-triangle-exclamation"></i> Report Issue
                     </div>
-                    <button className="report-close" onClick={onClose} disabled={status === 'loading'}>
-                        <i className="fas fa-times"></i>
-                    </button>
                 </header>
                 
                 <div className="report-body">
