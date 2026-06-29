@@ -78,6 +78,8 @@
     overflow: hidden;
     cursor: pointer;
     border-left: 3px solid var(--accent-teal);
+    max-width: 100%;
+    width: 100%;
 }
 
 .mine .squad-reply-quote { background: rgba(255, 255, 255, 0.15); border-left-color: #000; }
