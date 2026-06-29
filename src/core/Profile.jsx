@@ -13,30 +13,80 @@ const Profile = () => {
     
     const plexusRef = useRef(null);
     const starsRef = useRef(null);
+    const { sessionUser } = usePlatform();
     const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [universities, setUniversities] = useState([]);
+    const [saving, setSaving] = useState(false);
+
+    // Constants for Dropdowns
+    const DEPARTMENTS = ['Freshman', 'Computer Science', 'Software Engineering', 'Management', 'Economics', 'Electrical Engineering', 'Mechanical Engineering', 'Health', 'Other'];
+    const YEARS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+    const PROGRAMS = ['Regular', 'Extension'];
+    const STREAMS = ['Natural Science', 'Social Science'];
 
     // Host-managed Identity State
     const [editForm, setEditForm] = useState({
-        full_name: '', username: '', phone: '', department: '', year: ''
+        full_name: '', username: '', email: '', phone: '', university_id: '', 
+        program: '', department: '', freshman_stream: '', target_department: '', year: ''
     });
+
+    useEffect(() => {
+        // Fetch Universities list
+        supabase.from('universities').select('id, name').order('name')
+            .then(({ data }) => { if (data) setUniversities(data); });
+    }, []);
 
     useEffect(() => {
         if (userProfile) {
             setEditForm({
                 full_name: userProfile.full_name || '',
                 username: userProfile.username || '',
+                email: sessionUser?.email || '',
                 phone: userProfile.phone || '',
+                university_id: userProfile.university_id || '',
+                program: userProfile.program || '',
                 department: userProfile.department || '',
+                freshman_stream: userProfile.freshman_stream || '',
+                target_department: userProfile.target_department || '',
                 year: userProfile.year || ''
             });
         }
-    }, [userProfile]);
+    }, [userProfile, sessionUser]);
 
     const handleSaveProfile = async () => {
-        const { error } = await supabase.from('profiles').update(editForm).eq('id', userProfile.id);
+        setSaving(true);
+        // Handle Email Update separately via Auth API
+        if (editForm.email !== sessionUser?.email) {
+            const { error: authError } = await supabase.auth.updateUser({ email: editForm.email });
+            if (authError) {
+                alert(`Email update failed: ${authError.message}`);
+                setSaving(false);
+                return;
+            } else {
+                alert('Email change requested. Please check your inbox for verification links.');
+            }
+        }
+
+        // Profile Table Update
+        const profileData = {
+            full_name: editForm.full_name,
+            phone: editForm.phone,
+            university_id: editForm.university_id || null,
+            program: editForm.program || null,
+            department: editForm.department || null,
+            freshman_stream: editForm.freshman_stream || null,
+            target_department: editForm.target_department || null,
+            year: editForm.year || null
+        };
+
+        const { error } = await supabase.from('profiles').update(profileData).eq('id', userProfile.id);
+        
+        setSaving(false);
         if (!error) {
             setIsEditingProfile(false);
             window.location.reload(); 
+        } else {
+            alert(error.message);
         }
     };
 
@@ -264,46 +314,98 @@ const Profile = () => {
             </div>
 
             {/* --- HOST APP: IDENTITY MANAGER --- */}
+            {/* --- HOST APP: IDENTITY MANAGER --- */}
             {isEditingProfile && (
                 <div className="profile-edit-overlay">
                     <div className="profile-edit-card">
                         <header className="pe-header">
                             <h2>Account Settings</h2>
-                            <button className="icon-button" onClick={() => setIsEditingProfile(false)}><i className="fas fa-times"></i></button>
+                            <button className="icon-button" onClick={() => setIsEditingProfile(false)} disabled={saving}><i className="fas fa-times"></i></button>
                         </header>
+                        
                         <div className="pe-body">
-                            <div>
-                                <div className="pe-zone-title"><i className="fas fa-fingerprint"></i> Zone 1: Identity</div>
-                                <div className="pe-input-group">
+                            <div className="pe-avatar-section">
+                                <img src={userProfile?.avatar_url || 'https://via.placeholder.com/150'} alt="Profile" className="pe-avatar-preview" />
+                                <div className="pe-avatar-info">
+                                    <h3>{editForm.full_name || 'Scholar'}</h3>
+                                    <p>@{editForm.username}</p>
+                                </div>
+                            </div>
+
+                            <div className="pe-form-grid">
+                                <div className="pe-input-group pe-full-width">
                                     <label>Full Name</label>
                                     <input className="pe-input" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} />
                                 </div>
+                                
                                 <div className="pe-input-group">
-                                    <label>Username</label>
-                                    <input className="pe-input" value={editForm.username} disabled title="Username is protected by platform cooldown." />
-                                    <span className="pe-hint">Handle is unique to your academic identity.</span>
+                                    <label>Email Address</label>
+                                    <input className="pe-input" type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
                                 </div>
+                                
                                 <div className="pe-input-group">
                                     <label>Phone Number</label>
-                                    <input className="pe-input" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+                                    <input className="pe-input" type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                                 </div>
-                            </div>
-                            <div className="pe-registry-zone">
-                                <div className="pe-zone-title" style={{color: '#ffab40'}}><i className="fas fa-university"></i> Zone 2: Academic Registry</div>
+
+                                <div className="pe-input-group pe-full-width">
+                                    <label>University</label>
+                                    <select className="pe-select" value={editForm.university_id} onChange={e => setEditForm({...editForm, university_id: e.target.value})}>
+                                        <option value="" disabled>Select your university...</option>
+                                        {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="pe-input-group">
+                                    <label>Program Type</label>
+                                    <select className="pe-select" value={editForm.program} onChange={e => setEditForm({...editForm, program: e.target.value})}>
+                                        <option value="" disabled>Select program...</option>
+                                        {PROGRAMS.map(p => <option key={p} value={p}>{p}</option>)}
+                                    </select>
+                                </div>
+
                                 <div className="pe-input-group">
                                     <label>Department</label>
-                                    <input className="pe-input" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} />
+                                    <select className="pe-select" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})}>
+                                        <option value="" disabled>Select department...</option>
+                                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
                                 </div>
-                                <div className="pe-input-group">
-                                    <label>Year of Study</label>
-                                    <input className="pe-input" value={editForm.year} onChange={e => setEditForm({...editForm, year: e.target.value})} />
-                                </div>
-                                <p className="pe-hint" style={{color: 'rgba(255,171,64,0.6)'}}>This data synchronizes your Miron AI learning path.</p>
+
+                                {editForm.department === 'Freshman' ? (
+                                    <>
+                                        <div className="pe-input-group">
+                                            <label>Freshman Stream</label>
+                                            <select className="pe-select" value={editForm.freshman_stream} onChange={e => setEditForm({...editForm, freshman_stream: e.target.value})}>
+                                                <option value="" disabled>Select stream...</option>
+                                                {STREAMS.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="pe-input-group">
+                                            <label>Target Department</label>
+                                            <select className="pe-select" value={editForm.target_department} onChange={e => setEditForm({...editForm, target_department: e.target.value})}>
+                                                <option value="" disabled>Select target...</option>
+                                                {DEPARTMENTS.filter(d => d !== 'Freshman').map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="pe-input-group">
+                                        <label>Year of Study</label>
+                                        <select className="pe-select" value={editForm.year} onChange={e => setEditForm({...editForm, year: e.target.value})}>
+                                            <option value="" disabled>Select year...</option>
+                                            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                         </div>
+                        
                         <footer className="pe-footer">
-                            <button className="pe-btn cancel" onClick={() => setIsEditingProfile(false)}>Cancel</button>
-                            <button className="pe-btn save" onClick={handleSaveProfile}>Save Changes</button>
+                            <button className="pe-btn cancel" onClick={() => setIsEditingProfile(false)} disabled={saving}>Cancel</button>
+                            <button className="pe-btn save" onClick={handleSaveProfile} disabled={saving}>
+                                {saving ? <i className="fas fa-circle-notch fa-spin"></i> : "Save Changes"}
+                            </button>
                         </footer>
                     </div>
                 </div>
