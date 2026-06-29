@@ -188,7 +188,10 @@ const Notes = ({ currentUser, onClose }) => {
 
     return (
         <div className="notes-overlay">
-            <header className="notes-header">
+            <header className="notes-header" style={{ justifyContent: 'flex-start', gap: '1.5rem' }}>
+                <button className="icon-button" style={{color: 'white', marginLeft: '-0.5rem'}} onClick={onClose}>
+                    <i className="fas fa-chevron-left"></i>
+                </button>
                 <div className="notes-title-box">
                     <div className="notes-icon"><i className="fas fa-bookmark"></i></div>
                     <div>
@@ -196,9 +199,6 @@ const Notes = ({ currentUser, onClose }) => {
                         <p>Personal cloud & quick clips</p>
                     </div>
                 </div>
-                <button className="icon-button" style={{color: 'white'}} onClick={onClose}>
-                    <i className="fas fa-times"></i>
-                </button>
             </header>
 
             <main className="notes-flow" ref={flowRef} onClick={() => setActiveMenu(null)} onScroll={() => setActiveMenu(null)}>
