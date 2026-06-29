@@ -25,3 +25,7 @@
 .gc-btn.primary { background: var(--accent-teal); color: #000; }
 .gc-btn.primary:disabled { background: rgba(255,255,255,0.1); color: #666; cursor: not-allowed; }
 .gc-btn.secondary { background: rgba(255,255,255,0.05); color: #fff; }
+.gc-limit-reached { text-align: center; padding: 2rem 1rem; }
+.gc-limit-reached i { font-size: 3.5rem; color: #ffab40; margin-bottom: 1rem; filter: drop-shadow(0 0 15px rgba(255,171,64,0.3)); }
+.gc-limit-reached h3 { font-size: 1.5rem; color: #fff; margin-bottom: 0.5rem; font-family: 'Poppins', sans-serif; }
+.gc-limit-reached p { font-size: 0.95rem; color: #aaa; line-height: 1.5; margin: 0; }
