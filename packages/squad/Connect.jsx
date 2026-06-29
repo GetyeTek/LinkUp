@@ -450,20 +450,37 @@ const Connect = () => {
                             </div>
                         </div>
 
-                        {conversations.filter(c => c.type === 'dm').map(chat => {
-                                const title = chat.type === 'dm' ? chat.other_user_name : chat.title;
-                                const avatar = chat.type === 'dm' ? chat.other_user_avatar : chat.avatar_url;
+                        {conversations
+                            .filter(c => c.type === 'dm' || c.type === 'group')
+                            .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at))
+                            .map(chat => {
+                                const isDm = chat.type === 'dm';
+                                const title = isDm ? chat.other_user_name : chat.title;
+                                const avatar = isDm ? chat.other_user_avatar : chat.avatar_url;
                                 return (
                                     <div className="messages-list-item" key={chat.conversation_id} onClick={() => setActiveChat(chat)}>
                                         <div style={{ position: 'relative' }}>
-                                            <img src={avatar || 'https://via.placeholder.com/150'} alt="Avatar" />
-                                            {onlineUsers.has(chat.other_user_id) && (
+                                            {isDm ? (
+                                                <img src={avatar || 'https://via.placeholder.com/150'} alt="Avatar" />
+                                            ) : (
+                                                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justify-content: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                    <i className="fas fa-users"></i>
+                                                </div>
+                                            )}
+                                            {isDm && onlineUsers.has(chat.other_user_id) && (
                                                 <div style={{ position: 'absolute', bottom: '0', right: '0', width: '12px', height: '12px', background: '#42d7b8', borderRadius: '50%', border: '2px solid #1e1e1e' }}></div>
                                             )}
                                         </div>
                                         <div className="message-info">
-                                            <div className="name">{title}</div>
-                                            <div className="last-message">{chat.last_message_text || 'No messages yet'}</div>
+                                            <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {title}
+                                                {!isDm && chat.metadata?.focus && (
+                                                    <span style={{ fontSize: '0.6rem', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', padding: '1px 5px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                                                        {chat.metadata.focus}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="last-message">{chat.last_message_text || (isDm ? 'No messages yet' : 'Squad established')}</div>
                                         </div>
                                         <div className="message-meta">
                                             <span>{formatTime(chat.last_message_at)}</span>
