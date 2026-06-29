@@ -24,6 +24,9 @@
 .squad-send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-teal); border: none; color: #000; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: transform 0.2s; }
 .squad-send-btn:active:not(:disabled) { transform: scale(0.9); }
 .squad-send-btn:disabled { background: rgba(255,255,255,0.1); color: #666; cursor: not-allowed; }
+.squad-join-full-btn { width: 100%; background: var(--accent-teal); color: #000; font-weight: 700; font-size: 1rem; border: none; border-radius: 12px; padding: 14px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(66, 215, 184, 0.2); }
+.squad-join-full-btn:active:not(:disabled) { transform: scale(0.98); }
+.squad-join-full-btn:disabled { background: rgba(66, 215, 184, 0.4); color: rgba(0,0,0,0.5); cursor: not-allowed; box-shadow: none; }
 /* --- SMART CONTEXT MENU --- */
 .squad-ctx-menu { 
     position: fixed; 
