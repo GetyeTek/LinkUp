@@ -85,7 +85,7 @@
 
 .squad-reply-quote.is-deleted { opacity: 0.5; border-left-color: #ff5f5f; cursor: default; }
 
-.sq-quote-content { padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.sq-quote-content { padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; min-width: 0; }
 .sq-quote-user { font-size: 0.75rem; font-weight: 700; color: var(--accent-teal); }
 .mine .sq-quote-user { color: #000; }
 .sq-quote-text { font-size: 0.8rem; color: #a0a0a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.8; }
@@ -112,7 +112,7 @@
 }
 
 .squad-input-mode-header .mode-border { width: 3px; align-self: stretch; background: var(--accent-teal); border-radius: 3px; }
-.squad-input-mode-header .mode-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; cursor: pointer; }
+.squad-input-mode-header .mode-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; cursor: pointer; min-width: 0; }
 .squad-input-mode-header .mode-user { font-weight: 700; color: var(--accent-teal); font-size: 0.75rem; }
 .squad-input-mode-header .mode-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8rem; color: #888; }
 
