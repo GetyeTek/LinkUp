@@ -71,16 +71,14 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
     return (
         <div className="squad-chat-overlay">
             <div className="squad-bg-pattern"></div>
-            <header className="squad-header">
+            <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
+                <button className="icon-button" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
                 <div className="squad-header-info">
                     <h2>{chat.title}</h2>
                     <div className="squad-meta-tags">
                         <span className="squad-badge focus">{chat.metadata?.focus || 'General'}</span>
                         <span className="squad-badge count"><i className="fas fa-users"></i> {Object.keys(members).length}</span>
                     </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="icon-button" onClick={onClose}><i className="fas fa-times"></i></button>
                 </div>
             </header>
 
