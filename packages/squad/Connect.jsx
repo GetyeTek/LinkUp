@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './Connect.css';
 import UserChat from './UserChat.jsx';
+import GroupChat from './GroupChat.jsx';
+import GroupCreator from './components/GroupCreator.jsx';
 import Notes from './Notes.jsx';
 
 // Inline Component: Discovery Screen
@@ -138,6 +140,7 @@ const Connect = () => {
     const [activeView, setActiveView] = useState('messages');
     const [activeChat, setActiveChat] = useState(null);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
+    const [isGroupCreatorOpen, setIsGroupCreatorOpen] = useState(false);
     const [conversations, setConversations] = useState([]);
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const [showDiscovery, setShowDiscovery] = useState(false);
@@ -256,6 +259,10 @@ const Connect = () => {
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-paper-plane"></i></div>
                                 <span className="text-label">Messages</span>
                             </div>
+                            <div className={`option ${activeView === 'squads' ? 'active' : ''}`} onClick={() => { setActiveView('squads'); setIsHeaderCollapsed(false); }}>
+                                <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-layer-group"></i></div>
+                                <span className="text-label">Study Groups</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -332,6 +339,42 @@ const Connect = () => {
 
                     </div>
                 </div>
+                {/* --- SQUADS: STUDY GROUPS TAB --- */}
+                <div id="squads-view" className={`hub-view ${activeView === 'squads' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%', padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>Active Squads</h3>
+                        <button style={{ background: 'var(--accent-teal)', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen(true)}>
+                            <i className="fas fa-plus"></i> New Group
+                        </button>
+                    </div>
+                    <div className="messages-list" style={{ padding: 0 }}>
+                        {conversations.filter(c => c.type === 'group').length === 0 ? (
+                            <div style={{ textAlign: 'center', color: '#666', padding: '3rem 1rem' }}>
+                                <i className="fas fa-layer-group" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}></i>
+                                <p>You haven't joined any study groups yet.</p>
+                            </div>
+                        ) : (
+                            conversations.filter(c => c.type === 'group').map(chat => (
+                                <div className="messages-list-item" key={chat.conversation_id} onClick={() => setActiveChat(chat)}>
+                                    <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)' }}>
+                                        <i className="fas fa-users"></i>
+                                    </div>
+                                    <div className="message-info">
+                                        <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            {chat.title} 
+                                            {chat.metadata?.focus && <span style={{ fontSize: '0.65rem', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', padding: '2px 6px', borderRadius: '4px' }}>{chat.metadata.focus}</span>}
+                                        </div>
+                                        <div className="last-message">{chat.last_message_text || 'Squad established'}</div>
+                                    </div>
+                                    <div className="message-meta">
+                                        <span>{formatTime(chat.last_message_at)}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
                 <div id="messages-view" className={`hub-view ${activeView === 'messages' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
                     <div className="messages-list">
                         
@@ -368,7 +411,7 @@ const Connect = () => {
                             </div>
                         </div>
 
-                        {conversations.filter(c => c.type !== 'notes').map(chat => {
+                        {conversations.filter(c => c.type === 'dm').map(chat => {
                                 const title = chat.type === 'dm' ? chat.other_user_name : chat.title;
                                 const avatar = chat.type === 'dm' ? chat.other_user_avatar : chat.avatar_url;
                                 return (
@@ -407,8 +450,10 @@ const Connect = () => {
                 />
             )}
 
-            {activeChat && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} />}
+            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} />}
+            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} />}
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
+            {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); }} />}
         </div>
     );
 };
