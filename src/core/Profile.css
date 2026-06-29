@@ -1,174 +1,154 @@
-/* --- LINKUP IDENTITY MANAGER (HOST APP) --- */
-
+/* --- FULL SCREEN ACCOUNT SETTINGS --- */
 .profile-edit-overlay { 
     position: fixed; 
     inset: 0; 
-    background: rgba(5, 5, 5, 0.85); 
-    backdrop-filter: blur(12px); 
-    -webkit-backdrop-filter: blur(12px);
-    z-index: 6000; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    padding: 1rem; 
-    animation: pe-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-}
-
-@keyframes pe-fade-in { from { opacity: 0; } to { opacity: 1; } }
-
-.profile-edit-card { 
-    background: #121212; 
-    border: 1px solid rgba(255, 255, 255, 0.08); 
-    border-radius: 28px; 
-    width: 100%; 
-    max-width: 480px; 
-    max-height: 85vh; 
+    background-color: var(--bg-dark); 
+    z-index: 5000; 
     display: flex; 
     flex-direction: column; 
-    overflow: hidden; 
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6); 
-    animation: pe-slide-up 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: slideInPage 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+    font-family: 'Poppins', sans-serif;
 }
 
-@keyframes pe-slide-up { from { transform: translateY(30px) scale(0.95); } to { transform: translateY(0) scale(1); } }
+@keyframes slideInPage { 
+    from { transform: translateX(100%); } 
+    to { transform: translateX(0); } 
+}
+
+.profile-edit-card { 
+    width: 100%; 
+    height: 100%; 
+    display: flex; 
+    flex-direction: column; 
+    background: transparent;
+}
 
 .pe-header { 
-    padding: 1.5rem 2rem; 
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
+    padding: 1.25rem 1.5rem; 
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(12, 12, 12, 0.85); 
+    backdrop-filter: blur(20px); 
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    position: sticky; 
+    top: 0; 
+    z-index: 10; 
 }
 
 .pe-header h2 { 
     font-size: 1.3rem; 
-    font-weight: 700;
+    font-weight: 600; 
     margin: 0; 
-    background: linear-gradient(to right, #fff, #888);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #fff;
+    letter-spacing: -0.3px;
 }
 
 .pe-body { 
+    flex: 1; 
     overflow-y: auto; 
-    padding: 2rem; 
+    padding: 2rem 1.5rem; 
     display: flex; 
     flex-direction: column; 
     gap: 2.5rem; 
+    max-width: 800px; 
+    margin: 0 auto; 
+    width: 100%; 
 }
-
 .pe-body::-webkit-scrollbar { display: none; }
 
 .pe-zone-title { 
-    font-size: 0.75rem; 
+    font-size: 0.85rem; 
     text-transform: uppercase; 
-    letter-spacing: 2px; 
+    letter-spacing: 1.5px; 
     color: var(--accent-teal); 
-    font-weight: 800; 
+    font-weight: 700; 
     margin-bottom: 1.5rem; 
     display: flex; 
     align-items: center; 
     gap: 10px; 
-}
-
-/* Zone 2 Specific: Academic Registry */
-.pe-registry-zone {
-    background: rgba(255, 171, 64, 0.03);
-    border: 1px solid rgba(255, 171, 64, 0.1);
-    padding: 1.5rem;
-    border-radius: 20px;
-    position: relative;
-    overflow: hidden;
-}
-
-.pe-registry-zone::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(rgba(255, 171, 64, 0.1) 1px, transparent 1px);
-    background-size: 15px 15px;
-    opacity: 0.3;
-    pointer-events: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
+    padding-bottom: 0.75rem; 
 }
 
 .pe-input-group { 
     display: flex; 
     flex-direction: column; 
     gap: 8px; 
-    margin-bottom: 1.2rem; 
+    margin-bottom: 1.5rem; 
 }
 
 .pe-input-group label { 
-    font-size: 0.8rem; 
-    color: #777; 
-    font-weight: 600;
-    padding-left: 4px;
+    font-size: 0.85rem; 
+    color: #aaa; 
+    font-weight: 500; 
 }
 
 .pe-input { 
-    background: rgba(255, 255, 255, 0.03); 
-    border: 1px solid rgba(255, 255, 255, 0.1); 
-    padding: 14px 16px; 
-    border-radius: 14px; 
+    background: rgba(255,255,255,0.03); 
+    border: 1px solid rgba(255,255,255,0.08); 
+    padding: 16px; 
+    border-radius: 16px; 
     color: #fff; 
     font-family: 'Poppins', sans-serif; 
-    font-size: 0.95rem;
+    font-size: 1rem; 
     outline: none; 
-    transition: all 0.2s ease; 
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
 }
 
 .pe-input:focus { 
     border-color: var(--accent-teal); 
-    background: rgba(66, 215, 184, 0.05);
-    box-shadow: 0 0 0 4px rgba(66, 215, 184, 0.1);
+    background: rgba(0,0,0,0.5); 
+    box-shadow: 0 0 0 4px rgba(66, 215, 184, 0.1); 
 }
 
 .pe-input:disabled { 
-    opacity: 0.4; 
+    background: rgba(255,255,255,0.01); 
+    color: #666; 
     cursor: not-allowed; 
-    background: rgba(0, 0, 0, 0.2);
+}
+
+.pe-hint { 
+    font-size: 0.75rem; 
+    color: #666; 
+    margin-top: 4px; 
 }
 
 .pe-footer { 
-    padding: 1.5rem 2rem; 
-    border-top: 1px solid rgba(255, 255, 255, 0.05); 
+    padding: 1.25rem 1.5rem calc(1.25rem + env(safe-area-inset-bottom)); 
+    background: rgba(12, 12, 12, 0.95); 
+    backdrop-filter: blur(20px); 
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.05); 
     display: flex; 
     justify-content: flex-end; 
     gap: 1rem; 
-    background: rgba(0, 0, 0, 0.2);
+    position: sticky; 
+    bottom: 0; 
+    z-index: 10; 
 }
 
 .pe-btn { 
-    padding: 12px 24px; 
+    padding: 14px 24px; 
     border-radius: 14px; 
-    font-weight: 700; 
-    font-size: 0.9rem;
+    font-weight: 600; 
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
     cursor: pointer; 
     border: none; 
-    transition: all 0.2s;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .pe-btn:active { transform: scale(0.96); }
 
-.pe-btn.cancel { background: transparent; color: #666; }
-.pe-btn.cancel:hover { color: #fff; }
+.pe-btn.cancel { 
+    background: rgba(255,255,255,0.05); 
+    color: #e0e0e0; 
+}
 
 .pe-btn.save { 
     background: var(--accent-teal); 
-    color: #050505; 
+    color: #000; 
     box-shadow: 0 8px 20px rgba(66, 215, 184, 0.25); 
-}
-
-.pe-btn.save:hover {
-    box-shadow: 0 12px 25px rgba(66, 215, 184, 0.4);
-    transform: translateY(-2px);
-}
-
-.pe-hint { 
-    font-size: 0.7rem; 
-    color: #555; 
-    margin-top: 4px; 
-    padding-left: 4px;
-    line-height: 1.4;
 }
