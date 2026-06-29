@@ -28,7 +28,7 @@ const TelegramCard = ({ post }) => {
             {post.image_url && <img src={post.image_url} alt="News Media" className="tc-image" />}
             <div className="tc-content">
                 <div className="tc-header">
-                    <i className="fas fa-bullhorn"></i> {post.channel === 'tikvahuniversity' ? 'Tikvah University' : post.channel}
+                    <i className="fa-solid fa-satellite-dish"></i> GibiNews
                 </div>
                 <div className={`tc-text-wrapper ${expanded ? 'expanded' : (isLong ? 'collapsed' : '')}`}>
                     <div className="tc-text">{post.full_text}</div>
@@ -40,10 +40,16 @@ const TelegramCard = ({ post }) => {
                     </button>
                 )}
                 <div className="tc-footer">
-                    <a href={post.post_url} target="_blank" rel="noreferrer" className="tc-link">
-                        <i className="fab fa-telegram"></i> View Official Post
-                    </a>
-                    <span className="tc-time">{new Date(post.telegram_timestamp).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
+                    <div className="tc-reference">
+                        <i className="fa-solid fa-quote-left" style={{fontSize: '0.6rem'}}></i>
+                        Ref: {post.channel === 'tikvahuniversity' ? 'Tikvah University' : post.channel}
+                    </div>
+                    <div className="tc-footer-bottom">
+                        <a href={post.post_url} target="_blank" rel="noreferrer" className="tc-link">
+                            <i className="fab fa-telegram"></i> Full Post
+                        </a>
+                        <span className="tc-time">{new Date(post.telegram_timestamp).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
                 </div>
             </div>
         </div>
