@@ -19,8 +19,9 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     const typingTimeoutRef = useRef(null);
     const roomChannelRef = useRef(null);
 
-    const chatTitle = chat.type === 'dm' ? chat.other_user_name : chat.title;
-    const chatAvatar = chat.type === 'dm' ? chat.other_user_avatar : chat.avatar_url;
+    const isOtherUserDeleted = chat.type === 'dm' && !chat.other_user_id;
+    const chatTitle = isOtherUserDeleted ? 'Deleted Account' : (chat.type === 'dm' ? chat.other_user_name : chat.title);
+    const chatAvatar = isOtherUserDeleted ? null : (chat.type === 'dm' ? chat.other_user_avatar : chat.avatar_url);
 
     const formatLastSeen = (dateStr) => {
         if (!dateStr) return 'Offline';
@@ -392,7 +393,9 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                                     <div className="reply-quote" onClick={(e) => { e.stopPropagation(); scrollToMessage(m.reply_to_id); }}>
                                         <div className="reply-quote-bar"></div>
                                         <div className="reply-quote-content">
-                                            <div className="reply-quote-user">{repliedMsg.sender_id === currentUser.id ? 'You' : chatTitle}</div>
+                                            <div className="reply-quote-user">
+                                                {repliedMsg.sender_id === currentUser.id ? 'You' : (!repliedMsg.sender_id ? 'Deleted Account' : chatTitle)}
+                                            </div>
                                             <div className="reply-quote-text">{repliedMsg.text}</div>
                                         </div>
                                     </div>
