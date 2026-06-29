@@ -28,6 +28,7 @@ const Profile = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [croppedAvatar, setCroppedAvatar] = useState(null);
     const [usernameStatus, setUsernameStatus] = useState('idle');
+    const [expandedField, setExpandedField] = useState(null); // Tracks which chip-dropdown is open
     const fileInputRef = useRef(null);
 
     // Host-managed Identity State
@@ -35,6 +36,41 @@ const Profile = () => {
         sureName: '', fatherName: '', username: '', email: '', phone: '', university_id: '', 
         program: '', department: '', freshman_stream: '', target_department: '', year: ''
     });
+
+    // Reusable Custom Chip Dropdown component
+    const ChipDropdown = ({ label, value, options, fieldKey, singleCol }) => {
+        const isExpanded = expandedField === fieldKey;
+        
+        return (
+            <div className="input-group-sm" style={{ marginTop: '1rem' }}>
+                <label>{label}</label>
+                <div 
+                    className={`pe-dropdown-summary ${isExpanded ? 'expanded' : ''}`} 
+                    onClick={() => setExpandedField(isExpanded ? null : fieldKey)}
+                >
+                    <span className={value ? 'has-value' : 'is-empty'}>{value || `Select ${label.toLowerCase()}...`}</span>
+                    <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`}></i>
+                </div>
+                
+                {isExpanded && (
+                    <div className={`wizard-options-grid ${singleCol ? 'single-col' : ''}`} style={{ marginTop: '0.75rem' }}>
+                        {options.map(o => (
+                            <div 
+                                key={o} 
+                                className={`wizard-option-card ${value === o ? 'active' : ''}`} 
+                                onClick={() => {
+                                    setEditForm(prev => ({ ...prev, [fieldKey]: o }));
+                                    setExpandedField(null); // Auto-collapse on selection
+                                }}
+                            >
+                                {o}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     useEffect(() => {
         supabase.from('universities').select('id, name').order('name')
@@ -123,6 +159,9 @@ const Profile = () => {
 
         const finalFullName = editForm.fatherName.trim() ? `${editForm.sureName.trim()} ${editForm.fatherName.trim()}` : editForm.sureName.trim();
 
+        // Clean up redundant fields if department changes
+        const isFreshman = editForm.department === 'Freshman';
+        
         const profileData = {
             full_name: finalFullName,
             username: editForm.username.toLowerCase().trim(),
@@ -131,9 +170,9 @@ const Profile = () => {
             university_id: editForm.university_id || null,
             program: editForm.program || null,
             department: editForm.department || null,
-            freshman_stream: editForm.freshman_stream || null,
-            target_department: editForm.target_department || null,
-            year: editForm.year || null
+            freshman_stream: isFreshman ? (editForm.freshman_stream || null) : null,
+            target_department: isFreshman ? (editForm.target_department || null) : null,
+            year: !isFreshman ? (editForm.year || null) : null
         };
 
         const { error } = await supabase.from('profiles').update(profileData).eq('id', userProfile.id);
@@ -463,52 +502,44 @@ const Profile = () => {
                                     </select>
                                 </div>
 
-                                <div className="input-group-sm" style={{ marginTop: '1rem' }}>
-                                    <label>Program Type</label>
-                                    <div className="wizard-options-grid single-col">
-                                        {PROGRAMS.map(o => (
-                                            <div key={o} className={`wizard-option-card ${editForm.program === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, program: o})}>{o}</div>
-                                        ))}
-                                    </div>
-                                </div>
+                                <ChipDropdown 
+                                    label="Program Type" 
+                                    value={editForm.program} 
+                                    options={PROGRAMS} 
+                                    fieldKey="program" 
+                                    singleCol={true} 
+                                />
 
-                                <div className="input-group-sm" style={{ marginTop: '1rem' }}>
-                                    <label>Department</label>
-                                    <div className="wizard-options-grid">
-                                        {DEPARTMENTS.map(o => (
-                                            <div key={o} className={`wizard-option-card ${editForm.department === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, department: o})}>{o}</div>
-                                        ))}
-                                    </div>
-                                </div>
+                                <ChipDropdown 
+                                    label="Department" 
+                                    value={editForm.department} 
+                                    options={DEPARTMENTS} 
+                                    fieldKey="department" 
+                                />
 
                                 {editForm.department === 'Freshman' ? (
                                     <>
-                                        <div className="input-group-sm" style={{ marginTop: '1rem' }}>
-                                            <label>Freshman Stream</label>
-                                            <div className="wizard-options-grid single-col">
-                                                {STREAMS.map(o => (
-                                                    <div key={o} className={`wizard-option-card ${editForm.freshman_stream === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, freshman_stream: o})}>{o}</div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="input-group-sm" style={{ marginTop: '1rem' }}>
-                                            <label>Target Department</label>
-                                            <div className="wizard-options-grid">
-                                                {DEPARTMENTS.filter(d => d !== 'Freshman').map(o => (
-                                                    <div key={o} className={`wizard-option-card ${editForm.target_department === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, target_department: o})}>{o}</div>
-                                                ))}
-                                            </div>
-                                        </div>
+                                        <ChipDropdown 
+                                            label="Freshman Stream" 
+                                            value={editForm.freshman_stream} 
+                                            options={STREAMS} 
+                                            fieldKey="freshman_stream" 
+                                            singleCol={true} 
+                                        />
+                                        <ChipDropdown 
+                                            label="Target Department" 
+                                            value={editForm.target_department} 
+                                            options={DEPARTMENTS.filter(d => d !== 'Freshman')} 
+                                            fieldKey="target_department" 
+                                        />
                                     </>
                                 ) : (
-                                    <div className="input-group-sm" style={{ marginTop: '1rem' }}>
-                                        <label>Year of Study</label>
-                                        <div className="wizard-options-grid">
-                                            {YEARS.map(o => (
-                                                <div key={o} className={`wizard-option-card ${editForm.year === o ? 'active' : ''}`} onClick={() => setEditForm({...editForm, year: o})}>{o}</div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                    <ChipDropdown 
+                                        label="Year of Study" 
+                                        value={editForm.year} 
+                                        options={YEARS} 
+                                        fieldKey="year" 
+                                    />
                                 )}
                             </div>
                         </div>
