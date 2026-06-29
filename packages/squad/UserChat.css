@@ -100,6 +100,8 @@
 .prism-bubble {
     padding: 0.9rem 1.2rem; font-size: 0.92rem; line-height: 1.5;
     display: flex; flex-direction: column; gap: 8px;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .bubble-text-content {
@@ -240,6 +242,8 @@
     overflow: hidden;
     cursor: pointer;
     border-left: 3px solid var(--accent-teal);
+    max-width: 100%;
+    width: 100%;
 }
 
 .sent .reply-quote { background: rgba(255, 255, 255, 0.1); border-left-color: #0c0c0c; }
