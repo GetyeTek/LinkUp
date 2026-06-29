@@ -36,13 +36,11 @@ const ActivityHub = ({ onClose }) => {
     return (
         <div className="activity-overlay" onClick={onClose}>
             <div className="pulse-container" onClick={e => e.stopPropagation()}>
-                <header className="pulse-header">
-                    <h1>Activity</h1>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button className="icon-button" onClick={onClose} style={{ color: 'white' }}>
-                            <i className="fas fa-times"></i>
-                        </button>
-                    </div>
+                <header className="pulse-header" style={{ justifyContent: 'flex-start', gap: '1.5rem', alignItems: 'center' }}>
+                    <button className="icon-button" onClick={onClose} style={{ color: 'white' }}>
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
+                    <h1 style={{ margin: 0, paddingBottom: '2px' }}>Activity</h1>
                 </header>
 
                 <main className="pulse-scroll">
