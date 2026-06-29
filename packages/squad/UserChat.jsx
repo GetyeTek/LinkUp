@@ -327,7 +327,10 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         <div className="user-chat-overlay">
             <div className="ambient-prism-light"></div>
 
-            <header className="prism-header">
+            <header className="prism-header" style={{ justifyContent: 'flex-start', gap: '1.5rem' }}>
+                <button className="icon-button" style={{ color: 'white', opacity: 0.6 }} onClick={onClose}>
+                    <i className="fas fa-chevron-left"></i>
+                </button>
                 <div className="contact-profile">
                     <div className="avatar-ring">
                         <img src={chatAvatar || 'https://via.placeholder.com/150'} alt="Avatar" />
@@ -343,11 +346,6 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                             )}
                         </p>
                     </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="icon-button" style={{ color: 'white', opacity: 0.6 }} onClick={onClose}>
-                        <i className="fas fa-times"></i>
-                    </button>
                 </div>
             </header>
 
