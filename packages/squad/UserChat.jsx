@@ -3,6 +3,7 @@ import { supabase } from '@linkup-platform/sdk-core';
 import './UserChat.css';
 
 const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
+    const [activeConvId, setActiveConvId] = useState(chat.conversation_id);
     const [messages, setMessages] = useState([]);
     const [otherReadAt, setOtherReadAt] = useState(null);
     const [isOtherTyping, setIsOtherTyping] = useState(false);
@@ -36,24 +37,22 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     };
 
     useEffect(() => {
+        if (!activeConvId) return;
+
         fetchMessages();
         fetchOtherReadReceipt();
         markAsRead();
 
-        // 1. Unified Room Channel for Messages (CRUD) AND Presence
-        const channel = supabase.channel(`room_${chat.conversation_id}`, {
+        const channel = supabase.channel(`room_${activeConvId}`, {
             config: { presence: { key: currentUser.id } }
         });
 
         roomChannelRef.current = channel;
 
         channel
-            // Listen for ALL message changes (Insert, Update, Delete)
             .on('postgres_changes', { 
-                event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${chat.conversation_id}`
+                event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConvId}`
             }, (payload) => {
-                console.log(`⚡ [Realtime] Received ${payload.eventType} event:`, payload);
-                
                 if (payload.eventType === 'INSERT') {
                     setMessages(prev => {
                         if (prev.find(m => m.id === payload.new.id)) return prev;
@@ -66,7 +65,6 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                     setMessages(prev => prev.filter(m => m.id !== payload.old.id));
                 }
             })
-            // Presence: Handle "Typing..." and "Online"
             .on('presence', { event: 'sync' }, () => {
                 const state = channel.presenceState();
                 const otherUserPresence = state[chat.other_user_id];
@@ -78,10 +76,9 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                 }
             });
 
-        // 2. Listen for Read Receipts (Member Table Updates)
-        const memberChannel = supabase.channel(`members_${chat.conversation_id}`)
+        const memberChannel = supabase.channel(`members_${activeConvId}`)
             .on('postgres_changes', { 
-                event: 'UPDATE', schema: 'public', table: 'conversation_members', filter: `conversation_id=eq.${chat.conversation_id}`
+                event: 'UPDATE', schema: 'public', table: 'conversation_members', filter: `conversation_id=eq.${activeConvId}`
             }, (payload) => {
                 if (payload.new.user_id !== currentUser.id) {
                     setOtherReadAt(payload.new.last_read_at);
@@ -93,34 +90,37 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             supabase.removeChannel(channel);
             supabase.removeChannel(memberChannel);
         };
-    }, [chat.conversation_id]);
+    }, [activeConvId]);
 
     useEffect(() => {
         if (flowRef.current) flowRef.current.scrollTop = flowRef.current.scrollHeight;
     }, [messages]);
 
     const fetchMessages = async () => {
+        if (!activeConvId) return;
         const { data } = await supabase
             .from('messages')
             .select('*')
-            .eq('conversation_id', chat.conversation_id)
+            .eq('conversation_id', activeConvId)
             .order('created_at', { ascending: true });
         if (data) setMessages(data.map(m => ({ ...m, status: 'sent' })));
     };
 
     const fetchOtherReadReceipt = async () => {
+        if (!activeConvId) return;
         const { data } = await supabase.from('conversation_members')
             .select('last_read_at')
-            .eq('conversation_id', chat.conversation_id)
+            .eq('conversation_id', activeConvId)
             .neq('user_id', currentUser.id)
             .single();
         if (data) setOtherReadAt(data.last_read_at);
     };
 
     const markAsRead = async () => {
+        if (!activeConvId) return;
         await supabase.from('conversation_members')
             .update({ last_read_at: new Date().toISOString() })
-            .eq('conversation_id', chat.conversation_id)
+            .eq('conversation_id', activeConvId)
             .eq('user_id', currentUser.id);
     };
 
@@ -150,27 +150,39 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
 
         const msgText = input;
         const currentAttachment = pendingAttachment;
+        let currentConvId = activeConvId;
         
         setInput('');
         setPendingAttachment(null);
 
+        // 1. LAZY INITIALIZATION: Create conversation if this is a Ghost Chat
+        if (!currentConvId) {
+            console.log("[Squad:Chat] Lazy initializing DM with:", chat.other_user_id);
+            const { data: newId, error: initError } = await supabase.rpc('create_direct_message', { 
+                target_user_id: chat.other_user_id 
+            });
+            
+            if (initError || !newId) {
+                console.error("Failed to initialize lazy chat:", initError);
+                return;
+            }
+            currentConvId = newId;
+            setActiveConvId(newId); // This triggers the Realtime useEffect
+        }
+
         if (editingMessage) {
-            console.group(`[Squad:Chat] Message UPDATE transaction: ${editingMessage.id}`);
             setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, text: msgText, is_edited: true } : m));
-            const response = await supabase.from('messages').update({ text: msgText, is_edited: true }).eq('id', editingMessage.id).select();
-            console.log("Edit Response:", response);
-            console.groupEnd();
+            await supabase.from('messages').update({ text: msgText, is_edited: true }).eq('id', editingMessage.id);
             setEditingMessage(null);
             return;
         }
         
         const currentReplyId = replyingTo?.id;
-        setReplyingTo(null); // Clear reply state immediately for UX
+        setReplyingTo(null);
         
-        // Optimistic UI temp message
         const tempId = `temp-${Date.now()}`;
         setMessages(prev => [...prev, {
-            id: tempId, conversation_id: chat.conversation_id,
+            id: tempId, conversation_id: currentConvId,
             sender_id: currentUser.id, text: msgText,
             reply_to_id: currentReplyId,
             attachments: currentAttachment ? [{ name: currentAttachment.file.name, type: currentAttachment.file.type, url: currentAttachment.previewUrl || '' }] : [],
@@ -179,43 +191,27 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
 
         let finalAttachments = [];
 
-        // Handle File Upload Phase
         if (currentAttachment) {
             setIsUploading(true);
             try {
                 const file = currentAttachment.file;
                 const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-                const filePath = `${chat.conversation_id}/${currentUser.id}/${Date.now()}_${safeName}`;
-                
+                const filePath = `${currentConvId}/${currentUser.id}/${Date.now()}_${safeName}`;
                 const arrayBuffer = await file.arrayBuffer();
-                const { error: uploadError } = await supabase.storage
-                    .from('chat_media')
-                    .upload(filePath, arrayBuffer, { contentType: file.type, upsert: true });
-
+                const { error: uploadError } = await supabase.storage.from('chat_media').upload(filePath, arrayBuffer, { contentType: file.type, upsert: true });
                 if (uploadError) throw uploadError;
-
                 const { data: { publicUrl } } = supabase.storage.from('chat_media').getPublicUrl(filePath);
-                
-                finalAttachments = [{
-                    name: file.name,
-                    url: publicUrl,
-                    path: filePath,
-                    type: file.type,
-                    size: file.size
-                }];
+                finalAttachments = [{ name: file.name, url: publicUrl, path: filePath, type: file.type, size: file.size }];
             } catch (err) {
-                console.error("[Squad:Media] Asset upload transaction failed:", err);
+                console.error("[Squad:Media] Asset upload failed:", err);
                 setIsUploading(false);
-                return; // Abort send if upload fails
+                return;
             }
             setIsUploading(false);
         }
 
-        console.group(`[Squad:Chat] Dispatching payload`);
-        console.log("Text:", msgText, "Attachments:", finalAttachments);
-
         const { data, error } = await supabase.from('messages').insert({
-            conversation_id: chat.conversation_id,
+            conversation_id: currentConvId,
             sender_id: currentUser.id,
             text: msgText,
             reply_to_id: currentReplyId,
@@ -225,7 +221,6 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         if (!error && data) {
             setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
         }
-        console.groupEnd();
     };
 
     const deleteMessage = async (msgId) => {
