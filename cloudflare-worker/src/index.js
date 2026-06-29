@@ -56,19 +56,28 @@ export default {
 
     // 2. Map request to the real Supabase backend
     const targetUrl = new URL(url.pathname + url.search, REAL_SUPABASE_URL);
-    console.log(`[Gateway] 🔀 Routing ${request.method} to: ${targetUrl.toString()}`);
 
     const modifiedHeaders = new Headers(request.headers);
 
     // 3. The Scrubbing Engine (Tenant Resolution)
     let keysSwapped = false;
-    const reqApiKey = modifiedHeaders.get('apikey');
     
-    // Swap apikey header if it matches ANY known tenant key
+    // A. Swap apikey header if it matches ANY known tenant key (Used by REST API)
+    const reqApiKey = modifiedHeaders.get('apikey');
     if (reqApiKey && VALID_TENANT_KEYS.includes(reqApiKey)) {
       modifiedHeaders.set('apikey', REAL_ANON_KEY);
       keysSwapped = true;
     }
+    
+    // B. Swap apikey query parameter (CRITICAL FOR WEBSOCKETS / REALTIME)
+    // WebSockets cannot set custom headers natively in browsers, so Supabase puts the key in the URL.
+    const queryApiKey = targetUrl.searchParams.get('apikey');
+    if (queryApiKey && VALID_TENANT_KEYS.includes(queryApiKey)) {
+      targetUrl.searchParams.set('apikey', REAL_ANON_KEY);
+      keysSwapped = true;
+    }
+
+    console.log(`[Gateway] 🔀 Routing ${request.method} to: ${targetUrl.toString()}`);
     
     // Check Authorization header
     const authHeader = modifiedHeaders.get('authorization');
