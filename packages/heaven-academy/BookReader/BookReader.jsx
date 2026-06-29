@@ -893,7 +893,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
             <div id="ui-layer" className={isUiVisible ? '' : 'hidden'}>
                 <div className="ui-bar reader-header">
                     <div className="header-left">
-                        <div className="icon-btn" onClick={onClose}><i className="fa-solid fa-arrow-left"></i></div>
+                        <div className="icon-btn" onClick={onClose}><i className="fa-solid fa-chevron-left"></i></div>
                         <div className="header-title">{book?.title || 'Loading Document'}</div>
                     </div>
                 </div>
