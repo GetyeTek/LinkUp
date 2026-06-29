@@ -119,10 +119,11 @@ const Auth = () => {
                 if (signUpError) throw signUpError;
                 
                 setNotice({
-                    title: 'Account Created',
-                    message: 'Registration successful. If we sent a verification link, please check your inbox to continue.',
+                    title: 'Verification Sent',
+                    message: 'We have dispatched a secure verification link to your email. Please verify your account in your inbox first, then return here to sign in and set up your academic profile.',
                     type: 'success',
-                    actionLabel: 'Continue'
+                    actionLabel: 'Go to Sign In',
+                    action: 'signin'
                 });
             } else {
                 // Standard Sign-In
@@ -154,7 +155,9 @@ const Auth = () => {
                         <h2>{notice.title}</h2>
                         <p>{notice.message}</p>
                         <button className="notice-btn" onClick={() => {
-                            if (notice.type === 'exists') setIsSignUp(false);
+                            if (notice.type === 'exists' || notice.action === 'signin') {
+                                setIsSignUp(false);
+                            }
                             setNotice(null);
                         }}>
                             {notice.actionLabel}
