@@ -10,7 +10,6 @@ import Notes from './Notes.jsx';
 const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [searchStatus, setSearchStatus] = useState('idle'); // idle, searching, found, not_found
     const [searchResults, setSearchResults] = useState([]);
@@ -46,19 +45,56 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
                 <button className="icon-button" onClick={onClose} style={{color: 'white'}}>
                     <i className="fas fa-chevron-left"></i>
                 </button>
-                <h2>Discover Peers</h2>
+                <h2>Find Connections</h2>
             </header>
 
-            <div className="discovery-body">
-                <div className="add-friend-trigger" onClick={() => { setIsSheetOpen(true); setSearchStatus('idle'); setSearchTerm(''); }}>
-                    <div className="icon-box"><i className="fas fa-user-plus"></i></div>
-                    <div>
-                        <div style={{fontSize: '1rem'}}>Add Connection</div>
-                        <div style={{fontSize: '0.75rem', color: '#888', fontWeight: '400'}}>Search by Phone, Email, or @handle</div>
-                    </div>
+            <div className="discovery-search-wrap">
+                <div className="discovery-search-input">
+                    <i className="fas fa-search" style={{color: '#888'}}></i>
+                    <input 
+                        type="text" 
+                        placeholder="Search Phone, Email, or @handle..."
+                        value={searchTerm}
+                        onChange={e => {
+                            setSearchTerm(e.target.value);
+                            if(e.target.value === '') setSearchStatus('idle');
+                        }}
+                        onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                    />
+                    {searchStatus === 'searching' ? (
+                        <i className="fas fa-circle-notch fa-spin" style={{color: 'var(--accent-teal)'}}></i>
+                    ) : (
+                        <button style={{background:'transparent', border:'none', color:'var(--accent-teal)', fontWeight:600, padding:'8px 0', cursor:'pointer'}} onClick={handleSearch} disabled={!searchTerm.trim()}>
+                            Search
+                        </button>
+                    )}
                 </div>
+            </div>
 
-                {suggestions.length > 0 && (
+            <div className="discovery-body">
+                {searchStatus === 'not_found' && (
+                    <div className="not-found-state">
+                        <i className="fas fa-user-slash"></i> No active users matched that identity.
+                    </div>
+                )}
+
+                {searchStatus === 'found' && searchResults.length > 0 && (
+                    <div className="suggestion-section">
+                        <h3 className="section-title" style={{marginBottom: '0.5rem'}}>Search Results</h3>
+                        {searchResults.map(res => (
+                            <div className="peer-card" key={res.id} onClick={() => onStartChat(res)}>
+                                <img src={res.avatar_url || 'https://via.placeholder.com/150'} className="peer-avatar" alt="Avatar" />
+                                <div className="peer-info">
+                                    <div className="peer-name" style={{color: '#fff'}}>{res.full_name}</div>
+                                    <div className="peer-meta">@{res.username}</div>
+                                </div>
+                                <i className="fas fa-comment-dots" style={{color: 'var(--accent-teal)'}}></i>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {searchStatus === 'idle' && suggestions.length > 0 && (
                     <div className="suggestion-section">
                         <h3 className="section-title" style={{marginBottom: '0.5rem'}}>Suggested Classmates</h3>
                         {suggestions.map(user => (
@@ -79,57 +115,12 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
                     </div>
                 )}
                 
-                {!loading && suggestions.length === 0 && (
+                {!loading && suggestions.length === 0 && searchStatus === 'idle' && (
                     <div style={{textAlign: 'center', color: '#666', marginTop: '2rem', fontStyle: 'italic'}}>
                         No new suggestions right now.
                     </div>
                 )}
             </div>
-
-            {isSheetOpen && (
-                <>
-                    <div className="bottom-sheet-backdrop" onClick={() => setIsSheetOpen(false)}></div>
-                    <div className="bottom-sheet">
-                        <div className="sheet-handle"></div>
-                        <h3 className="sheet-title">Find Someone</h3>
-                        <p className="sheet-subtitle">Enter their exact phone number, email, or partial @username.</p>
-                        
-                        <div className="sheet-input-group">
-                            <i className="fas fa-search"></i>
-                            <input 
-                                type="text" 
-                                className="sheet-input" 
-                                placeholder="e.g. 0912..., @scholar, or email"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                                autoFocus
-                            />
-                        </div>
-
-                        <button className="sheet-btn" onClick={handleSearch} disabled={searchStatus === 'searching' || !searchTerm.trim()}>
-                            {searchStatus === 'searching' ? <i className="fas fa-circle-notch fa-spin"></i> : 'Search Network'}
-                        </button>
-
-                        {searchStatus === 'not_found' && (
-                            <div className="not-found-state">
-                                <i className="fas fa-user-slash"></i> No active users matched that identity.
-                            </div>
-                        )}
-
-                        {searchStatus === 'found' && searchResults.map(res => (
-                            <div className="search-result-card" key={res.id} onClick={() => { setIsSheetOpen(false); onStartChat(res); }}>
-                                <img src={res.avatar_url} className="peer-avatar" style={{width: '40px', height: '40px'}} alt="Avatar" />
-                                <div className="peer-info">
-                                    <div className="peer-name" style={{color: '#fff'}}>{res.full_name}</div>
-                                    <div className="peer-meta">@{res.username}</div>
-                                </div>
-                                <i className="fas fa-comment-dots" style={{color: 'var(--accent-teal)'}}></i>
-                            </div>
-                        ))}
-                    </div>
-                </>
-            )}
         </div>
     );
 };
@@ -142,6 +133,7 @@ const Connect = () => {
     const [isNotesOpen, setIsNotesOpen] = useState(false);
     const [isGroupCreatorOpen, setIsGroupCreatorOpen] = useState(false);
     const [conversations, setConversations] = useState([]);
+    const [suggestedSquads, setSuggestedSquads] = useState([]);
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const [showDiscovery, setShowDiscovery] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
@@ -150,6 +142,7 @@ const Connect = () => {
         if (!currentUser) return;
         
         fetchConversations();
+        fetchSuggestedSquads();
         
         // 1. Subscribe to Realtime Messages and Read Receipt updates
         const msgChannel = supabase.channel('chat_list_updates')
@@ -191,6 +184,29 @@ const Connect = () => {
         const { data, error } = await supabase.rpc('get_user_conversations', { req_user_id: currentUser.id });
         if (data) setConversations(data);
         if (error) console.error("Error fetching chats:", error);
+    };
+
+    const fetchSuggestedSquads = async () => {
+        const { data, error } = await supabase.rpc('get_suggested_squads', { req_user_id: currentUser.id });
+        if (data) setSuggestedSquads(data);
+        if (error) console.error("Error fetching suggestions:", error);
+    };
+
+    const handleJoinSquad = async (squadId) => {
+        await supabase.rpc('join_study_group', { req_conversation_id: squadId, req_user_id: currentUser.id });
+        
+        await fetchConversations();
+        await fetchSuggestedSquads();
+        
+        const joinedSquad = suggestedSquads.find(s => s.conversation_id === squadId);
+        if (joinedSquad) {
+            setActiveChat({
+                conversation_id: squadId,
+                type: 'group',
+                title: joinedSquad.title,
+                metadata: joinedSquad.metadata
+            });
+        }
     };
 
     const startDirectMessage = (targetUser) => {
@@ -339,9 +355,8 @@ const Connect = () => {
                     </div>
                     <div className="messages-list" style={{ padding: 0 }}>
                         {conversations.filter(c => c.type === 'group').length === 0 ? (
-                            <div style={{ textAlign: 'center', color: '#666', padding: '3rem 1rem' }}>
-                                <i className="fas fa-layer-group" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}></i>
-                                <p>You haven't joined any study groups yet.</p>
+                            <div style={{ textAlign: 'center', color: '#666', padding: '2rem 1rem' }}>
+                                <p style={{fontStyle: 'italic', margin: 0}}>You haven't joined any groups yet.</p>
                             </div>
                         ) : (
                             conversations.filter(c => c.type === 'group').map(chat => (
@@ -361,6 +376,29 @@ const Connect = () => {
                                     </div>
                                 </div>
                             ))
+                        )}
+
+                        {suggestedSquads.length > 0 && (
+                            <>
+                                <div className="squads-delimiter"><span>Suggested For You</span></div>
+                                {suggestedSquads.map(chat => (
+                                    <div className="messages-list-item suggested" key={chat.conversation_id}>
+                                        <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)' }}>
+                                            <i className="fas fa-globe"></i>
+                                        </div>
+                                        <div className="message-info">
+                                            <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff' }}>
+                                                {chat.title} 
+                                                {chat.metadata?.focus && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 255, 255, 0.1)', color: '#ccc', padding: '2px 6px', borderRadius: '4px' }}>{chat.metadata.focus}</span>}
+                                            </div>
+                                            <div className="last-message" style={{color: '#888'}}>
+                                                <i className="fas fa-user" style={{marginRight: '4px'}}></i> {chat.member_count} Members
+                                            </div>
+                                        </div>
+                                        <button className="squad-join-btn" onClick={() => handleJoinSquad(chat.conversation_id)}>Join</button>
+                                    </div>
+                                ))}
+                            </>
                         )}
                     </div>
                 </div>
