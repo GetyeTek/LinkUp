@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './Profile.css';
 
