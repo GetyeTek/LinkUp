@@ -216,7 +216,9 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
                                     {repliedMsg ? (
                                         <div className="squad-reply-quote" onClick={(e) => { e.stopPropagation(); scrollToMessage(m.reply_to_id); }}>
                                             <div className="sq-quote-content">
-                                                <div className="sq-quote-user">{repliedMsg.sender_id === currentUser.id ? 'You' : (members[repliedMsg.sender_id]?.name || 'User')}</div>
+                                                <div className="sq-quote-user">
+    {!repliedMsg.sender_id ? 'Deleted Account' : (repliedMsg.sender_id === currentUser.id ? userProfile.full_name : (members[repliedMsg.sender_id]?.name || 'Unknown User'))}
+</div>
                                                 <div className="sq-quote-text">{repliedMsg.text}</div>
                                             </div>
                                         </div>
@@ -286,7 +288,9 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
                     <div className="squad-input-mode-header">
                         <div className="mode-border"></div>
                         <div className="mode-info" onClick={() => scrollToMessage(replyingTo.id)}>
-                            <span className="mode-user">Replying to {replyingTo.sender_id === currentUser.id ? 'yourself' : (members[replyingTo.sender_id]?.name || 'User')}</span>
+                            <span className="mode-user">
+    Replying to {!replyingTo.sender_id ? 'Deleted Account' : (replyingTo.sender_id === currentUser.id ? userProfile.full_name : (members[replyingTo.sender_id]?.name || 'Unknown User'))}
+</span>
                             <span className="mode-text">{replyingTo.text}</span>
                         </div>
                         <button className="icon-button" onClick={() => setReplyingTo(null)}>
