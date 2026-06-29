@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './GroupChat.css';
 
 const GroupChat = ({ chat, currentUser, onClose }) => {
+    const { user: userProfile } = usePlatform();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [members, setMembers] = useState({});
@@ -18,13 +19,20 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
         const fetchState = async () => {
             const { data: memData } = await supabase
                 .from('conversation_members')
-                .select('user_id, role, profiles(full_name, avatar_url)')
+                .select('user_id, role')
                 .eq('conversation_id', chat.conversation_id);
             
-            if (memData) {
+            if (memData && memData.length > 0) {
+                const userIds = memData.map(m => m.user_id);
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, avatar_url')
+                    .in('id', userIds);
+
                 const memMap = {};
                 memData.forEach(m => {
-                    memMap[m.user_id] = { role: m.role, name: m.profiles?.full_name, avatar: m.profiles?.avatar_url };
+                    const prof = profiles?.find(p => p.id === m.user_id);
+                    memMap[m.user_id] = { role: m.role, name: prof?.full_name, avatar: prof?.avatar_url };
                     if (m.user_id === currentUser.id) setMyRole(m.role);
                 });
                 setMembers(memMap);
@@ -217,7 +225,7 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
                                         <div className="squad-reply-quote" onClick={(e) => { e.stopPropagation(); scrollToMessage(m.reply_to_id); }}>
                                             <div className="sq-quote-content">
                                                 <div className="sq-quote-user">
-    {!repliedMsg.sender_id ? 'Deleted Account' : (repliedMsg.sender_id === currentUser.id ? userProfile.full_name : (members[repliedMsg.sender_id]?.name || 'Unknown User'))}
+    {!repliedMsg.sender_id ? 'Deleted Account' : (repliedMsg.sender_id === currentUser.id ? (userProfile?.full_name || 'You') : (members[repliedMsg.sender_id]?.name || 'Unknown User'))}
 </div>
                                                 <div className="sq-quote-text">{repliedMsg.text}</div>
                                             </div>
@@ -289,7 +297,7 @@ const GroupChat = ({ chat, currentUser, onClose }) => {
                         <div className="mode-border"></div>
                         <div className="mode-info" onClick={() => scrollToMessage(replyingTo.id)}>
                             <span className="mode-user">
-    Replying to {!replyingTo.sender_id ? 'Deleted Account' : (replyingTo.sender_id === currentUser.id ? userProfile.full_name : (members[replyingTo.sender_id]?.name || 'Unknown User'))}
+    Replying to {!replyingTo.sender_id ? 'Deleted Account' : (replyingTo.sender_id === currentUser.id ? (userProfile?.full_name || 'Yourself') : (members[replyingTo.sender_id]?.name || 'Unknown User'))}
 </span>
                             <span className="mode-text">{replyingTo.text}</span>
                         </div>
