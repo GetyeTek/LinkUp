@@ -146,6 +146,7 @@ const Connect = () => {
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const [showDiscovery, setShowDiscovery] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
+    const [joiningSquadId, setJoiningSquadId] = useState(null);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -201,21 +202,31 @@ const Connect = () => {
         if (error) console.error("Error fetching suggestions:", error);
     };
 
-    const handleJoinSquad = async (squadId) => {
+    const handleJoinSquad = async (squadId, e) => {
+        if (e) e.stopPropagation();
+        setJoiningSquadId(squadId);
+        
+        // Capture info before it disappears from suggestions array
+        const joinedSquadInfo = suggestedSquads.find(s => s.conversation_id === squadId) || {};
+        
         await supabase.rpc('join_study_group', { req_conversation_id: squadId, req_user_id: currentUser.id });
         
         await fetchConversations();
         await fetchSuggestedSquads();
         
-        const joinedSquad = suggestedSquads.find(s => s.conversation_id === squadId);
-        if (joinedSquad) {
-            setActiveChat({
+        setJoiningSquadId(null);
+        
+        setActiveChat(prev => {
+            if (prev && prev.conversation_id === squadId) {
+                return { ...prev, is_preview: false };
+            }
+            return {
                 conversation_id: squadId,
                 type: 'group',
-                title: joinedSquad.title,
-                metadata: joinedSquad.metadata
-            });
-        }
+                title: joinedSquadInfo.title || 'Squad',
+                metadata: joinedSquadInfo.metadata || {}
+            };
+        });
     };
 
     const startDirectMessage = (targetUser) => {
@@ -390,7 +401,19 @@ const Connect = () => {
                         <div className="squads-delimiter"><span>Suggested For You</span></div>
                         {suggestedSquads.length > 0 ? (
                             suggestedSquads.map(chat => (
-                                <div className="messages-list-item suggested" key={chat.conversation_id}>
+                                <div className="messages-list-item suggested" key={chat.conversation_id} onClick={() => {
+                                    if (chat.metadata?.privacy === 'private') {
+                                        alert("This group is private. You need an invite to join.");
+                                        return;
+                                    }
+                                    setActiveChat({
+                                        conversation_id: chat.conversation_id,
+                                        type: 'group',
+                                        title: chat.title,
+                                        metadata: chat.metadata,
+                                        is_preview: true
+                                    });
+                                }}>
                                     <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)' }}>
                                         <i className="fas fa-globe"></i>
                                     </div>
@@ -403,7 +426,9 @@ const Connect = () => {
                                             <i className="fas fa-user" style={{marginRight: '4px'}}></i> {chat.member_count} Members
                                         </div>
                                     </div>
-                                    <button className="squad-join-btn" onClick={() => handleJoinSquad(chat.conversation_id)}>Join</button>
+                                    <button className="squad-join-btn" style={{ minWidth: '70px', textAlign: 'center' }} onClick={(e) => handleJoinSquad(chat.conversation_id, e)} disabled={joiningSquadId === chat.conversation_id}>
+                                        {joiningSquadId === chat.conversation_id ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join'}
+                                    </button>
                                 </div>
                             ))
                         ) : (
@@ -507,7 +532,7 @@ const Connect = () => {
             )}
 
             {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} />}
-            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} />}
+            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} />}
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); }} />}
         </div>
