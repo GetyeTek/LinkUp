@@ -257,6 +257,7 @@
     flex-direction: column;
     gap: 2px;
     overflow: hidden;
+    min-width: 0;
 }
 
 .reply-quote-user {
@@ -298,7 +299,7 @@
 
 .input-mode-header span { font-size: 0.8rem; color: #888; flex: 1; }
 .input-mode-header .reply-preview-border { width: 3px; align-self: stretch; background: var(--accent-teal); border-radius: 3px; }
-.input-mode-header .reply-preview-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.input-mode-header .reply-preview-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-width: 0; }
 .reply-user { font-weight: 700; color: var(--accent-teal) !important; font-size: 0.75rem !important; }
 .edit-user { font-weight: 700; color: #ffab40 !important; font-size: 0.75rem !important; }
 .reply-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8rem !important; }
