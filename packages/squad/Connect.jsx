@@ -193,36 +193,26 @@ const Connect = () => {
         if (error) console.error("Error fetching chats:", error);
     };
 
-    const startDirectMessage = async (targetUser) => {
+    const startDirectMessage = (targetUser) => {
         // 1. Check if DM already exists locally
         const existing = conversations.find(c => c.type === 'dm' && c.other_user_id === targetUser.id);
-        if (existing) {
-            setShowDiscovery(false);
-            setActiveChat(existing);
-            return;
-        }
-
-        // 2. Call the secure RPC to create the DM atomically
-        const { data: newConvId, error } = await supabase.rpc('create_direct_message', { 
-            target_user_id: targetUser.id 
-        });
-
-        if (error) {
-            console.error("Failed to create DM:", error);
-            return;
-        }
-
-        setShowDiscovery(false);
-        fetchConversations();
         
-        // Construct temporary object to open chat immediately
-        setActiveChat({
-            conversation_id: newConvId,
-            type: 'dm',
-            other_user_id: targetUser.id,
-            other_user_name: targetUser.full_name,
-            other_user_avatar: targetUser.avatar_url
-        });
+        setShowDiscovery(false);
+
+        if (existing) {
+            setActiveChat(existing);
+        } else {
+            // 2. Open as a "Ghost Chat" - No DB entry created yet.
+            // We pass the user details so the UI can render, but ID is null.
+            setActiveChat({
+                conversation_id: null, // Critical: Triggers lazy init on first message
+                type: 'dm',
+                other_user_id: targetUser.id,
+                other_user_name: targetUser.full_name || targetUser.username,
+                other_user_avatar: targetUser.avatar_url,
+                is_ghost: true
+            });
+        }
     };
 
     const handleScroll = (e) => {
