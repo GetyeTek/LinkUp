@@ -23,9 +23,11 @@ const TelegramCard = ({ post }) => {
     // Threshold check (250 chars)
     const isLong = post.full_text && post.full_text.length > 250;
 
+    const imgUrl = post.image_url || post.media_url || post.photo_url || post.image || post.thumbnail_url;
+    
     return (
         <div className="telegram-card" ref={cardRef}>
-            {post.image_url && <img src={post.image_url} alt="News Media" className="tc-image" />}
+            {imgUrl && <img src={imgUrl} alt="News Media" className="tc-image" />}
             <div className="tc-content">
                 <div className="tc-header">
                     <i className="fa-solid fa-satellite-dish"></i> GibiNews
