@@ -58,7 +58,6 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const cleanBase = window.location.href.split('?')[0].replace(/\/$/, '');
     const inviteLink = `${cleanBase}?sq=${squadHandle}`;
 
-    const handleCopyInvite = () => {
     const isPublic = !chatInfo.metadata?.privacy || chatInfo.metadata.privacy === 'public';
 
     const handleCopyInvite = () => {
