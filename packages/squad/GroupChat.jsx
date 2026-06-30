@@ -4,7 +4,7 @@ import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx
 import './GroupChat.css';
 
 const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband }) => {
-    const [activeTab, setActiveTab] = useState('directory');
+    const [activeTab, setActiveTab] = useState('members');
     const [mediaSubTab, setMediaSubTab] = useState('media'); // files, media, links
     
     const [selectedFile, setSelectedFile] = useState(null);
@@ -12,6 +12,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const fileInputRef = useRef(null);
     
     const [editTitle, setEditTitle] = useState(chatInfo.title || '');
+    const [editSlug, setEditSlug] = useState(chatInfo.metadata?.slug || chatInfo.title.toLowerCase().replace(/[^a-z0-9]/g, ''));
     const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -53,8 +54,11 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             return `${window.location.href.split('?')[0]}?squad=${conversationId}`;
         }
     };
-    const inviteLink = generateShortLink();
+    const squadHandle = chatInfo.metadata?.slug || chatInfo.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanBase = window.location.href.split('?')[0].replace(/\/$/, '');
+    const inviteLink = `${cleanBase}?sq=${squadHandle}`;
 
+    const handleCopyInvite = () => {
     const isPublic = !chatInfo.metadata?.privacy || chatInfo.metadata.privacy === 'public';
 
     const handleCopyInvite = () => {
@@ -100,6 +104,15 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         if (!editTitle.trim() || editTitle === chatInfo.title) return;
         await supabase.from('conversations').update({ title: editTitle }).eq('id', conversationId);
         onUpdateInfo({ ...chatInfo, title: editTitle });
+    };
+
+    const updateSquadSlug = async () => {
+        const cleanSlug = editSlug.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!cleanSlug || cleanSlug === chatInfo.metadata?.slug) return;
+        const newMeta = { ...chatInfo.metadata, slug: cleanSlug };
+        await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
+        onUpdateInfo({ ...chatInfo, metadata: newMeta });
+        setEditSlug(cleanSlug);
     };
 
     const handleAvatarUpdate = async (blob) => {
@@ -217,13 +230,13 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                 </div>
 
                 <div className="si-tabs">
-                    <div className={`si-tab ${activeTab === 'directory' ? 'active' : ''}`} onClick={() => setActiveTab('directory')}>Directory</div>
+                    <div className={`si-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>Members</div>
                     <div className={`si-tab ${activeTab === 'media' ? 'active' : ''}`} onClick={() => setActiveTab('media')}>Media</div>
                     {myRole === 'owner' && <div className={`si-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Control Panel</div>}
                 </div>
 
                 <div className="si-body">
-                    {activeTab === 'directory' && (
+                    {activeTab === 'members' && (
                         <div className="si-directory">
                             {Object.entries(members).map(([uid, m]) => (
                                 <div className="si-member-row" key={uid}>
@@ -328,7 +341,22 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                         onBlur={updateSquadName}
                                         onKeyPress={e => e.key === 'Enter' && updateSquadName()}
                                     />
-                                    {isSaving && <i className="fas fa-circle-notch fa-spin si-input-loader"></i>}
+                                </div>
+                            </div>
+
+                            <div className="si-settings-group">
+                                <label className="si-label">Squad Link Handle</label>
+                                <div className="si-input-wrapper">
+                                    <span style={{position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', color:'#888', fontSize:'0.85rem'}}>?sq=</span>
+                                    <input 
+                                        type="text" 
+                                        className="si-input" 
+                                        style={{paddingLeft: '50px'}}
+                                        value={editSlug} 
+                                        onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))} 
+                                        onBlur={updateSquadSlug}
+                                        onKeyPress={e => e.key === 'Enter' && updateSquadSlug()}
+                                    />
                                 </div>
                             </div>
 
@@ -725,6 +753,8 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
         return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const isMember = !!members[currentUser.id];
+
     return (
         <div className="squad-chat-overlay" onTouchStart={e => e.stopPropagation()}>
             <div className="squad-bg-pattern"></div>
@@ -782,7 +812,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                 ) : messages.length === 0 ? (
                     <div className="squad-empty-state">
                         <i className="fas fa-user-group"></i>
-                        <p>{chat.is_preview ? "No messages yet. Join to start the discussion!" : "No messages yet. Start the discussion!"}</p>
+                        <p>{chat.is_preview && !isMember ? "No messages yet. Join to start the discussion!" : "No messages yet. Start the discussion!"}</p>
                     </div>
                 ) : (
                     messages.map(m => {
@@ -899,7 +929,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             )}
 
             <footer className="squad-input-area" style={{ padding: '0 1.5rem calc(1rem + env(safe-area-inset-bottom))', background: 'linear-gradient(to top, #08080c 80%, transparent)' }}>
-                {chat.is_preview ? (
+                {chat.is_preview && !isMember ? (
                     <button className="squad-join-full-btn" onClick={() => onJoin(chat.conversation_id)} disabled={isJoining}>
                         {isJoining ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Squad'}
                     </button>
