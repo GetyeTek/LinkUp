@@ -43,7 +43,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     // Strict DB truth. No front-end guessing.
     const squadHandle = chatInfo.metadata?.slug;
     const cleanBase = window.location.href.split('?')[0].replace(/\/$/, '');
-    const inviteLink = squadHandle ? `${cleanBase}?sq=${squadHandle}` : 'Syncing secure link...';
+    const inviteLink = squadHandle ? `${cleanBase}?sq=${squadHandle}` : 'Fetching invitation link...';
 
     const isPublic = !chatInfo.metadata?.privacy || chatInfo.metadata.privacy === 'public';
 
@@ -101,7 +101,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         
         if (error) {
             alert("Whoops! That link handle is already taken by another squad. Try another one!");
-            setEditSlug(chatInfo.metadata?.slug || chatInfo.title.toLowerCase().replace(/[^a-z0-9]/g, ''));
+            setEditSlug(chatInfo.metadata?.slug || '');
             return;
         }
 
@@ -559,15 +559,28 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     useEffect(() => {
         const fetchState = async () => {
             // OPTIMIZATION: Fire the heavy queries in parallel instead of sequentially
-            const [msgResponse, memResponse] = await Promise.all([
+            const [msgResponse, memResponse, convResponse] = await Promise.all([
                 supabase.from('messages')
                     .select('*')
                     .eq('conversation_id', chat.conversation_id)
                     .order('created_at', { ascending: true }),
                 supabase.from('conversation_members')
                     .select('user_id, role, muted_until')
-                    .eq('conversation_id', chat.conversation_id)
+                    .eq('conversation_id', chat.conversation_id),
+                supabase.from('conversations')
+                    .select('title, avatar_url, metadata')
+                    .eq('id', chat.conversation_id)
+                    .single()
             ]);
+
+            if (convResponse.data) {
+                setLocalChatInfo(prev => ({
+                    ...prev,
+                    title: convResponse.data.title,
+                    avatar_url: convResponse.data.avatar_url,
+                    metadata: convResponse.data.metadata
+                }));
+            }
 
             let memMap = {};
 
