@@ -15,6 +15,13 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     const [pendingAttachment, setPendingAttachment] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     
+    // Search State
+    const [isSearchActive, setIsSearchActive] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [currentSearchIndex, setCurrentSearchIndex] = useState(-1);
+    const [showSearchList, setShowSearchList] = useState(false);
+    
     const fileInputRef = useRef(null);
     const flowRef = useRef(null);
     const typingTimeoutRef = useRef(null);
@@ -95,8 +102,45 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     }, [activeConvId]);
 
     useEffect(() => {
-        if (flowRef.current) flowRef.current.scrollTop = flowRef.current.scrollHeight;
-    }, [messages]);
+        // Prevent yanking the scrollbar down if the user is actively searching old messages
+        if (flowRef.current && !isSearchActive) {
+            flowRef.current.scrollTop = flowRef.current.scrollHeight;
+        }
+    }, [messages, isSearchActive]);
+    
+    const executeSearch = (query) => {
+        setSearchQuery(query);
+        if (!query.trim()) {
+            setSearchResults([]);
+            setCurrentSearchIndex(-1);
+            return;
+        }
+        const term = query.toLowerCase();
+        const results = messages.filter(m => m.text && m.text.toLowerCase().includes(term));
+        setSearchResults(results);
+        if (results.length > 0) {
+            setCurrentSearchIndex(results.length - 1);
+            scrollToMessage(results[results.length - 1].id);
+        } else {
+            setCurrentSearchIndex(-1);
+        }
+    };
+
+    const nextSearchResult = () => {
+        if (searchResults.length === 0) return;
+        let newIdx = currentSearchIndex + 1;
+        if (newIdx >= searchResults.length) newIdx = 0;
+        setCurrentSearchIndex(newIdx);
+        scrollToMessage(searchResults[newIdx].id);
+    };
+
+    const prevSearchResult = () => {
+        if (searchResults.length === 0) return;
+        let newIdx = currentSearchIndex - 1;
+        if (newIdx < 0) newIdx = searchResults.length - 1;
+        setCurrentSearchIndex(newIdx);
+        scrollToMessage(searchResults[newIdx].id);
+    };
 
     const fetchMessages = async () => {
         if (!activeConvId) return;
@@ -324,27 +368,50 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         <div className="user-chat-overlay">
             <div className="ambient-prism-light"></div>
 
-            <header className="prism-header" style={{ justifyContent: 'flex-start', gap: '1.5rem' }}>
-                <button className="icon-button" style={{ color: 'white', opacity: 0.6 }} onClick={onClose}>
-                    <i className="fas fa-chevron-left"></i>
-                </button>
-                <div className="contact-profile">
-                    <div className="avatar-ring">
-                        <img src={chatAvatar || 'https://via.placeholder.com/150'} alt="Avatar" />
-                        {isOnline && <div className="online-dot"></div>}
+            {isSearchActive ? (
+                <header className="chat-search-header">
+                    <button className="icon-button" onClick={() => { setIsSearchActive(false); setSearchQuery(''); }}><i className="fas fa-arrow-left"></i></button>
+                    <input 
+                        type="text" 
+                        className="chat-search-input" 
+                        value={searchQuery} 
+                        onChange={(e) => executeSearch(e.target.value)} 
+                        placeholder="Search messages..." 
+                        autoFocus 
+                    />
+                    <span style={{fontSize: '0.75rem', color: '#888', whiteSpace: 'nowrap'}}>
+                        {searchResults.length > 0 ? `${currentSearchIndex + 1}/${searchResults.length}` : '0/0'}
+                    </span>
+                    <div className="chat-search-nav">
+                        <button onClick={prevSearchResult} disabled={searchResults.length === 0}><i className="fas fa-chevron-up"></i></button>
+                        <button onClick={() => setShowSearchList(true)} disabled={searchResults.length === 0}><i className="fas fa-list"></i></button>
+                        <button onClick={nextSearchResult} disabled={searchResults.length === 0}><i className="fas fa-chevron-down"></i></button>
                     </div>
-                    <div className="contact-details">
-                        <h2>{chatTitle}</h2>
-                        <p style={{ color: (isOnline || isOtherTyping) ? '#42d7b8' : '#888' }}>
-                            {isOtherTyping ? (
-                                <span>typing<span className="blink-cursor">...</span></span>
-                            ) : (
-                                isOnline ? 'Online' : formatLastSeen(chat.other_user_last_seen)
-                            )}
-                        </p>
+                </header>
+            ) : (
+                <header className="prism-header" style={{ justifyContent: 'flex-start', gap: '1.5rem' }}>
+                    <button className="icon-button" style={{ color: 'white', opacity: 0.6 }} onClick={onClose}>
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
+                    <div className="contact-profile">
+                        <div className="avatar-ring">
+                            <img src={chatAvatar || 'https://via.placeholder.com/150'} alt="Avatar" />
+                            {isOnline && <div className="online-dot"></div>}
+                        </div>
+                        <div className="contact-details">
+                            <h2>{chatTitle}</h2>
+                            <p style={{ color: (isOnline || isOtherTyping) ? '#42d7b8' : '#888' }}>
+                                {isOtherTyping ? (
+                                    <span>typing<span className="blink-cursor">...</span></span>
+                                ) : (
+                                    isOnline ? 'Online' : formatLastSeen(chat.other_user_last_seen)
+                                )}
+                            </p>
+                        </div>
                     </div>
-                </div>
-            </header>
+                    <button className="icon-button" style={{marginLeft: 'auto'}} onClick={() => setIsSearchActive(true)}><i className="fas fa-search"></i></button>
+                </header>
+            )}
 
             <main className="prism-flow" ref={flowRef} onClick={() => setActiveMenu(null)} onScroll={() => setActiveMenu(null)}>
                 {messages.map((m, idx) => {
@@ -542,6 +609,38 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                             <i className="fa-solid fa-trash"></i> Delete
                         </button>
                     )}
+                </div>
+            )}
+            {showSearchList && (
+                <div className="chat-search-modal-overlay" onClick={() => setShowSearchList(false)}>
+                    <div className="chat-search-modal" onClick={e => e.stopPropagation()}>
+                        <div className="csm-header">
+                            <h3>Search Results</h3>
+                            <button className="icon-button" onClick={() => setShowSearchList(false)}><i className="fas fa-times"></i></button>
+                        </div>
+                        <div className="csm-body">
+                            {searchResults.length === 0 ? (
+                                <div className="csm-empty">No matching records found.</div>
+                            ) : searchResults.map((m, idx) => (
+                                <div key={m.id} className="csm-snippet-card" onClick={() => {
+                                    setCurrentSearchIndex(idx);
+                                    setShowSearchList(false);
+                                    scrollToMessage(m.id);
+                                }}>
+                                    <div className="csm-meta">
+                                        <span>{m.sender_id === currentUser.id ? 'You' : chatTitle}</span>
+                                        <span>{formatTime(m.created_at)}</span>
+                                    </div>
+                                    <div className="csm-text">
+                                        {m.text.split(new RegExp(`(${searchQuery})`, 'gi')).map((part, i) => 
+                                            part.toLowerCase() === searchQuery.toLowerCase() ? 
+                                            <span key={i} className="csm-highlight">{part}</span> : part
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
