@@ -295,9 +295,34 @@
 .cm-duration-inputs select { flex: 2; }
 .cm-duration-inputs select option { background: #121212; color: #fff; }
 
-.si-hero { display: flex; flex-direction: column; align-items: center; padding: 2rem 1.5rem 1.5rem; position: relative; }
-.si-close { position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(255,255,255,0.08); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: background 0.2s; }
-.si-close:hover { background: rgba(255,255,255,0.15); }
+.cm-privacy-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; }
+.cm-privacy-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 14px; border-radius: 12px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.2s; }
+.cm-privacy-card i { font-size: 1.5rem; color: #666; }
+.cm-privacy-card h4 { margin: 0 0 4px 0; font-size: 1rem; color: #fff; }
+.cm-privacy-card p { margin: 0; font-size: 0.75rem; color: #888; }
+.cm-privacy-card.active { border-color: var(--accent-teal); background: rgba(66, 215, 184, 0.05); }
+.cm-privacy-card.active i { color: var(--accent-teal); }
+
+/* Fullscreen Overlay for "Add Member" */
+.si-fullscreen-overlay { position: fixed; inset: 0; z-index: 8000; background: var(--bg-dark); display: flex; flex-direction: column; animation: slideUpScreen 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.si-fs-header { padding: 1.2rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(12, 12, 12, 0.9); }
+.si-fs-header h2 { font-size: 1.2rem; font-weight: 600; margin: 0; }
+.si-fs-body { flex: 1; overflow-y: auto; padding: 1.5rem; }
+
+/* Media Tab (Pills & Grid) */
+.si-media-pills { display: flex; gap: 8px; margin-bottom: 1.5rem; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 12px; }
+.si-media-pill { flex: 1; text-align: center; padding: 8px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #888; cursor: pointer; transition: all 0.2s; }
+.si-media-pill.active { background: #333; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+.si-media-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.si-media-thumb { aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #222; border: 1px solid rgba(255,255,255,0.05); }
+.si-media-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.si-hero { display: flex; flex-direction: column; align-items: center; padding: 3rem 1.5rem 1.5rem; position: relative; }
+.si-back { position: absolute; top: 1.5rem; left: 1.5rem; background: rgba(255,255,255,0.08); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.si-back:hover { background: rgba(255,255,255,0.15); }
+.si-options-wrapper { position: absolute; top: 1.5rem; right: 1.5rem; }
+.si-options { background: rgba(255,255,255,0.08); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.si-options:hover { background: rgba(255,255,255,0.15); }
 
 .si-avatar-container { position: relative; width: 96px; height: 96px; margin-bottom: 1rem; }
 .si-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-teal); box-shadow: 0 0 20px rgba(66, 215, 184, 0.3); background: #1a1a1a; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: var(--accent-teal); overflow: hidden; }
@@ -377,7 +402,34 @@
 .si-privacy-toggle { display: flex; gap: 10px; }
 .si-pt-btn { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: #888; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .si-pt-btn.active { background: rgba(66, 215, 184, 0.1); border-color: var(--accent-teal); color: var(--accent-teal); }
+/* Settings Refinements */
+.si-settings-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
+    padding: 14px; border-radius: 12px; cursor: pointer; transition: background 0.2s;
+    margin-bottom: 1rem;
+}
+.si-settings-row:hover { background: rgba(255,255,255,0.05); }
+.sr-info h4 { margin: 0 0 4px 0; font-size: 0.95rem; color: #fff; }
+.sr-info p { margin: 0; font-size: 0.75rem; color: #888; }
+.sr-val { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #ccc; font-weight: 500; text-transform: capitalize; }
+.sr-val i { font-size: 0.8rem; color: #888; }
+
+.si-invite-card {
+    background: rgba(66, 215, 184, 0.05); border: 1px dashed var(--accent-teal);
+    padding: 14px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+.si-invite-info h4 { margin: 0 0 4px 0; font-size: 0.95rem; color: var(--accent-teal); }
+.si-invite-info p { margin: 0; font-size: 0.75rem; color: #888; }
+.si-invite-btn {
+    background: var(--accent-teal); color: #000; border: none; border-radius: 8px;
+    padding: 8px 12px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px;
+}
+.si-invite-btn:active { transform: scale(0.95); }
+
 .si-save-btn { width: 100%; background: var(--accent-teal); color: #000; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 0.95rem; border: none; cursor: pointer; margin-top: 1rem; transition: transform 0.2s; }
+.si-save-btn:disabled { background: rgba(255,255,255,0.1); color: #666; cursor: not-allowed; }
 .si-save-btn:active:not(:disabled) { transform: scale(0.98); }
 .si-disband-btn { width: 100%; background: rgba(255, 95, 95, 0.1); color: #ff5f5f; border: 1px solid rgba(255, 95, 95, 0.3); padding: 14px; border-radius: 12px; font-weight: 700; font-size: 0.95rem; cursor: pointer; margin-top: 1rem; transition: transform 0.2s; }
 .si-disband-btn:active { transform: scale(0.98); }
