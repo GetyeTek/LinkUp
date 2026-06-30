@@ -370,22 +370,24 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
 
             {isSearchActive ? (
                 <header className="chat-search-header">
-                    <button className="icon-button" onClick={() => { setIsSearchActive(false); setSearchQuery(''); }}><i className="fas fa-arrow-left"></i></button>
-                    <input 
-                        type="text" 
-                        className="chat-search-input" 
-                        value={searchQuery} 
-                        onChange={(e) => executeSearch(e.target.value)} 
-                        placeholder="Search messages..." 
-                        autoFocus 
-                    />
-                    <span style={{fontSize: '0.75rem', color: '#888', whiteSpace: 'nowrap'}}>
-                        {searchResults.length > 0 ? `${currentSearchIndex + 1}/${searchResults.length}` : '0/0'}
-                    </span>
+                    <button className="icon-button back-btn" onClick={() => { setIsSearchActive(false); setSearchQuery(''); }}><i className="fas fa-arrow-left"></i></button>
+                    <div className="chat-search-input-wrapper">
+                        <input 
+                            type="text" 
+                            className="chat-search-input" 
+                            value={searchQuery} 
+                            onChange={(e) => executeSearch(e.target.value)} 
+                            placeholder="Search..." 
+                            autoFocus 
+                        />
+                        <span className="search-count">
+                            {searchResults.length > 0 ? `${currentSearchIndex + 1}/${searchResults.length}` : '0/0'}
+                        </span>
+                    </div>
                     <div className="chat-search-nav">
                         <button onClick={prevSearchResult} disabled={searchResults.length === 0}><i className="fas fa-chevron-up"></i></button>
-                        <button onClick={() => setShowSearchList(true)} disabled={searchResults.length === 0}><i className="fas fa-list"></i></button>
                         <button onClick={nextSearchResult} disabled={searchResults.length === 0}><i className="fas fa-chevron-down"></i></button>
+                        <button className="snippet-btn" onClick={() => setShowSearchList(true)} disabled={searchResults.length === 0}><i className="fas fa-list"></i></button>
                     </div>
                 </header>
             ) : (
