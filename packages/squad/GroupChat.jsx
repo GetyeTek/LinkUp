@@ -13,6 +13,8 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     
     const [editTitle, setEditTitle] = useState(chatInfo.title || '');
     const [editSlug, setEditSlug] = useState(chatInfo.metadata?.slug || '');
+    const [slugStatus, setSlugStatus] = useState('idle'); // idle, saving, success, error
+    const [slugError, setSlugError] = useState('');
     const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -107,17 +109,20 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         const cleanSlug = editSlug.toLowerCase().replace(/[^a-z0-9]/g, '');
         if (!cleanSlug || cleanSlug === chatInfo.metadata?.slug) return;
         
+        setSlugStatus('saving');
         const newMeta = { ...chatInfo.metadata, slug: cleanSlug };
         const { error } = await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
         
         if (error) {
-            alert("Whoops! That link handle is already taken by another squad. Try another one!");
-            setEditSlug(chatInfo.metadata?.slug || '');
+            setSlugStatus('error');
+            setSlugError("Handle already taken or invalid.");
             return;
         }
 
         onUpdateInfo({ ...chatInfo, metadata: newMeta });
         setEditSlug(cleanSlug);
+        setSlugStatus('success');
+        setTimeout(() => setSlugStatus('idle'), 3000);
     };
 
     const handleAvatarUpdate = async (blob) => {
@@ -350,19 +355,26 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                             </div>
 
                             <div className="si-settings-group">
-                                <label className="si-label">Squad Link Handle</label>
-                                <div className="si-input-wrapper">
-                                    <span style={{position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', color:'#888', fontSize:'0.85rem'}}>?sq=</span>
+                                <label className="si-label">Group Link Handle</label>
+                                <div className="si-slug-container">
+                                    <span className="si-slug-prefix">{cleanBase}?sq=</span>
                                     <input 
                                         type="text" 
-                                        className="si-input" 
-                                        style={{paddingLeft: '50px'}}
+                                        className="si-slug-input" 
                                         value={editSlug} 
-                                        onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))} 
-                                        onBlur={updateSquadSlug}
+                                        onChange={e => { setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '')); setSlugStatus('idle'); }} 
                                         onKeyPress={e => e.key === 'Enter' && updateSquadSlug()}
                                     />
                                 </div>
+                                {editSlug !== (chatInfo.metadata?.slug || '') && (
+                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <button className="si-save-slug-btn" onClick={updateSquadSlug} disabled={slugStatus === 'saving' || !editSlug.trim()}>
+                                            {slugStatus === 'saving' ? 'Saving...' : 'Save Handle'}
+                                        </button>
+                                        {slugStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}>{slugError}</span>}
+                                        {slugStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem' }}>Updated successfully!</span>}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="si-settings-row" onClick={() => setPrivacyModal(true)}>
@@ -377,9 +389,9 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
                             <div className="si-settings-group">
                                 <label className="si-label" style={{color:'#ff5f5f'}}>Danger Zone</label>
-                                <p style={{fontSize:'0.8rem', color:'#888', marginBottom:'1rem'}}>Disbanding the squad will permanently delete all messages, files, and links. This action cannot be undone.</p>
+                                <p style={{fontSize:'0.8rem', color:'#888', marginBottom:'1rem'}}>Deleting this group will permanently remove all associated messages, files, and links. This action is irreversible.</p>
                                 <button className="si-disband-btn" onClick={() => setDisbandModal(true)}>
-                                    <i className="fas fa-triangle-exclamation"></i> Disband Squad
+                                    <i className="fas fa-triangle-exclamation"></i> Delete Group
                                 </button>
                             </div>
                         </div>
@@ -518,8 +530,8 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             {disbandModal && (
                 <div className="custom-modal-overlay">
                     <div className="custom-modal-card">
-                        <h3 style={{color: '#ff5f5f'}}>Disband Squad</h3>
-                        <p>This action is irreversible. All messages, files, and links will be destroyed.</p>
+                        <h3 style={{color: '#ff5f5f'}}>Delete Group</h3>
+                        <p>This action is irreversible. All messages, files, and links will be permanently deleted.</p>
                         <p style={{fontSize: '0.8rem', color: '#aaa', marginTop: '10px'}}>Type <strong>{chatInfo.title}</strong> to confirm:</p>
                         <input 
                             type="text" 
@@ -530,7 +542,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         />
                         <div className="cm-footer" style={{marginTop: '1rem'}}>
                             <button className="cm-btn-cancel" onClick={() => { setDisbandModal(false); setDisbandInput(''); }}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={executeDisband} disabled={disbandInput !== chatInfo.title}>Disband Forever</button>
+                            <button className="cm-btn-danger" onClick={executeDisband} disabled={disbandInput !== chatInfo.title}>Delete Group</button>
                         </div>
                     </div>
                 </div>
