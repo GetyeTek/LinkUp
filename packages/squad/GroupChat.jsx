@@ -24,20 +24,29 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
 
     useEffect(() => {
         const fetchState = async () => {
-            const { data: memData } = await supabase
-                .from('conversation_members')
-                .select('user_id, role')
-                .eq('conversation_id', chat.conversation_id);
-            
-            if (memData && memData.length > 0) {
-                const userIds = memData.map(m => m.user_id);
+            // OPTIMIZATION: Fire the heavy queries in parallel instead of sequentially
+            const [msgResponse, memResponse] = await Promise.all([
+                supabase.from('messages')
+                    .select('*')
+                    .eq('conversation_id', chat.conversation_id)
+                    .order('created_at', { ascending: true }),
+                supabase.from('conversation_members')
+                    .select('user_id, role')
+                    .eq('conversation_id', chat.conversation_id)
+            ]);
+
+            let memMap = {};
+
+            // If we have members, fetch their profile metadata
+            if (memResponse.data && memResponse.data.length > 0) {
+                const userIds = memResponse.data.map(m => m.user_id);
+                
                 const { data: profiles } = await supabase
                     .from('profiles')
                     .select('id, full_name, avatar_url')
                     .in('id', userIds);
 
-                const memMap = {};
-                memData.forEach(m => {
+                memResponse.data.forEach(m => {
                     const prof = profiles?.find(p => p.id === m.user_id);
                     memMap[m.user_id] = { role: m.role, name: prof?.full_name, avatar: prof?.avatar_url };
                     if (m.user_id === currentUser.id) setMyRole(m.role);
@@ -45,13 +54,11 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                 setMembers(memMap);
             }
 
-            const { data: msgData } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('conversation_id', chat.conversation_id)
-                .order('created_at', { ascending: true });
+            // Immediately set the messages that we fetched concurrently
+            if (msgResponse.data) {
+                setMessages(msgResponse.data.map(m => ({ ...m, status: 'sent' })));
+            }
             
-            if (msgData) setMessages(msgData.map(m => ({ ...m, status: 'sent' })));
             setIsLoading(false);
         };
 
