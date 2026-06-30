@@ -5,6 +5,8 @@ import './GroupChat.css';
 
 const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband }) => {
     const [activeTab, setActiveTab] = useState('directory');
+    const [mediaSubTab, setMediaSubTab] = useState('media'); // files, media, links
+    
     const [selectedFile, setSelectedFile] = useState(null);
     const [croppedAvatar, setCroppedAvatar] = useState(null);
     const fileInputRef = useRef(null);
@@ -13,20 +15,62 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
 
-    // Modals & Menus
+    // Menus & Modals
+    const [showOptions, setShowOptions] = useState(false);
+    const [showAddMember, setShowAddMember] = useState(false);
+    const [inviteContacts, setInviteContacts] = useState([]);
+    const [confirmAddUser, setConfirmAddUser] = useState(null);
+    const [privacyModal, setPrivacyModal] = useState(false);
+    const [tempPrivacy, setTempPrivacy] = useState(editPrivacy);
+    const [inviteCopied, setInviteCopied] = useState(false);
+
     const [activeMemberMenu, setActiveMemberMenu] = useState(null);
     const [confirmModal, setConfirmModal] = useState(null);
     const [disbandModal, setDisbandModal] = useState(false);
     const [disbandInput, setDisbandInput] = useState('');
-    const [punishConfig, setPunishConfig] = useState(null); // { uid, type: 'ban'|'mute', isTemp: true, duration: 1, unit: 'days' }
+    const [punishConfig, setPunishConfig] = useState(null);
 
-    // Auto-scrape Vault Assets from Messages
-    const vaultFiles = messages.flatMap(m => m.attachments || []);
-    const vaultLinks = messages.flatMap(m => {
+    // Auto-scrape Media Assets from Messages
+    const mediaAssets = messages.flatMap(m => m.attachments ? m.attachments.filter(a => a.type.startsWith('image/') || a.type.startsWith('video/')) : []);
+    const docFiles = messages.flatMap(m => m.attachments ? m.attachments.filter(a => !a.type.startsWith('image/') && !a.type.startsWith('video/')) : []);
+    const sharedLinks = messages.flatMap(m => {
         if (!m.text) return [];
         const urls = m.text.match(/(https?:\/\/[^\s]+)/g) || [];
         return urls.map(url => ({ url, sender: members[m.sender_id]?.name || 'Unknown', time: m.created_at }));
     });
+
+    const inviteLink = `${window.location.origin}${window.location.pathname}?squad=${conversationId}`;
+
+    const handleCopyInvite = () => {
+        navigator.clipboard.writeText(inviteLink);
+        setInviteCopied(true);
+        setTimeout(() => setInviteCopied(false), 2000);
+    };
+
+    // Fetch DM contacts for "Add Member" screen
+    useEffect(() => {
+        if (showAddMember) {
+            supabase.rpc('get_user_conversations', { req_user_id: currentUser.id }).then(({data}) => {
+                if (data) {
+                    const contacts = data.filter(c => c.type === 'dm' && !members[c.other_user_id]);
+                    setInviteContacts(contacts);
+                }
+            });
+        }
+    }, [showAddMember, currentUser.id, members]);
+
+    const executeAddMember = async () => {
+        if (!confirmAddUser) return;
+        await supabase.from('conversation_members').insert({
+            conversation_id: conversationId, user_id: confirmAddUser.other_user_id, role: 'member'
+        });
+        setMembers(prev => ({
+            ...prev,
+            [confirmAddUser.other_user_id]: { role: 'member', name: confirmAddUser.other_user_name, avatar: confirmAddUser.other_user_avatar }
+        }));
+        setConfirmAddUser(null);
+        setShowAddMember(false);
+    };
 
     const handleSaveSettings = async () => {
         setIsSaving(true);
@@ -93,7 +137,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const displayAvatar = croppedAvatar?.url || chatInfo.avatar_url;
 
     return (
-        <div className="si-overlay" onClick={() => setActiveMemberMenu(null)}>
+        <div className="si-overlay" onClick={() => { setActiveMemberMenu(null); setShowOptions(false); }}>
             {selectedFile && (
                 <AvatarCropperModal 
                     imageFile={selectedFile} 
@@ -107,7 +151,16 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             )}
             <div className="si-sheet" onClick={e => e.stopPropagation()}>
                 <div className="si-hero">
-                    <button className="si-close" onClick={onClose}><i className="fas fa-times"></i></button>
+                    <button className="si-back" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
+                    <div className="si-options-wrapper">
+                        <button className="si-options" onClick={() => setShowOptions(!showOptions)}><i className="fas fa-ellipsis-v"></i></button>
+                        {showOptions && (
+                            <div className="si-dropdown-menu" style={{top: '40px', right: '0'}}>
+                                <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> Add Members</button>
+                            </div>
+                        )}
+                    </div>
+
                     <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => {
                         if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
                         e.target.value = null;
@@ -132,7 +185,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
                 <div className="si-tabs">
                     <div className={`si-tab ${activeTab === 'directory' ? 'active' : ''}`} onClick={() => setActiveTab('directory')}>Directory</div>
-                    <div className={`si-tab ${activeTab === 'vault' ? 'active' : ''}`} onClick={() => setActiveTab('vault')}>Vault</div>
+                    <div className={`si-tab ${activeTab === 'media' ? 'active' : ''}`} onClick={() => setActiveTab('media')}>Media</div>
                     {myRole === 'owner' && <div className={`si-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Control Panel</div>}
                 </div>
 
@@ -173,70 +226,91 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         </div>
                     )}
 
-                    {activeTab === 'vault' && (
+                    {activeTab === 'media' && (
                         <div className="si-vault">
-                            {vaultFiles.length > 0 && (
-                                <div className="si-vault-section">
-                                    <h4 className="si-vault-title">Files & Documents</h4>
-                                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
-                                        {vaultFiles.map((f, i) => (
-                                            <a href={f.url} target="_blank" rel="noopener noreferrer" className="si-vault-item" key={i}>
-                                                <div className="si-vault-icon"><i className="fas fa-file"></i></div>
-                                                <div className="si-vault-info">
-                                                    <div className="si-vault-name">{f.name}</div>
-                                                    <div className="si-vault-meta">Shared File</div>
-                                                </div>
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {vaultLinks.length > 0 && (
-                                <div className="si-vault-section">
-                                    <h4 className="si-vault-title">Shared Links</h4>
-                                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
-                                        {vaultLinks.map((l, i) => (
-                                            <a href={l.url} target="_blank" rel="noopener noreferrer" className="si-vault-item" key={i}>
-                                                <div className="si-vault-icon link"><i className="fas fa-link"></i></div>
-                                                <div className="si-vault-info">
-                                                    <div className="si-vault-name link">{l.url}</div>
-                                                    <div className="si-vault-meta">From {l.sender}</div>
-                                                </div>
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                            <div className="si-media-pills">
+                                <div className={`si-media-pill ${mediaSubTab === 'media' ? 'active' : ''}`} onClick={() => setMediaSubTab('media')}>Media</div>
+                                <div className={`si-media-pill ${mediaSubTab === 'files' ? 'active' : ''}`} onClick={() => setMediaSubTab('files')}>Files</div>
+                                <div className={`si-media-pill ${mediaSubTab === 'links' ? 'active' : ''}`} onClick={() => setMediaSubTab('links')}>Links</div>
+                            </div>
 
-                            {vaultFiles.length === 0 && vaultLinks.length === 0 && (
-                                <div className="si-vault-empty">
-                                    <i className="fas fa-box-open"></i>
-                                    <p>The vault is empty.</p>
-                                </div>
-                            )}
+                            <div className="si-media-content">
+                                {mediaSubTab === 'media' && (
+                                    mediaAssets.length > 0 ? (
+                                        <div className="si-media-grid">
+                                            {mediaAssets.map((m, i) => (
+                                                <a href={m.url} target="_blank" rel="noopener noreferrer" className="si-media-thumb" key={i}>
+                                                    <img src={m.url} alt="Media" />
+                                                </a>
+                                            ))}
+                                        </div>
+                                    ) : <div className="si-vault-empty"><i className="fas fa-image"></i><p>No photos or videos yet.</p></div>
+                                )}
+
+                                {mediaSubTab === 'files' && (
+                                    docFiles.length > 0 ? (
+                                        <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                                            {docFiles.map((f, i) => (
+                                                <a href={f.url} target="_blank" rel="noopener noreferrer" className="si-vault-item" key={i}>
+                                                    <div className="si-vault-icon"><i className="fas fa-file-pdf"></i></div>
+                                                    <div className="si-vault-info">
+                                                        <div className="si-vault-name">{f.name}</div>
+                                                        <div className="si-vault-meta">{(f.size / 1024 / 1024).toFixed(2)} MB</div>
+                                                    </div>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    ) : <div className="si-vault-empty"><i className="fas fa-file-alt"></i><p>No documents shared yet.</p></div>
+                                )}
+
+                                {mediaSubTab === 'links' && (
+                                    sharedLinks.length > 0 ? (
+                                        <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                                            {sharedLinks.map((l, i) => (
+                                                <a href={l.url} target="_blank" rel="noopener noreferrer" className="si-vault-item" key={i}>
+                                                    <div className="si-vault-icon link"><i className="fas fa-link"></i></div>
+                                                    <div className="si-vault-info">
+                                                        <div className="si-vault-name link">{l.url}</div>
+                                                        <div className="si-vault-meta">From {l.sender}</div>
+                                                    </div>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    ) : <div className="si-vault-empty"><i className="fas fa-link"></i><p>No links shared yet.</p></div>
+                                )}
+                            </div>
                         </div>
                     )}
 
                     {activeTab === 'settings' && myRole === 'owner' && (
                         <div className="si-settings">
+                            {chatInfo.metadata?.privacy === 'public' && (
+                                <div className="si-invite-card">
+                                    <div className="si-invite-info">
+                                        <h4>Public Invite Link</h4>
+                                        <p>Anyone with this link can instantly join.</p>
+                                    </div>
+                                    <button className="si-invite-btn" onClick={handleCopyInvite}>
+                                        {inviteCopied ? <><i className="fas fa-check"></i> Copied!</> : <><i className="fas fa-link"></i> Copy Link</>}
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="si-settings-group">
                                 <label className="si-label">Squad Name</label>
                                 <input type="text" className="si-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
                             </div>
-                            <div className="si-settings-group">
-                                <label className="si-label">Privacy Control</label>
-                                <div className="si-privacy-toggle">
-                                    <button className={`si-pt-btn ${editPrivacy === 'public' ? 'active' : ''}`} onClick={() => setEditPrivacy('public')}>
-                                        <i className="fas fa-globe"></i> Public
-                                    </button>
-                                    <button className={`si-pt-btn ${editPrivacy === 'private' ? 'active' : ''}`} onClick={() => setEditPrivacy('private')}>
-                                        <i className="fas fa-lock"></i> Private
-                                    </button>
+
+                            <div className="si-settings-row" onClick={() => setPrivacyModal(true)}>
+                                <div className="sr-info">
+                                    <h4>Privacy Status</h4>
+                                    <p>{editPrivacy === 'public' ? 'Anyone can find and join' : 'Invite only'}</p>
                                 </div>
+                                <div className="sr-val">{editPrivacy} <i className="fas fa-chevron-right"></i></div>
                             </div>
-                            <button className="si-save-btn" onClick={handleSaveSettings} disabled={isSaving || !editTitle.trim()}>
-                                {isSaving ? <i className="fas fa-circle-notch fa-spin"></i> : "Update Settings"}
+                            
+                            <button className="si-save-btn" onClick={handleSaveSettings} disabled={isSaving || (!editTitle.trim() && editPrivacy === chatInfo.metadata?.privacy)}>
+                                {isSaving ? <i className="fas fa-circle-notch fa-spin"></i> : "Save Changes"}
                             </button>
 
                             <hr style={{border:'none', borderTop:'1px solid rgba(255,255,255,0.05)', margin:'2rem 0'}}/>
@@ -252,6 +326,80 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                     )}
                 </div>
             </div>
+
+            {/* Privacy Configuration Modal */}
+            {privacyModal && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-card">
+                        <h3>Squad Privacy</h3>
+                        <p>Configure how others discover and join this group.</p>
+                        <div className="cm-privacy-options">
+                            <div className={`cm-privacy-card ${tempPrivacy === 'public' ? 'active' : ''}`} onClick={() => setTempPrivacy('public')}>
+                                <i className="fas fa-globe"></i>
+                                <div>
+                                    <h4>Public</h4>
+                                    <p>Searchable and accessible via Invite Link.</p>
+                                </div>
+                            </div>
+                            <div className={`cm-privacy-card ${tempPrivacy === 'private' ? 'active' : ''}`} onClick={() => setTempPrivacy('private')}>
+                                <i className="fas fa-lock"></i>
+                                <div>
+                                    <h4>Private</h4>
+                                    <p>Hidden. Members must be added by Admin.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="cm-footer" style={{marginTop: '1rem'}}>
+                            <button className="cm-btn-cancel" onClick={() => { setTempPrivacy(editPrivacy); setPrivacyModal(false); }}>Cancel</button>
+                            <button className="cm-btn-primary" onClick={() => { setEditPrivacy(tempPrivacy); setPrivacyModal(false); }}>Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Full Screen Add Member Overlay */}
+            {showAddMember && (
+                <div className="si-fullscreen-overlay">
+                    <header className="si-fs-header">
+                        <button className="icon-button" onClick={() => setShowAddMember(false)}><i className="fas fa-chevron-left"></i></button>
+                        <h2>Add Member</h2>
+                        <div style={{width:'36px'}}></div>
+                    </header>
+                    <div className="si-fs-body">
+                        {inviteContacts.length === 0 ? (
+                            <div className="si-vault-empty">
+                                <i className="fas fa-user-slash"></i>
+                                <p>No eligible contacts found in your DMs.</p>
+                            </div>
+                        ) : (
+                            inviteContacts.map(c => (
+                                <div className="si-member-row" key={c.other_user_id} style={{cursor:'pointer'}} onClick={() => setConfirmAddUser(c)}>
+                                    <img src={c.other_user_avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="si-member-avatar" />
+                                    <div className="si-member-info">
+                                        <div className="si-member-name">{c.other_user_name}</div>
+                                        <span className="si-member-role si-role-member">Contact</span>
+                                    </div>
+                                    <i className="fas fa-plus" style={{color:'var(--accent-teal)'}}></i>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Confirm Add Member Modal */}
+            {confirmAddUser && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-card">
+                        <h3>Add to Squad</h3>
+                        <p>Add <strong>{confirmAddUser.other_user_name}</strong> to the squad?</p>
+                        <div className="cm-footer">
+                            <button className="cm-btn-cancel" onClick={() => setConfirmAddUser(null)}>Cancel</button>
+                            <button className="cm-btn-primary" onClick={executeAddMember}>Confirm Add</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Custom Kick Confirmation Modal */}
             {confirmModal && (
