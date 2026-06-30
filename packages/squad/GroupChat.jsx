@@ -1,6 +1,215 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
 import './GroupChat.css';
+
+const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband }) => {
+    const [activeTab, setActiveTab] = useState('directory');
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [croppedAvatar, setCroppedAvatar] = useState(null);
+    const fileInputRef = useRef(null);
+    
+    const [editTitle, setEditTitle] = useState(chatInfo.title || '');
+    const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Auto-scrape Vault Assets from Messages
+    const vaultFiles = messages.flatMap(m => m.attachments || []);
+    const vaultLinks = messages.flatMap(m => {
+        if (!m.text) return [];
+        const urls = m.text.match(/(https?:\/\/[^\s]+)/g) || [];
+        return urls.map(url => ({ url, sender: members[m.sender_id]?.name || 'Unknown', time: m.created_at }));
+    });
+
+    const handleSaveSettings = async () => {
+        setIsSaving(true);
+        let newAvatarUrl = chatInfo.avatar_url;
+        
+        if (croppedAvatar?.blob) {
+            const arrayBuffer = await croppedAvatar.blob.arrayBuffer();
+            const filePath = `group_avatars/${conversationId}/avatar_${Date.now()}.png`;
+            await supabase.storage.from('chat_media').upload(filePath, arrayBuffer, { contentType: 'image/png', upsert: true });
+            const { data: { publicUrl } } = supabase.storage.from('chat_media').getPublicUrl(filePath);
+            newAvatarUrl = publicUrl;
+        }
+
+        const newMeta = { ...chatInfo.metadata, privacy: editPrivacy };
+        await supabase.from('conversations').update({ title: editTitle, avatar_url: newAvatarUrl, metadata: newMeta }).eq('id', conversationId);
+        
+        onUpdateInfo({ ...chatInfo, title: editTitle, avatar_url: newAvatarUrl, metadata: newMeta });
+        setIsSaving(false);
+        setCroppedAvatar(null);
+    };
+
+    const handleKick = async (uid) => {
+        if (!window.confirm("Kick this member from the squad?")) return;
+        await supabase.from('conversation_members').delete().eq('conversation_id', conversationId).eq('user_id', uid);
+        setMembers(prev => {
+            const next = { ...prev };
+            delete next[uid];
+            return next;
+        });
+    };
+
+    const handleDisband = async () => {
+        if (prompt(`Type "${chatInfo.title}" to disband the squad forever:`) !== chatInfo.title) {
+            alert("Name did not match. Aborting.");
+            return;
+        }
+        await supabase.from('conversations').delete().eq('id', conversationId);
+        onDisband();
+    };
+
+    const displayAvatar = croppedAvatar?.url || chatInfo.avatar_url;
+
+    return (
+        <div className="si-overlay" onClick={onClose}>
+            {selectedFile && (
+                <AvatarCropperModal 
+                    imageFile={selectedFile} 
+                    onCancel={() => setSelectedFile(null)} 
+                    onSave={(blob) => {
+                        const url = URL.createObjectURL(blob);
+                        setCroppedAvatar({ blob, url });
+                        setSelectedFile(null);
+                    }}
+                />
+            )}
+            <div className="si-sheet" onClick={e => e.stopPropagation()}>
+                <div className="si-hero">
+                    <button className="si-close" onClick={onClose}><i className="fas fa-times"></i></button>
+                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
+                        e.target.value = null;
+                    }} />
+                    <div className="si-avatar-container" onClick={() => myRole === 'owner' && fileInputRef.current?.click()} style={{cursor: myRole === 'owner' ? 'pointer' : 'default'}}>
+                        <div className="si-avatar">
+                            {displayAvatar ? <img src={displayAvatar} alt="Squad" /> : <i className="fas fa-users"></i>}
+                        </div>
+                        {myRole === 'owner' && <div className="si-avatar-edit"><i className="fas fa-pencil"></i></div>}
+                    </div>
+                    <h2 className="si-title">{chatInfo.title}</h2>
+                    <div className="si-ppn">#{conversationId.substring(0,8).toUpperCase()}</div>
+                    <div className="si-badges">
+                        <span className={`si-badge ${chatInfo.metadata?.privacy === 'private' ? 'private' : 'public'}`}>
+                            <i className={`fas fa-${chatInfo.metadata?.privacy === 'private' ? 'lock' : 'globe'}`}></i> {chatInfo.metadata?.privacy || 'public'}
+                        </span>
+                        {chatInfo.metadata?.focus && (
+                            <span className="si-badge" style={{background: 'rgba(255,255,255,0.1)', color: '#ccc'}}>{chatInfo.metadata.focus}</span>
+                        )}
+                    </div>
+                </div>
+
+                <div className="si-tabs">
+                    <div className={`si-tab ${activeTab === 'directory' ? 'active' : ''}`} onClick={() => setActiveTab('directory')}>Directory</div>
+                    <div className={`si-tab ${activeTab === 'vault' ? 'active' : ''}`} onClick={() => setActiveTab('vault')}>Vault</div>
+                    {myRole === 'owner' && <div className={`si-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Control Panel</div>}
+                </div>
+
+                <div className="si-body">
+                    {activeTab === 'directory' && (
+                        <div className="si-directory">
+                            {Object.entries(members).map(([uid, m]) => (
+                                <div className="si-member-row" key={uid}>
+                                    <img src={m.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="si-member-avatar" />
+                                    <div className="si-member-info">
+                                        <div className="si-member-name">
+                                            {m.name} {uid === currentUser.id && <span style={{fontSize:'0.7rem', color:'#888'}}>(You)</span>}
+                                        </div>
+                                        <span className={`si-member-role ${m.role === 'owner' ? 'si-role-owner' : 'si-role-member'}`}>{m.role}</span>
+                                    </div>
+                                    {myRole === 'owner' && uid !== currentUser.id && (
+                                        <div className="si-member-actions">
+                                            <button className="si-action-btn" onClick={() => handleKick(uid)} title="Kick Member"><i className="fas fa-user-minus"></i></button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {activeTab === 'vault' && (
+                        <div className="si-vault">
+                            {vaultFiles.length > 0 && (
+                                <div className="si-vault-section">
+                                    <h4 className="si-vault-title">Files & Documents</h4>
+                                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                                        {vaultFiles.map((f, i) => (
+                                            <a href={f.url} target="_blank" rel="noopener noreferrer" className="si-vault-item" key={i}>
+                                                <div className="si-vault-icon"><i className="fas fa-file"></i></div>
+                                                <div className="si-vault-info">
+                                                    <div className="si-vault-name">{f.name}</div>
+                                                    <div className="si-vault-meta">Shared File</div>
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {vaultLinks.length > 0 && (
+                                <div className="si-vault-section">
+                                    <h4 className="si-vault-title">Shared Links</h4>
+                                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                                        {vaultLinks.map((l, i) => (
+                                            <a href={l.url} target="_blank" rel="noopener noreferrer" className="si-vault-item" key={i}>
+                                                <div className="si-vault-icon link"><i className="fas fa-link"></i></div>
+                                                <div className="si-vault-info">
+                                                    <div className="si-vault-name link">{l.url}</div>
+                                                    <div className="si-vault-meta">From {l.sender}</div>
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {vaultFiles.length === 0 && vaultLinks.length === 0 && (
+                                <div className="si-vault-empty">
+                                    <i className="fas fa-box-open"></i>
+                                    <p>The vault is empty.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'settings' && myRole === 'owner' && (
+                        <div className="si-settings">
+                            <div className="si-settings-group">
+                                <label className="si-label">Squad Name</label>
+                                <input type="text" className="si-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+                            </div>
+                            <div className="si-settings-group">
+                                <label className="si-label">Privacy Control</label>
+                                <div className="si-privacy-toggle">
+                                    <button className={`si-pt-btn ${editPrivacy === 'public' ? 'active' : ''}`} onClick={() => setEditPrivacy('public')}>
+                                        <i className="fas fa-globe"></i> Public
+                                    </button>
+                                    <button className={`si-pt-btn ${editPrivacy === 'private' ? 'active' : ''}`} onClick={() => setEditPrivacy('private')}>
+                                        <i className="fas fa-lock"></i> Private
+                                    </button>
+                                </div>
+                            </div>
+                            <button className="si-save-btn" onClick={handleSaveSettings} disabled={isSaving || !editTitle.trim()}>
+                                {isSaving ? <i className="fas fa-circle-notch fa-spin"></i> : "Update Settings"}
+                            </button>
+
+                            <hr style={{border:'none', borderTop:'1px solid rgba(255,255,255,0.05)', margin:'2rem 0'}}/>
+
+                            <div className="si-settings-group">
+                                <label className="si-label" style={{color:'#ff5f5f'}}>Danger Zone</label>
+                                <p style={{fontSize:'0.8rem', color:'#888', marginBottom:'1rem'}}>Disbanding the squad will permanently delete all messages, files, and links. This action cannot be undone.</p>
+                                <button className="si-disband-btn" onClick={handleDisband}>
+                                    <i className="fas fa-triangle-exclamation"></i> Disband Squad
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const { user: userProfile } = usePlatform();
@@ -12,6 +221,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [editingMessage, setEditingMessage] = useState(null);
     const [replyingTo, setReplyingTo] = useState(null);
+
+    // Group Hub State
+    const [localChatInfo, setLocalChatInfo] = useState({ title: chat.title, avatar_url: chat.avatar_url, metadata: chat.metadata });
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
 
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -236,18 +449,18 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             ) : (
                 <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '1.2rem' }}>
                     <button className="icon-button back-btn" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
-                    <div className="squad-contact-profile">
+                    <div className="squad-contact-profile" onClick={() => !chat.is_preview && setIsInfoOpen(true)} style={{cursor: chat.is_preview ? 'default' : 'pointer'}}>
                         <div className="squad-avatar-ring">
-                            {chat.avatar_url ? (
-                                <img src={chat.avatar_url} alt="Squad Avatar" />
+                            {localChatInfo.avatar_url ? (
+                                <img src={localChatInfo.avatar_url} alt="Squad Avatar" />
                             ) : (
                                 <div className="squad-default-avatar"><i className="fas fa-users"></i></div>
                             )}
                         </div>
                         <div className="squad-header-info">
-                            <h2>{chat.title}</h2>
+                            <h2>{localChatInfo.title}</h2>
                             <div className="squad-meta-tags">
-                                <span className="squad-badge focus">{chat.metadata?.focus || 'General'}</span>
+                                <span className="squad-badge focus">{localChatInfo.metadata?.focus || 'General'}</span>
                                 <span className="squad-badge count"><i className="fas fa-user"></i> {Object.keys(members).length}</span>
                             </div>
                         </div>
@@ -462,6 +675,21 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                         </div>
                     </div>
                 </div>
+            )}
+            
+            {isInfoOpen && (
+                <GroupInfoPanel 
+                    chatInfo={localChatInfo}
+                    conversationId={chat.conversation_id}
+                    currentUser={currentUser}
+                    members={members}
+                    setMembers={setMembers}
+                    messages={messages}
+                    myRole={myRole}
+                    onClose={() => setIsInfoOpen(false)}
+                    onUpdateInfo={setLocalChatInfo}
+                    onDisband={onClose}
+                />
             )}
         </div>
     );
