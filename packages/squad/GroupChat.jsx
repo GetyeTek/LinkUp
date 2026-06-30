@@ -234,13 +234,22 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                     </div>
                 </header>
             ) : (
-                <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
-                    <button className="icon-button" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
-                    <div className="squad-header-info">
-                        <h2>{chat.title}</h2>
-                        <div className="squad-meta-tags">
-                            <span className="squad-badge focus">{chat.metadata?.focus || 'General'}</span>
-                            <span className="squad-badge count"><i className="fas fa-users"></i> {Object.keys(members).length}</span>
+                <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '1.2rem' }}>
+                    <button className="icon-button back-btn" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
+                    <div className="squad-contact-profile">
+                        <div className="squad-avatar-ring">
+                            {chat.avatar_url ? (
+                                <img src={chat.avatar_url} alt="Squad Avatar" />
+                            ) : (
+                                <div className="squad-default-avatar"><i className="fas fa-users"></i></div>
+                            )}
+                        </div>
+                        <div className="squad-header-info">
+                            <h2>{chat.title}</h2>
+                            <div className="squad-meta-tags">
+                                <span className="squad-badge focus">{chat.metadata?.focus || 'General'}</span>
+                                <span className="squad-badge count"><i className="fas fa-user"></i> {Object.keys(members).length}</span>
+                            </div>
                         </div>
                     </div>
                     <button className="icon-button" style={{marginLeft: 'auto'}} onClick={() => setIsSearchActive(true)}><i className="fas fa-search"></i></button>
@@ -304,12 +313,16 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                                 }}
                             >
                                 {!isMine && (
-                                    <div className="squad-sender-name">
-                                        {sender.name}
-                                        {sender.role === 'owner' && <i className="fas fa-crown admin-crown"></i>}
-                                    </div>
+                                    <img src={sender.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="squad-msg-avatar" />
                                 )}
-                                <div className="squad-bubble">
+                                <div className="squad-bubble-wrapper">
+                                    {!isMine && (
+                                        <div className="squad-sender-name">
+                                            {sender.name}
+                                            {sender.role === 'owner' && <i className="fas fa-crown admin-crown"></i>}
+                                        </div>
+                                    )}
+                                    <div className="squad-bubble">
                                     {repliedMsg ? (
                                         <div className="squad-reply-quote" onClick={(e) => { e.stopPropagation(); scrollToMessage(m.reply_to_id); }}>
                                             <div className="sq-quote-content">
@@ -335,6 +348,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                                         {formatTime(m.created_at)}
                                         {isMine && (m.status === 'pending' ? <i className="fa-solid fa-clock" style={{fontSize: '0.6rem'}}></i> : <i className="fa-solid fa-check"></i>)}
                                     </div>
+                                </div>
                                 </div>
                             </div>
                         );
