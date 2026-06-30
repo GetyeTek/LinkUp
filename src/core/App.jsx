@@ -513,6 +513,14 @@ const App = () => {
   const [requiresPasswordReset, setRequiresPasswordReset] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
 
+  // Intercept Deep Links on Boot
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('squad') || params.has('sq')) {
+        setActiveTab('connect');
+    }
+  }, []);
+
   // Swipe Engine State
   const touchState = useRef({ startX: 0, startY: 0, endX: 0, endY: 0 });
 
