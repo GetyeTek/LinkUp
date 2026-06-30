@@ -12,7 +12,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const fileInputRef = useRef(null);
     
     const [editTitle, setEditTitle] = useState(chatInfo.title || '');
-    const [editSlug, setEditSlug] = useState(chatInfo.metadata?.slug || chatInfo.title.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const [editSlug, setEditSlug] = useState(chatInfo.metadata?.slug || '');
     const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -43,7 +43,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     // Strict DB truth. No front-end guessing.
     const squadHandle = chatInfo.metadata?.slug;
     const cleanBase = window.location.href.split('?')[0].replace(/\/$/, '');
-    const inviteLink = `${cleanBase}?sq=${squadHandle}`;
+    const inviteLink = squadHandle ? `${cleanBase}?sq=${squadHandle}` : 'Syncing secure link...';
 
     const isPublic = !chatInfo.metadata?.privacy || chatInfo.metadata.privacy === 'public';
 
