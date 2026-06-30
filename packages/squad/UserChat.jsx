@@ -116,30 +116,43 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             return;
         }
         const term = query.toLowerCase();
-        const results = messages.filter(m => m.text && m.text.toLowerCase().includes(term));
+        // Reverse array so newest messages (bottom) are index 0
+        const results = messages.filter(m => m.text && m.text.toLowerCase().includes(term)).reverse();
         setSearchResults(results);
         if (results.length > 0) {
-            setCurrentSearchIndex(results.length - 1);
-            scrollToMessage(results[results.length - 1].id);
+            setCurrentSearchIndex(0);
+            scrollToMessage(results[0].id);
         } else {
             setCurrentSearchIndex(-1);
         }
     };
 
-    const nextSearchResult = () => {
+    const searchOlder = () => {
         if (searchResults.length === 0) return;
         let newIdx = currentSearchIndex + 1;
-        if (newIdx >= searchResults.length) newIdx = 0;
+        if (newIdx >= searchResults.length) newIdx = 0; // Wrap around
         setCurrentSearchIndex(newIdx);
         scrollToMessage(searchResults[newIdx].id);
     };
 
-    const prevSearchResult = () => {
+    const searchNewer = () => {
         if (searchResults.length === 0) return;
         let newIdx = currentSearchIndex - 1;
-        if (newIdx < 0) newIdx = searchResults.length - 1;
+        if (newIdx < 0) newIdx = searchResults.length - 1; // Wrap around
         setCurrentSearchIndex(newIdx);
         scrollToMessage(searchResults[newIdx].id);
+    };
+
+    const getSnippet = (text, query) => {
+        if (!query) return text;
+        const idx = text.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return text;
+        const start = Math.max(0, idx - 40);
+        const end = Math.min(text.length, idx + query.length + 60);
+        let snippet = text.substring(start, end);
+        if (start > 0) snippet = '...' + snippet;
+        if (end < text.length) snippet = snippet + '...';
+        return snippet;
     };
 
     const fetchMessages = async () => {
@@ -385,8 +398,8 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                         </span>
                     </div>
                     <div className="chat-search-nav">
-                        <button onClick={prevSearchResult} disabled={searchResults.length === 0}><i className="fas fa-chevron-up"></i></button>
-                        <button onClick={nextSearchResult} disabled={searchResults.length === 0}><i className="fas fa-chevron-down"></i></button>
+                        <button onClick={searchOlder} disabled={searchResults.length === 0}><i className="fas fa-chevron-up"></i></button>
+                        <button onClick={searchNewer} disabled={searchResults.length === 0}><i className="fas fa-chevron-down"></i></button>
                         <button className="snippet-btn" onClick={() => setShowSearchList(true)} disabled={searchResults.length === 0}><i className="fas fa-list"></i></button>
                     </div>
                 </header>
@@ -633,12 +646,12 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                                         <span>{m.sender_id === currentUser.id ? 'You' : chatTitle}</span>
                                         <span>{formatTime(m.created_at)}</span>
                                     </div>
-                                    <div className="csm-text">
-                                        {m.text.split(new RegExp(`(${searchQuery})`, 'gi')).map((part, i) => 
-                                            part.toLowerCase() === searchQuery.toLowerCase() ? 
-                                            <span key={i} className="csm-highlight">{part}</span> : part
-                                        )}
-                                    </div>
+                                                                <div className="csm-text">
+                                {getSnippet(m.text, searchQuery).split(new RegExp(`(${searchQuery})`, 'gi')).map((part, i) => 
+                                    part.toLowerCase() === searchQuery.toLowerCase() ? 
+                                    <span key={i} className="csm-highlight">{part}</span> : part
+                                )}
+                            </div>
                                 </div>
                             ))}
                         </div>
