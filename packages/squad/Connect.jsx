@@ -151,29 +151,43 @@ const Connect = () => {
     useEffect(() => {
         if (!currentUser) return;
         
-        // --- DEEP LINK INTERCEPTOR & URL EXPANDER ---
+        // --- DEEP LINK INTERCEPTOR & SLUG RESOLVER ---
         const params = new URLSearchParams(window.location.search);
         const rawSquadId = params.get('squad');
         const shortSqCode = params.get('sq');
         
-        let targetId = rawSquadId;
-        
-        // Expand Base64 URL back to UUID
-        if (shortSqCode) {
-            try {
-                let base64 = shortSqCode.replace(/-/g, '+').replace(/_/g, '/');
-                while(base64.length % 4) base64 += '='; // Pad
-                const hex = Array.from(atob(base64)).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-                targetId = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
-            } catch (e) { console.error("URL Expansion failed", e); }
-        }
-
-        if (targetId) {
-            // Strip the param cleanly
-            window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+        const resolveSquad = async () => {
+            let targetId = rawSquadId;
             
-            // Fetch and open the squad
-            supabase.from('conversations').select('*').eq('id', targetId).single().then(({data}) => {
+            if (shortSqCode) {
+                // 1. Try to find by friendly slug first
+                const { data: slugData } = await supabase.from('conversations')
+                    .select('id')
+                    .eq('metadata->>slug', shortSqCode)
+                    .single();
+                    
+                if (slugData) {
+                    targetId = slugData.id;
+                } else {
+                    // 2. Fallback decoding for old Base62 UUIDs (Backward Compatibility)
+                    try {
+                        let base64 = shortSqCode.replace(/-/g, '+').replace(/_/g, '/');
+                        while(base64.length % 4) base64 += '=';
+                        const hex = Array.from(atob(base64)).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+                        const decodedId = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+                        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decodedId)) {
+                            targetId = decodedId;
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            if (targetId) {
+                // Strip the param cleanly from URL
+                window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+                
+                // Fetch and open the squad
+                const { data } = await supabase.from('conversations').select('*').eq('id', targetId).single();
                 if (data && data.type === 'group') {
                     setActiveChat({
                         conversation_id: data.id,
@@ -183,8 +197,10 @@ const Connect = () => {
                         is_preview: true
                     });
                 }
-            });
-        }
+            }
+        };
+
+        if (rawSquadId || shortSqCode) resolveSquad();
 
         fetchConversations();
         fetchSuggestedSquads();
