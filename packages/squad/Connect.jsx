@@ -151,15 +151,29 @@ const Connect = () => {
     useEffect(() => {
         if (!currentUser) return;
         
-        // --- DEEP LINK INTERCEPTOR (SQUAD INVITES) ---
+        // --- DEEP LINK INTERCEPTOR & URL EXPANDER ---
         const params = new URLSearchParams(window.location.search);
-        const inviteSquadId = params.get('squad');
-        if (inviteSquadId) {
-            // Strip the param from the URL cleanly
-            window.history.replaceState({}, document.title, window.location.pathname);
+        const rawSquadId = params.get('squad');
+        const shortSqCode = params.get('sq');
+        
+        let targetId = rawSquadId;
+        
+        // Expand Base64 URL back to UUID
+        if (shortSqCode) {
+            try {
+                let base64 = shortSqCode.replace(/-/g, '+').replace(/_/g, '/');
+                while(base64.length % 4) base64 += '='; // Pad
+                const hex = Array.from(atob(base64)).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+                targetId = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+            } catch (e) { console.error("URL Expansion failed", e); }
+        }
+
+        if (targetId) {
+            // Strip the param cleanly
+            window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
             
-            // Fetch and open the squad in preview mode
-            supabase.from('conversations').select('*').eq('id', inviteSquadId).single().then(({data}) => {
+            // Fetch and open the squad
+            supabase.from('conversations').select('*').eq('id', targetId).single().then(({data}) => {
                 if (data && data.type === 'group') {
                     setActiveChat({
                         conversation_id: data.id,
@@ -210,6 +224,27 @@ const Connect = () => {
             supabase.removeChannel(presenceChannel);
         };
     }, [currentUser]);
+
+    // --- SWIPE INTERCEPTOR ---
+    useEffect(() => {
+        const handleSubSwipe = (e) => {
+            const { direction } = e.detail;
+            const views = ['for-you', 'messages', 'squads'];
+            const currentIndex = views.indexOf(activeView);
+            
+            // Intercept the global swipe if we can shift tabs internally
+            if (direction === 'left' && currentIndex < views.length - 1) {
+                e.preventDefault(); // Stop App.jsx from swiping
+                setActiveView(views[currentIndex + 1]);
+            } else if (direction === 'right' && currentIndex > 0) {
+                e.preventDefault(); // Stop App.jsx from swiping
+                setActiveView(views[currentIndex - 1]);
+            }
+        };
+        
+        window.addEventListener('app-swipe', handleSubSwipe);
+        return () => window.removeEventListener('app-swipe', handleSubSwipe);
+    }, [activeView]);
 
     const fetchConversations = async () => {
         const { data, error } = await supabase.rpc('get_user_conversations', { req_user_id: currentUser.id });
