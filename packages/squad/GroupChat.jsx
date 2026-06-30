@@ -93,7 +93,18 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
     const updateSquadPrivacy = async (val) => {
         const newMeta = { ...chatInfo.metadata, privacy: val };
-        await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
+        const { data: updatedRows, error } = await supabase
+            .from('conversations')
+            .update({ metadata: newMeta })
+            .eq('id', conversationId)
+            .select();
+            
+        if (error || !updatedRows || updatedRows.length === 0) {
+            alert("Permission denied. You are not authorized to update this group's settings.");
+            setPrivacyModal(false);
+            return;
+        }
+        
         onUpdateInfo({ ...chatInfo, metadata: newMeta });
         setEditPrivacy(val);
         setPrivacyModal(false);
@@ -101,7 +112,19 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
     const updateSquadName = async () => {
         if (!editTitle.trim() || editTitle === chatInfo.title) return;
-        await supabase.from('conversations').update({ title: editTitle }).eq('id', conversationId);
+        
+        const { data: updatedRows, error } = await supabase
+            .from('conversations')
+            .update({ title: editTitle })
+            .eq('id', conversationId)
+            .select();
+            
+        if (error || !updatedRows || updatedRows.length === 0) {
+            alert("Permission denied. You are not authorized to change this group's name.");
+            setEditTitle(chatInfo.title); // Revert UI
+            return;
+        }
+        
         onUpdateInfo({ ...chatInfo, title: editTitle });
     };
 
@@ -110,12 +133,33 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         if (!cleanSlug || cleanSlug === chatInfo.metadata?.slug) return;
         
         setSlugStatus('saving');
-        const newMeta = { ...chatInfo.metadata, slug: cleanSlug };
-        const { error } = await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
-        
-        if (error) {
+
+        // 1. Manually enforce uniqueness across the JSONB column
+        const { data: existing } = await supabase
+            .from('conversations')
+            .select('id')
+            .contains('metadata', { slug: cleanSlug })
+            .neq('id', conversationId)
+            .maybeSingle();
+
+        if (existing) {
             setSlugStatus('error');
-            setSlugError("Handle already taken or invalid.");
+            setSlugError("Handle is already taken by another group.");
+            return;
+        }
+
+        // 2. Perform Update and force response data to verify RLS success
+        const newMeta = { ...chatInfo.metadata, slug: cleanSlug };
+        const { data: updatedRows, error } = await supabase
+            .from('conversations')
+            .update({ metadata: newMeta })
+            .eq('id', conversationId)
+            .select();
+        
+        if (error || !updatedRows || updatedRows.length === 0) {
+            setSlugStatus('error');
+            setSlugError("Permission denied. Update rejected.");
+            setEditSlug(chatInfo.metadata?.slug || ''); // Revert UI to truth
             return;
         }
 
