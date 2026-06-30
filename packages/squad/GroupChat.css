@@ -248,6 +248,7 @@
 .si-sheet { 
     background: transparent; flex: 1; 
     display: flex; flex-direction: column; 
+    min-height: 0;
 }
 @keyframes slideUpScreen { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
@@ -359,7 +360,28 @@
 .si-tab.active { color: #fff; }
 .si-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--accent-teal); }
 
-.si-body { flex: 1; overflow-y: auto; padding: 1.5rem; }
+.si-body { flex: 1; overflow-y: auto; padding: 1.5rem; padding-bottom: calc(4rem + env(safe-area-inset-bottom)); min-height: 0; }
+
+.si-slug-container {
+    display: flex; align-items: center; background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+    padding: 0 14px; transition: border-color 0.2s;
+}
+.si-slug-container:focus-within { border-color: var(--accent-teal); background: rgba(0,0,0,0.4); }
+.si-slug-prefix { color: #888; font-size: 0.85rem; white-space: nowrap; }
+.si-slug-input {
+    flex: 1; background: transparent; border: none; color: #fff;
+    padding: 12px 0 12px 4px; outline: none; font-size: 0.95rem;
+    font-family: 'Poppins', sans-serif; min-width: 0;
+}
+.si-save-slug-btn {
+    background: rgba(66, 215, 184, 0.1); color: var(--accent-teal);
+    border: 1px solid rgba(66, 215, 184, 0.3); padding: 6px 12px;
+    border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; white-space: nowrap;
+}
+.si-save-slug-btn:hover:not(:disabled) { background: rgba(66, 215, 184, 0.2); }
+.si-save-slug-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Directory Tab */
 .si-member-row { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.03); margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.05); }
