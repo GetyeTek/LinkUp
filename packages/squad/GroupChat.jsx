@@ -13,6 +13,13 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
 
+    // Modals & Menus
+    const [activeMemberMenu, setActiveMemberMenu] = useState(null);
+    const [confirmModal, setConfirmModal] = useState(null);
+    const [disbandModal, setDisbandModal] = useState(false);
+    const [disbandInput, setDisbandInput] = useState('');
+    const [punishConfig, setPunishConfig] = useState(null); // { uid, type: 'ban'|'mute', isTemp: true, duration: 1, unit: 'days' }
+
     // Auto-scrape Vault Assets from Messages
     const vaultFiles = messages.flatMap(m => m.attachments || []);
     const vaultLinks = messages.flatMap(m => {
@@ -41,9 +48,9 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         setCroppedAvatar(null);
     };
 
-    const handleKick = async (uid) => {
-        if (!window.confirm("Kick this member from the squad?")) return;
-        await supabase.from('conversation_members').delete().eq('conversation_id', conversationId).eq('user_id', uid);
+    const executeKick = async (uid) => {
+        setConfirmModal(null);
+        await supabase.rpc('squad_kick_member', { req_conv_id: conversationId, req_target_id: uid, req_admin_id: currentUser.id });
         setMembers(prev => {
             const next = { ...prev };
             delete next[uid];
@@ -51,11 +58,34 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         });
     };
 
-    const handleDisband = async () => {
-        if (prompt(`Type "${chatInfo.title}" to disband the squad forever:`) !== chatInfo.title) {
-            alert("Name did not match. Aborting.");
-            return;
+    const executePunishment = async () => {
+        const { uid, type, isTemp, duration, unit } = punishConfig;
+        
+        let until = null;
+        if (isTemp) {
+            const multipliers = { minutes: 60000, hours: 3600000, days: 86400000, weeks: 604800000, months: 2592000000 };
+            const ms = duration * multipliers[unit];
+            until = new Date(Date.now() + ms).toISOString();
+        } else {
+            // For permanent mute, set a date 100 years in the future. For ban, null means permanent.
+            until = type === 'mute' ? new Date(Date.now() + 3153600000000).toISOString() : null;
         }
+
+        if (type === 'ban') {
+            await supabase.rpc('squad_ban_member', { req_conv_id: conversationId, req_target_id: uid, req_admin_id: currentUser.id, req_banned_until: until });
+            setMembers(prev => {
+                const next = { ...prev };
+                delete next[uid];
+                return next;
+            });
+        } else {
+            await supabase.rpc('squad_mute_member', { req_conv_id: conversationId, req_target_id: uid, req_admin_id: currentUser.id, req_muted_until: until });
+        }
+        setPunishConfig(null);
+    };
+
+    const executeDisband = async () => {
+        if (disbandInput !== chatInfo.title) return;
         await supabase.from('conversations').delete().eq('id', conversationId);
         onDisband();
     };
@@ -63,7 +93,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const displayAvatar = croppedAvatar?.url || chatInfo.avatar_url;
 
     return (
-        <div className="si-overlay" onClick={onClose}>
+        <div className="si-overlay" onClick={() => setActiveMemberMenu(null)}>
             {selectedFile && (
                 <AvatarCropperModal 
                     imageFile={selectedFile} 
@@ -119,8 +149,23 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                         <span className={`si-member-role ${m.role === 'owner' ? 'si-role-owner' : 'si-role-member'}`}>{m.role}</span>
                                     </div>
                                     {myRole === 'owner' && uid !== currentUser.id && (
-                                        <div className="si-member-actions">
-                                            <button className="si-action-btn" onClick={() => handleKick(uid)} title="Kick Member"><i className="fas fa-user-minus"></i></button>
+                                        <div className="si-member-actions" style={{ position: 'relative' }}>
+                                            <button className="si-action-btn" onClick={(e) => { e.stopPropagation(); setActiveMemberMenu(activeMemberMenu === uid ? null : uid); }}>
+                                                <i className="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            {activeMemberMenu === uid && (
+                                                <div className="si-dropdown-menu" onClick={e => e.stopPropagation()}>
+                                                    <button onClick={() => { setActiveMemberMenu(null); setConfirmModal({ uid, name: m.name }); }}>
+                                                        <i className="fas fa-user-minus"></i> Kick User
+                                                    </button>
+                                                    <button onClick={() => { setActiveMemberMenu(null); setPunishConfig({ uid, type: 'mute', isTemp: true, duration: 1, unit: 'days' }); }}>
+                                                        <i className="fas fa-comment-slash"></i> Restrict Writing
+                                                    </button>
+                                                    <button className="danger" onClick={() => { setActiveMemberMenu(null); setPunishConfig({ uid, type: 'ban', isTemp: true, duration: 1, unit: 'days' }); }}>
+                                                        <i className="fas fa-ban"></i> Ban User
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -199,7 +244,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                             <div className="si-settings-group">
                                 <label className="si-label" style={{color:'#ff5f5f'}}>Danger Zone</label>
                                 <p style={{fontSize:'0.8rem', color:'#888', marginBottom:'1rem'}}>Disbanding the squad will permanently delete all messages, files, and links. This action cannot be undone.</p>
-                                <button className="si-disband-btn" onClick={handleDisband}>
+                                <button className="si-disband-btn" onClick={() => setDisbandModal(true)}>
                                     <i className="fas fa-triangle-exclamation"></i> Disband Squad
                                 </button>
                             </div>
@@ -207,6 +252,81 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                     )}
                 </div>
             </div>
+
+            {/* Custom Kick Confirmation Modal */}
+            {confirmModal && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-card">
+                        <h3>Kick Member</h3>
+                        <p>Are you sure you want to remove <strong>{confirmModal.name}</strong> from the squad? They can rejoin if the group is public.</p>
+                        <div className="cm-footer">
+                            <button className="cm-btn-cancel" onClick={() => setConfirmModal(null)}>Cancel</button>
+                            <button className="cm-btn-danger" onClick={() => executeKick(confirmModal.uid)}>Kick User</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Ban/Mute Configuration Modal */}
+            {punishConfig && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-card">
+                        <h3>{punishConfig.type === 'ban' ? 'Ban Member' : 'Restrict Writing'}</h3>
+                        <p>Configure restriction for <strong>{members[punishConfig.uid]?.name}</strong>:</p>
+                        
+                        <div className="cm-radio-group">
+                            <label className="cm-radio-label">
+                                <input type="radio" checked={punishConfig.isTemp} onChange={() => setPunishConfig({...punishConfig, isTemp: true})} />
+                                Temporary
+                            </label>
+                            <label className="cm-radio-label">
+                                <input type="radio" checked={!punishConfig.isTemp} onChange={() => setPunishConfig({...punishConfig, isTemp: false})} />
+                                Permanent
+                            </label>
+                        </div>
+
+                        {punishConfig.isTemp && (
+                            <div className="cm-duration-inputs">
+                                <input type="number" min="1" value={punishConfig.duration} onChange={e => setPunishConfig({...punishConfig, duration: parseInt(e.target.value) || 1})} />
+                                <select value={punishConfig.unit} onChange={e => setPunishConfig({...punishConfig, unit: e.target.value})}>
+                                    <option value="minutes">Minutes</option>
+                                    <option value="hours">Hours</option>
+                                    <option value="days">Days</option>
+                                    <option value="weeks">Weeks</option>
+                                    <option value="months">Months</option>
+                                </select>
+                            </div>
+                        )}
+
+                        <div className="cm-footer">
+                            <button className="cm-btn-cancel" onClick={() => setPunishConfig(null)}>Cancel</button>
+                            <button className="cm-btn-danger" onClick={executePunishment}>Apply {punishConfig.type === 'ban' ? 'Ban' : 'Restriction'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Disband Modal */}
+            {disbandModal && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-card">
+                        <h3 style={{color: '#ff5f5f'}}>Disband Squad</h3>
+                        <p>This action is irreversible. All messages, files, and links will be destroyed.</p>
+                        <p style={{fontSize: '0.8rem', color: '#aaa', marginTop: '10px'}}>Type <strong>{chatInfo.title}</strong> to confirm:</p>
+                        <input 
+                            type="text" 
+                            className="cm-text-input" 
+                            placeholder={chatInfo.title}
+                            value={disbandInput}
+                            onChange={e => setDisbandInput(e.target.value)}
+                        />
+                        <div className="cm-footer" style={{marginTop: '1rem'}}>
+                            <button className="cm-btn-cancel" onClick={() => { setDisbandModal(false); setDisbandInput(''); }}>Cancel</button>
+                            <button className="cm-btn-danger" onClick={executeDisband} disabled={disbandInput !== chatInfo.title}>Disband Forever</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -225,6 +345,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     // Group Hub State
     const [localChatInfo, setLocalChatInfo] = useState({ title: chat.title, avatar_url: chat.avatar_url, metadata: chat.metadata });
     const [isInfoOpen, setIsInfoOpen] = useState(false);
+    
+    // Moderation State
+    const [myMutedUntil, setMyMutedUntil] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null); // ID of message to delete
 
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -244,7 +368,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                     .eq('conversation_id', chat.conversation_id)
                     .order('created_at', { ascending: true }),
                 supabase.from('conversation_members')
-                    .select('user_id, role')
+                    .select('user_id, role, muted_until')
                     .eq('conversation_id', chat.conversation_id)
             ]);
 
@@ -262,7 +386,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                 memResponse.data.forEach(m => {
                     const prof = profiles?.find(p => p.id === m.user_id);
                     memMap[m.user_id] = { role: m.role, name: prof?.full_name, avatar: prof?.avatar_url };
-                    if (m.user_id === currentUser.id) setMyRole(m.role);
+                    if (m.user_id === currentUser.id) {
+                        setMyRole(m.role);
+                        setMyMutedUntil(m.muted_until);
+                    }
                 });
                 setMembers(memMap);
             }
@@ -385,10 +512,12 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
         }
     };
 
-    const handleDelete = async (msgId) => {
-        if (!window.confirm("Purge this entry?")) return;
+    const confirmAndDelete = async () => {
+        if (!deleteConfirm) return;
+        const msgId = deleteConfirm;
+        setDeleteConfirm(null);
+        
         setMessages(prev => prev.filter(m => m.id !== msgId));
-        setActiveMenu(null);
         await supabase.from('messages').delete().eq('id', msgId);
     };
 
@@ -587,7 +716,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                         </button>
                     )}
                     {(activeMenu.isMine || myRole === 'owner' || myRole === 'admin') && (
-                        <button className="squad-ctx-btn delete" onClick={() => handleDelete(activeMenu.msg.id)}>
+                        <button className="squad-ctx-btn delete" onClick={() => { setDeleteConfirm(activeMenu.msg.id); setActiveMenu(null); }}>
                             <i className="fa-solid fa-trash"></i> {activeMenu.isMine ? 'Delete' : 'Admin Delete'}
                         </button>
                     )}
@@ -629,21 +758,42 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                             </div>
                         )}
                         
-                        <div className="squad-dock">
-                            <input 
-                                type="text" 
-                                placeholder="Squad message..." 
-                                value={input} 
-                                onChange={e => setInput(e.target.value)} 
-                                onKeyPress={e => e.key === 'Enter' && handleSend()} 
-                            />
-                            <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim()}>
-                                <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
-                            </button>
-                        </div>
+                        {myMutedUntil && new Date(myMutedUntil) > new Date() ? (
+                            <div className="squad-muted-notice">
+                                <i className="fas fa-microphone-slash"></i>
+                                {new Date(myMutedUntil).getFullYear() > 2100 ? "You have been permanently restricted from posting." : `You are restricted from posting until ${new Date(myMutedUntil).toLocaleString()}.`}
+                            </div>
+                        ) : (
+                            <div className="squad-dock">
+                                <input 
+                                    type="text" 
+                                    placeholder="Squad message..." 
+                                    value={input} 
+                                    onChange={e => setInput(e.target.value)} 
+                                    onKeyPress={e => e.key === 'Enter' && handleSend()} 
+                                />
+                                <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim()}>
+                                    <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
             </footer>
+
+            {/* Generic Message Delete Confirm Modal */}
+            {deleteConfirm && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-card">
+                        <h3>Delete Message</h3>
+                        <p>Are you sure you want to permanently delete this message for everyone?</p>
+                        <div className="cm-footer">
+                            <button className="cm-btn-cancel" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+                            <button className="cm-btn-danger" onClick={confirmAndDelete}>Purge Message</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {showSearchList && (
                 <div className="chat-search-modal-overlay" onClick={() => setShowSearchList(false)}>
                     <div className="chat-search-modal" onClick={e => e.stopPropagation()}>
