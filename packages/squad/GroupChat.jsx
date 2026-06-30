@@ -366,13 +366,15 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                         onKeyPress={e => e.key === 'Enter' && updateSquadSlug()}
                                     />
                                 </div>
-                                {editSlug !== (chatInfo.metadata?.slug || '') && (
-                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <button className="si-save-slug-btn" onClick={updateSquadSlug} disabled={slugStatus === 'saving' || !editSlug.trim()}>
-                                            {slugStatus === 'saving' ? 'Saving...' : 'Save Handle'}
-                                        </button>
-                                        {slugStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}>{slugError}</span>}
-                                        {slugStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem' }}>Updated successfully!</span>}
+                                {(editSlug !== (chatInfo.metadata?.slug || '') || slugStatus !== 'idle') && (
+                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', minHeight: '30px' }}>
+                                        {editSlug !== (chatInfo.metadata?.slug || '') && (
+                                            <button className="si-save-slug-btn" onClick={updateSquadSlug} disabled={slugStatus === 'saving' || !editSlug.trim()}>
+                                                {slugStatus === 'saving' ? 'Saving...' : 'Save Handle'}
+                                            </button>
+                                        )}
+                                        {slugStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> {slugError}</span>}
+                                        {slugStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Handle updated!</span>}
                                     </div>
                                 )}
                             </div>
