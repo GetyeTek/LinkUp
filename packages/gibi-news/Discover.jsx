@@ -27,7 +27,14 @@ const TelegramCard = ({ post }) => {
     
     return (
         <div className="telegram-card" ref={cardRef}>
-            {imgUrl && <img src={imgUrl} alt="News Media" className="tc-image" />}
+            {imgUrl && (
+                <img 
+                    src={imgUrl} 
+                    alt="News Media" 
+                    className="tc-image" 
+                    referrerPolicy="no-referrer" 
+                />
+            )}
             <div className="tc-content">
                 <div className="tc-header">
                     <i className="fa-solid fa-satellite-dish"></i> GibiNews
