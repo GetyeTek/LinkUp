@@ -42,7 +42,15 @@
 
 /* Telegram Style Cards */
 .telegram-card { background: var(--surface-dark); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.2); flex-shrink: 0; }
-.tc-image { width: 100%; max-height: 250px; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.tc-image { 
+    width: 100%; 
+    min-height: 200px;
+    max-height: 280px; 
+    object-fit: cover; 
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    background: #121212;
+    display: block;
+}
 .tc-content { padding: 1.25rem; position: relative; }
 .tc-header { font-weight: 700; color: var(--accent-teal); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
 .tc-text-wrapper { position: relative; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
