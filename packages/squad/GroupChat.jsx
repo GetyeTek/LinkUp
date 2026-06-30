@@ -40,20 +40,6 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         return urls.map(url => ({ url, sender: members[m.sender_id]?.name || 'Unknown', time: m.created_at }));
     });
 
-    // Base62 URL Compressor
-    const generateShortLink = () => {
-        try {
-            const hex = conversationId.replace(/-/g, '');
-            const bytes = new Uint8Array(16);
-            for (let i = 0; i < 16; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-            const b64 = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-            // Clean host origin to prevent duplication
-            const cleanBase = window.location.href.split('?')[0].replace(/\/$/, '');
-            return `${cleanBase}?sq=${b64}`;
-        } catch (e) {
-            return `${window.location.href.split('?')[0]}?squad=${conversationId}`;
-        }
-    };
     const squadHandle = chatInfo.metadata?.slug || chatInfo.title.toLowerCase().replace(/[^a-z0-9]/g, '');
     const cleanBase = window.location.href.split('?')[0].replace(/\/$/, '');
     const inviteLink = `${cleanBase}?sq=${squadHandle}`;
