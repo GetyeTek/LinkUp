@@ -151,6 +151,27 @@ const Connect = () => {
     useEffect(() => {
         if (!currentUser) return;
         
+        // --- DEEP LINK INTERCEPTOR (SQUAD INVITES) ---
+        const params = new URLSearchParams(window.location.search);
+        const inviteSquadId = params.get('squad');
+        if (inviteSquadId) {
+            // Strip the param from the URL cleanly
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // Fetch and open the squad in preview mode
+            supabase.from('conversations').select('*').eq('id', inviteSquadId).single().then(({data}) => {
+                if (data && data.type === 'group') {
+                    setActiveChat({
+                        conversation_id: data.id,
+                        type: 'group',
+                        title: data.title,
+                        metadata: data.metadata,
+                        is_preview: true
+                    });
+                }
+            });
+        }
+
         fetchConversations();
         fetchSuggestedSquads();
         
