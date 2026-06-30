@@ -95,8 +95,16 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const updateSquadSlug = async () => {
         const cleanSlug = editSlug.toLowerCase().replace(/[^a-z0-9]/g, '');
         if (!cleanSlug || cleanSlug === chatInfo.metadata?.slug) return;
+        
         const newMeta = { ...chatInfo.metadata, slug: cleanSlug };
-        await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
+        const { error } = await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
+        
+        if (error) {
+            alert("Whoops! That link handle is already taken by another squad. Try another one!");
+            setEditSlug(chatInfo.metadata?.slug || chatInfo.title.toLowerCase().replace(/[^a-z0-9]/g, ''));
+            return;
+        }
+
         onUpdateInfo({ ...chatInfo, metadata: newMeta });
         setEditSlug(cleanSlug);
     };
