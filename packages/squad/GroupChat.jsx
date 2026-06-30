@@ -72,22 +72,34 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         setShowAddMember(false);
     };
 
-    const handleSaveSettings = async () => {
-        setIsSaving(true);
-        let newAvatarUrl = chatInfo.avatar_url;
-        
-        if (croppedAvatar?.blob) {
-            const arrayBuffer = await croppedAvatar.blob.arrayBuffer();
-            const filePath = `group_avatars/${conversationId}/avatar_${Date.now()}.png`;
-            await supabase.storage.from('chat_media').upload(filePath, arrayBuffer, { contentType: 'image/png', upsert: true });
-            const { data: { publicUrl } } = supabase.storage.from('chat_media').getPublicUrl(filePath);
-            newAvatarUrl = publicUrl;
-        }
+    const updateSquadPrivacy = async (val) => {
+        const newMeta = { ...chatInfo.metadata, privacy: val };
+        await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
+        onUpdateInfo({ ...chatInfo, metadata: newMeta });
+        setEditPrivacy(val);
+        setPrivacyModal(false);
+    };
 
-        const newMeta = { ...chatInfo.metadata, privacy: editPrivacy };
-        await supabase.from('conversations').update({ title: editTitle, avatar_url: newAvatarUrl, metadata: newMeta }).eq('id', conversationId);
+    const updateSquadName = async () => {
+        if (!editTitle.trim() || editTitle === chatInfo.title) return;
+        await supabase.from('conversations').update({ title: editTitle }).eq('id', conversationId);
+        onUpdateInfo({ ...chatInfo, title: editTitle });
+    };
+
+    const handleAvatarUpdate = async (blob) => {
+        const url = URL.createObjectURL(blob);
+        setCroppedAvatar({ blob, url });
+        setSelectedFile(null);
+
+        // Auto-upload and save avatar immediately
+        setIsSaving(true);
+        const arrayBuffer = await blob.arrayBuffer();
+        const filePath = `group_avatars/${conversationId}/avatar_${Date.now()}.png`;
+        await supabase.storage.from('chat_media').upload(filePath, arrayBuffer, { contentType: 'image/png', upsert: true });
+        const { data: { publicUrl } } = supabase.storage.from('chat_media').getPublicUrl(filePath);
         
-        onUpdateInfo({ ...chatInfo, title: editTitle, avatar_url: newAvatarUrl, metadata: newMeta });
+        await supabase.from('conversations').update({ avatar_url: publicUrl }).eq('id', conversationId);
+        onUpdateInfo({ ...chatInfo, avatar_url: publicUrl });
         setIsSaving(false);
         setCroppedAvatar(null);
     };
@@ -142,11 +154,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                 <AvatarCropperModal 
                     imageFile={selectedFile} 
                     onCancel={() => setSelectedFile(null)} 
-                    onSave={(blob) => {
-                        const url = URL.createObjectURL(blob);
-                        setCroppedAvatar({ blob, url });
-                        setSelectedFile(null);
-                    }}
+                    onSave={handleAvatarUpdate}
                 />
             )}
             <div className="si-sheet" onClick={e => e.stopPropagation()}>
@@ -181,6 +189,15 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                             <span className="si-badge" style={{background: 'rgba(255,255,255,0.1)', color: '#ccc'}}>{chatInfo.metadata.focus}</span>
                         )}
                     </div>
+
+                    {chatInfo.metadata?.privacy === 'public' && (
+                        <div className="si-invite-box">
+                            <div className="si-invite-url">{inviteLink}</div>
+                            <button className="si-invite-copy-btn" onClick={handleCopyInvite}>
+                                {inviteCopied ? <i className="fas fa-check"></i> : <i className="fas fa-copy"></i>}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="si-tabs">
@@ -284,34 +301,28 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
                     {activeTab === 'settings' && myRole === 'owner' && (
                         <div className="si-settings">
-                            {chatInfo.metadata?.privacy === 'public' && (
-                                <div className="si-invite-card">
-                                    <div className="si-invite-info">
-                                        <h4>Public Invite Link</h4>
-                                        <p>Anyone with this link can instantly join.</p>
-                                    </div>
-                                    <button className="si-invite-btn" onClick={handleCopyInvite}>
-                                        {inviteCopied ? <><i className="fas fa-check"></i> Copied!</> : <><i className="fas fa-link"></i> Copy Link</>}
-                                    </button>
-                                </div>
-                            )}
-
                             <div className="si-settings-group">
                                 <label className="si-label">Squad Name</label>
-                                <input type="text" className="si-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+                                <div className="si-input-wrapper">
+                                    <input 
+                                        type="text" 
+                                        className="si-input" 
+                                        value={editTitle} 
+                                        onChange={e => setEditTitle(e.target.value)} 
+                                        onBlur={updateSquadName}
+                                        onKeyPress={e => e.key === 'Enter' && updateSquadName()}
+                                    />
+                                    {isSaving && <i className="fas fa-circle-notch fa-spin si-input-loader"></i>}
+                                </div>
                             </div>
 
                             <div className="si-settings-row" onClick={() => setPrivacyModal(true)}>
                                 <div className="sr-info">
                                     <h4>Privacy Status</h4>
-                                    <p>{editPrivacy === 'public' ? 'Anyone can find and join' : 'Invite only'}</p>
+                                    <p>{chatInfo.metadata?.privacy === 'public' ? 'Anyone can find and join' : 'Invite only'}</p>
                                 </div>
-                                <div className="sr-val">{editPrivacy} <i className="fas fa-chevron-right"></i></div>
+                                <div className="sr-val">{chatInfo.metadata?.privacy} <i className="fas fa-chevron-right"></i></div>
                             </div>
-                            
-                            <button className="si-save-btn" onClick={handleSaveSettings} disabled={isSaving || (!editTitle.trim() && editPrivacy === chatInfo.metadata?.privacy)}>
-                                {isSaving ? <i className="fas fa-circle-notch fa-spin"></i> : "Save Changes"}
-                            </button>
 
                             <hr style={{border:'none', borderTop:'1px solid rgba(255,255,255,0.05)', margin:'2rem 0'}}/>
 
@@ -350,8 +361,8 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                             </div>
                         </div>
                         <div className="cm-footer" style={{marginTop: '1rem'}}>
-                            <button className="cm-btn-cancel" onClick={() => { setTempPrivacy(editPrivacy); setPrivacyModal(false); }}>Cancel</button>
-                            <button className="cm-btn-primary" onClick={() => { setEditPrivacy(tempPrivacy); setPrivacyModal(false); }}>Confirm</button>
+                            <button className="cm-btn-cancel" onClick={() => { setTempPrivacy(chatInfo.metadata?.privacy); setPrivacyModal(false); }}>Cancel</button>
+                            <button className="cm-btn-primary" onClick={() => updateSquadPrivacy(tempPrivacy)}>Confirm Status</button>
                         </div>
                     </div>
                 </div>
