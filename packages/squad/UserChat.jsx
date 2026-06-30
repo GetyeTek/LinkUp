@@ -378,7 +378,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         observer.observe(el);
     };
     return (
-        <div className="user-chat-overlay">
+        <div className="user-chat-overlay" onTouchStart={e => e.stopPropagation()}>
             <div className="ambient-prism-light"></div>
 
             {isSearchActive ? (
