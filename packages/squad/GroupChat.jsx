@@ -39,7 +39,23 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         return urls.map(url => ({ url, sender: members[m.sender_id]?.name || 'Unknown', time: m.created_at }));
     });
 
-    const inviteLink = `${window.location.origin}${window.location.pathname}?squad=${conversationId}`;
+    // Base62 URL Compressor
+    const generateShortLink = () => {
+        try {
+            const hex = conversationId.replace(/-/g, '');
+            const bytes = new Uint8Array(16);
+            for (let i = 0; i < 16; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+            const b64 = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            // Clean host origin to prevent duplication
+            const cleanBase = window.location.href.split('?')[0].replace(/\/$/, '');
+            return `${cleanBase}?sq=${b64}`;
+        } catch (e) {
+            return `${window.location.href.split('?')[0]}?squad=${conversationId}`;
+        }
+    };
+    const inviteLink = generateShortLink();
+
+    const isPublic = !chatInfo.metadata?.privacy || chatInfo.metadata.privacy === 'public';
 
     const handleCopyInvite = () => {
         navigator.clipboard.writeText(inviteLink);
@@ -182,15 +198,15 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                     <h2 className="si-title">{chatInfo.title}</h2>
                     <div className="si-ppn">#{conversationId.substring(0,8).toUpperCase()}</div>
                     <div className="si-badges">
-                        <span className={`si-badge ${chatInfo.metadata?.privacy === 'private' ? 'private' : 'public'}`}>
-                            <i className={`fas fa-${chatInfo.metadata?.privacy === 'private' ? 'lock' : 'globe'}`}></i> {chatInfo.metadata?.privacy || 'public'}
+                        <span className={`si-badge ${!isPublic ? 'private' : 'public'}`}>
+                            <i className={`fas fa-${!isPublic ? 'lock' : 'globe'}`}></i> {!isPublic ? 'private' : 'public'}
                         </span>
                         {chatInfo.metadata?.focus && (
                             <span className="si-badge" style={{background: 'rgba(255,255,255,0.1)', color: '#ccc'}}>{chatInfo.metadata.focus}</span>
                         )}
                     </div>
 
-                    {chatInfo.metadata?.privacy === 'public' && (
+                    {isPublic && (
                         <div className="si-invite-box">
                             <div className="si-invite-url">{inviteLink}</div>
                             <button className="si-invite-copy-btn" onClick={handleCopyInvite}>
@@ -710,7 +726,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     };
 
     return (
-        <div className="squad-chat-overlay">
+        <div className="squad-chat-overlay" onTouchStart={e => e.stopPropagation()}>
             <div className="squad-bg-pattern"></div>
             {isSearchActive ? (
                 <header className="chat-search-header">
