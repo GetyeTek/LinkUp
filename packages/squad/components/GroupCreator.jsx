@@ -32,14 +32,10 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
         setLoading(true);
         setError(null);
         try {
-            // Generate a clean, readable slug with a random 4-digit suffix for uniqueness
-            const baseSlug = form.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-            const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
-            const friendlySlug = `${baseSlug}${uniqueSuffix}`;
-
+            // Slug generation is now handled purely by the Postgres RPC for absolute shortest length
             const { data, error: rpcError } = await supabase.rpc('create_study_group', {
                 req_title: form.title,
-                req_metadata: { focus: form.focus, privacy: form.privacy, slug: friendlySlug },
+                req_metadata: { focus: form.focus, privacy: form.privacy },
                 req_owner_id: currentUser.id
             });
             if (rpcError) throw rpcError;
