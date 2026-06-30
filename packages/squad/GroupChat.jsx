@@ -40,7 +40,8 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         return urls.map(url => ({ url, sender: members[m.sender_id]?.name || 'Unknown', time: m.created_at }));
     });
 
-    const squadHandle = chatInfo.metadata?.slug || chatInfo.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    // Strict DB truth. No front-end guessing.
+    const squadHandle = chatInfo.metadata?.slug;
     const cleanBase = window.location.href.split('?')[0].replace(/\/$/, '');
     const inviteLink = `${cleanBase}?sq=${squadHandle}`;
 
