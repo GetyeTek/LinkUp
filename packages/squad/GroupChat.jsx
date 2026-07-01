@@ -789,6 +789,8 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const [showSearchList, setShowSearchList] = useState(false);
 
     const flowRef = useRef(null);
+    const channelRef = useRef(null);
+    const typingTimeoutRef = useRef(null);
 
     useEffect(() => {
         const fetchState = async () => {
@@ -851,6 +853,8 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
         const channel = supabase.channel(`group_${chat.conversation_id}`, {
             config: { presence: { key: currentUser.id } }
         });
+
+        channelRef.current = channel;
 
         channel
             .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${chat.conversation_id}` }, (payload) => {
@@ -996,10 +1000,25 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
         return snippet;
     };
 
+    const handleInputChange = (val) => {
+        setInput(val);
+        if (channelRef.current && !chat.is_preview) {
+            channelRef.current.track({ isTyping: val.length > 0 });
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => {
+                if (channelRef.current) channelRef.current.track({ isTyping: false });
+            }, 2500);
+        }
+    };
+
     const handleSend = async () => {
         if (!input.trim()) return;
         const msgText = input;
         setInput('');
+
+        // Turn off typing indicator immediately when sending
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        if (channelRef.current) channelRef.current.track({ isTyping: false });
 
         // Handle Edit
         if (editingMessage) {
@@ -1363,17 +1382,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                                 <input 
                                     type="text" 
                                     placeholder="Squad message..." 
-                                    value={input} 
-    const handleInputChange = (val) => {
-        setInput(val);
-        // Robust Presence tracking for Groups
-        const channel = supabase.getChannels().find(c => c.topic === `realtime:group_${chat.conversation_id}`);
-        if (channel && !chat.is_preview) {
-            channel.track({ isTyping: val.length > 0 });
-            if (window.typingTimeout) clearTimeout(window.typingTimeout);
-            window.typingTimeout = setTimeout(() => channel.track({ isTyping: false }), 2500);
-        }
-    };
+                                    value={input}
+                                    onChange={(e) => handleInputChange(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                />
                                 <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim()}>
                                     <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
                                 </button>
