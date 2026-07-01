@@ -737,7 +737,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
 
         const memberChannel = supabase.channel(`members_${chat.conversation_id}`)
             .on('postgres_changes', { 
-                event: '*', schema: 'public', table: 'conversation_members', filter: `conversation_id=eq.${activeConvId}`
+                event: '*', schema: 'public', table: 'conversation_members', filter: `conversation_id=eq.${chat.conversation_id}`
             }, (payload) => {
                 if (payload.eventType === 'UPDATE') {
                     if (payload.new.user_id === currentUser.id) {
