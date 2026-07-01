@@ -17,6 +17,7 @@ export const invokeMiron = async (payload) => {
         headers: { 
             'Content-Type': 'application/json',
             'apikey': DUMMY_KEY, // Pass dummy key
+            'x-linkup-client': 'linkup-secure-client-2026',
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload)
