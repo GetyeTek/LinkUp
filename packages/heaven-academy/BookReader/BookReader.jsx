@@ -86,7 +86,11 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const currentScale = useRef(1.0);
     const minScale = useRef(1.0);
     const lastDisplayPage = useRef(1);
+    const [currentDisplayPage, setCurrentDisplayPage] = useState(1);
     const cachedDocHeight = useRef(0);
+    
+    // Gestural Engine Refs
+    const swipeRef = useRef({ startX: 0, startY: 0 });
 
     const pinchState = useRef({
         isPinching: false,
@@ -222,6 +226,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                     const pageNum = parseInt(entry.target.getAttribute('data-page-number'));
                     if (pageNum && lastDisplayPage.current !== pageNum) {
                         lastDisplayPage.current = pageNum;
+                        setCurrentDisplayPage(pageNum); // State update for Virtualization
                         
                         if (pageCountRef.current && !isJumpMode) {
                             pageCountRef.current.innerText = pageNum;
@@ -266,6 +271,28 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
             viewportRef.current.scrollTo({ top: targetY, behavior: 'auto' });
         }
         setIsJumpMode(false);
+    };
+
+    const handleGestureStart = (e) => {
+        if (e.touches.length === 1) {
+            swipeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+        }
+    };
+    
+    const handleGestureEnd = (e) => {
+        if (e.changedTouches.length === 1 && !pinchState.current.isPinching) {
+            const diffX = swipeRef.current.startX - e.changedTouches[0].clientX;
+            const diffY = swipeRef.current.startY - e.changedTouches[0].clientY;
+            
+            // Detect horizontal swipe (Threshold: 80px width, mostly flat)
+            if (Math.abs(diffX) > 80 && Math.abs(diffX) > Math.abs(diffY) * 2) {
+                if (diffX > 0 && currentDisplayPage < pages.length) {
+                    jumpToPage(currentDisplayPage + 1); // Swipe Left = Next Page
+                } else if (diffX < 0 && currentDisplayPage > 1) {
+                    jumpToPage(currentDisplayPage - 1); // Swipe Right = Prev Page
+                }
+            }
+        }
     };
 
     const handleScrubberChange = (e) => {
@@ -688,11 +715,19 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 id="viewport" 
                 ref={viewportRef} 
                 onScroll={handleScroll}
+                onTouchStart={handleGestureStart}
+                onTouchEnd={handleGestureEnd}
                 onContextMenu={(e) => e.preventDefault()} /* Kills native right-click/long-press menu on Android/Desktop */
             >
                 <div id="scroll-container" ref={scrollContainerRef} style={{ opacity: layoutReady ? 1 : 0, transition: 'opacity 0.3s ease' }}>
                     <div id="book-layer" ref={layerRef}>
-                        {pages.map((page, pageIdx) => (
+                        {pages.map((page, pageIdx) => {
+                            // Virtualization: Only render +/- 2 pages from current focus
+                            const isVisible = Math.abs(page.page_number - currentDisplayPage) <= 2;
+                            if (!isVisible) {
+                                return <div key={page.id} className="page-wrapper" data-page-number={page.page_number} style={{ width: '794px', height: '1183px' }}></div>;
+                            }
+                            return (
                             <div key={page.id} className="page-wrapper" data-page-number={page.page_number}>
                                 <div className="page-canvas">
                                     {page.manual_flag && <div className="manual-flag">{page.manual_flag}</div>}
@@ -745,7 +780,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                                     />
                                 )}
                             </div>
-                        ))}
+                        )})}
                     </div>
                 </div>
                 {(!layoutReady) && (
