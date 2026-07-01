@@ -3,7 +3,7 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
 import './GroupChat.css';
 
-const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband }) => {
+const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband, onOpenAdminSettings }) => {
     const canSeeMembers = myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.hide_members !== true;
     
     const [activeTab, setActiveTab] = useState(canSeeMembers ? 'members' : 'media');
@@ -270,8 +270,15 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             <div className="si-sheet" onClick={(e) => { e.stopPropagation(); setShowOptions(false); setActiveMemberMenu(null); }}>
                 <div className="si-hero">
                     <button className="si-back" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
-                    <div className="si-options-wrapper">
-                        <button className="si-options" onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); setActiveMemberMenu(null); }}><i className="fas fa-ellipsis-v"></i></button>
+                    <div className="si-options-wrapper" style={{ display: 'flex', gap: '8px' }}>
+                        {myRole === 'owner' && (
+                            <button className="si-options" onClick={onOpenAdminSettings} title="Admin Controls">
+                                <i className="fas fa-key"></i>
+                            </button>
+                        )}
+                        <button className="si-options" onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); setActiveMemberMenu(null); }}>
+                            <i className="fas fa-ellipsis-v"></i>
+                        </button>
                         {showOptions && (
                             <div className="si-dropdown-menu" style={{top: '40px', right: '0'}}>
                                 <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> Add Members</button>
@@ -1045,9 +1052,6 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                         </div>
                     </div>
                     <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {myRole === 'owner' && (
-                            <button className="icon-button" onClick={() => setShowAdminSettings(true)}><i className="fas fa-key"></i></button>
-                        )}
                         <button className="icon-button" onClick={() => setIsSearchActive(true)}><i className="fas fa-search"></i></button>
                     </div>
                 </header>
@@ -1333,6 +1337,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                     onClose={() => setIsInfoOpen(false)}
                     onUpdateInfo={setLocalChatInfo}
                     onDisband={onClose}
+                    onOpenAdminSettings={() => setShowAdminSettings(true)}
                 />
             )}
         </div>
