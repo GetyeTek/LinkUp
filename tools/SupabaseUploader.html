@@ -140,10 +140,7 @@
 
         // --- Init ---
         window.onload = () => {
-            const savedUrl = localStorage.getItem('supa_url');
-            const savedKey = localStorage.getItem('supa_key');
-            if (savedUrl) document.getElementById('sb-url').value = savedUrl;
-            if (savedKey) document.getElementById('sb-key').value = savedKey;
+            log("SECURITY NOTICE: Keys are no longer saved in localStorage for your protection.", "warn");
         };
 
         const log = (msg, type = 'info') => {
@@ -157,8 +154,7 @@
         };
 
         const saveCreds = () => {
-            localStorage.setItem('supa_url', document.getElementById('sb-url').value.trim());
-            localStorage.setItem('supa_key', document.getElementById('sb-key').value.trim());
+            // Disabled to prevent Service Role Key theft via XSS
         };
 
         // --- File Handling ---
