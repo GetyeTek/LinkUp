@@ -102,9 +102,17 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
     const executeAddMember = async () => {
         if (!confirmAddUser) return;
-        await supabase.from('conversation_members').insert({
+        const { error } = await supabase.from('conversation_members').insert({
             conversation_id: conversationId, user_id: confirmAddUser.other_user_id, role: 'member'
         });
+        
+        if (error) {
+            setAlertNotice("Permission denied. You are not allowed to add members.");
+            setConfirmAddUser(null);
+            setShowAddMember(false);
+            return;
+        }
+        
         setMembers(prev => ({
             ...prev,
             [confirmAddUser.other_user_id]: { role: 'member', name: confirmAddUser.other_user_name, avatar: confirmAddUser.other_user_avatar }
@@ -127,8 +135,11 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             return;
         }
         
-        onUpdateInfo({ ...chatInfo, metadata: newMeta });
+        // Sync with backend trigger results (slug added/removed)
+        const finalMeta = updatedRows[0].metadata;
+        onUpdateInfo({ ...chatInfo, metadata: finalMeta });
         setEditPrivacy(val);
+        setEditSlug(finalMeta.slug || '');
         setPrivacyModal(false);
     };
 
@@ -276,13 +287,17 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                 <i className="fas fa-key"></i>
                             </button>
                         )}
-                        <button className="si-options" onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); setActiveMemberMenu(null); }}>
-                            <i className="fas fa-ellipsis-v"></i>
-                        </button>
-                        {showOptions && (
-                            <div className="si-dropdown-menu" style={{top: '40px', right: '0'}}>
-                                <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> Add Members</button>
-                            </div>
+                        {(myRole === 'owner' || myRole === 'admin' || localChatInfo.metadata?.members_can_add !== false) && (
+                            <>
+                                <button className="si-options" onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); setActiveMemberMenu(null); }}>
+                                    <i className="fas fa-ellipsis-v"></i>
+                                </button>
+                                {showOptions && (
+                                    <div className="si-dropdown-menu" style={{top: '40px', right: '0'}}>
+                                        <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> Add Members</button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 
@@ -442,6 +457,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                 )}
                             </div>
 
+                            {localChatInfo.metadata?.privacy !== 'private' && (
                             <div className="si-settings-group">
                                 <label className="si-label">Group Link Handle</label>
                                 <div className="si-slug-container">
@@ -466,6 +482,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                     </div>
                                 )}
                             </div>
+                            )}
 
                             <div className="si-settings-row" onClick={() => setPrivacyModal(true)}>
                                 <div className="sr-info">
@@ -685,8 +702,9 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     useEffect(() => setAvatarError(false), [localChatInfo.avatar_url]);
 
     const toggleAdminSetting = async (key, currentVal) => {
-        // Defaults: posting is true by default, hiding members is false by default
-        const defaultVal = key === 'members_can_post' ? true : false;
+        let defaultVal = false;
+        if (key === 'members_can_post' || key === 'members_can_add') defaultVal = true;
+        
         const actualVal = currentVal ?? defaultVal;
         const newMeta = { ...localChatInfo.metadata, [key]: !actualVal };
         
@@ -1251,6 +1269,16 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                         <h3 style={{marginBottom: '1.5rem'}}><i className="fas fa-key" style={{color: 'var(--accent-teal)', marginRight: '8px'}}></i> Admin Controls</h3>
                         
                         <div className="cm-privacy-options">
+                            <div className="si-settings-row" style={{marginBottom: '10px'}} onClick={() => toggleAdminSetting('members_can_add', localChatInfo.metadata?.members_can_add)}>
+                                <div className="sr-info">
+                                    <h4 style={{fontSize: '0.95rem'}}>Members can add members</h4>
+                                    <p style={{fontSize: '0.8rem'}}>Allow everyone to invite others</p>
+                                </div>
+                                <div className="sr-val">
+                                    <div className={`toggle-switch ${(localChatInfo.metadata?.members_can_add !== false) ? 'on' : 'off'}`}></div>
+                                </div>
+                            </div>
+
                             <div className="si-settings-row" style={{marginBottom: '10px'}} onClick={() => toggleAdminSetting('members_can_post', localChatInfo.metadata?.members_can_post)}>
                                 <div className="sr-info">
                                     <h4 style={{fontSize: '0.95rem'}}>Members can post</h4>
