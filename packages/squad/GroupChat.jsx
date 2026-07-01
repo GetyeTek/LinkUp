@@ -1366,10 +1366,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                                     value={input} 
     const handleInputChange = (val) => {
         setInput(val);
-        // We need roomChannelRef to track presence. Since we redefined it above, let's grab it via supabase.getChannels
+        // Robust Presence tracking for Groups
         const channel = supabase.getChannels().find(c => c.topic === `realtime:group_${chat.conversation_id}`);
-        if (channel) {
-            channel.track({ isTyping: true });
+        if (channel && !chat.is_preview) {
+            channel.track({ isTyping: val.length > 0 });
             if (window.typingTimeout) clearTimeout(window.typingTimeout);
             window.typingTimeout = setTimeout(() => channel.track({ isTyping: false }), 2500);
         }
