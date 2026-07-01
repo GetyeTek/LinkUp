@@ -146,6 +146,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
   // Final Atomic Save
   const handleFinalSubmit = async () => {
       setLoading(true);
+      // Ensure no error ghosts from previous phases persist
       setClaimError(null);
       
       const finalFullName = fatherName.trim() ? `${sureName.trim()} ${fatherName.trim()}` : sureName.trim();
@@ -295,7 +296,8 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
             </div>
           </div>
 
-              {claimError && <div className="onboarding-error-alert">{claimError}</div>}
+              {/* Only show error in Phase 1 identity setup */}
+              {phase === 1 && claimError && <div className="onboarding-error-alert">{claimError}</div>}
 
               <button className="onboarding-submit-btn" disabled={status !== 'available' || sureName.trim().length < 2} onClick={handleNextPhase}>
                 Continue <i className="fas fa-arrow-right" style={{marginLeft: '8px'}}></i>
@@ -422,6 +424,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
               {currentWizardId === 'finish' && (
                   <div className="wizard-step">
                       <div className="wizard-finish-state">
+                          {/* Force clear any errors when showing final card */}
                           {academicData.department === 'Freshman' ? (
                               <>
                                   <i className="fas fa-rocket wizard-finish-icon"></i>
