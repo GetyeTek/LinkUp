@@ -4,8 +4,16 @@ import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx
 import './GroupChat.css';
 
 const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband }) => {
-    const [activeTab, setActiveTab] = useState('members');
+    const canSeeMembers = myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.hide_members !== true;
+    
+    const [activeTab, setActiveTab] = useState(canSeeMembers ? 'members' : 'media');
     const [mediaSubTab, setMediaSubTab] = useState('media'); // files, media, links
+    
+    useEffect(() => {
+        if (!canSeeMembers && activeTab === 'members') {
+            setActiveTab('media');
+        }
+    }, [canSeeMembers, activeTab]);
     
     const [selectedFile, setSelectedFile] = useState(null);
     const [croppedAvatar, setCroppedAvatar] = useState(null);
@@ -303,13 +311,13 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                 </div>
 
                 <div className="si-tabs">
-                    <div className={`si-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>Members</div>
+                    {canSeeMembers && <div className={`si-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>Members</div>}
                     <div className={`si-tab ${activeTab === 'media' ? 'active' : ''}`} onClick={() => setActiveTab('media')}>Media</div>
                     {myRole === 'owner' && <div className={`si-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Control Panel</div>}
                 </div>
 
                 <div className="si-body">
-                    {activeTab === 'members' && (
+                    {activeTab === 'members' && canSeeMembers && (
                         <div className="si-directory">
                             {Object.entries(members).map(([uid, m]) => (
                                 <div className="si-member-row" key={uid}>
@@ -664,9 +672,30 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const [deleteConfirm, setDeleteConfirm] = useState(null); // ID of message to delete
     const [kickedNotice, setKickedNotice] = useState(false);
     const [avatarError, setAvatarError] = useState(false);
+    const [showAdminSettings, setShowAdminSettings] = useState(false);
 
     // Reset header avatar error state if URL changes
     useEffect(() => setAvatarError(false), [localChatInfo.avatar_url]);
+
+    const toggleAdminSetting = async (key, currentVal) => {
+        // Defaults: posting is true by default, hiding members is false by default
+        const defaultVal = key === 'members_can_post' ? true : false;
+        const actualVal = currentVal ?? defaultVal;
+        const newMeta = { ...localChatInfo.metadata, [key]: !actualVal };
+        
+        // Optimistic UI Update
+        setLocalChatInfo(prev => ({ ...prev, metadata: newMeta }));
+        
+        const { error } = await supabase.from('conversations').update({ metadata: newMeta }).eq('id', chat.conversation_id);
+        if (error) {
+            // Revert on error
+            setLocalChatInfo(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: actualVal } }));
+            console.error("Failed to update admin setting:", error);
+        }
+    };
+
+    const membersCanPost = localChatInfo.metadata?.members_can_post !== false;
+    const canPost = myRole === 'owner' || myRole === 'admin' || membersCanPost;
 
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -787,9 +816,24 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             })
             .subscribe();
 
+        // Listen for Global Meta Changes (like Admin toggling write-access)
+        const convChannel = supabase.channel(`conv_${chat.conversation_id}`)
+            .on('postgres_changes', { 
+                event: 'UPDATE', schema: 'public', table: 'conversations', filter: `id=eq.${chat.conversation_id}`
+            }, (payload) => {
+                setLocalChatInfo(prev => ({
+                    ...prev,
+                    title: payload.new.title,
+                    avatar_url: payload.new.avatar_url,
+                    metadata: payload.new.metadata
+                }));
+            })
+            .subscribe();
+
         return () => {
             supabase.removeChannel(channel);
             supabase.removeChannel(memberChannel);
+            supabase.removeChannel(convChannel);
         };
     }, [chat.conversation_id]);
 
@@ -1000,7 +1044,12 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                             </div>
                         </div>
                     </div>
-                    <button className="icon-button" style={{marginLeft: 'auto'}} onClick={() => setIsSearchActive(true)}><i className="fas fa-search"></i></button>
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {myRole === 'owner' && (
+                            <button className="icon-button" onClick={() => setShowAdminSettings(true)}><i className="fas fa-key"></i></button>
+                        )}
+                        <button className="icon-button" onClick={() => setIsSearchActive(true)}><i className="fas fa-search"></i></button>
+                    </div>
                 </header>
             )}
 
@@ -1169,6 +1218,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                                 <i className="fas fa-microphone-slash"></i>
                                 {new Date(myMutedUntil).getFullYear() > 2100 ? "You have been permanently restricted from posting." : `You are restricted from posting until ${new Date(myMutedUntil).toLocaleString()}.`}
                             </div>
+                        ) : !canPost ? (
+                            <div className="squad-muted-notice" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: '#aaa', justifyContent: 'center' }}>
+                                <i className="fas fa-lock"></i> Only admins can send messages right now.
+                            </div>
                         ) : (
                             <div className="squad-dock">
                                 <input 
@@ -1186,6 +1239,41 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                     </>
                 )}
             </footer>
+
+            {/* Admin Quick Settings Modal */}
+            {showAdminSettings && (
+                <div className="custom-modal-overlay" onClick={() => setShowAdminSettings(false)}>
+                    <div className="custom-modal-card" onClick={e => e.stopPropagation()}>
+                        <h3 style={{marginBottom: '1.5rem'}}><i className="fas fa-key" style={{color: 'var(--accent-teal)', marginRight: '8px'}}></i> Admin Controls</h3>
+                        
+                        <div className="cm-privacy-options">
+                            <div className="si-settings-row" style={{marginBottom: '10px'}} onClick={() => toggleAdminSetting('members_can_post', localChatInfo.metadata?.members_can_post)}>
+                                <div className="sr-info">
+                                    <h4 style={{fontSize: '0.95rem'}}>Members can post</h4>
+                                    <p style={{fontSize: '0.8rem'}}>Allow everyone to send messages</p>
+                                </div>
+                                <div className="sr-val">
+                                    <div className={`toggle-switch ${(localChatInfo.metadata?.members_can_post !== false) ? 'on' : 'off'}`}></div>
+                                </div>
+                            </div>
+                            
+                            <div className="si-settings-row" style={{marginBottom: '0'}} onClick={() => toggleAdminSetting('hide_members', localChatInfo.metadata?.hide_members)}>
+                                <div className="sr-info">
+                                    <h4 style={{fontSize: '0.95rem'}}>Hide member list</h4>
+                                    <p style={{fontSize: '0.8rem'}}>Only owners can view the directory</p>
+                                </div>
+                                <div className="sr-val">
+                                    <div className={`toggle-switch ${(localChatInfo.metadata?.hide_members === true) ? 'on' : 'off'}`}></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="cm-footer" style={{marginTop: '2rem'}}>
+                            <button className="cm-btn-primary" style={{width: '100%'}} onClick={() => setShowAdminSettings(false)}>Done</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Generic Message Delete Confirm Modal */}
             {deleteConfirm && (
