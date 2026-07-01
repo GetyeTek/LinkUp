@@ -19,6 +19,8 @@ const Profile = () => {
     const [universities, setUniversities] = useState([]);
     const [saving, setSaving] = useState(false);
     const [alertNotice, setAlertNotice] = useState(null); // Unified notice system
+    const [originalForm, setOriginalForm] = useState(null);
+    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
     // Constants for Dropdowns
     const DEPARTMENTS = ['Freshman', 'Computer Science', 'Software Engineering', 'Management', 'Economics', 'Electrical Engineering', 'Mechanical Engineering', 'Health', 'Other'];
@@ -81,7 +83,7 @@ const Profile = () => {
     useEffect(() => {
         if (userProfile) {
             const parts = (userProfile.full_name || '').trim().split(' ');
-            setEditForm({
+            const initialData = {
                 sureName: parts[0] || '',
                 fatherName: parts.slice(1).join(' ') || '',
                 username: userProfile.username || '',
@@ -93,9 +95,19 @@ const Profile = () => {
                 freshman_stream: userProfile.freshman_stream || '',
                 target_department: userProfile.target_department || '',
                 year: userProfile.year || ''
-            });
+            };
+            setEditForm(initialData);
+            setOriginalForm(initialData);
         }
     }, [userProfile, sessionUser]);
+    
+    const handleCloseEditor = () => {
+        if (JSON.stringify(editForm) !== JSON.stringify(originalForm) || croppedAvatar) {
+            setShowDiscardConfirm(true);
+        } else {
+            setIsEditingProfile(false);
+        }
+    };
 
     useEffect(() => {
         if (!editForm.username) {
@@ -413,6 +425,18 @@ const Profile = () => {
             {/* --- HOST APP: IDENTITY MANAGER --- */}
             {isEditingProfile && (
                 <div className="profile-edit-overlay">
+                    {showDiscardConfirm && (
+                        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+                            <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+                                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#ff5f5f' }}>Discard Changes?</h3>
+                                <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>You have unsaved changes. Are you sure you want to leave?</p>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                    <button style={{ padding: '10px 18px', borderRadius: '10px', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }} onClick={() => setShowDiscardConfirm(false)}>Stay</button>
+                                    <button style={{ padding: '10px 18px', borderRadius: '10px', background: '#ff5f5f', color: '#fff', border: 'none', cursor: 'pointer' }} onClick={() => { setShowDiscardConfirm(false); setIsEditingProfile(false); setCroppedAvatar(null); }}>Discard</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     {selectedFile && (
                         <AvatarCropperModal 
                             imageFile={selectedFile} 
@@ -426,7 +450,7 @@ const Profile = () => {
                     )}
                     <div className="profile-edit-card">
                         <header className="pe-header" style={{ justifyContent: 'flex-start', gap: '1.5rem' }}>
-                            <button className="icon-button" onClick={() => setIsEditingProfile(false)} disabled={saving}>
+                            <button className="icon-button" onClick={handleCloseEditor} disabled={saving}>
                                 <i className="fas fa-chevron-left"></i>
                             </button>
                             <h2>Account & Registry</h2>
@@ -545,7 +569,7 @@ const Profile = () => {
                         </div>
                         
                         <footer className="pe-footer">
-                            <button className="pe-btn cancel" onClick={() => setIsEditingProfile(false)} disabled={saving}>Cancel</button>
+                            <button className="pe-btn cancel" onClick={handleCloseEditor} disabled={saving}>Cancel</button>
                             <button className="pe-btn save" onClick={handleSaveProfile} disabled={saving || usernameStatus === 'taken' || usernameStatus === 'invalid'}>
                                 {saving ? <i className="fas fa-circle-notch fa-spin"></i> : "Save Changes"}
                             </button>
