@@ -9,6 +9,7 @@ const Notes = ({ currentUser, onClose }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [activeMenu, setActiveMenu] = useState(null);
+    const [alertNotice, setAlertNotice] = useState(null);
     
     const fileInputRef = useRef(null);
     const flowRef = useRef(null);
@@ -125,8 +126,7 @@ const Notes = ({ currentUser, onClose }) => {
             });
 
         } catch (err) {
-            console.error("Upload failed:", err);
-            alert("Failed to upload file. Check console.");
+            setAlertNotice("Media upload blocked. Ensure the file is under 10MB and is a supported format.");
         } finally {
             setIsUploading(false);
             e.target.value = null; // reset input
@@ -162,8 +162,13 @@ const Notes = ({ currentUser, onClose }) => {
             }
 
             // 4. Delete the database record
-            await supabase.from('messages').delete().eq('id', id);
-            console.log("[Squad:Vault] Resource purge successful.");
+            const { error } = await supabase.from('messages').delete().eq('id', id);
+            if (error) {
+                setAlertNotice("Deletion failed. You may lack permission.");
+                // Resync
+                const { data } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
+                if (data) setMessages(data);
+            }
         } catch (err) {
             console.error("[Squad:Vault] Resource purge failed:", err);
         }
@@ -278,6 +283,21 @@ const Notes = ({ currentUser, onClose }) => {
                     </div>
                 )}
             </main>
+
+            {/* Custom Alert Notice for Notes */}
+            {alertNotice && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+                    <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#ffab40', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="fas fa-exclamation-circle"></i> Notice
+                        </h3>
+                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>{alertNotice}</p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, fontFamily: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', fontSize: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setAlertNotice(null)}>Okay</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {activeMenu && (
                 <div className="notes-ctx-menu" style={{ left: activeMenu.x, top: activeMenu.y }}>
