@@ -20,6 +20,17 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
     const [alertNotice, setAlertNotice] = useState(null); // Replaces window.alert
+    const [avatarError, setAvatarError] = useState(false);
+
+    // Sync state if chatInfo metadata updates after initial mount
+    useEffect(() => {
+        setEditTitle(chatInfo.title || '');
+        setEditSlug(chatInfo.metadata?.slug || '');
+        setEditPrivacy(chatInfo.metadata?.privacy || 'public');
+    }, [chatInfo.title, chatInfo.metadata]);
+
+    // Reset avatar error state if the avatar URL actually changes
+    useEffect(() => setAvatarError(false), [croppedAvatar, chatInfo.avatar_url]);
 
     // Menus & Modals
     const [showOptions, setShowOptions] = useState(false);
@@ -266,7 +277,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                     }} />
                     <div className="si-avatar-container" onClick={() => myRole === 'owner' && fileInputRef.current?.click()} style={{cursor: myRole === 'owner' ? 'pointer' : 'default'}}>
                         <div className="si-avatar">
-                            {displayAvatar ? <img src={displayAvatar} alt="Squad" /> : <i className="fas fa-users"></i>}
+                            {displayAvatar && !avatarError ? <img src={displayAvatar} alt="Squad" onError={() => setAvatarError(true)} /> : <i className="fas fa-users"></i>}
                         </div>
                         {myRole === 'owner' && <div className="si-avatar-edit"><i className="fas fa-pencil"></i></div>}
                     </div>
@@ -652,6 +663,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const [myMutedUntil, setMyMutedUntil] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null); // ID of message to delete
     const [kickedNotice, setKickedNotice] = useState(false);
+    const [avatarError, setAvatarError] = useState(false);
+
+    // Reset header avatar error state if URL changes
+    useEffect(() => setAvatarError(false), [localChatInfo.avatar_url]);
 
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -739,7 +754,18 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             .on('postgres_changes', { 
                 event: '*', schema: 'public', table: 'conversation_members', filter: `conversation_id=eq.${chat.conversation_id}`
             }, (payload) => {
-                if (payload.eventType === 'UPDATE') {
+                if (payload.eventType === 'INSERT') {
+                    // Optimistic UI insert to trigger the live counter instantly
+                    setMembers(prev => ({...prev, [payload.new.user_id]: { role: payload.new.role, name: 'Loading...', avatar: '' }}));
+                    
+                    // Fetch real profile silently in background
+                    supabase.from('profiles').select('full_name, avatar_url').eq('id', payload.new.user_id).single()
+                        .then(({data}) => {
+                            if (data) {
+                                setMembers(prev => ({...prev, [payload.new.user_id]: { role: payload.new.role, name: data.full_name, avatar: data.avatar_url }}));
+                            }
+                        });
+                } else if (payload.eventType === 'UPDATE') {
                     if (payload.new.user_id === currentUser.id) {
                         setMyMutedUntil(payload.new.muted_until);
                         setMyRole(payload.new.role);
@@ -958,10 +984,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             ) : (
                 <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '1.2rem' }}>
                     <button className="icon-button back-btn" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
-                    <div className="squad-contact-profile" onClick={() => !chat.is_preview && setIsInfoOpen(true)} style={{cursor: chat.is_preview ? 'default' : 'pointer'}}>
+                    <div className="squad-contact-profile" onClick={() => setIsInfoOpen(true)} style={{cursor: 'pointer'}}>
                         <div className="squad-avatar-ring">
-                            {localChatInfo.avatar_url ? (
-                                <img src={localChatInfo.avatar_url} alt="Squad Avatar" />
+                            {localChatInfo.avatar_url && !avatarError ? (
+                                <img src={localChatInfo.avatar_url} alt="Squad Avatar" onError={() => setAvatarError(true)} />
                             ) : (
                                 <div className="squad-default-avatar"><i className="fas fa-users"></i></div>
                             )}
