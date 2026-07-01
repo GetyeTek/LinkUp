@@ -4,6 +4,7 @@ import { invokeBookReader } from './api.js';
 import { renderBookBlock } from './BookReader/subjects/Registry.jsx';
 import BookReader from './BookReader/BookReader.jsx';
 import ReportModal from './components/ReportModal.jsx';
+import DOMPurify from 'dompurify';
 import './ExamSession.css';
 
 const getNormalizedMatchingData = (q) => {
@@ -329,9 +330,9 @@ const ExamSession = ({ exam, onClose }) => {
                                             <div className="ai-exp-header">
                                                 <i className="fas fa-sparkles"></i> Miron Synthesis
                                             </div>
-                                                                                    <div className="ai-exp-body" 
+                                        <div className="ai-exp-body" 
                                              dangerouslySetInnerHTML={{ 
-                                                __html: marked.parse(hints[q.id].data?.explanation || "Miron is synthesizing the textbook snapshot above to clarify why this choice is correct...") 
+                                                __html: DOMPurify.sanitize(marked.parse(hints[q.id].data?.explanation || "Miron is synthesizing the textbook snapshot above to clarify why this choice is correct...")) 
                                              }} 
                                         />
                                         </div>
