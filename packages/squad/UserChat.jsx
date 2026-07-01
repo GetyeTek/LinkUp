@@ -103,9 +103,12 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     }, [activeConvId]);
 
     useEffect(() => {
-        // Prevent yanking the scrollbar down if the user is actively searching old messages
+        // Smart Scroll: Only yank down if the user is already near the bottom
         if (flowRef.current && !isSearchActive) {
-            flowRef.current.scrollTop = flowRef.current.scrollHeight;
+            const { scrollHeight, scrollTop, clientHeight } = flowRef.current;
+            if (scrollHeight - scrollTop - clientHeight < 250) {
+                flowRef.current.scrollTop = scrollHeight;
+            }
         }
     }, [messages, isSearchActive]);
     
@@ -196,6 +199,12 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        
+        if (file.size > 10 * 1024 * 1024) {
+            setAlertNotice({ title: "File too large", msg: "Please select a file smaller than 10MB." });
+            e.target.value = null;
+            return;
+        }
         
         const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
         setPendingAttachment({ file, previewUrl });
