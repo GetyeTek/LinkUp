@@ -74,7 +74,7 @@ const Notes = ({ currentUser, onClose }) => {
             conversation_id: conversationId,
             sender_id: currentUser.id,
             text: msgText
-        }).select().single();
+        }).select().maybeSingle();
 
         if (data) {
             setMessages(prev => prev.map(m => m.id === tempId ? data : m));
