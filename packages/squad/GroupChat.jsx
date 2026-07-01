@@ -792,6 +792,14 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const channelRef = useRef(null);
     const typingTimeoutRef = useRef(null);
 
+    const markAsRead = async () => {
+        if (!chat.conversation_id) return;
+        await supabase.from('conversation_members')
+            .update({ last_read_at: new Date().toISOString() })
+            .eq('conversation_id', chat.conversation_id)
+            .eq('user_id', currentUser.id);
+    };
+
     useEffect(() => {
         const fetchState = async () => {
             // OPTIMIZATION: Fire the heavy queries in parallel instead of sequentially
@@ -846,6 +854,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             }
             
             setIsLoading(false);
+            markAsRead(); // Clear badges on load
         };
 
         fetchState();
@@ -863,6 +872,8 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                         if (prev.find(m => m.id === payload.new.id)) return prev;
                         return [...prev, { ...payload.new, status: 'sent' }];
                     });
+                    // Suppress badge increments if we are actively viewing the chat
+                    if (payload.new.sender_id !== currentUser.id) markAsRead();
                 } else if (payload.eventType === 'UPDATE') {
                     setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...payload.new, status: 'sent' } : m));
                 } else if (payload.eventType === 'DELETE') {
