@@ -737,7 +737,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const [replyingTo, setReplyingTo] = useState(null);
 
     const [alertNotice, setAlertNotice] = useState(null); // Parent Error Trapper
-
+    const [typingUsers, setTypingUsers] = useState([]);
     // Group Hub State
     const [localChatInfo, setLocalChatInfo] = useState({ title: chat.title, avatar_url: chat.avatar_url, metadata: chat.metadata });
     const [isInfoOpen, setIsInfoOpen] = useState(false);
@@ -848,7 +848,11 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
 
         fetchState();
 
-        const channel = supabase.channel(`group_${chat.conversation_id}`)
+        const channel = supabase.channel(`group_${chat.conversation_id}`, {
+            config: { presence: { key: currentUser.id } }
+        });
+
+        channel
             .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${chat.conversation_id}` }, (payload) => {
                 if (payload.eventType === 'INSERT') {
                     setMessages(prev => {
@@ -861,7 +865,21 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                     setMessages(prev => prev.filter(m => m.id !== payload.old.id));
                 }
             })
-            .subscribe();
+            .on('presence', { event: 'sync' }, () => {
+                const state = channel.presenceState();
+                const activeTypers = [];
+                Object.keys(state).forEach(uid => {
+                    if (uid !== currentUser.id && state[uid][0]?.isTyping) {
+                        activeTypers.push(uid);
+                    }
+                });
+                setTypingUsers(activeTypers);
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await channel.track({ isTyping: false });
+                }
+            });
 
         const memberChannel = supabase.channel(`members_${chat.conversation_id}`)
             .on('postgres_changes', { 
@@ -922,8 +940,12 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     }, [chat.conversation_id]);
 
     useEffect(() => {
+        // Smart Scroll: Only yank down if the user is already near the bottom
         if (flowRef.current && !isSearchActive) {
-            flowRef.current.scrollTop = flowRef.current.scrollHeight;
+            const { scrollHeight, scrollTop, clientHeight } = flowRef.current;
+            if (scrollHeight - scrollTop - clientHeight < 250) {
+                flowRef.current.scrollTop = scrollHeight;
+            }
         }
     }, [messages, isSearchActive]);
     
@@ -1146,12 +1168,17 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                         </div>
                         <div className="squad-header-info">
                             <h2>{localChatInfo.title}</h2>
+                            {typingUsers.length > 0 ? (
+                                <div style={{ color: '#42d7b8', fontSize: '0.75rem' }}>
+                                    {typingUsers.length === 1 ? `${members[typingUsers[0]]?.name.split(' ')[0] || 'Someone'} is typing...` : `${typingUsers.length} people are typing...`}
+                                </div>
+                            ) : (
                             <div className="squad-meta-tags">
                                 <span className="squad-badge focus">{localChatInfo.metadata?.focus || 'General'}</span>
                                 <span className="squad-badge count"><i className="fas fa-user"></i> {Object.keys(members).length}</span>
                             </div>
+                            )}
                         </div>
-                    </div>
                     <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button className="icon-button" onClick={() => setIsSearchActive(true)}><i className="fas fa-search"></i></button>
                     </div>
@@ -1337,9 +1364,16 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                                     type="text" 
                                     placeholder="Squad message..." 
                                     value={input} 
-                                    onChange={e => setInput(e.target.value)} 
-                                    onKeyPress={e => e.key === 'Enter' && handleSend()} 
-                                />
+    const handleInputChange = (val) => {
+        setInput(val);
+        // We need roomChannelRef to track presence. Since we redefined it above, let's grab it via supabase.getChannels
+        const channel = supabase.getChannels().find(c => c.topic === `realtime:group_${chat.conversation_id}`);
+        if (channel) {
+            channel.track({ isTyping: true });
+            if (window.typingTimeout) clearTimeout(window.typingTimeout);
+            window.typingTimeout = setTimeout(() => channel.track({ isTyping: false }), 2500);
+        }
+    };
                                 <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim()}>
                                     <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
                                 </button>
