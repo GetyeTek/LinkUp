@@ -715,7 +715,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
         if (error) {
             // Revert on error
             setLocalChatInfo(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: actualVal } }));
-            console.error("Failed to update admin setting:", error);
+            setAlertNotice("Action denied. You do not have permission to alter group settings.");
         }
     };
 
@@ -977,9 +977,14 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                 }
             }
             // 3. Database Deletion
-            await supabase.from('messages').delete().eq('id', msgId);
+            const { error } = await supabase.from('messages').delete().eq('id', msgId);
+            if (error) {
+                setAlertNotice("Deletion failed. You do not have permission to delete this message.");
+                fetchMessages(); // Resync state
+            }
         } catch (err) {
             console.error("[Squad:Chat] Deletion failed:", err);
+            fetchMessages(); // Resync state
         }
         console.groupEnd();
     };
@@ -1165,7 +1170,11 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                                     <div className={`squad-time-meta ${isMine ? 'mine-meta' : ''}`}>
                                         {m.is_edited && <span>edited</span>}
                                         {formatTime(m.created_at)}
-                                        {isMine && (m.status === 'pending' ? <i className="fa-solid fa-clock" style={{fontSize: '0.6rem'}}></i> : <i className="fa-solid fa-check"></i>)}
+                                        {isMine && (
+                                            m.status === 'pending' ? <i className="fa-solid fa-clock" style={{fontSize: '0.6rem'}}></i> : 
+                                            m.status === 'failed' ? <i className="fa-solid fa-circle-exclamation" style={{color: '#ff5f5f', fontSize: '0.7rem'}} title="Message Failed"></i> : 
+                                            <i className="fa-solid fa-check"></i>
+                                        )}
                                     </div>
                                 </div>
                                 </div>
