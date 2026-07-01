@@ -147,6 +147,7 @@ const Connect = () => {
     const [showDiscovery, setShowDiscovery] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [joiningSquadId, setJoiningSquadId] = useState(null);
+    const [globalNotice, setGlobalNotice] = useState(null);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -283,7 +284,7 @@ const Connect = () => {
         const { error: rpcError } = await supabase.rpc('join_study_group', { req_conversation_id: squadId, req_user_id: currentUser.id });
         
         if (rpcError) {
-            alert(rpcError.message.toLowerCase().includes('ban') ? "You have been banned from this group and cannot rejoin." : `Cannot join: ${rpcError.message}`);
+            setGlobalNotice(rpcError.message.toLowerCase().includes('ban') ? "You have been banned from this group and cannot rejoin." : `Cannot join: ${rpcError.message}`);
             setJoiningSquadId(null);
             return;
         }
@@ -296,7 +297,7 @@ const Connect = () => {
             .maybeSingle();
 
         if (!verifyData) {
-            alert("Join rejected. You have been banned by the group administrators.");
+            setGlobalNotice("Join rejected. You have been banned by the group administrators.");
             setJoiningSquadId(null);
             return;
         }
@@ -493,7 +494,7 @@ const Connect = () => {
                             suggestedSquads.map(chat => (
                                 <div className="messages-list-item suggested" key={chat.conversation_id} onClick={() => {
                                     if (chat.metadata?.privacy === 'private') {
-                                        alert("This group is private. You need an invite to join.");
+                                        setGlobalNotice("This group is private. You need an invite link to join.");
                                         return;
                                     }
                                     setActiveChat({
@@ -625,6 +626,20 @@ const Connect = () => {
             {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} />}
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); }} />}
+            
+            {globalNotice && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeInModal 0.2s ease-out' }}>
+                    <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '400px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', animation: 'popModal 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.2rem', color: '#fff' }}>
+                            <i className="fas fa-exclamation-circle" style={{color: '#ffab40', marginRight: '8px'}}></i> Notice
+                        </h3>
+                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>{globalNotice}</p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, fontFamily: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', fontSize: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setGlobalNotice(null)}>Okay</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
