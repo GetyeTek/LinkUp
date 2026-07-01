@@ -1198,6 +1198,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                             </div>
                             )}
                         </div>
+                    </div>
                     <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button className="icon-button" onClick={() => setIsSearchActive(true)}><i className="fas fa-search"></i></button>
                     </div>
