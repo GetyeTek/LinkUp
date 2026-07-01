@@ -249,6 +249,7 @@
     background: transparent; flex: 1; 
     display: flex; flex-direction: column; 
     min-height: 0;
+    overflow-y: auto;
 }
 @keyframes slideUpScreen { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
@@ -318,7 +319,7 @@
 .si-media-thumb { aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #222; border: 1px solid rgba(255,255,255,0.05); }
 .si-media-thumb img { width: 100%; height: 100%; object-fit: cover; }
 
-.si-hero { display: flex; flex-direction: column; align-items: center; padding: 3rem 1.5rem 1.5rem; position: relative; }
+.si-hero { display: flex; flex-direction: column; align-items: center; padding: 3rem 1.5rem 1.5rem; position: relative; flex-shrink: 0; }
 .si-back { position: absolute; top: 1.5rem; left: 1.5rem; background: rgba(255,255,255,0.08); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
 .si-back:hover { background: rgba(255,255,255,0.15); }
 .si-options-wrapper { position: absolute; top: 1.5rem; right: 1.5rem; }
@@ -354,13 +355,13 @@
 .si-badge.public { background: rgba(66, 215, 184, 0.15); color: var(--accent-teal); }
 .si-badge.private { background: rgba(255, 95, 95, 0.15); color: #ff5f5f; }
 
-.si-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 0 1.5rem; gap: 1.5rem; }
+.si-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 0 1.5rem; gap: 1.5rem; flex-shrink: 0; position: sticky; top: 0; background: rgba(12, 12, 12, 0.95); backdrop-filter: blur(15px); z-index: 50; }
 .si-tab { padding: 12px 0; color: #888; font-weight: 500; cursor: pointer; position: relative; transition: color 0.2s; }
 .si-tab:hover { color: #ccc; }
 .si-tab.active { color: #fff; }
 .si-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--accent-teal); }
 
-.si-body { flex: 1; overflow-y: auto; padding: 1.5rem; padding-bottom: calc(4rem + env(safe-area-inset-bottom)); min-height: 0; }
+.si-body { flex: none; overflow-y: visible; padding: 1.5rem; padding-bottom: calc(4rem + env(safe-area-inset-bottom, 20px)); min-height: 0; }
 
 .si-slug-container {
     display: flex; align-items: center; background: rgba(0,0,0,0.3);
