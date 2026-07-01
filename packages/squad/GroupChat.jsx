@@ -691,7 +691,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                 supabase.from('conversations')
                     .select('title, avatar_url, metadata')
                     .eq('id', chat.conversation_id)
-                    .single()
+                    .maybeSingle()
             ]);
 
             if (convResponse.data) {
@@ -759,7 +759,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                     setMembers(prev => ({...prev, [payload.new.user_id]: { role: payload.new.role, name: 'Loading...', avatar: '' }}));
                     
                     // Fetch real profile silently in background
-                    supabase.from('profiles').select('full_name, avatar_url').eq('id', payload.new.user_id).single()
+                    supabase.from('profiles').select('full_name, avatar_url').eq('id', payload.new.user_id).maybeSingle()
                         .then(({data}) => {
                             if (data) {
                                 setMembers(prev => ({...prev, [payload.new.user_id]: { role: payload.new.role, name: data.full_name, avatar: data.avatar_url }}));
@@ -876,7 +876,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             sender_id: currentUser.id,
             text: msgText,
             reply_to_id: currentReplyId
-        }).select().single();
+        }).select().maybeSingle();
 
         if (data) {
             setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
