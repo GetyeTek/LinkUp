@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import { invokeMiron } from '../config/api.js';
 import { getComponent } from '@linkup-platform/sdk-core';
+import DOMPurify from 'dompurify';
 import './MironChat.css';
 
 const InlineChatQuiz = ({ quiz, onSubmit }) => {
@@ -211,7 +212,7 @@ const MironChat = ({ onClose, initialContext }) => {
                                     <div 
                                         key={idx} 
                                         className="miron-markdown-chunk"
-                                        dangerouslySetInnerHTML={{ __html: marked.parse(part) }} 
+                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(part)) }} 
                                     />
                                 );
                             })}
