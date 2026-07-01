@@ -35,8 +35,7 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
             // Slug generation is now handled purely by the Postgres RPC for absolute shortest length
             const { data, error: rpcError } = await supabase.rpc('create_study_group', {
                 req_title: form.title,
-                req_metadata: { focus: form.focus, privacy: form.privacy },
-                req_owner_id: currentUser.id
+                req_metadata: { focus: form.focus, privacy: form.privacy }
             });
             if (rpcError) throw rpcError;
             onCreated();
