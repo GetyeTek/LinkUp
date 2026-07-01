@@ -86,6 +86,12 @@ const Notes = ({ currentUser, onClose }) => {
         const file = e.target.files[0];
         if (!file || !conversationId) return;
 
+        if (file.size > 10 * 1024 * 1024) {
+            setAlertNotice("File is too large. Please select a file smaller than 10MB.");
+            e.target.value = null;
+            return;
+        }
+
         setIsUploading(true);
         try {
             // 1. Convert File to ArrayBuffer to prevent 'postMessage' cloning errors
