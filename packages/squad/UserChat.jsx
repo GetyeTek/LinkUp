@@ -14,6 +14,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     const [input, setInput] = useState('');
     const [pendingAttachment, setPendingAttachment] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [alertNotice, setAlertNotice] = useState(null);
     
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -222,7 +223,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             });
             
             if (initError || !newId) {
-                console.error("Failed to initialize lazy chat:", initError);
+                setAlertNotice("Could not start conversation. The user might be restricted or network is unavailable.");
                 return;
             }
             currentConvId = newId;
@@ -262,8 +263,9 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                 const { data: { publicUrl } } = supabase.storage.from('chat_media').getPublicUrl(filePath);
                 finalAttachments = [{ name: file.name, url: publicUrl, path: filePath, type: file.type, size: file.size }];
             } catch (err) {
-                console.error("[Squad:Media] Asset upload failed:", err);
+                setAlertNotice("Media upload blocked. Ensure the file is under 10MB and is a supported format.");
                 setIsUploading(false);
+                setMessages(prev => prev.filter(m => m.id !== tempId)); // Remove pending bubble
                 return;
             }
             setIsUploading(false);
@@ -277,7 +279,10 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             attachments: finalAttachments
         }).select().maybeSingle();
         
-        if (!error && data) {
+        if (error) {
+            setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+            setAlertNotice("Message failed to send. You may lack permission.");
+        } else if (data) {
             setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
         }
     };
@@ -302,10 +307,14 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                 }
             }
             // 3. Database Deletion
-            const response = await supabase.from('messages').delete().eq('id', msgId).select();
-            console.log("Delete Response:", response);
+            const { error } = await supabase.from('messages').delete().eq('id', msgId);
+            if (error) {
+                setAlertNotice("Deletion failed. You do not have permission to delete this message.");
+                fetchMessages(); // Resync state
+            }
         } catch (err) {
             console.error("[Squad:Chat] Deletion synchronization failed:", err);
+            fetchMessages(); // Resync state
         }
         console.groupEnd();
     };
@@ -343,6 +352,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     const getMessageStatusIcon = (m) => {
         if (m.sender_id !== currentUser.id) return null;
         if (m.status === 'pending') return <i className="fa-solid fa-clock" style={{color: '#888'}}></i>;
+        if (m.status === 'failed') return <i className="fa-solid fa-circle-exclamation" style={{color: '#ff5f5f'}} title="Message Failed"></i>;
         const isRead = otherReadAt && new Date(m.created_at) <= new Date(otherReadAt);
         return isRead ? 
             <i className="fa-solid fa-check-double" style={{color: '#42d7b8'}}></i> : 
@@ -626,6 +636,21 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                     )}
                 </div>
             )}
+            {/* Custom Alert Notice for UserChat */}
+            {alertNotice && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+                    <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#ffab40', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="fas fa-exclamation-circle"></i> Notice
+                        </h3>
+                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>{alertNotice}</p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, fontFamily: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', fontSize: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setAlertNotice(null)}>Okay</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showSearchList && (
                 <div className="chat-search-modal-overlay" onClick={() => setShowSearchList(false)}>
                     <div className="chat-search-modal" onClick={e => e.stopPropagation()}>
