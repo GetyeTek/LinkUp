@@ -67,6 +67,8 @@ const ExamSession = ({ exam, onClose }) => {
     const [reportQuestionId, setReportQuestionId] = useState(null);
 
     const [examMeta, setExamMeta] = useState({ name: exam.course_name, code: exam.course_code });
+    const [activeQuestionId, setActiveQuestionId] = useState(null);
+    const navStripRef = useRef(null);
 
     useEffect(() => {
         console.log("[SESSION] Fetching real questions from DB...");
@@ -110,6 +112,31 @@ const ExamSession = ({ exam, onClose }) => {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     };
+
+    // Intersection Observer to track active question while scrolling
+    useEffect(() => {
+        if (loading || sections.length === 0) return;
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const qId = entry.target.id.replace('q-box-', '');
+                    setActiveQuestionId(qId);
+                    
+                    // Auto-scroll the nav strip
+                    if (navStripRef.current) {
+                        const activeDot = navStripRef.current.querySelector(`[data-nav-id="${qId}"]`);
+                        if (activeDot) {
+                            activeDot.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                        }
+                    }
+                }
+            });
+        }, { threshold: 0.5, rootMargin: "-10% 0px -40% 0px" });
+
+        document.querySelectorAll('.q-row').forEach(el => observer.observe(el));
+        return () => observer.disconnect();
+    }, [loading, sections]);
 
     const toggleHint = async (qId) => {
         setHints(prev => {
@@ -159,12 +186,13 @@ const ExamSession = ({ exam, onClose }) => {
                 </div>
             </header>
 
-            <nav className="question-nav-strip">
+            <nav className="question-nav-strip" ref={navStripRef}>
                 {allQuestions.map((q, i) => (
                     <div 
                         key={q.id} 
+                        data-nav-id={q.id}
                         onClick={() => scrollToQuestion(q.id)}
-                        className={`nav-dot ${answers[q.id] ? 'answered' : ''} ${flagged[q.id] ? 'flagged' : ''}`}
+                        className={`nav-dot ${activeQuestionId === q.id ? 'active-focus' : ''} ${answers[q.id] ? 'answered' : ''} ${flagged[q.id] ? 'flagged' : ''}`}
                     >
                         {i + 1}
                     </div>
