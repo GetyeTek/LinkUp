@@ -27,6 +27,13 @@ export default {
 
     const incomingOrigin = request.headers.get('Origin');
     const requestedHeaders = request.headers.get('Access-Control-Request-Headers');
+    const clientSecret = request.headers.get('x-linkup-client');
+
+    // Security: Require Custom Header (Gateway Handshake)
+    if (request.method !== 'OPTIONS' && clientSecret !== 'linkup-secure-client-2026') {
+      console.error(`[Gateway] ⛔ Blocked request missing valid client secret.`);
+      return new Response(JSON.stringify({ error: "Unauthorized Client" }), { status: 403, headers: { 'Access-Control-Allow-Origin': '*' } });
+    }
 
     // If the origin is unlisted, we treat it as an unauthorized proxy attempt
     const isAllowed = ALLOWED_ORIGINS.includes(incomingOrigin);
@@ -38,7 +45,7 @@ export default {
         headers: {
           'Access-Control-Allow-Origin': corsOrigin,
           'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': requestedHeaders || 'authorization, x-client-info, apikey, content-type, prefer, range, x-supabase-api-version',
+          'Access-Control-Allow-Headers': requestedHeaders || 'authorization, x-client-info, apikey, content-type, prefer, range, x-supabase-api-version, x-linkup-client',
           'Access-Control-Allow-Credentials': 'true',
           'Access-Control-Max-Age': '86400',
         }
