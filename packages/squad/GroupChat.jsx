@@ -1000,11 +1000,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
         }]);
 
         const { data, error } = await supabase.from('messages').insert({
-            conversation_id: currentConvId,
+            conversation_id: chat.conversation_id,
             sender_id: currentUser.id,
             text: msgText,
-            reply_to_id: currentReplyId,
-            attachments: finalAttachments
+            reply_to_id: currentReplyId
         }).select().maybeSingle();
         
         if (error) {
@@ -1014,6 +1013,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
         } else if (data) {
             setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
         }
+    };
 
     const deleteMessage = (msgId) => {
         setDeleteConfirm(msgId);
