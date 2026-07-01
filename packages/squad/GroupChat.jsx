@@ -733,7 +733,9 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                     setMessages(prev => prev.filter(m => m.id !== payload.old.id));
                 }
             })
-        const memberChannel = supabase.channel(`members_${activeConvId}`)
+            .subscribe();
+
+        const memberChannel = supabase.channel(`members_${chat.conversation_id}`)
             .on('postgres_changes', { 
                 event: '*', schema: 'public', table: 'conversation_members', filter: `conversation_id=eq.${activeConvId}`
             }, (payload) => {
@@ -873,6 +875,19 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
         
         try {
             // 2. Storage Cleanup
+            if (msgToDelete?.attachments && msgToDelete.attachments.length > 0) {
+                const paths = msgToDelete.attachments.map(att => att.path).filter(Boolean);
+                if (paths.length > 0) {
+                    await supabase.storage.from('chat_media').remove(paths);
+                }
+            }
+            // 3. Database Deletion
+            await supabase.from('messages').delete().eq('id', msgId);
+        } catch (err) {
+            console.error("[Squad:Chat] Deletion failed:", err);
+        }
+        console.groupEnd();
+    };
 
     const handleCopy = (text) => {
         navigator.clipboard.writeText(text);
@@ -906,8 +921,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const isMember = !!members[currentUser.id];
 
     return (
-    return (
-        <div className="user-chat-overlay" onTouchStart={e => e.stopPropagation()}>
+        <div className="squad-chat-overlay" onTouchStart={e => e.stopPropagation()}>
             <div className="ambient-prism-light"></div>
 
             {kickedNotice && (
