@@ -131,12 +131,15 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
 
   // Move from Phase 1 to Phase 2
   const handleNextPhase = () => {
-      // Validate identity fields before allowing move to Phase 2
-      const isPhoneValid = /^(09|07|\+251)\d{7,10}$/.test(phone.replace(/\s/g, ''));
+      // Robust Phone Validation (Exactly 10 digits for local, 13 for international)
+      const cleanPhone = phone.replace(/\s/g, '');
+      const isPhoneValid = /^(09|07)\d{8}$|^\+251[79]\d{8}$/.test(cleanPhone);
+      
       if (status !== 'available' || sureName.trim().length < 2 || !isPhoneValid) {
-          if (!isPhoneValid && phone.length > 0) setClaimError("Please enter a valid phone number (09... or 07...)");
+          if (!isPhoneValid && phone.length > 0) setClaimError("Invalid phone. Use 09/07 (10 digits) or +251 (13 digits).");
           return;
       }
+      setClaimError(null); // Clear errors before moving to phase 2
       setPhase(2);
   };
 
@@ -273,15 +276,18 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
 
           <div className="input-group-sm">
             <label>Phone Number</label>
-            <div className="handle-input-wrapper">
+            <div className={`handle-input-wrapper status-${phone.length > 0 ? (/^(09|07)\d{8}$|^\+251[79]\d{8}$/.test(phone.replace(/\s/g, '')) ? 'available' : 'invalid') : 'idle'}`}>
               <span className="handle-prefix" style={{fontSize: '0.9rem'}}><i className="fas fa-phone"></i></span>
               <input 
                 type="tel" 
-                placeholder="09... or 07..."
+                placeholder="09... or +251..."
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 disabled={loading}
               />
+              <div className="handle-status-icon">
+                {phone.length > 0 && /^(09|07)\d{8}$|^\+251[79]\d{8}$/.test(phone.replace(/\s/g, '')) && <i className="fas fa-check"></i>}
+              </div>
             </div>
             <div className="commitment-note" style={{marginTop: '10px', marginBottom: '0'}}>
                 <i className="fas fa-circle-info"></i>
@@ -512,6 +518,18 @@ const App = () => {
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
   const [requiresPasswordReset, setRequiresPasswordReset] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Intercept Deep Links on Boot
   useEffect(() => {
@@ -546,8 +564,8 @@ const App = () => {
     const diffX = startX - endX;
     const diffY = startY - endY;
 
-    // Detect intentional horizontal swipe (min 50px threshold, mostly horizontal)
-    if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+    // Detect intentional horizontal swipe (min 75px threshold, strictly horizontal to avoid scroll bleed)
+    if (Math.abs(diffX) > 75 && Math.abs(diffX) > Math.abs(diffY) * 2.0) {
       const direction = diffX > 0 ? 'left' : 'right'; // positive diffX means finger swiped left
 
       const swipeEvent = new CustomEvent('app-swipe', { detail: { direction }, cancelable: true });
@@ -746,6 +764,11 @@ const App = () => {
 
   return (
     <div className="app-container">
+      {isOffline && (
+          <div className="global-offline-banner">
+              <i className="fas fa-wifi-slash"></i> Offline Mode - Messages will sync when connection is restored.
+          </div>
+      )}
       <PlatformProvider value={{ user: userProfile, sessionUser: session?.user, shell: { openActivity: () => setIsActivityOpen(true), openMiron: (text) => setMironContext({ text }) } }}>
       <main 
         className="main-content"
