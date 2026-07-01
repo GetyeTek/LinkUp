@@ -39,6 +39,16 @@ body.library-open { overflow: hidden; }
     height: 100%; width: 100%; margin: 0 auto; position: relative; display: flex; flex-direction: column; background-color: var(--bg-dark); transition: all 0.3s ease;
 }
 
+/* --- OFFLINE BANNER --- */
+.global-offline-banner {
+    position: fixed; top: 0; left: 0; right: 0;
+    background: var(--shell-warning); color: #000;
+    text-align: center; padding: 4px; font-size: 0.8rem; font-weight: 700;
+    z-index: 10000; animation: slideDownBanner 0.3s ease;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+@keyframes slideDownBanner { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+
 @media (max-width: 899px) {
     .app-container { max-width: 500px; border-right: 1px solid var(--border-color); border-left: 1px solid var(--border-color); }
 }
