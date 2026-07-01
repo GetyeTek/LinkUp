@@ -46,6 +46,12 @@ const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
       const rh = dim.h;
 
       ctx.clearRect(0, 0, 256, 256);
+      // Enforce strict circular clipping
+      ctx.beginPath();
+      ctx.arc(128, 128, 128, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      
       ctx.translate(128, 128);
       ctx.scale(zoom, zoom);
       ctx.translate(pos.x, pos.y);
