@@ -287,7 +287,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                 <i className="fas fa-key"></i>
                             </button>
                         )}
-                        {(myRole === 'owner' || myRole === 'admin' || localChatInfo.metadata?.members_can_add !== false) && (
+                        {(myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.members_can_add !== false) && (
                             <>
                                 <button className="si-options" onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); setActiveMemberMenu(null); }}>
                                     <i className="fas fa-ellipsis-v"></i>
@@ -457,7 +457,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                 )}
                             </div>
 
-                            {localChatInfo.metadata?.privacy !== 'private' && (
+                            {chatInfo.metadata?.privacy !== 'private' && (
                             <div className="si-settings-group">
                                 <label className="si-label">Group Link Handle</label>
                                 <div className="si-slug-container">
