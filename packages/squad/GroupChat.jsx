@@ -215,7 +215,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
     const executeKick = async (uid) => {
         setConfirmModal(null);
-        await supabase.rpc('squad_kick_member', { req_conv_id: conversationId, req_target_id: uid, req_admin_id: currentUser.id });
+        await supabase.rpc('squad_kick_member', { req_conv_id: conversationId, req_target_id: uid });
         setMembers(prev => {
             const next = { ...prev };
             delete next[uid];
@@ -238,14 +238,14 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         }
 
         if (type === 'ban') {
-            await supabase.rpc('squad_ban_member', { req_conv_id: conversationId, req_target_id: uid, req_admin_id: currentUser.id, req_banned_until: until });
+            await supabase.rpc('squad_ban_member', { req_conv_id: conversationId, req_target_id: uid, req_banned_until: until });
             setMembers(prev => {
                 const next = { ...prev };
                 delete next[uid];
                 return next;
             });
         } else {
-            await supabase.rpc('squad_mute_member', { req_conv_id: conversationId, req_target_id: uid, req_admin_id: currentUser.id, req_muted_until: until });
+            await supabase.rpc('squad_mute_member', { req_conv_id: conversationId, req_target_id: uid, req_muted_until: until });
         }
         setPunishConfig(null);
     };
