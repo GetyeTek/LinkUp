@@ -92,14 +92,14 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
                     <div className="bottom-sheet">
                         <div className="sheet-handle"></div>
                         <h3 className="sheet-title">Find Someone</h3>
-                        <p className="sheet-subtitle">Enter their exact phone number, email, or partial @username.</p>
+                        <p className="sheet-subtitle">Enter their exact @username to connect securely.</p>
                         
                         <div className="sheet-input-group">
                             <i className="fas fa-search"></i>
                             <input 
                                 type="text" 
                                 className="sheet-input" 
-                                placeholder="e.g. 0912..., @scholar, or email"
+                                placeholder="e.g. @scholar"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
