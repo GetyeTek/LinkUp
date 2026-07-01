@@ -278,11 +278,29 @@ const Connect = () => {
         if (e) e.stopPropagation();
         setJoiningSquadId(squadId);
         
-        // Capture info before it disappears from suggestions array
         const joinedSquadInfo = suggestedSquads.find(s => s.conversation_id === squadId) || {};
         
-        await supabase.rpc('join_study_group', { req_conversation_id: squadId, req_user_id: currentUser.id });
+        const { error: rpcError } = await supabase.rpc('join_study_group', { req_conversation_id: squadId, req_user_id: currentUser.id });
         
+        if (rpcError) {
+            alert(rpcError.message.toLowerCase().includes('ban') ? "You have been banned from this group and cannot rejoin." : `Cannot join: ${rpcError.message}`);
+            setJoiningSquadId(null);
+            return;
+        }
+
+        // Ironclad Verification: Catch silent RLS failures or function exits
+        const { data: verifyData } = await supabase.from('conversation_members')
+            .select('role')
+            .eq('conversation_id', squadId)
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+        if (!verifyData) {
+            alert("Join rejected. You have been banned by the group administrators.");
+            setJoiningSquadId(null);
+            return;
+        }
+
         await fetchConversations();
         await fetchSuggestedSquads();
         
