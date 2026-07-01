@@ -171,7 +171,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             .select('last_read_at')
             .eq('conversation_id', activeConvId)
             .neq('user_id', currentUser.id)
-            .single();
+            .maybeSingle();
         if (data) setOtherReadAt(data.last_read_at);
     };
 
@@ -275,7 +275,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             text: msgText,
             reply_to_id: currentReplyId,
             attachments: finalAttachments
-        }).select().single();
+        }).select().maybeSingle();
         
         if (!error && data) {
             setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
