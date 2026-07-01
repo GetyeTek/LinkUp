@@ -1112,6 +1112,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             )}
 
             {isSearchActive ? (
+                <header className="chat-search-header">
                     <button className="icon-button back-btn" onClick={() => { setIsSearchActive(false); setSearchQuery(''); }}><i className="fas fa-arrow-left"></i></button>
                     <div className="chat-search-input-wrapper">
                         <input 
