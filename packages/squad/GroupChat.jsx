@@ -12,6 +12,8 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const fileInputRef = useRef(null);
     
     const [editTitle, setEditTitle] = useState(chatInfo.title || '');
+    const [nameStatus, setNameStatus] = useState('idle'); // idle, saving, success, error
+    const [nameError, setNameError] = useState('');
     const [editSlug, setEditSlug] = useState(chatInfo.metadata?.slug || '');
     const [slugStatus, setSlugStatus] = useState('idle'); // idle, saving, success, error
     const [slugError, setSlugError] = useState('');
@@ -113,6 +115,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const updateSquadName = async () => {
         if (!editTitle.trim() || editTitle === chatInfo.title) return;
         
+        setNameStatus('saving');
         const { data: updatedRows, error } = await supabase
             .from('conversations')
             .update({ title: editTitle })
@@ -120,12 +123,15 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             .select();
             
         if (error || !updatedRows || updatedRows.length === 0) {
-            alert("Permission denied. You are not authorized to change this group's name.");
+            setNameStatus('error');
+            setNameError("Permission denied.");
             setEditTitle(chatInfo.title); // Revert UI
             return;
         }
         
         onUpdateInfo({ ...chatInfo, title: editTitle });
+        setNameStatus('success');
+        setTimeout(() => setNameStatus('idle'), 3000);
     };
 
     const updateSquadSlug = async () => {
@@ -240,11 +246,11 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                     onSave={handleAvatarUpdate}
                 />
             )}
-            <div className="si-sheet" onClick={e => e.stopPropagation()}>
+            <div className="si-sheet" onClick={(e) => { e.stopPropagation(); setShowOptions(false); setActiveMemberMenu(null); }}>
                 <div className="si-hero">
                     <button className="si-back" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
                     <div className="si-options-wrapper">
-                        <button className="si-options" onClick={() => setShowOptions(!showOptions)}><i className="fas fa-ellipsis-v"></i></button>
+                        <button className="si-options" onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); setActiveMemberMenu(null); }}><i className="fas fa-ellipsis-v"></i></button>
                         {showOptions && (
                             <div className="si-dropdown-menu" style={{top: '40px', right: '0'}}>
                                 <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> Add Members</button>
@@ -385,17 +391,27 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                     {activeTab === 'settings' && myRole === 'owner' && (
                         <div className="si-settings">
                             <div className="si-settings-group">
-                                <label className="si-label">Squad Name</label>
+                                <label className="si-label">Group Name</label>
                                 <div className="si-input-wrapper">
                                     <input 
                                         type="text" 
                                         className="si-input" 
                                         value={editTitle} 
-                                        onChange={e => setEditTitle(e.target.value)} 
-                                        onBlur={updateSquadName}
+                                        onChange={e => { setEditTitle(e.target.value); setNameStatus('idle'); }} 
                                         onKeyPress={e => e.key === 'Enter' && updateSquadName()}
                                     />
                                 </div>
+                                {(editTitle !== chatInfo.title || nameStatus !== 'idle') && (
+                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', minHeight: '30px' }}>
+                                        {editTitle !== chatInfo.title && (
+                                            <button className="si-save-slug-btn" onClick={updateSquadName} disabled={nameStatus === 'saving' || !editTitle.trim()}>
+                                                {nameStatus === 'saving' ? 'Saving...' : 'Save Name'}
+                                            </button>
+                                        )}
+                                        {nameStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> {nameError}</span>}
+                                        {nameStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Name updated!</span>}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="si-settings-group">
