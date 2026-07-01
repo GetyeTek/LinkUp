@@ -97,6 +97,12 @@
 
 .nav-dot:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); transform: translateY(-2px); }
 
+.nav-dot.active-focus {
+    border-color: #fff;
+    color: #fff;
+    transform: scale(1.1);
+}
+
 .nav-dot.answered {
     background: rgba(66, 215, 184, 0.15);
     color: var(--accent-teal);
