@@ -19,6 +19,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [slugError, setSlugError] = useState('');
     const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
+    const [alertNotice, setAlertNotice] = useState(null); // Replaces window.alert
 
     // Menus & Modals
     const [showOptions, setShowOptions] = useState(false);
@@ -102,7 +103,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             .select();
             
         if (error || !updatedRows || updatedRows.length === 0) {
-            alert("Permission denied. You are not authorized to update this group's settings.");
+            setAlertNotice("Permission denied. You are not authorized to update this group's settings.");
             setPrivacyModal(false);
             return;
         }
@@ -208,8 +209,9 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         
         let until = null;
         if (isTemp) {
+            const safeDuration = duration === '' || isNaN(duration) ? 1 : duration;
             const multipliers = { minutes: 60000, hours: 3600000, days: 86400000, weeks: 604800000, months: 2592000000 };
-            const ms = duration * multipliers[unit];
+            const ms = safeDuration * multipliers[unit];
             until = new Date(Date.now() + ms).toISOString();
         } else {
             // For permanent mute, set a date 100 years in the future. For ban, null means permanent.
@@ -569,7 +571,12 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
                         {punishConfig.isTemp && (
                             <div className="cm-duration-inputs">
-                                <input type="number" min="1" value={punishConfig.duration} onChange={e => setPunishConfig({...punishConfig, duration: parseInt(e.target.value) || 1})} />
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    value={punishConfig.duration} 
+                                    onChange={e => setPunishConfig({...punishConfig, duration: e.target.value === '' ? '' : parseInt(e.target.value)})} 
+                                />
                                 <select value={punishConfig.unit} onChange={e => setPunishConfig({...punishConfig, unit: e.target.value})}>
                                     <option value="minutes">Minutes</option>
                                     <option value="hours">Hours</option>
@@ -583,6 +590,19 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         <div className="cm-footer">
                             <button className="cm-btn-cancel" onClick={() => setPunishConfig(null)}>Cancel</button>
                             <button className="cm-btn-danger" onClick={executePunishment}>Apply {punishConfig.type === 'ban' ? 'Ban' : 'Restriction'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Alert Notice */}
+            {alertNotice && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-card">
+                        <h3><i className="fas fa-exclamation-circle" style={{color: '#ffab40', marginRight: '8px'}}></i> Notice</h3>
+                        <p>{alertNotice}</p>
+                        <div className="cm-footer">
+                            <button className="cm-btn-primary" onClick={() => setAlertNotice(null)}>Okay</button>
                         </div>
                     </div>
                 </div>
@@ -631,6 +651,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     // Moderation State
     const [myMutedUntil, setMyMutedUntil] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null); // ID of message to delete
+    const [kickedNotice, setKickedNotice] = useState(false);
 
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -712,9 +733,36 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                     setMessages(prev => prev.filter(m => m.id !== payload.old.id));
                 }
             })
+        const memberChannel = supabase.channel(`members_${activeConvId}`)
+            .on('postgres_changes', { 
+                event: '*', schema: 'public', table: 'conversation_members', filter: `conversation_id=eq.${activeConvId}`
+            }, (payload) => {
+                if (payload.eventType === 'UPDATE') {
+                    if (payload.new.user_id === currentUser.id) {
+                        setMyMutedUntil(payload.new.muted_until);
+                        setMyRole(payload.new.role);
+                    } else {
+                        setOtherReadAt(payload.new.last_read_at);
+                        setMembers(prev => ({...prev, [payload.new.user_id]: { ...prev[payload.new.user_id], role: payload.new.role }}));
+                    }
+                } else if (payload.eventType === 'DELETE') {
+                    if (payload.old.user_id === currentUser.id) {
+                        setKickedNotice(true);
+                    } else {
+                        setMembers(prev => {
+                            const next = {...prev};
+                            delete next[payload.old.user_id];
+                            return next;
+                        });
+                    }
+                }
+            })
             .subscribe();
 
-        return () => supabase.removeChannel(channel);
+        return () => {
+            supabase.removeChannel(channel);
+            supabase.removeChannel(memberChannel);
+        };
     }, [chat.conversation_id]);
 
     useEffect(() => {
@@ -807,14 +855,24 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
         }
     };
 
+    const deleteMessage = (msgId) => {
+        setDeleteConfirm(msgId);
+        setActiveMenu(null);
+    };
+
     const confirmAndDelete = async () => {
         if (!deleteConfirm) return;
         const msgId = deleteConfirm;
         setDeleteConfirm(null);
         
+        console.group(`[Squad:Chat] Executing DELETE for node: ${msgId}`);
+        const msgToDelete = messages.find(m => m.id === msgId);
+        
+        // 1. Optimistic UI removal
         setMessages(prev => prev.filter(m => m.id !== msgId));
-        await supabase.from('messages').delete().eq('id', msgId);
-    };
+        
+        try {
+            // 2. Storage Cleanup
 
     const handleCopy = (text) => {
         navigator.clipboard.writeText(text);
@@ -848,8 +906,19 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const isMember = !!members[currentUser.id];
 
     return (
-        <div className="squad-chat-overlay" onTouchStart={e => e.stopPropagation()}>
-            <div className="squad-bg-pattern"></div>
+    return (
+        <div className="user-chat-overlay" onTouchStart={e => e.stopPropagation()}>
+            <div className="ambient-prism-light"></div>
+
+            {kickedNotice && (
+                <div className="kicked-overlay">
+                    <i className="fas fa-user-slash"></i>
+                    <h2>Access Revoked</h2>
+                    <p>You have been removed or banned from this group by an administrator.</p>
+                    <button className="cm-btn-primary" onClick={onClose}>Return to Hub</button>
+                </div>
+            )}
+
             {isSearchActive ? (
                 <header className="chat-search-header">
                     <button className="icon-button back-btn" onClick={() => { setIsSearchActive(false); setSearchQuery(''); }}><i className="fas fa-arrow-left"></i></button>
