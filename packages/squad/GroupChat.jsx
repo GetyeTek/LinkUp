@@ -27,8 +27,17 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [slugError, setSlugError] = useState('');
     const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
-    const [alertNotice, setAlertNotice] = useState(null); // Replaces window.alert
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [alertNotice, setAlertNotice] = useState(null); // Unified Toast/Notice
     const [avatarError, setAvatarError] = useState(false);
+
+    // Auto-hide success toasts after 3 seconds for premium UX
+    useEffect(() => {
+        if (alertNotice?.success) {
+            const timer = setTimeout(() => setAlertNotice(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [alertNotice]);
 
     // Sync state if chatInfo metadata updates after initial mount
     useEffect(() => {
@@ -102,45 +111,47 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
     const executeAddMember = async () => {
         if (!confirmAddUser) return;
+        setIsProcessing(true);
         const { error } = await supabase.from('conversation_members').insert({
             conversation_id: conversationId, user_id: confirmAddUser.other_user_id, role: 'member'
         });
+        setIsProcessing(false);
         
         if (error) {
-            setAlertNotice("Permission denied. You are not allowed to add members.");
-            setConfirmAddUser(null);
-            setShowAddMember(false);
-            return;
+            setAlertNotice({ title: "Permission Denied", msg: "You are not allowed to add members.", success: false });
+        } else {
+            setMembers(prev => ({
+                ...prev,
+                [confirmAddUser.other_user_id]: { role: 'member', name: confirmAddUser.other_user_name, avatar: confirmAddUser.other_user_avatar }
+            }));
+            setAlertNotice({ title: "Member Added", msg: `${confirmAddUser.other_user_name} has joined the squad!`, success: true });
         }
-        
-        setMembers(prev => ({
-            ...prev,
-            [confirmAddUser.other_user_id]: { role: 'member', name: confirmAddUser.other_user_name, avatar: confirmAddUser.other_user_avatar }
-        }));
         setConfirmAddUser(null);
         setShowAddMember(false);
     };
 
     const updateSquadPrivacy = async (val) => {
+        setIsProcessing(true);
         const newMeta = { ...chatInfo.metadata, privacy: val };
         const { data: updatedRows, error } = await supabase
             .from('conversations')
             .update({ metadata: newMeta })
             .eq('id', conversationId)
             .select();
+        setIsProcessing(false);
             
         if (error || !updatedRows || updatedRows.length === 0) {
-            setAlertNotice("Permission denied. You are not authorized to update this group's settings.");
+            setAlertNotice({ title: "Permission Denied", msg: "You are not authorized to update this group's settings.", success: false });
             setPrivacyModal(false);
             return;
         }
         
-        // Sync with backend trigger results (slug added/removed)
         const finalMeta = updatedRows[0].metadata;
         onUpdateInfo({ ...chatInfo, metadata: finalMeta });
         setEditPrivacy(val);
         setEditSlug(finalMeta.slug || '');
         setPrivacyModal(false);
+        setAlertNotice({ title: "Privacy Updated", msg: `The group is now ${val}.`, success: true });
     };
 
     const updateSquadName = async () => {
@@ -225,16 +236,24 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     };
 
     const executeKick = async (uid) => {
+        setIsProcessing(true);
+        const { error } = await supabase.rpc('squad_kick_member', { req_conv_id: conversationId, req_target_id: uid });
+        setIsProcessing(false);
+        if (error) {
+            setAlertNotice({ title: "Action Failed", msg: error.message, success: false });
+        } else {
+            setMembers(prev => {
+                const next = { ...prev };
+                delete next[uid];
+                return next;
+            });
+            setAlertNotice({ title: "Member Removed", msg: "The user has been kicked.", success: true });
+        }
         setConfirmModal(null);
-        await supabase.rpc('squad_kick_member', { req_conv_id: conversationId, req_target_id: uid });
-        setMembers(prev => {
-            const next = { ...prev };
-            delete next[uid];
-            return next;
-        });
     };
 
     const executePunishment = async () => {
+        setIsProcessing(true);
         const { uid, type, isTemp, duration, unit } = punishConfig;
         
         let until = null;
@@ -244,27 +263,45 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             const ms = safeDuration * multipliers[unit];
             until = new Date(Date.now() + ms).toISOString();
         } else {
-            // For permanent mute, set a date 100 years in the future. For ban, null means permanent.
             until = type === 'mute' ? new Date(Date.now() + 3153600000000).toISOString() : null;
         }
 
+        let error = null;
         if (type === 'ban') {
-            await supabase.rpc('squad_ban_member', { req_conv_id: conversationId, req_target_id: uid, req_banned_until: until });
-            setMembers(prev => {
-                const next = { ...prev };
-                delete next[uid];
-                return next;
-            });
+            const res = await supabase.rpc('squad_ban_member', { req_conv_id: conversationId, req_target_id: uid, req_banned_until: until });
+            error = res.error;
+            if (!error) {
+                setMembers(prev => {
+                    const next = { ...prev };
+                    delete next[uid];
+                    return next;
+                });
+            }
         } else {
-            await supabase.rpc('squad_mute_member', { req_conv_id: conversationId, req_target_id: uid, req_muted_until: until });
+            const res = await supabase.rpc('squad_mute_member', { req_conv_id: conversationId, req_target_id: uid, req_muted_until: until });
+            error = res.error;
+        }
+        
+        setIsProcessing(false);
+        if (error) {
+            setAlertNotice({ title: "Action Failed", msg: error.message, success: false });
+        } else {
+            setAlertNotice({ title: "Restriction Applied", msg: `The user has been successfully ${type === 'ban' ? 'banned' : 'restricted'}.`, success: true });
         }
         setPunishConfig(null);
     };
 
     const executeDisband = async () => {
         if (disbandInput !== chatInfo.title) return;
-        await supabase.from('conversations').delete().eq('id', conversationId);
-        onDisband();
+        setIsProcessing(true);
+        const { error } = await supabase.from('conversations').delete().eq('id', conversationId);
+        setIsProcessing(false);
+        if (error) {
+            setAlertNotice({ title: "Action Failed", msg: error.message, success: false });
+            setDisbandModal(false);
+        } else {
+            onDisband();
+        }
     };
 
     const displayAvatar = croppedAvatar?.url || chatInfo.avatar_url;
@@ -529,8 +566,10 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                             </div>
                         </div>
                         <div className="cm-footer" style={{marginTop: '1rem'}}>
-                            <button className="cm-btn-cancel" onClick={() => { setTempPrivacy(chatInfo.metadata?.privacy); setPrivacyModal(false); }}>Cancel</button>
-                            <button className="cm-btn-primary" onClick={() => updateSquadPrivacy(tempPrivacy)}>Confirm Status</button>
+                            <button className="cm-btn-cancel" onClick={() => { setTempPrivacy(chatInfo.metadata?.privacy); setPrivacyModal(false); }} disabled={isProcessing}>Cancel</button>
+                            <button className="cm-btn-primary" onClick={() => updateSquadPrivacy(tempPrivacy)} disabled={isProcessing}>
+                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Confirm Status'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -573,8 +612,10 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         <h3>Add to Squad</h3>
                         <p>Add <strong>{confirmAddUser.other_user_name}</strong> to the squad?</p>
                         <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setConfirmAddUser(null)}>Cancel</button>
-                            <button className="cm-btn-primary" onClick={executeAddMember}>Confirm Add</button>
+                            <button className="cm-btn-cancel" onClick={() => setConfirmAddUser(null)} disabled={isProcessing}>Cancel</button>
+                            <button className="cm-btn-primary" onClick={executeAddMember} disabled={isProcessing}>
+                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Confirm Add'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -587,8 +628,10 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         <h3>Kick Member</h3>
                         <p>Are you sure you want to remove <strong>{confirmModal.name}</strong> from the squad? They can rejoin if the group is public.</p>
                         <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setConfirmModal(null)}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={() => executeKick(confirmModal.uid)}>Kick User</button>
+                            <button className="cm-btn-cancel" onClick={() => setConfirmModal(null)} disabled={isProcessing}>Cancel</button>
+                            <button className="cm-btn-danger" onClick={() => executeKick(confirmModal.uid)} disabled={isProcessing}>
+                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Kick User'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -631,21 +674,25 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         )}
 
                         <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setPunishConfig(null)}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={executePunishment}>Apply {punishConfig.type === 'ban' ? 'Ban' : 'Restriction'}</button>
+                            <button className="cm-btn-cancel" onClick={() => setPunishConfig(null)} disabled={isProcessing}>Cancel</button>
+                            <button className="cm-btn-danger" onClick={executePunishment} disabled={isProcessing}>
+                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : `Apply ${punishConfig.type === 'ban' ? 'Ban' : 'Restriction'}`}
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Custom Alert Notice */}
+            {/* Elegant Status Toast / Notice */}
             {alertNotice && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3><i className="fas fa-exclamation-circle" style={{color: '#ffab40', marginRight: '8px'}}></i> Notice</h3>
-                        <p>{alertNotice}</p>
-                        <div className="cm-footer">
-                            <button className="cm-btn-primary" onClick={() => setAlertNotice(null)}>Okay</button>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+                    <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: alertNotice.success ? '#42d7b8' : '#ffab40', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {alertNotice.success ? <i className="fas fa-check-circle"></i> : <i className="fas fa-exclamation-circle"></i>} {alertNotice.title || 'Notice'}
+                        </h3>
+                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>{alertNotice.msg || alertNotice}</p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, fontFamily: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', fontSize: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setAlertNotice(null)}>Okay</button>
                         </div>
                     </div>
                 </div>
@@ -666,8 +713,10 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                             onChange={e => setDisbandInput(e.target.value)}
                         />
                         <div className="cm-footer" style={{marginTop: '1rem'}}>
-                            <button className="cm-btn-cancel" onClick={() => { setDisbandModal(false); setDisbandInput(''); }}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={executeDisband} disabled={disbandInput !== chatInfo.title}>Delete Group</button>
+                            <button className="cm-btn-cancel" onClick={() => { setDisbandModal(false); setDisbandInput(''); }} disabled={isProcessing}>Cancel</button>
+                            <button className="cm-btn-danger" onClick={executeDisband} disabled={disbandInput !== chatInfo.title || isProcessing}>
+                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Delete Group'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -687,9 +736,19 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const [editingMessage, setEditingMessage] = useState(null);
     const [replyingTo, setReplyingTo] = useState(null);
 
+    const [alertNotice, setAlertNotice] = useState(null); // Parent Error Trapper
+
     // Group Hub State
     const [localChatInfo, setLocalChatInfo] = useState({ title: chat.title, avatar_url: chat.avatar_url, metadata: chat.metadata });
     const [isInfoOpen, setIsInfoOpen] = useState(false);
+    
+    // Auto-hide success toasts on parent
+    useEffect(() => {
+        if (alertNotice?.success) {
+            const timer = setTimeout(() => setAlertNotice(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [alertNotice]);
     
     // Moderation State
     const [myMutedUntil, setMyMutedUntil] = useState(null);
@@ -940,17 +999,21 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             created_at: new Date().toISOString(), status: 'pending'
         }]);
 
-        const { data } = await supabase.from('messages').insert({
-            conversation_id: chat.conversation_id,
+        const { data, error } = await supabase.from('messages').insert({
+            conversation_id: currentConvId,
             sender_id: currentUser.id,
             text: msgText,
-            reply_to_id: currentReplyId
+            reply_to_id: currentReplyId,
+            attachments: finalAttachments
         }).select().maybeSingle();
-
-        if (data) {
+        
+        if (error) {
+            // The DB Trigger successfully blocked the bypass attempt
+            setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+            setAlertNotice({ title: "Action Blocked", msg: error.message || "Message failed to send. You may lack permission.", success: false });
+        } else if (data) {
             setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
         }
-    };
 
     const deleteMessage = (msgId) => {
         setDeleteConfirm(msgId);
@@ -1033,8 +1096,22 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                 </div>
             )}
 
+            {/* Master UI Alert Catch for Main Chat Window */}
+            {alertNotice && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+                    <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: alertNotice.success ? '#42d7b8' : '#ffab40', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {alertNotice.success ? <i className="fas fa-check-circle"></i> : <i className="fas fa-exclamation-circle"></i>} {alertNotice.title || 'Notice'}
+                        </h3>
+                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>{alertNotice.msg || alertNotice}</p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, fontFamily: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', fontSize: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setAlertNotice(null)}>Okay</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {isSearchActive ? (
-                <header className="chat-search-header">
                     <button className="icon-button back-btn" onClick={() => { setIsSearchActive(false); setSearchQuery(''); }}><i className="fas fa-arrow-left"></i></button>
                     <div className="chat-search-input-wrapper">
                         <input 
