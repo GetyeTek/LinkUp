@@ -289,12 +289,23 @@
 .cm-radio-label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #ccc; cursor: pointer; }
 .cm-radio-label input { accent-color: var(--accent-teal); transform: scale(1.2); }
 
-.cm-duration-inputs { display: flex; gap: 10px; margin-bottom: 1.5rem; }
+.cm-duration-inputs { display: flex; gap: 10px; margin-bottom: 1.5rem; width: 100%; box-sizing: border-box; }
 .cm-duration-inputs input[type="number"], .cm-duration-inputs select {
     background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; color: #fff; outline: none; font-family: 'Poppins', sans-serif;
 }
-.cm-duration-inputs input[type="number"] { flex: 1; }
-.cm-duration-inputs select { flex: 2; }
+.cm-duration-inputs input[type="number"] { flex: 1; min-width: 0; }
+.cm-duration-inputs select { flex: 2; min-width: 0; }
+
+.kicked-overlay {
+    position: absolute; inset: 0; z-index: 9999;
+    background: rgba(8, 8, 12, 0.95); backdrop-filter: blur(10px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 2rem; color: #fff;
+    animation: fadeInModal 0.3s ease;
+}
+.kicked-overlay i { font-size: 4rem; color: #ff5f5f; margin-bottom: 1.5rem; filter: drop-shadow(0 0 15px rgba(255,95,95,0.4)); }
+.kicked-overlay h2 { margin: 0 0 10px 0; font-size: 1.5rem; }
+.kicked-overlay p { color: #aaa; margin: 0 0 2rem 0; line-height: 1.5; }
 .cm-duration-inputs select option { background: #121212; color: #fff; }
 
 .cm-privacy-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; }
