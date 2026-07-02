@@ -790,6 +790,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
 
     const flowRef = useRef(null);
     const channelRef = useRef(null);
+    const isAutoScrollEnabled = useRef(true);
     const typingTimeoutRef = useRef(null);
     const localTypingRef = useRef(false);
 
@@ -976,11 +977,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
     }, [chat.conversation_id]);
 
     useEffect(() => {
-        // Smart Scroll: Only yank down if the user is already near the bottom
+        // Smart Scroll: Only yank down if the user is already near the bottom (or on initial load)
         if (flowRef.current && !isSearchActive) {
-            const { scrollHeight, scrollTop, clientHeight } = flowRef.current;
-            if (scrollHeight - scrollTop - clientHeight < 250) {
-                flowRef.current.scrollTop = scrollHeight;
+            if (isAutoScrollEnabled.current) {
+                flowRef.current.scrollTop = flowRef.current.scrollHeight;
             }
         }
     }, [messages, isSearchActive]);
@@ -1252,7 +1252,11 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                 </header>
             )}
 
-            <main className="squad-flow" ref={flowRef} onClick={() => setActiveMenu(null)} onScroll={() => setActiveMenu(null)}>
+            <main className="squad-flow" ref={flowRef} onClick={() => setActiveMenu(null)} onScroll={(e) => {
+                setActiveMenu(null);
+                const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+                isAutoScrollEnabled.current = scrollHeight - scrollTop - clientHeight < 250;
+            }}>
                 {isLoading ? (
                     <div className="squad-loading-state">
                         <i className="fas fa-circle-notch fa-spin"></i>
