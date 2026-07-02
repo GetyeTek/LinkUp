@@ -957,7 +957,15 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             })
             .subscribe();
 
+        // Explicitly untrack to instantly kill ghosts instead of waiting for Supabase heartbeat timeout
+        const handleBeforeUnload = () => {
+            channel.untrack();
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
         return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            channel.untrack(); // Force drop presence
             supabase.removeChannel(channel);
             supabase.removeChannel(memberChannel);
             supabase.removeChannel(convChannel);
