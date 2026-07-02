@@ -277,15 +277,29 @@ const Connect = () => {
     }, [activeView]);
 
     const fetchConversations = async () => {
+        console.log(`[Connect:Fetch] Requesting chat list. Active Chat ID:`, activeChatRef.current?.conversation_id);
         const { data, error } = await supabase.rpc('get_user_conversations', { req_user_id: currentUser.id });
+        
+        if (error) {
+            console.error("[Connect:Fetch] RPC Error:", error);
+            return;
+        }
+
         if (data) {
             const activeId = activeChatRef.current?.conversation_id;
+            
+            // Verbose log the raw unread counts coming directly from the database
+            data.forEach(c => {
+                if (c.unread_count > 0) {
+                    console.log(`[Connect:Fetch] Database says chat ${c.conversation_id} (${c.title || c.other_user_name}) has ${c.unread_count} unread.`);
+                }
+            });
+
             // Force unread_count to 0 for the currently open chat to prevent ghost flashes
             setConversations(data.map(c => 
                 c.conversation_id === activeId ? { ...c, unread_count: 0 } : c
             ));
         }
-        if (error) console.error("Error fetching chats:", error);
     };
 
     const fetchSuggestedSquads = async () => {
