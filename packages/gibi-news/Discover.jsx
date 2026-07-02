@@ -66,7 +66,7 @@ const TelegramCard = ({ post }) => {
 };
 
 const Discover = () => {
-    const { shell, user } = usePlatform();
+    const { shell, user, unreadCount } = usePlatform();
     const onOpenActivity = shell.openActivity;
     const [activeSubTab, setActiveSubTab] = useState('explore'); // 'explore' or 'feeds'
     const [appsCollapsed, setAppsCollapsed] = useState(false);
@@ -112,7 +112,7 @@ const Discover = () => {
                 <div className="header-actions">
                     <button className="icon-button notification-btn" onClick={onOpenActivity}>
                         <i className="fas fa-bell"></i>
-                        <span className="notification-badge">3</span>
+                        {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                     </button>
                     <img src={user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar" />
                 </div>
