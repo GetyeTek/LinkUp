@@ -236,7 +236,15 @@ const Connect = () => {
             }
         });
 
+        // Explicitly untrack to instantly kill global online ghosts
+        const handleBeforeUnload = () => {
+            presenceChannel.untrack();
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
         return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            presenceChannel.untrack(); // Force drop presence
             supabase.removeChannel(msgChannel);
             supabase.removeChannel(presenceChannel);
         };
