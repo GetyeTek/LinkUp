@@ -1,86 +1,86 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-02T11:11:37.884Z
+-- Date: 2026-07-02T20:44:11.965Z
 
 -- ========================
 -- TABLES & COLUMNS
 -- ========================
 Table: api_keys
-last_used_at (text), name (text), cooldown_until (text), api_key (text), is_active (boolean), service (text), created_at (text), id (bigint)
+service (text), is_active (boolean), id (bigint), created_at (text), cooldown_until (text), last_used_at (text), name (text), api_key (text)
 
 Table: book_pages
-page_number (integer), page_key (text), created_at (timestamp with time zone), content_json (jsonb), manual_flag (text), book_id (uuid), id (uuid)
+id (uuid), page_key (text), manual_flag (text), content_json (jsonb), page_number (integer), book_id (uuid), created_at (timestamp with time zone)
 
 Table: book_question_links
-created_at (timestamp with time zone), similarity_score (double precision), question_id (uuid), chunk_id (uuid), id (uuid)
+created_at (timestamp with time zone), question_id (uuid), chunk_id (uuid), id (uuid), similarity_score (double precision)
 
 Table: books
-course_code (text), title (text), category (text), cover_url (text), created_at (timestamp with time zone), page_offset (integer), toc (jsonb), id (uuid), author (text)
+course_code (text), page_offset (integer), created_at (timestamp with time zone), toc (jsonb), id (uuid), title (text), category (text), cover_url (text), author (text)
 
 Table: chunks
-embedding (USER-DEFINED), id (uuid), document_id (uuid), page_number (integer), created_at (timestamp with time zone), toc_node_id (uuid), prev_chunk_id (uuid), next_chunk_id (uuid), chunk_index (integer), chunk_text (text)
+id (uuid), document_id (uuid), page_number (integer), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), prev_chunk_id (uuid), next_chunk_id (uuid), chunk_index (integer), chunk_text (text)
 
 Table: conduit_favorites
-target_id (text), repo_name (text), id (uuid), metadata (jsonb), created_at (timestamp with time zone), category (text)
+id (uuid), metadata (jsonb), repo_name (text), category (text), target_id (text), created_at (timestamp with time zone)
 
 Table: conduit_history
-ops (jsonb), note (text), created_at (timestamp with time zone), conduit_id (integer), id (uuid), repo_name (text), sha (text), title (text), type (text), meta (text)
+note (text), type (text), meta (text), created_at (timestamp with time zone), ops (jsonb), conduit_id (integer), id (uuid), repo_name (text), sha (text), title (text)
 
 Table: conduit_logs
-repo_name (text), type (text), id (uuid), data (jsonb), created_at (timestamp with time zone)
+repo_name (text), created_at (timestamp with time zone), id (uuid), type (text), data (jsonb)
 
 Table: conversation_members
-muted_until (timestamp with time zone), created_at (timestamp with time zone), last_read_at (timestamp with time zone), role (USER-DEFINED), user_id (uuid), conversation_id (uuid), id (uuid)
+created_at (timestamp with time zone), id (uuid), conversation_id (uuid), muted_until (timestamp with time zone), last_read_at (timestamp with time zone), role (USER-DEFINED), user_id (uuid)
 
 Table: conversations
-created_at (timestamp with time zone), owner_id (uuid), title (character varying), avatar_url (text), metadata (jsonb), type (USER-DEFINED), id (uuid), last_message_at (timestamp with time zone)
+title (character varying), avatar_url (text), metadata (jsonb), owner_id (uuid), last_message_at (timestamp with time zone), created_at (timestamp with time zone), type (USER-DEFINED), id (uuid)
 
 Table: courses
-department_id (uuid), id (uuid), created_at (timestamp with time zone), code (text), name (text)
+id (uuid), created_at (timestamp with time zone), department_id (uuid), name (text), code (text)
 
 Table: departments
-id (uuid), created_at (timestamp with time zone), name (text)
+id (uuid), name (text), created_at (timestamp with time zone)
 
 Table: documents
-id (uuid), file_name (text), storage_path (text), page_count (integer), last_processed_at (timestamp with time zone), created_at (timestamp with time zone), status (text), chunk_count (integer), user_id (uuid)
+storage_path (text), last_processed_at (timestamp with time zone), page_count (integer), id (uuid), user_id (uuid), chunk_count (integer), created_at (timestamp with time zone), status (text), file_name (text)
 
 Table: embedding_progress
-error_message (text), id (uuid), locked_until (timestamp with time zone), block_index (integer), book_id (uuid), status (text), updated_at (timestamp with time zone), page_number (integer)
+status (text), book_id (uuid), updated_at (timestamp with time zone), locked_until (timestamp with time zone), error_message (text), block_index (integer), page_number (integer), id (uuid)
 
 Table: exams
-created_at (timestamp with time zone), date (text), time_allowed_minutes (integer), general_instructions (text), id (uuid), total_marks (numeric), program (text), exam_type (text), university_id (uuid), course_id (uuid), media_summary (jsonb), exam_quality_notes (jsonb), constants_provided (jsonb)
+date (text), id (uuid), university_id (uuid), time_allowed_minutes (integer), total_marks (numeric), constants_provided (jsonb), exam_quality_notes (jsonb), media_summary (jsonb), created_at (timestamp with time zone), course_id (uuid), exam_type (text), program (text), general_instructions (text)
 
 Table: messages
-reply_to_id (uuid), id (uuid), conversation_id (uuid), text (text), sender_id (uuid), attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean), forward_meta (jsonb)
+is_edited (boolean), created_at (timestamp with time zone), attachments (jsonb), sender_id (uuid), conversation_id (uuid), id (uuid), text (text), forward_meta (jsonb), reply_to_id (uuid)
 
 Table: migration_progress
-status (text), id (uuid), processed_at (timestamp with time zone), remote_id (text), pdf_name (text), page_index (text), error_message (text)
+processed_at (timestamp with time zone), page_index (text), status (text), remote_id (text), pdf_name (text), id (uuid), error_message (text)
 
 Table: migration_sync_state
-current_offset (integer), last_run_at (timestamp with time zone), id (integer)
+last_run_at (timestamp with time zone), id (integer), current_offset (integer)
 
 Table: news_feed
-title (text), channel (text), telegram_id (bigint), id (bigint), image_url (text), post_url (text), created_at (timestamp with time zone), full_text (text), telegram_timestamp (timestamp with time zone), snippet (text)
+telegram_id (bigint), full_text (text), image_url (text), post_url (text), snippet (text), title (text), channel (text), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), id (bigint)
 
 Table: profiles
-updated_at (timestamp with time zone), id (uuid), linkoin_balance (integer), last_seen_at (timestamp with time zone), university_id (uuid), last_username_change_at (timestamp with time zone), full_name (text), avatar_url (text), level (text), username (text), department (text), freshman_stream (text), year (text), target_department (text), program (text), phone (text)
+bio (text), id (uuid), linkoin_balance (integer), updated_at (timestamp with time zone), last_seen_at (timestamp with time zone), university_id (uuid), last_username_change_at (timestamp with time zone), full_name (text), avatar_url (text), level (text), username (text), department (text), freshman_stream (text), year (text), target_department (text), program (text), phone (text)
 
 Table: question_book_mappings
-snippet (text), is_valid (boolean), book_id (uuid), question_id (uuid), id (uuid), page_key (text), status (text), error_message (text), created_at (timestamp with time zone), processed_at (timestamp with time zone), content_index (integer)
+snippet (text), book_id (uuid), question_id (uuid), id (uuid), page_key (text), error_message (text), status (text), created_at (timestamp with time zone), processed_at (timestamp with time zone), content_index (integer), is_valid (boolean)
 
 Table: question_reports
-created_at (timestamp with time zone), source (text), report_text (text), id (uuid), question_id (uuid), status (text)
+id (uuid), created_at (timestamp with time zone), source (text), question_id (uuid), report_text (text), status (text)
 
 Table: questions
-question_order (integer), embedding (USER-DEFINED), retry_count (integer), created_at (timestamp with time zone), text (text), media (jsonb), matching_data (jsonb), question_number (text), question_type (text), options (jsonb), transcription_quality (jsonb), points (numeric), section_id (uuid), id (uuid), embedding_status (text)
+text (text), embedding (USER-DEFINED), retry_count (integer), created_at (timestamp with time zone), question_order (integer), question_number (text), transcription_quality (jsonb), question_type (text), media (jsonb), matching_data (jsonb), options (jsonb), points (numeric), section_id (uuid), id (uuid), embedding_status (text)
 
 Table: sections
-total_points (numeric), exam_id (uuid), shared_context (jsonb), section_order (integer), id (uuid), title (text), created_at (timestamp with time zone), instructions (text)
+exam_id (uuid), id (uuid), shared_context (jsonb), created_at (timestamp with time zone), section_order (integer), total_points (numeric), title (text), instructions (text)
 
 Table: squad_bans
-id (uuid), conversation_id (uuid), user_id (uuid), created_at (timestamp with time zone), banned_until (timestamp with time zone)
+id (uuid), created_at (timestamp with time zone), conversation_id (uuid), user_id (uuid), banned_until (timestamp with time zone)
 
 Table: universities
-short_name (text), name (text), id (uuid), created_at (timestamp with time zone)
+name (text), short_name (text), created_at (timestamp with time zone), id (uuid)
 
 -- ========================
 -- RLS POLICIES
@@ -973,6 +973,37 @@ BEGIN
 END;
 
 
+-- Function: get_user_profile_public
+
+DECLARE
+    res jsonb;
+BEGIN
+    SELECT jsonb_build_object(
+        'id', p.id,
+        'full_name', p.full_name,
+        'username', p.username,
+        'avatar_url', p.avatar_url,
+        'department', p.department,
+        'level', p.level,
+        'bio', p.bio
+    ) INTO res
+    FROM public.profiles p
+    WHERE p.id = target_user_id;
+    
+    RETURN res;
+END;
+
+
+-- Function: get_public_profiles
+
+BEGIN
+    RETURN QUERY
+    SELECT p.id, p.full_name, p.avatar_url, p.username, p.department, p.level
+    FROM public.profiles p
+    WHERE p.id = ANY(user_ids);
+END;
+
+
 -- Function: get_suggested_squads
 
 BEGIN
@@ -1042,16 +1073,6 @@ BEGIN
     END IF;
 
     RETURN conv_id;
-END;
-
-
--- Function: get_public_profiles
-
-BEGIN
-    RETURN QUERY
-    SELECT p.id, p.full_name, p.avatar_url, p.username
-    FROM public.profiles p
-    WHERE p.id = ANY(user_ids);
 END;
 
 
@@ -1274,6 +1295,75 @@ BEGIN
     INSERT INTO public.conversation_members (conversation_id, user_id, role)
     VALUES (req_conversation_id, req_user_id, 'member')
     ON CONFLICT DO NOTHING;
+END;
+
+
+-- Function: enforce_forward_privacy
+
+DECLARE
+   origin_privacy text;
+   origin_type text;
+BEGIN
+   -- Only check if this is an explicitly forwarded message tracking an origin
+   IF NEW.forward_meta IS NOT NULL AND NEW.forward_meta->>'original_conversation_id' IS NOT NULL THEN
+      SELECT type, metadata->>'privacy' INTO origin_type, origin_privacy
+      FROM public.conversations 
+      WHERE id = (NEW.forward_meta->>'original_conversation_id')::uuid;
+
+      -- Absolute blockade against extracting from private groups
+      IF origin_type = 'group' AND origin_privacy = 'private' THEN
+         RAISE EXCEPTION 'Access Denied: Cannot forward messages originating from a private group.';
+      END IF;
+   END IF;
+   RETURN NEW;
+END;
+
+
+-- Function: global_network_search
+
+BEGIN
+    RETURN QUERY
+    -- 1. Search Users (Matching Name or Username)
+    SELECT 
+        p.id,
+        'user'::TEXT AS type,
+        p.full_name AS title,
+        p.username AS subtitle,
+        p.avatar_url,
+        '{}'::JSONB AS metadata,
+        EXISTS (
+            SELECT 1 FROM conversation_members cm1
+            JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+            JOIN conversations c ON cm1.conversation_id = c.id
+            WHERE c.type = 'dm' AND cm1.user_id = req_user_id AND cm2.user_id = p.id
+        ) AS is_member
+    FROM public.profiles p
+    WHERE p.id != req_user_id
+      AND (p.full_name ILIKE ('%' || search_term || '%') OR p.username ILIKE ('%' || search_term || '%'))
+    
+    UNION ALL
+    
+    -- 2. Search Groups (Matching Group Title)
+    SELECT 
+        c.id,
+        'group'::TEXT AS type,
+        c.title,
+        COALESCE(c.metadata->>'focus', 'General') AS subtitle,
+        c.avatar_url,
+        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
+        EXISTS (
+            SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id
+        ) AS is_member
+    FROM public.conversations c
+    WHERE c.type = 'group'
+      AND c.title ILIKE ('%' || search_term || '%')
+      AND (
+          -- Include public groups, OR private groups the user is already a member of
+          (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
+          OR 
+          EXISTS (SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id)
+      )
+    LIMIT 30;
 END;
 
 
