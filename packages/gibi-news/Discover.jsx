@@ -114,7 +114,7 @@ const Discover = () => {
                         <i className="fas fa-bell"></i>
                         <span className="notification-badge">3</span>
                     </button>
-                    <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto-format&fit=crop&w=80&q=80" alt="Profile" className="profile-avatar" />
+                    <img src={user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar" />
                 </div>
             </header>
 
