@@ -134,8 +134,50 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
     );
 };
 
+const ForwardModal = ({ msg, conversations, onClose, onSelect }) => {
+    return (
+        <div className="forward-modal-overlay" onClick={onClose}>
+            <div className="forward-modal-sheet" onClick={e => e.stopPropagation()}>
+                <div className="fm-header">
+                    <h3>Forward Message</h3>
+                    <button className="icon-button" onClick={onClose}><i className="fas fa-times"></i></button>
+                </div>
+                <div className="fm-body">
+                    <div className="fm-item" onClick={() => onSelect('miron')} style={{borderColor: 'var(--accent-teal)', background: 'rgba(66, 215, 184, 0.05)'}}>
+                        <div className="fm-icon" style={{color: 'var(--accent-teal)'}}><i className="fas fa-sparkles"></i></div>
+                        <div className="fm-info">
+                            <div className="fm-name" style={{color: 'var(--accent-teal)'}}>Miron Athena</div>
+                            <div className="fm-meta">AI Tutor</div>
+                        </div>
+                    </div>
+                    {conversations.filter(c => c.type === 'dm' || c.type === 'group').map(c => {
+                        const isDm = c.type === 'dm';
+                        const title = isDm ? c.other_user_name : c.title;
+                        const avatar = isDm ? c.other_user_avatar : c.avatar_url;
+                        return (
+                            <div className="fm-item" key={c.conversation_id} onClick={() => onSelect(c)}>
+                                {isDm ? (
+                                    <img src={avatar || 'https://via.placeholder.com/150'} className="fm-icon" alt="Avatar" />
+                                ) : (
+                                    <div className="fm-icon" style={{color: 'var(--accent-teal)'}}><i className="fas fa-users"></i></div>
+                                )}
+                                <div className="fm-info">
+                                    <div className="fm-name">{title}</div>
+                                    <div className="fm-meta">{isDm ? 'Direct Message' : 'Study Group'}</div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Connect = () => {
     const { shell, user: userProfile, sessionUser: currentUser } = usePlatform();
+    const [forwardTargetMsg, setForwardTargetMsg] = useState(null);
+    const [forwardSourceChat, setForwardSourceChat] = useState(null);
     const onOpenActivity = shell.openActivity;
     const [activeView, setActiveView] = useState('messages');
     const [activeChat, setActiveChat] = useState(null);
@@ -375,6 +417,64 @@ const Connect = () => {
         if (!isoString) return '';
         const date = new Date(isoString);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const handleExecuteForward = async (targetChat) => {
+        if (targetChat === 'miron') {
+            shell.openMiron(forwardTargetMsg.text);
+            setForwardTargetMsg(null);
+            return;
+        }
+
+        // Chain forwarding meta or create fresh
+        let meta = forwardTargetMsg.forward_meta;
+        if (!meta) {
+            meta = {
+                original_sender_id: forwardTargetMsg.sender_id,
+                original_sender_name: forwardTargetMsg.resolved_sender_name || 'Unknown',
+                original_conversation_id: forwardSourceChat.conversation_id,
+                original_conversation_title: forwardSourceChat.type === 'dm' ? 'Direct Message' : forwardSourceChat.title
+            };
+        }
+
+        const { error } = await supabase.from('messages').insert({
+            conversation_id: targetChat.conversation_id,
+            sender_id: currentUser.id,
+            text: forwardTargetMsg.text,
+            attachments: forwardTargetMsg.attachments,
+            forward_meta: meta
+        });
+
+        if (error) {
+            setGlobalNotice(`Forwarding blocked: ${error.message}`);
+        } else {
+            setGlobalNotice("Message forwarded successfully.");
+        }
+        setForwardTargetMsg(null);
+    };
+
+    const handleOriginClick = async (meta) => {
+        if (meta.original_conversation_id && meta.original_conversation_title !== 'Direct Message') {
+            const { data } = await supabase.from('conversations').select('*').eq('id', meta.original_conversation_id).single();
+            if (data) {
+                if (data.metadata?.privacy === 'private') {
+                    const { data: mem } = await supabase.from('conversation_members').select('id').eq('conversation_id', data.id).eq('user_id', currentUser.id).maybeSingle();
+                    if (!mem) {
+                        setGlobalNotice("This is a private group. You don't have access.");
+                        return;
+                    }
+                }
+                setActiveChat({
+                    conversation_id: data.id,
+                    type: 'group',
+                    title: data.title,
+                    metadata: data.metadata,
+                    is_preview: true
+                });
+            }
+        } else {
+            setGlobalNotice(`User Profile: ${meta.original_sender_name}\n\n(Profile UI expansion pending)`);
+        }
     };
 
     return (
@@ -653,11 +753,20 @@ const Connect = () => {
                 />
             )}
 
-            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} />}
-            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} />}
+            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); }} onOriginClick={handleOriginClick} />}
+            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); }} onOriginClick={handleOriginClick} />}
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); }} />}
             
+            {forwardTargetMsg && (
+                <ForwardModal 
+                    msg={forwardTargetMsg} 
+                    conversations={conversations} 
+                    onClose={() => setForwardTargetMsg(null)} 
+                    onSelect={handleExecuteForward} 
+                />
+            )}
+
             {globalNotice && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeInModal 0.2s ease-out' }}>
                     <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '400px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', animation: 'popModal 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
