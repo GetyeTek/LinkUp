@@ -725,7 +725,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     );
 };
 
-const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
+const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, onOriginClick }) => {
     const { user: userProfile } = usePlatform();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -1319,6 +1319,15 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                                         </div>
                                     )}
                                     <div className="squad-bubble">
+                                    {m.forward_meta && (
+                                        <div className="forward-indicator" onClick={(e) => { e.stopPropagation(); onOriginClick(m.forward_meta); }}>
+                                            <div className="forward-bar"></div>
+                                            <div className="forward-info">
+                                                <span className="forward-label">Forwarded message</span>
+                                                <span className="forward-from">{m.forward_meta.original_sender_name}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                     {repliedMsg ? (
                                         <div className="squad-reply-quote" onClick={(e) => { e.stopPropagation(); scrollToMessage(m.reply_to_id); }}>
                                             <div className="sq-quote-content">
@@ -1366,6 +1375,11 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                     {activeMenu.msg.text && (
                         <button className="squad-ctx-btn" onClick={() => handleCopy(activeMenu.msg.text)}>
                             <i className="fa-solid fa-copy"></i> Copy Text
+                        </button>
+                    )}
+                    {(!chat.metadata || chat.metadata.privacy !== 'private') && (
+                        <button className="squad-ctx-btn" onClick={() => { onForward({...activeMenu.msg, resolved_sender_name: activeMenu.isMine ? currentUser.full_name : members[activeMenu.msg.sender_id]?.name || 'Unknown'}); setActiveMenu(null); }}>
+                            <i className="fa-solid fa-share"></i> Forward
                         </button>
                     )}
                     {activeMenu.isMine && (
