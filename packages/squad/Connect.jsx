@@ -352,7 +352,7 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) =>
 };
 
 const Connect = () => {
-    const { shell, user: userProfile, sessionUser: currentUser } = usePlatform();
+    const { shell, user: userProfile, sessionUser: currentUser, unreadCount } = usePlatform();
     const [forwardTargetMsg, setForwardTargetMsg] = useState(null);
     const [forwardSourceChat, setForwardSourceChat] = useState(null);
     const [toastNotice, setToastNotice] = useState(null);
@@ -378,6 +378,14 @@ const Connect = () => {
     const [joiningSquadId, setJoiningSquadId] = useState(null);
     const [globalNotice, setGlobalNotice] = useState(null);
     const activeChatRef = useRef(null);
+    
+    // Q&A State
+    const [peerQuestions, setPeerQuestions] = useState([]);
+    const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+    const [qForm, setQForm] = useState({ title: '', body: '', course: '' });
+    const [replyTarget, setReplyTarget] = useState(null); // holds question object for full-screen reply
+    const [replyText, setReplyText] = useState('');
+    const [isSubmittingQA, setIsSubmittingQA] = useState(false);
 
     useEffect(() => {
         activeChatRef.current = activeChat;
@@ -439,6 +447,7 @@ const Connect = () => {
 
         fetchConversations();
         fetchSuggestedSquads();
+        fetchPeerQuestions();
         
         // 1. Subscribe to Realtime Messages and Read Receipt updates
         const msgChannel = supabase.channel('chat_list_updates')
@@ -526,6 +535,59 @@ const Connect = () => {
         const { data, error } = await supabase.rpc('get_suggested_squads', { req_user_id: currentUser.id });
         if (data) setSuggestedSquads(data);
         if (error) console.error("Error fetching suggestions:", error);
+    };
+
+    const fetchPeerQuestions = async () => {
+        const { data, error } = await supabase.rpc('get_peer_questions');
+        if (data) setPeerQuestions(data);
+    };
+
+    const handlePostQuestion = async () => {
+        if (!qForm.title.trim() || !qForm.course) return;
+        setIsSubmittingQA(true);
+        const { error } = await supabase.from('peer_questions').insert({
+            user_id: currentUser.id,
+            title: qForm.title.trim(),
+            body: qForm.body.trim(),
+            course_tag: qForm.course
+        });
+        setIsSubmittingQA(false);
+        if (error) {
+            setGlobalNotice("Failed to post question: " + error.message);
+        } else {
+            setToastNotice("Question posted securely.");
+            setIsQuestionModalOpen(false);
+            setQForm({ title: '', body: '', course: '' });
+            fetchPeerQuestions();
+        }
+    };
+
+    const handleSendReply = async () => {
+        if (!replyText.trim() || !replyTarget) return;
+        setIsSubmittingQA(true);
+        const { error } = await supabase.rpc('reply_to_peer_question', {
+            req_question_id: replyTarget.id,
+            req_reply_text: replyText.trim()
+        });
+        setIsSubmittingQA(false);
+        if (error) {
+            setGlobalNotice("Failed to route reply: " + error.message);
+        } else {
+            setToastNotice("Reply sent to their DMs!");
+            setReplyTarget(null);
+            setReplyText('');
+            // Optional: redirect to messages so they see the DM thread created
+            setActiveView('messages');
+            fetchConversations();
+        }
+    };
+
+    const timeAgo = (isoString) => {
+        const diff = Math.floor((new Date() - new Date(isoString)) / 60000);
+        if (diff < 60) return `${diff}m ago`;
+        const hrs = Math.floor(diff/60);
+        if (hrs < 24) return `${hrs}h ago`;
+        return `${Math.floor(hrs/24)}d ago`;
     };
 
     const handleJoinSquad = async (squadId, e) => {
@@ -696,7 +758,7 @@ const Connect = () => {
                         </button>
                         <button className="icon-button notification-btn" onClick={onOpenActivity}>
                             <i className="fas fa-bell"></i>
-                            <span className="notification-badge">3</span>
+                            {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                         </button>
                         <img src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar" />
                     </div>
@@ -737,24 +799,40 @@ const Connect = () => {
                 <div id="for-you-view" className={`hub-view ${activeView === 'for-you' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
                     <div className="activity-list-container">
                         
+                        {/* Dynamic Peer Questions Stream */}
+                        {peerQuestions.map(q => (
+                            <div className="activity-card" key={q.id}>
+                                <div className="activity-content" style={{ borderLeft: `4px solid ${q.asker_id === currentUser.id ? '#9b59b6' : 'var(--accent-teal)'}` }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                        <div className="activity-tag" style={{ color: q.asker_id === currentUser.id ? '#9b59b6' : 'var(--accent-teal)', marginBottom: 0 }}>
+                                            {q.course_tag}
+                                        </div>
+                                    </div>
+                                    <h2 className="activity-headline">{q.title}</h2>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0'}}>
+                                        <img src={q.asker_avatar || 'https://via.placeholder.com/150'} style={{width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover'}} alt="Asker" />
+                                        <span style={{fontSize: '0.8rem', color: '#888'}}>
+                                            {q.asker_id === currentUser.id ? 'Asked by You' : `Asked by ${q.asker_name}`} • {timeAgo(q.created_at)}
+                                        </span>
+                                    </div>
+                                    {q.body && <p className="activity-snippet">{q.body}</p>}
+                                    {q.asker_id !== currentUser.id && (
+                                        <button className="claim-btn claimable" style={{marginTop: '1rem'}} onClick={() => setReplyTarget(q)}>
+                                            Reply via DM <i className="fas fa-paper-plane" style={{marginLeft: '6px'}}></i>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+
+                        <div className="squads-delimiter"><span>Campus Highlights</span></div>
+
                         <div className="activity-card">
                             <div className="activity-content" style={{borderLeft: '4px solid var(--accent-teal)'}}>
                                 <div className="activity-tag">Live Study Group</div>
                                 <h2 className="activity-headline">Calculus II: Power Series</h2>
                                 <p className="activity-snippet">3 classmates from your department are studying this right now. Join and share notes!</p>
                                 <button className="claim-btn claimable" style={{marginTop: '1rem', width: '100%'}}>Join Session</button>
-                            </div>
-                        </div>
-
-                        <div className="activity-card">
-                            <div className="activity-content">
-                                <div className="activity-tag">Peer Question</div>
-                                <h2 className="activity-headline">How do you derive the Navier-Stokes equations?</h2>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0'}}>
-                                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" style={{width: '24px', height: '24px', borderRadius: '50%'}} alt="Asker" />
-                                    <span style={{fontSize: '0.8rem', color: '#888'}}>Asked by Dawit</span>
-                                </div>
-                                <p className="activity-snippet">Struggling with the continuity equation part. Any help?</p>
                             </div>
                         </div>
 
@@ -969,10 +1047,84 @@ const Connect = () => {
                 </div>
             </div>
             
-            {/* The FAB specifically for the Connect Tab */}
-            <div className="connect-fab" onClick={() => setShowDiscovery(true)}>
-                <i className="fas fa-comment-medical"></i>
+            {/* The Shape-Shifting FAB */}
+            <div className="connect-fab" onClick={() => activeView === 'for-you' ? setIsQuestionModalOpen(true) : setShowDiscovery(true)}>
+                <i className={`fas ${activeView === 'for-you' ? 'fa-comment-dots' : 'fa-comment-medical'}`}></i>
             </div>
+
+            {/* Q&A Composer Modal */}
+            {isQuestionModalOpen && (
+                <div className="qa-composer-overlay" onClick={() => setIsQuestionModalOpen(false)}>
+                    <div className="qa-composer-card" onClick={e => e.stopPropagation()}>
+                        <header className="qa-composer-header">
+                            <h2>Ask a Question</h2>
+                            <button className="icon-button" onClick={() => setIsQuestionModalOpen(false)}><i className="fas fa-times"></i></button>
+                        </header>
+                        <div className="qa-composer-body">
+                            <input 
+                                type="text" 
+                                className="qa-input-main" 
+                                placeholder="What's your main question?" 
+                                value={qForm.title}
+                                onChange={e => setQForm({...qForm, title: e.target.value})}
+                                maxLength={100}
+                                autoFocus
+                            />
+                            <textarea 
+                                className="qa-input-details" 
+                                placeholder="Add context, formulas, or what you're struggling with (optional)..."
+                                value={qForm.body}
+                                onChange={e => setQForm({...qForm, body: e.target.value})}
+                            ></textarea>
+                            <div>
+                                <span style={{fontSize: '0.8rem', color: '#888', fontWeight: 600, textTransform: 'uppercase'}}>Select Course Tag</span>
+                                <div className="qa-pills-wrap">
+                                    {['Physics', 'Chemistry', 'Mathematics', 'Biology', 'CS', 'General'].map(c => (
+                                        <div key={c} className={`qa-pill ${qForm.course === c ? 'active' : ''}`} onClick={() => setQForm({...qForm, course: c})}>
+                                            {c}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <button 
+                                className="ui-save-btn" 
+                                disabled={isSubmittingQA || !qForm.title.trim() || !qForm.course}
+                                onClick={handlePostQuestion}
+                                style={{marginTop: '0.5rem'}}
+                            >
+                                {isSubmittingQA ? <i className="fas fa-circle-notch fa-spin"></i> : 'Post Question'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Full Screen Reply UI */}
+            {replyTarget && (
+                <div className="reply-fs-overlay">
+                    <header className="reply-fs-header">
+                        <button className="icon-button" onClick={() => setReplyTarget(null)}><i className="fas fa-times"></i></button>
+                        <h2 style={{color: '#fff', fontSize: '1.1rem', margin: 0}}>Reply to {replyTarget.asker_name}</h2>
+                        <button className="icon-button" style={{color: var('--accent-teal')}} onClick={handleSendReply} disabled={isSubmittingQA || !replyText.trim()}>
+                            {isSubmittingQA ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-paper-plane"></i>}
+                        </button>
+                    </header>
+                    <div className="reply-fs-body">
+                        <div className="reply-ref-card">
+                            <div className="reply-ref-asker">{replyTarget.course_tag} • Asked by {replyTarget.asker_name}</div>
+                            <div className="reply-ref-title">{replyTarget.title}</div>
+                            {replyTarget.body && <div className="reply-ref-body">{replyTarget.body}</div>}
+                        </div>
+                        <textarea 
+                            className="reply-textarea" 
+                            placeholder="Write your explanation or answer here. This will be sent directly to their DMs..."
+                            value={replyText}
+                            onChange={e => setReplyText(e.target.value)}
+                            autoFocus
+                        ></textarea>
+                    </div>
+                </div>
+            )}
 
             {showDiscovery && (
                 <DiscoveryScreen 
