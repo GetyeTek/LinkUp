@@ -412,7 +412,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                 <div className="si-body">
                     {activeTab === 'members' && canSeeMembers && (
                         <div className="si-directory">
-                            {Object.entries(members).map(([uid, m]) => (
+                            {Object.entries(members).filter(([_, m]) => m.is_current_member).map(([uid, m]) => (
                                 <div className="si-member-row" key={uid} onClick={() => onOpenUser(uid)} style={{cursor: 'pointer'}}>
                                     <img src={m.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="si-member-avatar" />
                                     <div className="si-member-info">
@@ -891,22 +891,30 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
             }
 
             let memMap = {};
+            const memberIds = memResponse.data ? memResponse.data.map(m => m.user_id) : [];
+            const senderIds = msgResponse.data ? msgResponse.data.map(m => m.sender_id).filter(Boolean) : [];
+            
+            // Combine members and historical message senders to ensure we have profile data for everyone
+            const allUserIds = Array.from(new Set([...memberIds, ...senderIds]));
 
-            // If we have members, fetch their profile metadata
-            if (memResponse.data && memResponse.data.length > 0) {
-                const userIds = memResponse.data.map(m => m.user_id);
-                
-                const { data: profiles } = await supabase
-                    .from('profiles')
-                    .select('id, full_name, avatar_url')
-                    .in('id', userIds);
+            if (allUserIds.length > 0) {
+                // Securely fetch public profiles bypassing RLS
+                const { data: profiles } = await supabase.rpc('get_public_profiles', { user_ids: allUserIds });
 
-                memResponse.data.forEach(m => {
-                    const prof = profiles?.find(p => p.id === m.user_id);
-                    memMap[m.user_id] = { role: m.role, name: prof?.full_name, avatar: prof?.avatar_url };
-                    if (m.user_id === currentUser.id) {
-                        setMyRole(m.role);
-                        setMyMutedUntil(m.muted_until);
+                allUserIds.forEach(uid => {
+                    const prof = profiles?.find(p => p.id === uid);
+                    const memData = memResponse.data?.find(m => m.user_id === uid);
+                    
+                    memMap[uid] = { 
+                        role: memData ? memData.role : null, 
+                        is_current_member: !!memData,
+                        name: prof?.full_name || 'Unknown User', 
+                        avatar: prof?.avatar_url || '' 
+                    };
+                    
+                    if (uid === currentUser.id && memData) {
+                        setMyRole(memData.role);
+                        setMyMutedUntil(memData.muted_until);
                     }
                 });
                 setMembers(memMap);
@@ -977,11 +985,11 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                     // Optimistic UI insert to trigger the live counter instantly
                     setMembers(prev => ({...prev, [payload.new.user_id]: { role: payload.new.role, name: 'Loading...', avatar: '' }}));
                     
-                    // Fetch real profile silently in background
-                    supabase.from('profiles').select('full_name, avatar_url').eq('id', payload.new.user_id).maybeSingle()
+                    // Fetch real profile silently via secure RPC
+                    supabase.rpc('get_user_profile_public', { target_user_id: payload.new.user_id })
                         .then(({data}) => {
                             if (data) {
-                                setMembers(prev => ({...prev, [payload.new.user_id]: { role: payload.new.role, name: data.full_name, avatar: data.avatar_url }}));
+                                setMembers(prev => ({...prev, [payload.new.user_id]: { role: payload.new.role, is_current_member: true, name: data.full_name, avatar: data.avatar_url }}));
                             }
                         });
                 } else if (payload.eventType === 'UPDATE') {
