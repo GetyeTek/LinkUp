@@ -522,6 +522,7 @@ const App = () => {
   const [requiresPasswordReset, setRequiresPasswordReset] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -648,12 +649,21 @@ const App = () => {
       }
     };
 
+    const fetchNotificationsCount = async (userId) => {
+        const { count } = await supabase.from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('is_read', false);
+        setUnreadCount(count || 0);
+    };
+
     // 1. Check active session on load
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
         fetchProfile(session.user.id);
         updateLastSeen();
+        fetchNotificationsCount(session.user.id);
       }
       setIsCheckingAuth(false);
     });
@@ -671,6 +681,7 @@ const App = () => {
       }
       if (session) {
         fetchProfile(session.user.id);
+        fetchNotificationsCount(session.user.id);
       } else {
         setUserProfile(null);
         setIsProfileLoaded(false);
@@ -683,6 +694,19 @@ const App = () => {
       clearInterval(presenceInterval);
     };
   }, []);
+
+  // Realtime Notifications Listener
+  useEffect(() => {
+      if (!session) return;
+      const notifChannel = supabase.channel('global_notifications')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` }, () => {
+            // Re-fetch count on any notification table change
+            supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('is_read', false)
+            .then(({ count }) => setUnreadCount(count || 0));
+        }).subscribe();
+
+      return () => supabase.removeChannel(notifChannel);
+  }, [session]);
 
   // 3. BACKGROUND PREFETCHING (The Enterprise Secret)
   // Silently downloads the Micro-Frontend modules into RAM 3 seconds after the user logs in.
@@ -779,7 +803,19 @@ const App = () => {
               <i className="fas fa-wifi-slash"></i> Offline Mode - Messages will sync when connection is restored.
           </div>
       )}
-      <PlatformProvider value={{ user: userProfile, sessionUser: session?.user, shell: { openActivity: () => setIsActivityOpen(true), openMiron: (text) => setMironContext({ text }) } }}>
+      <PlatformProvider value={{ 
+          user: userProfile, 
+          sessionUser: session?.user, 
+          unreadCount, 
+          shell: { 
+              openActivity: () => setIsActivityOpen(true), 
+              openMiron: (text) => setMironContext({ text }),
+              markNotificationsRead: async () => {
+                  setUnreadCount(0); // Optimistic UI
+                  await supabase.from('notifications').update({ is_read: true }).eq('user_id', session?.user?.id).eq('is_read', false);
+              }
+          } 
+      }}>
       <main 
         className="main-content"
         onTouchStart={handleTouchStart}
