@@ -1324,7 +1324,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                                             <div className="forward-bar"></div>
                                             <div className="forward-info">
                                                 <span className="forward-label">Forwarded message</span>
-                                                <span className="forward-from">{m.forward_meta.original_sender_name}</span>
+                                                <span className="forward-from">
+                                                    {m.forward_meta.original_sender_avatar && <img src={m.forward_meta.original_sender_avatar} className="forward-avatar" alt="Avatar"/>}
+                                                    {m.forward_meta.original_sender_name}
+                                                </span>
                                             </div>
                                         </div>
                                     )}
@@ -1378,7 +1381,14 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                         </button>
                     )}
                     {(!chat.metadata || chat.metadata.privacy !== 'private') && (
-                        <button className="squad-ctx-btn" onClick={() => { onForward({...activeMenu.msg, resolved_sender_name: activeMenu.isMine ? currentUser.full_name : members[activeMenu.msg.sender_id]?.name || 'Unknown'}); setActiveMenu(null); }}>
+                        <button className="squad-ctx-btn" onClick={() => { 
+                            onForward({
+                                ...activeMenu.msg, 
+                                resolved_sender_name: activeMenu.isMine ? userProfile?.full_name : members[activeMenu.msg.sender_id]?.name || 'Unknown',
+                                resolved_sender_avatar: activeMenu.isMine ? userProfile?.avatar_url : members[activeMenu.msg.sender_id]?.avatar || ''
+                            }); 
+                            setActiveMenu(null); 
+                        }}>
                             <i className="fa-solid fa-share"></i> Forward
                         </button>
                     )}
