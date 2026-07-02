@@ -1105,7 +1105,7 @@ const Connect = () => {
                     <header className="reply-fs-header">
                         <button className="icon-button" onClick={() => setReplyTarget(null)}><i className="fas fa-times"></i></button>
                         <h2 style={{color: '#fff', fontSize: '1.1rem', margin: 0}}>Reply to {replyTarget.asker_name}</h2>
-                        <button className="icon-button" style={{color: var('--accent-teal')}} onClick={handleSendReply} disabled={isSubmittingQA || !replyText.trim()}>
+                        <button className="icon-button" style={{color: 'var(--accent-teal)'}} onClick={handleSendReply} disabled={isSubmittingQA || !replyText.trim()}>
                             {isSubmittingQA ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-paper-plane"></i>}
                         </button>
                     </header>
