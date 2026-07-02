@@ -1070,9 +1070,9 @@ const Connect = () => {
             {isQuestionModalOpen && (
                 <div className="qa-composer-overlay" onClick={() => setIsQuestionModalOpen(false)}>
                     <div className="qa-composer-card" onClick={e => e.stopPropagation()}>
-                        <header className="qa-composer-header">
-                            <h2>Ask a Question</h2>
-                            <button className="icon-button" onClick={() => setIsQuestionModalOpen(false)}><i className="fas fa-times"></i></button>
+                        <header className="qa-composer-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
+                            <button className="icon-button" onClick={() => setIsQuestionModalOpen(false)} style={{ color: 'white', opacity: 0.7 }}><i className="fas fa-chevron-left"></i></button>
+                            <h2 style={{ fontSize: '1.1rem' }}>Ask a Question</h2>
                         </header>
                         <div className="qa-composer-body">
                             <input 
@@ -1193,27 +1193,21 @@ const Connect = () => {
             {/* Immersive Sandboxed HTML Room Override */}
             {activeHtmlRoom && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#0c0c0c', display: 'flex', flexDirection: 'column', animation: 'fadeInModal 0.3s ease-out' }}>
+                    <header style={{ padding: '0.8rem 1.2rem', background: '#0c0c0c', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center' }}>
+                        <button 
+                            onClick={() => setActiveHtmlRoom(null)} 
+                            style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer', padding: '5px' }}
+                        >
+                            <i className="fas fa-chevron-left"></i>
+                        </button>
+                        <span style={{ marginLeft: '1rem', fontSize: '0.9rem', color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px' }}>Platform Activity</span>
+                    </header>
                     <iframe 
                         srcDoc={activeHtmlRoom} 
                         sandbox="allow-scripts allow-forms" 
                         style={{ flex: 1, width: '100%', border: 'none' }} 
                         title="LinkUp Sandbox Environment"
                     />
-                    <button 
-                        onClick={() => setActiveHtmlRoom(null)} 
-                        style={{ 
-                            position: 'absolute', top: '15px', right: '15px', width: '40px', height: '40px', 
-                            borderRadius: '50%', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', 
-                            border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, 
-                            transition: 'transform 0.2s', boxShadow: '0 5px 15px rgba(0,0,0,0.5)' 
-                        }}
-                        onMouseDown={e => e.currentTarget.style.transform = 'scale(0.9)'}
-                        onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                    >
-                        <i className="fas fa-times"></i>
-                    </button>
                 </div>
             )}
         </div>
