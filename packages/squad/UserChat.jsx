@@ -69,7 +69,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                         if (prev.find(m => m.id === payload.new.id)) return prev;
                         return [...prev, { ...payload.new, status: 'sent' }];
                     });
-                    if (payload.new.sender_id !== currentUser.id) markAsRead();
+                    markAsRead(); // Unconditionally mark as read to clear badges
                 } else if (payload.eventType === 'UPDATE') {
                     setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...payload.new, status: 'sent' } : m));
                 } else if (payload.eventType === 'DELETE') {
@@ -200,8 +200,10 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
 
     const markAsRead = async () => {
         if (!activeConvId) return;
+        // Anti-Clock-Skew: Offset by 5 seconds into the future to ensure server trusts we read it
+        const skewAdjustedTime = new Date(Date.now() + 5000).toISOString();
         await supabase.from('conversation_members')
-            .update({ last_read_at: new Date().toISOString() })
+            .update({ last_read_at: skewAdjustedTime })
             .eq('conversation_id', activeConvId)
             .eq('user_id', currentUser.id);
     };
