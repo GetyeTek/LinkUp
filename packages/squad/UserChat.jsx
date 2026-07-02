@@ -78,10 +78,14 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             })
             .on('presence', { event: 'sync' }, () => {
                 const state = channel.presenceState();
-                console.log('[UserChat:PresenceSync] State:', JSON.stringify(state));
                 const otherUserPresence = state[chat.other_user_id];
-                const isTypingNow = !!(otherUserPresence && otherUserPresence[0]?.isTyping);
-                console.log(`[UserChat:PresenceSync] Other user (${chat.other_user_id}) typing?`, isTypingNow);
+                
+                // CRITICAL FIX: Check ALL open ghost/tab connections for the user
+                const isTypingNow = !!(otherUserPresence && otherUserPresence.some(p => p.isTyping));
+                
+                console.log(`[UserChat:PresenceSync] State:`, JSON.stringify(state));
+                console.log(`[UserChat:PresenceSync] Other user typing?`, isTypingNow);
+                
                 setIsOtherTyping(isTypingNow);
             })
             .subscribe(async (status) => {
