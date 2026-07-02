@@ -795,8 +795,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
 
     const markAsRead = async () => {
         if (!chat.conversation_id) return;
+        // Anti-Clock-Skew: Offset by 5 seconds into the future to ensure server trusts we read it
+        const skewAdjustedTime = new Date(Date.now() + 5000).toISOString();
         await supabase.from('conversation_members')
-            .update({ last_read_at: new Date().toISOString() })
+            .update({ last_read_at: skewAdjustedTime })
             .eq('conversation_id', chat.conversation_id)
             .eq('user_id', currentUser.id);
     };
@@ -874,7 +876,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
                         return [...prev, { ...payload.new, status: 'sent' }];
                     });
                     // Suppress badge increments if we are actively viewing the chat
-                    if (payload.new.sender_id !== currentUser.id) markAsRead();
+                    markAsRead(); // Unconditionally mark as read to clear badges
                 } else if (payload.eventType === 'UPDATE') {
                     setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...payload.new, status: 'sent' } : m));
                 } else if (payload.eventType === 'DELETE') {
