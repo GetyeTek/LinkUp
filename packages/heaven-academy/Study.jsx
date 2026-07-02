@@ -9,7 +9,7 @@ import { usePlatform } from '@linkup-platform/sdk-core';
 import './Study.css';
 
 const Study = () => {
-    const { shell, user: userProfile } = usePlatform();
+    const { shell, user: userProfile, unreadCount } = usePlatform();
     const onOpenActivity = shell.openActivity;
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
     const [activeExamFromBook, setActiveExamFromBook] = useState(null);
@@ -94,7 +94,7 @@ const Study = () => {
                     <div className="header-actions">
                         <button className="icon-button notification-btn" onClick={onOpenActivity}>
                             <i className="fas fa-bell"></i>
-                            <span className="notification-badge">3</span>
+                            {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                         </button>
                         <img src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar" style={{ width: '36px', height: '36px' }} />
                     </div>
