@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './UserChat.css';
 
-const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginClick }) => {
+const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginClick, onOpenUser }) => {
     const { user: userProfile } = usePlatform();
     const [activeConvId, setActiveConvId] = useState(chat.conversation_id);
     const [messages, setMessages] = useState([]);
@@ -467,7 +467,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginCli
                     <button className="icon-button" style={{ color: 'white', opacity: 0.6 }} onClick={onClose}>
                         <i className="fas fa-chevron-left"></i>
                     </button>
-                    <div className="contact-profile">
+                    <div className="contact-profile" onClick={() => !isOtherUserDeleted && onOpenUser(chat.other_user_id)} style={{cursor: !isOtherUserDeleted ? 'pointer' : 'default'}}>
                         <div className="avatar-ring">
                             <img src={chatAvatar || 'https://via.placeholder.com/150'} alt="Avatar" />
                             {isOnline && <div className="online-dot"></div>}
