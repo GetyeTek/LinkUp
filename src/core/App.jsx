@@ -542,6 +542,13 @@ const App = () => {
     }
   }, []);
 
+  // Global Tab Navigation Listener
+  useEffect(() => {
+    const handleNav = (e) => setActiveTab(e.detail.tab);
+    window.addEventListener('navigate-tab', handleNav);
+    return () => window.removeEventListener('navigate-tab', handleNav);
+  }, []);
+
   // Swipe Engine State
   const touchState = useRef({ startX: 0, startY: 0, endX: 0, endY: 0 });
 
