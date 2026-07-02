@@ -379,7 +379,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                     {activeTab === 'members' && canSeeMembers && (
                         <div className="si-directory">
                             {Object.entries(members).map(([uid, m]) => (
-                                <div className="si-member-row" key={uid}>
+                                <div className="si-member-row" key={uid} onClick={() => onOpenUser(uid)} style={{cursor: 'pointer'}}>
                                     <img src={m.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="si-member-avatar" />
                                     <div className="si-member-info">
                                         <div className="si-member-name">
@@ -725,7 +725,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     );
 };
 
-const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, onOriginClick }) => {
+const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, onOriginClick, onOpenUser }) => {
     const { user: userProfile } = usePlatform();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -1313,7 +1313,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                                 }}
                             >
                                 {!isMine && (
-                                    <img src={sender.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="squad-msg-avatar" />
+                                    <img src={sender.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="squad-msg-avatar" onClick={(e) => { e.stopPropagation(); if(m.sender_id) onOpenUser(m.sender_id); }} style={{cursor: m.sender_id ? 'pointer' : 'default'}} />
                                 )}
                                 <div className="squad-bubble-wrapper">
                                     {!isMine && (
