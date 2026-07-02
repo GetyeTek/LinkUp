@@ -111,6 +111,17 @@
     white-space: pre-wrap;
 }
 
+.forward-indicator { display: flex; gap: 8px; margin-bottom: 6px; cursor: pointer; padding: 2px 4px; border-radius: 6px; transition: background 0.2s; }
+.forward-indicator:hover { background: rgba(255,255,255,0.05); }
+.sent .forward-indicator:hover { background: rgba(0,0,0,0.05); }
+.forward-bar { width: 3px; background: var(--accent-teal); border-radius: 3px; }
+.sent .forward-bar { background: #000; }
+.forward-info { display: flex; flex-direction: column; font-size: 0.75rem; line-height: 1.2; }
+.forward-label { color: #aaa; }
+.sent .forward-label { color: rgba(0,0,0,0.5); }
+.forward-from { color: var(--accent-teal); font-weight: 600; }
+.sent .forward-from { color: #000; font-weight: 700; }
+
 /* Bubble Attachment Styles */
 .bubble-attachment {
     margin-top: 4px;
