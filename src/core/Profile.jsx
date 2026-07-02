@@ -80,6 +80,13 @@ const Profile = () => {
             .then(({ data }) => { if (data) setUniversities(data); });
     }, []);
 
+    // Global Listener to open the Profile Editor externally
+    useEffect(() => {
+        const handleOpenEditor = () => setIsEditingProfile(true);
+        window.addEventListener('open-profile-editor', handleOpenEditor);
+        return () => window.removeEventListener('open-profile-editor', handleOpenEditor);
+    }, []);
+
     useEffect(() => {
         if (userProfile) {
             const parts = (userProfile.full_name || '').trim().split(' ');
