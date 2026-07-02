@@ -36,7 +36,7 @@ const Profile = () => {
 
     // Host-managed Identity State
     const [editForm, setEditForm] = useState({
-        sureName: '', fatherName: '', username: '', email: '', phone: '', university_id: '', 
+        sureName: '', fatherName: '', username: '', bio: '', email: '', phone: '', university_id: '', 
         program: '', department: '', freshman_stream: '', target_department: '', year: ''
     });
 
@@ -94,6 +94,7 @@ const Profile = () => {
                 sureName: parts[0] || '',
                 fatherName: parts.slice(1).join(' ') || '',
                 username: userProfile.username || '',
+                bio: userProfile.bio || '',
                 email: sessionUser?.email || '',
                 phone: userProfile.phone || '',
                 university_id: userProfile.university_id || '',
@@ -185,6 +186,7 @@ const Profile = () => {
         const profileData = {
             full_name: finalFullName,
             username: editForm.username.toLowerCase().trim(),
+            bio: editForm.bio.trim(),
             avatar_url: finalAvatarUrl,
             phone: editForm.phone,
             university_id: editForm.university_id || null,
@@ -512,6 +514,20 @@ const Profile = () => {
                                         {usernameStatus === 'error' && "Connection error. Try again."}
                                         {usernameStatus === 'available' && "Looks great! It's all yours."}
                                     </div>
+                                </div>
+                                
+                                <div className="input-group-sm" style={{ marginTop: '0.5rem' }}>
+                                    <label>About Me</label>
+                                    <textarea 
+                                        className="ui-textarea" 
+                                        placeholder="Write a short bio..."
+                                        value={editForm.bio}
+                                        onChange={e => setEditForm({...editForm, bio: e.target.value})}
+                                        disabled={saving}
+                                        maxLength={150}
+                                        rows={3}
+                                    />
+                                    <div style={{fontSize: '0.7rem', color: '#888', textAlign: 'right', marginTop: '4px'}}>{editForm.bio.length}/150</div>
                                 </div>
 
                                 <div className="input-row">
