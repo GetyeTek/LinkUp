@@ -20,15 +20,33 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
 
     useEffect(() => {
         const fetchUser = async () => {
-            const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-            if (data) {
-                setProfile(data);
-                setEditForm({ name: data.full_name || '', username: data.username || '' });
+            try {
+                let profileData = null;
+                
+                if (isMe) {
+                    // Full access to own profile
+                    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+                    profileData = data;
+                } else {
+                    // Secure RPC access to public fields for peers
+                    const { data, error } = await supabase.rpc('get_user_profile_public', { target_user_id: userId });
+                    if (!error && data) {
+                        profileData = data;
+                    }
+                }
+                
+                if (profileData) {
+                    setProfile(profileData);
+                    setEditForm({ name: profileData.full_name || '', username: profileData.username || '' });
+                }
+            } catch (err) {
+                console.error("Profile fetch error:", err);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchUser();
-    }, [userId]);
+    }, [userId, isMe]);
 
     const handleSave = async () => {
         if (!isMe) return;
