@@ -121,6 +121,33 @@
 .csm-highlight { background: rgba(66, 215, 184, 0.3); color: var(--accent-teal); font-weight: bold; padding: 2px 4px; border-radius: 4px; }
 .csm-empty { text-align: center; padding: 3rem 1rem; color: #666; font-style: italic; }
 
+/* Forward Modal UI */
+.forward-modal-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+    display: flex; align-items: flex-end; justify-content: center;
+    animation: fadeIn 0.2s;
+}
+.forward-modal-sheet {
+    background: #121212; border-top-left-radius: 24px; border-top-right-radius: 24px;
+    width: 100%; max-width: 600px; height: 80vh; display: flex; flex-direction: column;
+    animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid rgba(255,255,255,0.1); border-bottom: none;
+}
+.fm-header { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+.fm-header h3 { margin: 0; font-size: 1.2rem; color: #fff; }
+.fm-body { padding: 1rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.fm-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    background: rgba(255,255,255,0.03); border-radius: 12px; cursor: pointer;
+    transition: background 0.2s; border: 1px solid rgba(255,255,255,0.05);
+}
+.fm-item:hover { background: rgba(255,255,255,0.08); }
+.fm-icon { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; object-fit: cover;}
+.fm-info { flex: 1; overflow: hidden; }
+.fm-name { font-weight: 600; font-size: 0.95rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fm-meta { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+
 /* Squads Discovery Additions */
 .squads-delimiter { display: flex; align-items: center; margin: 2rem 0 1rem; color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
 .squads-delimiter::before, .squads-delimiter::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.1); }
