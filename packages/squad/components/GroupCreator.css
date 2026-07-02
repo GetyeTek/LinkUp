@@ -12,9 +12,11 @@
 .gc-input:focus { border-color: var(--accent-teal); }
 .gc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .gc-chip { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; text-align: center; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.gc-chip:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
 .gc-chip.large { align-items: flex-start; text-align: left; padding: 14px 16px; margin-top: 10px; }
-.gc-chip-desc { font-size: 0.75rem; font-weight: normal; color: #888; margin-top: 6px; line-height: 1.4; }
+.gc-chip-desc { font-size: 0.75rem; font-weight: normal; color: #888; margin-top: 6px; line-height: 1.4; transition: color 0.2s; }
 .gc-chip.active { background: rgba(66, 215, 184, 0.1); border-color: var(--accent-teal); color: var(--accent-teal); font-weight: 600; }
+.gc-chip.active:hover { background: rgba(66, 215, 184, 0.15); border-color: var(--accent-teal); }
 .gc-chip.large.active .gc-chip-desc { color: rgba(66, 215, 184, 0.8); }
 .gc-privacy-options { display: flex; flex-direction: column; gap: 10px; }
 .gc-privacy-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 14px; border-radius: 12px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.2s; }
