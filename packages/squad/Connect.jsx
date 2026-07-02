@@ -686,7 +686,7 @@ const Connect = () => {
                             <i className="fas fa-bell"></i>
                             <span className="notification-badge">3</span>
                         </button>
-                        <img src={userProfile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80'} alt="Profile" className="profile-avatar" />
+                        <img src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar" />
                     </div>
                 </div>
                 <div className="main-nav-row">
