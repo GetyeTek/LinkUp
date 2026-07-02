@@ -215,14 +215,80 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
     );
 };
 
+// Inline Component: Global Network Search
+const GlobalSearchOverlay = ({ currentUser, onClose, onSelectUser, onSelectGroup }) => {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    useEffect(() => {
+        if (!query.trim()) {
+            setResults([]);
+            return;
+        }
+        const fetchSearch = async () => {
+            setIsSearching(true);
+            const { data, error } = await supabase.rpc('global_network_search', { search_term: query.trim(), req_user_id: currentUser.id });
+            if (data) setResults(data);
+            setIsSearching(false);
+        };
+        const timer = setTimeout(fetchSearch, 400); // Debounce typing
+        return () => clearTimeout(timer);
+    }, [query, currentUser.id]);
+
+    return (
+        <div className="global-search-overlay">
+            <header className="gs-header">
+                <button className="icon-button" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
+                <div className="gs-input-box">
+                    <i className="fas fa-search"></i>
+                    <input 
+                        type="text" 
+                        className="gs-input" 
+                        placeholder="Search names, usernames, or groups..." 
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        autoFocus
+                    />
+                    {isSearching && <i className="fas fa-circle-notch fa-spin" style={{color: 'var(--accent-teal)'}}></i>}
+                </div>
+            </header>
+            <div className="gs-body">
+                {query.trim() && results.length === 0 && !isSearching && (
+                    <div className="not-found-state">
+                        <i className="fas fa-search-minus" style={{fontSize: '2rem', display: 'block', marginBottom: '10px'}}></i>
+                        No users or groups found matching "{query}".
+                    </div>
+                )}
+                {results.map(res => (
+                    <div className="gs-result-item" key={res.id + res.type} onClick={() => {
+                        onClose();
+                        if (res.type === 'user') onSelectUser({ id: res.id, full_name: res.title, username: res.subtitle, avatar_url: res.avatar_url });
+                        else onSelectGroup({ conversation_id: res.id, type: 'group', title: res.title, metadata: res.metadata, is_preview: !res.is_member });
+                    }}>
+                        {res.type === 'user' ? (
+                            <img src={res.avatar_url || 'https://via.placeholder.com/150'} className="gs-avatar" alt="Avatar" />
+                        ) : (
+                            <div className="gs-icon-avatar"><i className="fas fa-users"></i></div>
+                        )}
+                        <div className="gs-info">
+                            <div className="gs-name">{res.title}</div>
+                            <div className="gs-meta">{res.type === 'user' ? `@${res.subtitle}` : res.subtitle}</div>
+                        </div>
+                        <div className={`gs-status ${!res.is_member ? 'unjoined' : ''}`}>
+                            {res.type === 'user' ? (res.is_member ? 'Connected' : 'Connect') : (res.is_member ? 'Joined' : 'Join')}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // Inline Component: Discovery Screen
-const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
+const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) => {
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [searchStatus, setSearchStatus] = useState('idle'); // idle, searching, found, not_found
-    const [searchResults, setSearchResults] = useState([]);
 
     useEffect(() => {
         const fetchDiscovery = async () => {
@@ -233,22 +299,6 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
         fetchDiscovery();
     }, [currentUser.id]);
 
-    const handleSearch = async () => {
-        if (!searchTerm.trim()) return;
-        setSearchStatus('searching');
-        const { data, error } = await supabase.rpc('find_user_by_any_identity', { 
-            search_term: searchTerm.trim(),
-            req_user_id: currentUser.id
-        });
-        
-        if (data && data.length > 0) {
-            setSearchResults(data);
-            setSearchStatus('found');
-        } else {
-            setSearchStatus('not_found');
-        }
-    };
-
     return (
         <div className="discovery-screen">
             <header className="discovery-header">
@@ -256,14 +306,17 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
                     <i className="fas fa-chevron-left"></i>
                 </button>
                 <h2>Discover Peers</h2>
+                <button className="icon-button" onClick={onOpenSearch} style={{color: 'white'}}>
+                    <i className="fas fa-search"></i>
+                </button>
             </header>
 
             <div className="discovery-body">
-                <div className="add-friend-trigger" onClick={() => { setIsSheetOpen(true); setSearchStatus('idle'); setSearchTerm(''); }}>
-                    <div className="icon-box"><i className="fas fa-user-plus"></i></div>
+                <div className="add-friend-trigger" onClick={onOpenSearch}>
+                    <div className="icon-box"><i className="fas fa-search"></i></div>
                     <div>
-                        <div style={{fontSize: '1rem'}}>Add Connection</div>
-                        <div style={{fontSize: '0.75rem', color: '#888', fontWeight: '400'}}>Search by Phone, Email, or @handle</div>
+                        <div style={{fontSize: '1rem'}}>Global Search</div>
+                        <div style={{fontSize: '0.75rem', color: '#888', fontWeight: '400'}}>Find users or public groups</div>
                     </div>
                 </div>
 
@@ -294,51 +347,6 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
                     </div>
                 )}
             </div>
-
-            {isSheetOpen && (
-                <>
-                    <div className="bottom-sheet-backdrop" onClick={() => setIsSheetOpen(false)}></div>
-                    <div className="bottom-sheet">
-                        <div className="sheet-handle"></div>
-                        <h3 className="sheet-title">Find Someone</h3>
-                        <p className="sheet-subtitle">Enter their exact @username to connect securely.</p>
-                        
-                        <div className="sheet-input-group">
-                            <i className="fas fa-search"></i>
-                            <input 
-                                type="text" 
-                                className="sheet-input" 
-                                placeholder="e.g. @scholar"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                                autoFocus
-                            />
-                        </div>
-
-                        <button className="sheet-btn" onClick={handleSearch} disabled={searchStatus === 'searching' || !searchTerm.trim()}>
-                            {searchStatus === 'searching' ? <i className="fas fa-circle-notch fa-spin"></i> : 'Search Network'}
-                        </button>
-
-                        {searchStatus === 'not_found' && (
-                            <div className="not-found-state">
-                                <i className="fas fa-user-slash"></i> No active users matched that identity.
-                            </div>
-                        )}
-
-                        {searchStatus === 'found' && searchResults.map(res => (
-                            <div className="search-result-card" key={res.id} onClick={() => { setIsSheetOpen(false); onStartChat(res); }}>
-                                <img src={res.avatar_url} className="peer-avatar" style={{width: '40px', height: '40px'}} alt="Avatar" />
-                                <div className="peer-info">
-                                    <div className="peer-name" style={{color: '#fff'}}>{res.full_name}</div>
-                                    <div className="peer-meta">@{res.username}</div>
-                                </div>
-                                <i className="fas fa-comment-dots" style={{color: 'var(--accent-teal)'}}></i>
-                            </div>
-                        ))}
-                    </div>
-                </>
-            )}
         </div>
     );
 };
@@ -349,6 +357,7 @@ const Connect = () => {
     const [forwardSourceChat, setForwardSourceChat] = useState(null);
     const [toastNotice, setToastNotice] = useState(null);
     const [viewingUserId, setViewingUserId] = useState(null);
+    const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
 
     useEffect(() => {
         if (toastNotice) {
@@ -682,6 +691,9 @@ const Connect = () => {
                 <div className="large-title-row">
                     <h2 className="large-title">Social Hub</h2>
                     <div className="header-actions">
+                        <button className="icon-button" onClick={() => setIsGlobalSearchOpen(true)}>
+                            <i className="fas fa-search"></i>
+                        </button>
                         <button className="icon-button notification-btn" onClick={onOpenActivity}>
                             <i className="fas fa-bell"></i>
                             <span className="notification-badge">3</span>
@@ -966,7 +978,23 @@ const Connect = () => {
                 <DiscoveryScreen 
                     currentUser={currentUser} 
                     onClose={() => setShowDiscovery(false)} 
-                    onStartChat={startDirectMessage} 
+                    onStartChat={startDirectMessage}
+                    onOpenSearch={() => setIsGlobalSearchOpen(true)}
+                />
+            )}
+
+            {isGlobalSearchOpen && (
+                <GlobalSearchOverlay 
+                    currentUser={currentUser} 
+                    onClose={() => setIsGlobalSearchOpen(false)} 
+                    onSelectUser={startDirectMessage} 
+                    onSelectGroup={(group) => {
+                        if (forwardTargetMsg) {
+                            setToastNotice("You must join this group first to forward messages.");
+                            return;
+                        }
+                        setActiveChat(group);
+                    }} 
                 />
             )}
 
