@@ -78,19 +78,22 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             })
             .on('presence', { event: 'sync' }, () => {
                 const state = channel.presenceState();
-                const otherUserPresence = state[chat.other_user_id];
+                const otherUserPresence = state[chat.other_user_id] || [];
                 
-                // CRITICAL FIX: Check ALL open ghost/tab connections for the user
-                const isTypingNow = !!(otherUserPresence && otherUserPresence.some(p => p.isTyping));
+                // TIME-RESOLVED ARCHITECTURE: Find the absolute latest presence state across all ghost tabs
+                let latestPresence = null;
+                otherUserPresence.forEach(p => {
+                    if (!latestPresence || (p.updatedAt || 0) > (latestPresence.updatedAt || 0)) {
+                        latestPresence = p;
+                    }
+                });
                 
-                console.log(`[UserChat:PresenceSync] State:`, JSON.stringify(state));
-                console.log(`[UserChat:PresenceSync] Other user typing?`, isTypingNow);
-                
+                const isTypingNow = latestPresence ? !!latestPresence.isTyping : false;
                 setIsOtherTyping(isTypingNow);
             })
             .subscribe(async (status) => {
                 if (status === 'SUBSCRIBED') {
-                    await channel.track({ isTyping: false });
+                    await channel.track({ isTyping: false, updatedAt: Date.now() });
                 }
             });
 
@@ -201,20 +204,17 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             const isTypingNow = val.length > 0;
             
             if (isTypingNow && !localTypingRef.current) {
-                console.log(`[UserChat] Starting to type -> track(isTyping: true)`);
-                roomChannelRef.current.track({ isTyping: true }).catch(e => console.error("[UserChat] Track error:", e));
+                roomChannelRef.current.track({ isTyping: true, updatedAt: Date.now() }).catch(e => console.error("[UserChat] Track error:", e));
                 localTypingRef.current = true;
             } else if (!isTypingNow && localTypingRef.current) {
-                console.log(`[UserChat] Input cleared -> track(isTyping: false)`);
-                roomChannelRef.current.track({ isTyping: false }).catch(e => console.error("[UserChat] Track error:", e));
+                roomChannelRef.current.track({ isTyping: false, updatedAt: Date.now() }).catch(e => console.error("[UserChat] Track error:", e));
                 localTypingRef.current = false;
             }
 
             if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
             if (isTypingNow) {
                 typingTimeoutRef.current = setTimeout(() => {
-                    console.log(`[UserChat] Typing idle timeout -> track(isTyping: false)`);
-                    if (roomChannelRef.current) roomChannelRef.current.track({ isTyping: false });
+                    if (roomChannelRef.current) roomChannelRef.current.track({ isTyping: false, updatedAt: Date.now() });
                     localTypingRef.current = false;
                 }, 2500);
             }
@@ -239,10 +239,10 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     const handleSend = async () => {
         if ((!input.trim() && !pendingAttachment) || isUploading) return;
         
+        // Turn off typing indicator immediately when sending
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         if (roomChannelRef.current && localTypingRef.current) {
-            console.log(`[UserChat] Message sent -> track(isTyping: false)`);
-            roomChannelRef.current.track({ isTyping: false });
+            roomChannelRef.current.track({ isTyping: false, updatedAt: Date.now() });
             localTypingRef.current = false;
         }
 
