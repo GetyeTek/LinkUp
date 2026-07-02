@@ -883,14 +883,18 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             })
             .on('presence', { event: 'sync' }, () => {
                 const state = channel.presenceState();
-                console.log('[GroupChat:PresenceSync] State:', JSON.stringify(state));
                 const activeTypers = [];
+                
                 Object.keys(state).forEach(uid => {
-                    if (uid !== currentUser.id && state[uid][0]?.isTyping) {
+                    // CRITICAL FIX: .some() handles multiple ghost connections
+                    if (uid !== currentUser.id && state[uid].some(p => p.isTyping)) {
                         activeTypers.push(uid);
                     }
                 });
+                
+                console.log('[GroupChat:PresenceSync] State:', JSON.stringify(state));
                 console.log(`[GroupChat:PresenceSync] Active Typers:`, activeTypers);
+                
                 setTypingUsers(activeTypers);
             })
             .subscribe(async (status) => {
