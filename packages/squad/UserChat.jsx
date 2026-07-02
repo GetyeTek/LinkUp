@@ -25,6 +25,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginCli
     
     const fileInputRef = useRef(null);
     const flowRef = useRef(null);
+    const isAutoScrollEnabled = useRef(true);
     const typingTimeoutRef = useRef(null);
     const roomChannelRef = useRef(null);
     const localTypingRef = useRef(false);
@@ -122,11 +123,10 @@ const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginCli
     }, [activeConvId]);
 
     useEffect(() => {
-        // Smart Scroll: Only yank down if the user is already near the bottom
+        // Smart Scroll: Only yank down if the user is already near the bottom (or on initial load)
         if (flowRef.current && !isSearchActive) {
-            const { scrollHeight, scrollTop, clientHeight } = flowRef.current;
-            if (scrollHeight - scrollTop - clientHeight < 250) {
-                flowRef.current.scrollTop = scrollHeight;
+            if (isAutoScrollEnabled.current) {
+                flowRef.current.scrollTop = flowRef.current.scrollHeight;
             }
         }
     }, [messages, isSearchActive]);
@@ -487,7 +487,11 @@ const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginCli
                 </header>
             )}
 
-            <main className="prism-flow" ref={flowRef} onClick={() => setActiveMenu(null)} onScroll={() => setActiveMenu(null)}>
+            <main className="prism-flow" ref={flowRef} onClick={() => setActiveMenu(null)} onScroll={(e) => {
+                setActiveMenu(null);
+                const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+                isAutoScrollEnabled.current = scrollHeight - scrollTop - clientHeight < 250;
+            }}>
                 {messages.map((m, idx) => {
                     const isMine = m.sender_id === currentUser.id;
                     const isMenuOpen = activeMenu?.msg?.id === m.id;
