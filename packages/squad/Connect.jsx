@@ -12,7 +12,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
     const isMe = userId === currentUser.id;
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [editForm, setEditForm] = useState({ name: '', username: '' });
+    const [editForm, setEditForm] = useState({ name: '', username: '', bio: '' });
     const [isSaving, setIsSaving] = useState(false);
     const [statusMsg, setStatusMsg] = useState(null); // { text, type }
     const [selectedFile, setSelectedFile] = useState(null);
@@ -37,7 +37,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                 
                 if (profileData) {
                     setProfile(profileData);
-                    setEditForm({ name: profileData.full_name || '', username: profileData.username || '' });
+                    setEditForm({ name: profileData.full_name || '', username: profileData.username || '', bio: profileData.bio || '' });
                 }
             } catch (err) {
                 console.error("Profile fetch error:", err);
@@ -58,12 +58,13 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
         try {
             const { error } = await supabase.from('profiles').update({
                 full_name: editForm.name.trim(),
-                username: cleanUsername
+                username: cleanUsername,
+                bio: editForm.bio.trim()
             }).eq('id', currentUser.id);
             
             if (error) throw error;
             setStatusMsg({ text: "Profile updated successfully.", type: "success" });
-            setProfile(prev => ({ ...prev, full_name: editForm.name.trim(), username: cleanUsername }));
+            setProfile(prev => ({ ...prev, full_name: editForm.name.trim(), username: cleanUsername, bio: editForm.bio.trim() }));
         } catch (err) {
             setStatusMsg({ text: err.message || "Failed to update profile.", type: "error" });
         } finally {
@@ -113,7 +114,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
         </div>
     );
 
-    const hasChanges = isMe && (editForm.name !== profile.full_name || editForm.username !== profile.username);
+    const hasChanges = isMe && (editForm.name !== profile.full_name || editForm.username !== profile.username || editForm.bio !== (profile.bio || ''));
 
     return (
         <div className="user-info-overlay">
@@ -160,6 +161,28 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                             style={{background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', padding: '12px 8px', fontSize: isMe ? '1rem' : '1.1rem', fontWeight: !isMe ? '500' : 'normal'}}
                         />
                     </div>
+                </div>
+
+                <div className="ui-input-group">
+                    <label>About</label>
+                    {isMe ? (
+                        <>
+                            <textarea 
+                                className="ui-textarea" 
+                                placeholder="Write a short bio..."
+                                value={editForm.bio}
+                                onChange={e => setEditForm({...editForm, bio: e.target.value})}
+                                disabled={isSaving}
+                                maxLength={150}
+                                rows={3}
+                            />
+                            <div className="bio-char-count">{editForm.bio.length}/150</div>
+                        </>
+                    ) : (
+                        <div className="ui-bio-text">
+                            {profile.bio ? profile.bio : <span style={{color: '#666', fontStyle: 'italic'}}>No bio provided.</span>}
+                        </div>
+                    )}
                 </div>
 
                 {statusMsg && <div className={`ui-status-text ${statusMsg.type}`}>{statusMsg.text}</div>}
