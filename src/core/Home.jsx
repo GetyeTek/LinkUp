@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePlatform } from '@linkup-platform/sdk-core';
 
 const Home = () => {
-    const { shell, user: userProfile } = usePlatform();
+    const { shell, user: userProfile, unreadCount } = usePlatform();
     const onOpenActivity = shell.openActivity;
     const [greeting, setGreeting] = useState('Hello');
     const firstName = userProfile?.full_name?.split(' ')[0] || 'Scholar';
@@ -54,7 +54,7 @@ const Home = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <button className="icon-button notification-btn" onClick={onOpenActivity}>
                                 <i className="fas fa-bell"></i>
-                                <span className="notification-badge">3</span>
+                                {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                             </button>
                             <img 
                                 src={avatarUrl} 
