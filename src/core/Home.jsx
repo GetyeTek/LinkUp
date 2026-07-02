@@ -6,7 +6,7 @@ const Home = () => {
     const onOpenActivity = shell.openActivity;
     const [greeting, setGreeting] = useState('Hello');
     const firstName = userProfile?.full_name?.split(' ')[0] || 'Scholar';
-    const avatarUrl = userProfile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80';
+    const avatarUrl = userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`;
     const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
     const [isFading, setIsFading] = useState(false);
 
