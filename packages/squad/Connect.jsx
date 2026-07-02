@@ -134,50 +134,18 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
     );
 };
 
-const ForwardModal = ({ msg, conversations, onClose, onSelect }) => {
-    return (
-        <div className="forward-modal-overlay" onClick={onClose}>
-            <div className="forward-modal-sheet" onClick={e => e.stopPropagation()}>
-                <div className="fm-header">
-                    <h3>Forward Message</h3>
-                    <button className="icon-button" onClick={onClose}><i className="fas fa-times"></i></button>
-                </div>
-                <div className="fm-body">
-                    <div className="fm-item" onClick={() => onSelect('miron')} style={{borderColor: 'var(--accent-teal)', background: 'rgba(66, 215, 184, 0.05)'}}>
-                        <div className="fm-icon" style={{color: 'var(--accent-teal)'}}><i className="fas fa-sparkles"></i></div>
-                        <div className="fm-info">
-                            <div className="fm-name" style={{color: 'var(--accent-teal)'}}>Miron Athena</div>
-                            <div className="fm-meta">AI Tutor</div>
-                        </div>
-                    </div>
-                    {conversations.filter(c => c.type === 'dm' || c.type === 'group').map(c => {
-                        const isDm = c.type === 'dm';
-                        const title = isDm ? c.other_user_name : c.title;
-                        const avatar = isDm ? c.other_user_avatar : c.avatar_url;
-                        return (
-                            <div className="fm-item" key={c.conversation_id} onClick={() => onSelect(c)}>
-                                {isDm ? (
-                                    <img src={avatar || 'https://via.placeholder.com/150'} className="fm-icon" alt="Avatar" />
-                                ) : (
-                                    <div className="fm-icon" style={{color: 'var(--accent-teal)'}}><i className="fas fa-users"></i></div>
-                                )}
-                                <div className="fm-info">
-                                    <div className="fm-name">{title}</div>
-                                    <div className="fm-meta">{isDm ? 'Direct Message' : 'Study Group'}</div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        </div>
-    );
-};
-
 const Connect = () => {
     const { shell, user: userProfile, sessionUser: currentUser } = usePlatform();
     const [forwardTargetMsg, setForwardTargetMsg] = useState(null);
     const [forwardSourceChat, setForwardSourceChat] = useState(null);
+    const [toastNotice, setToastNotice] = useState(null);
+
+    useEffect(() => {
+        if (toastNotice) {
+            const timer = setTimeout(() => setToastNotice(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toastNotice]);
     const onOpenActivity = shell.openActivity;
     const [activeView, setActiveView] = useState('messages');
     const [activeChat, setActiveChat] = useState(null);
@@ -432,10 +400,15 @@ const Connect = () => {
             meta = {
                 original_sender_id: forwardTargetMsg.sender_id,
                 original_sender_name: forwardTargetMsg.resolved_sender_name || 'Unknown',
+                original_sender_avatar: forwardTargetMsg.resolved_sender_avatar || '',
                 original_conversation_id: forwardSourceChat.conversation_id,
                 original_conversation_title: forwardSourceChat.type === 'dm' ? 'Direct Message' : forwardSourceChat.title
             };
         }
+        
+        // Optimistically drop out of forward mode and open target
+        setActiveChat(targetChat);
+        setForwardTargetMsg(null);
 
         const { error } = await supabase.from('messages').insert({
             conversation_id: targetChat.conversation_id,
@@ -448,9 +421,17 @@ const Connect = () => {
         if (error) {
             setGlobalNotice(`Forwarding blocked: ${error.message}`);
         } else {
-            setGlobalNotice("Message forwarded successfully.");
+            setToastNotice("Message forwarded");
         }
-        setForwardTargetMsg(null);
+    };
+    
+    const handleChatClick = (chat) => {
+        if (forwardTargetMsg) {
+            handleExecuteForward(chat);
+        } else {
+            setActiveChat(chat);
+            setConversations(prev => prev.map(c => c.conversation_id === chat.conversation_id ? { ...c, unread_count: 0 } : c));
+        }
     };
 
     const handleOriginClick = async (meta) => {
@@ -480,6 +461,12 @@ const Connect = () => {
     return (
         <div className={`tab-content active ${isHeaderCollapsed ? 'header-collapsed' : ''} ${activeView === 'for-you' ? 'for-you-active' : ''}`} id="connect-content">
             <header className="interactive-header">
+                {forwardTargetMsg && !activeChat && (
+                    <div className="forward-mode-banner">
+                        <span>Forward to...</span>
+                        <button onClick={() => setForwardTargetMsg(null)}><i className="fas fa-times"></i></button>
+                    </div>
+                )}
                 <div className="large-title-row">
                     <h2 className="large-title">Social Hub</h2>
                     <div className="header-actions">
@@ -596,10 +583,7 @@ const Connect = () => {
                             </div>
                         ) : (
                             conversations.filter(c => c.type === 'group').map(chat => (
-                                <div className="messages-list-item" key={chat.conversation_id} onClick={() => {
-                                    setActiveChat(chat);
-                                    setConversations(prev => prev.map(c => c.conversation_id === chat.conversation_id ? { ...c, unread_count: 0 } : c));
-                                }}>
+                                <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
                                     <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)' }}>
                                         <i className="fas fa-users"></i>
                                     </div>
@@ -621,6 +605,10 @@ const Connect = () => {
                         {suggestedSquads.length > 0 ? (
                             suggestedSquads.map(chat => (
                                 <div className="messages-list-item suggested" key={chat.conversation_id} onClick={() => {
+                                    if (forwardTargetMsg) {
+                                        setToastNotice("You must join this group first to forward messages.");
+                                        return;
+                                    }
                                     if (chat.metadata?.privacy === 'private') {
                                         setGlobalNotice("This group is private. You need an invite link to join.");
                                         return;
@@ -662,7 +650,10 @@ const Connect = () => {
                     <div className="messages-list">
                         
                         {/* Static Miron Entry (Bot) */}
-                        <div className="messages-list-item miron-chat-card" onClick={() => shell.openMiron(null)}>
+                        <div className="messages-list-item miron-chat-card" onClick={() => {
+                            if (forwardTargetMsg) handleExecuteForward('miron');
+                            else shell.openMiron(null);
+                        }}>
                             <div className="miron-avatar-orb">
                                 <span className="material-symbols-outlined">auto_awesome</span>
                             </div>
@@ -676,7 +667,13 @@ const Connect = () => {
                         </div>
 
                         {/* My Notes Entry */}
-                        <div className="messages-list-item" style={{ background: 'rgba(66, 215, 184, 0.05)', border: '1px solid rgba(66, 215, 184, 0.2)' }} onClick={() => setIsNotesOpen(true)}>
+                        <div className="messages-list-item" style={{ background: 'rgba(66, 215, 184, 0.05)', border: '1px solid rgba(66, 215, 184, 0.2)' }} onClick={() => {
+                            if (forwardTargetMsg) {
+                                setToastNotice("Feature unavailable: Forwarding directly to Notes pending vault sync.");
+                            } else {
+                                setIsNotesOpen(true);
+                            }
+                        }}>
                             <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#42d7b8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
                                 <i className="fas fa-bookmark"></i>
                             </div>
@@ -702,10 +699,7 @@ const Connect = () => {
                                 const title = isDm ? chat.other_user_name : chat.title;
                                 const avatar = isDm ? chat.other_user_avatar : chat.avatar_url;
                                 return (
-                                    <div className="messages-list-item" key={chat.conversation_id} onClick={() => {
-                                        setActiveChat(chat);
-                                        setConversations(prev => prev.map(c => c.conversation_id === chat.conversation_id ? { ...c, unread_count: 0 } : c));
-                                    }}>
+                                    <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
                                         <div style={{ position: 'relative' }}>
                                             {isDm ? (
                                                 <img src={avatar || 'https://via.placeholder.com/150'} alt="Avatar" />
@@ -758,13 +752,10 @@ const Connect = () => {
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); }} />}
             
-            {forwardTargetMsg && (
-                <ForwardModal 
-                    msg={forwardTargetMsg} 
-                    conversations={conversations} 
-                    onClose={() => setForwardTargetMsg(null)} 
-                    onSelect={handleExecuteForward} 
-                />
+            {toastNotice && (
+                <div className="connect-toast">
+                    {toastNotice}
+                </div>
             )}
 
             {globalNotice && (
