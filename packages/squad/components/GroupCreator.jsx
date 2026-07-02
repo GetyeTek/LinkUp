@@ -6,7 +6,7 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [form, setForm] = useState({ title: '', focus: 'General', privacy: 'public' });
+    const [form, setForm] = useState({ title: '', focus: '', privacy: 'public' });
     const [groupCount, setGroupCount] = useState(0);
     const [loadingCount, setLoadingCount] = useState(true);
 
@@ -50,7 +50,7 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
             <div className="gc-card">
                 <header className="gc-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
                     <button className="icon-button" onClick={onClose} disabled={loading}><i className="fas fa-chevron-left"></i></button>
-                    <h2>Launch New Squad</h2>
+                    <h2>Create New Group</h2>
                 </header>
 
                 <div className="gc-body">
@@ -97,7 +97,7 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
 
                             <div className="gc-nav">
                                 <button className="gc-btn secondary" onClick={() => setStep(1)}>Back</button>
-                                <button className="gc-btn primary" onClick={() => setStep(3)}>Next</button>
+                                <button className="gc-btn primary" onClick={() => setStep(3)} disabled={!form.focus}>Next</button>
                             </div>
                         </div>
                     )}
@@ -109,14 +109,14 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
                                 <div className={`gc-privacy-card ${form.privacy === 'public' ? 'active' : ''}`} onClick={() => setForm({...form, privacy: 'public'})}>
                                     <i className="fas fa-globe"></i>
                                     <div>
-                                        <h4>Public Squad</h4>
+                                        <h4>Public Group</h4>
                                         <p>Searchable by anyone on the platform.</p>
                                     </div>
                                 </div>
                                 <div className={`gc-privacy-card ${form.privacy === 'private' ? 'active' : ''}`} onClick={() => setForm({...form, privacy: 'private'})}>
                                     <i className="fas fa-lock"></i>
                                     <div>
-                                        <h4>Private Vault</h4>
+                                        <h4>Private Group</h4>
                                         <p>Access restricted to invitees only.</p>
                                     </div>
                                 </div>
