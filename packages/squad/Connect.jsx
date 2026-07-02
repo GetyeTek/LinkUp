@@ -747,8 +747,8 @@ const Connect = () => {
                 />
             )}
 
-            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); }} onOriginClick={handleOriginClick} />}
-            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); }} onOriginClick={handleOriginClick} />}
+            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} />}
+            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} />}
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); }} />}
             
