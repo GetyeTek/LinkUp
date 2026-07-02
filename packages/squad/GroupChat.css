@@ -357,6 +357,9 @@
 .si-title { font-size: 1.4rem; font-weight: 700; margin: 0; color: #fff; }
 .si-ppn { font-family: 'Roboto Mono', monospace; font-size: 0.8rem; color: #888; margin-top: 4px; }
 .si-badges { display: flex; gap: 8px; margin-top: 12px; margin-bottom: 1.5rem; }
+.si-bio-display { font-size: 0.9rem; color: #ccc; text-align: center; margin: 0 1.5rem 1.5rem; line-height: 1.4; white-space: pre-wrap; word-break: break-word; max-width: 500px; }
+.si-textarea { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 14px; color: #fff; font-family: 'Poppins', sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s; resize: vertical; min-height: 80px; }
+.si-textarea:focus { border-color: var(--accent-teal); background: rgba(0,0,0,0.4); }
 .si-badge { padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
 
 .si-invite-box {
