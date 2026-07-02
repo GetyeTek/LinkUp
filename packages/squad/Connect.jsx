@@ -5,6 +5,174 @@ import UserChat from './UserChat.jsx';
 import GroupChat from './GroupChat.jsx';
 import GroupCreator from './components/GroupCreator.jsx';
 import Notes from './Notes.jsx';
+import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
+
+// Inline Component: User Info Panel
+const UserInfoPanel = ({ userId, currentUser, onClose }) => {
+    const isMe = userId === currentUser.id;
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [editForm, setEditForm] = useState({ name: '', username: '' });
+    const [isSaving, setIsSaving] = useState(false);
+    const [statusMsg, setStatusMsg] = useState(null); // { text, type }
+    const [selectedFile, setSelectedFile] = useState(null);
+    const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+            if (data) {
+                setProfile(data);
+                setEditForm({ name: data.full_name || '', username: data.username || '' });
+            }
+            setLoading(false);
+        };
+        fetchUser();
+    }, [userId]);
+
+    const handleSave = async () => {
+        if (!isMe) return;
+        setIsSaving(true);
+        setStatusMsg(null);
+        
+        const cleanUsername = editForm.username.toLowerCase().trim();
+        
+        try {
+            const { error } = await supabase.from('profiles').update({
+                full_name: editForm.name.trim(),
+                username: cleanUsername
+            }).eq('id', currentUser.id);
+            
+            if (error) throw error;
+            setStatusMsg({ text: "Profile updated successfully.", type: "success" });
+            setProfile(prev => ({ ...prev, full_name: editForm.name.trim(), username: cleanUsername }));
+        } catch (err) {
+            setStatusMsg({ text: err.message || "Failed to update profile.", type: "error" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleAvatarUpdate = async (blob) => {
+        setSelectedFile(null);
+        setIsSaving(true);
+        setStatusMsg({ text: "Uploading avatar...", type: "success" });
+        try {
+            const arrayBuffer = await blob.arrayBuffer();
+            const filePath = `${currentUser.id}/avatar_${Date.now()}.png`;
+            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, arrayBuffer, { contentType: 'image/png', upsert: true });
+            if (uploadError) throw uploadError;
+            
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', currentUser.id);
+            setProfile(prev => ({ ...prev, avatar_url: publicUrl }));
+            setStatusMsg({ text: "Avatar updated!", type: "success" });
+        } catch (err) {
+            setStatusMsg({ text: "Failed to upload avatar.", type: "error" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const navigateToSettings = () => {
+        onClose();
+        window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }));
+        setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('open-profile-editor'));
+        }, 100); // Slight delay ensures tab switches before overlay triggers
+    };
+
+    if (loading) return (
+        <div className="user-info-overlay" style={{alignItems: 'center', justifyContent: 'center'}}>
+            <i className="fas fa-circle-notch fa-spin" style={{fontSize: '2rem', color: 'var(--accent-teal)'}}></i>
+        </div>
+    );
+
+    if (!profile) return (
+        <div className="user-info-overlay" style={{alignItems: 'center', justifyContent: 'center'}}>
+            <p style={{color: '#888'}}>User not found.</p>
+            <button className="ui-back" style={{position: 'static', marginTop: '1rem'}} onClick={onClose}><i className="fas fa-arrow-left"></i></button>
+        </div>
+    );
+
+    const hasChanges = isMe && (editForm.name !== profile.full_name || editForm.username !== profile.username);
+
+    return (
+        <div className="user-info-overlay">
+            {selectedFile && (
+                <AvatarCropperModal 
+                    imageFile={selectedFile} 
+                    onCancel={() => setSelectedFile(null)} 
+                    onSave={handleAvatarUpdate}
+                />
+            )}
+            <div className="ui-hero">
+                <button className="ui-back" onClick={onClose} disabled={isSaving}><i className="fas fa-chevron-left"></i></button>
+                <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
+                    e.target.value = null;
+                }} />
+                <div className="ui-avatar-container" onClick={() => isMe && fileInputRef.current?.click()} style={{cursor: isMe ? 'pointer' : 'default'}}>
+                    <div className="ui-avatar">
+                        <img src={profile.avatar_url || 'https://via.placeholder.com/150'} alt="Avatar" />
+                    </div>
+                    {isMe && <div className="ui-avatar-edit"><i className="fas fa-pencil"></i></div>}
+                </div>
+            </div>
+            <div className="ui-body">
+                <div className="ui-input-group">
+                    <label>Full Name</label>
+                    <input 
+                        type="text" 
+                        className="ui-input" 
+                        value={isMe ? editForm.name : profile.full_name} 
+                        onChange={e => setEditForm({...editForm, name: e.target.value})} 
+                        disabled={!isMe || isSaving} 
+                    />
+                </div>
+                <div className="ui-input-group">
+                    <label>Username</label>
+                    <div className="handle-input-wrapper status-idle" style={{background: !isMe ? 'transparent' : '', borderColor: !isMe ? 'transparent' : '', paddingLeft: !isMe ? '0' : ''}}>
+                        <span className="handle-prefix">@</span>
+                        <input 
+                            type="text" 
+                            value={isMe ? editForm.username : profile.username} 
+                            onChange={e => setEditForm({...editForm, username: e.target.value})} 
+                            disabled={!isMe || isSaving} 
+                            style={{background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', padding: '12px 8px', fontSize: isMe ? '1rem' : '1.1rem', fontWeight: !isMe ? '500' : 'normal'}}
+                        />
+                    </div>
+                </div>
+
+                {statusMsg && <div className={`ui-status-text ${statusMsg.type}`}>{statusMsg.text}</div>}
+
+                {isMe && hasChanges && (
+                    <button className="ui-save-btn" onClick={handleSave} disabled={isSaving || !editForm.name.trim() || !editForm.username.trim()}>
+                        {isSaving ? <i className="fas fa-circle-notch fa-spin"></i> : "Save Changes"}
+                    </button>
+                )}
+
+                <div style={{marginTop: '1rem'}}>
+                    {profile.department && (
+                        <div className="ui-meta-card">
+                            <div className="ui-meta-icon"><i className="fas fa-graduation-cap"></i></div>
+                            <div className="ui-meta-info">
+                                <h4>Academic Program</h4>
+                                <p>{profile.department}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {isMe && (
+                    <button className="ui-full-settings-btn" onClick={navigateToSettings}>
+                        <i className="fas fa-sliders-h"></i> Full Account & Registry Settings
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
 
 // Inline Component: Discovery Screen
 const DiscoveryScreen = ({ currentUser, onClose, onStartChat }) => {
@@ -139,6 +307,7 @@ const Connect = () => {
     const [forwardTargetMsg, setForwardTargetMsg] = useState(null);
     const [forwardSourceChat, setForwardSourceChat] = useState(null);
     const [toastNotice, setToastNotice] = useState(null);
+    const [viewingUserId, setViewingUserId] = useState(null);
 
     useEffect(() => {
         if (toastNotice) {
@@ -453,8 +622,10 @@ const Connect = () => {
                     is_preview: true
                 });
             }
+        } else if (meta.original_sender_id) {
+            setViewingUserId(meta.original_sender_id);
         } else {
-            setGlobalNotice(`User Profile: ${meta.original_sender_name}\n\n(Profile UI expansion pending)`);
+            setGlobalNotice("This user account has been deleted.");
         }
     };
 
@@ -747,9 +918,10 @@ const Connect = () => {
                 />
             )}
 
-            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} />}
-            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} />}
+            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />}
+            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />}
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
+            {viewingUserId && <UserInfoPanel userId={viewingUserId} currentUser={currentUser} onClose={() => setViewingUserId(null)} />}
             {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); }} />}
             
             {toastNotice && (
