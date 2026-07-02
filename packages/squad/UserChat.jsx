@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './UserChat.css';
 
-const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
+const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginClick }) => {
     const { user: userProfile } = usePlatform();
     const [activeConvId, setActiveConvId] = useState(chat.conversation_id);
     const [messages, setMessages] = useState([]);
@@ -531,6 +531,15 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                             style={{ zIndex: isMenuOpen ? 100 : 1 }}
                         >
                             <div className="prism-bubble">
+                                {m.forward_meta && (
+                                    <div className="forward-indicator" onClick={(e) => { e.stopPropagation(); onOriginClick(m.forward_meta); }}>
+                                        <div className="forward-bar"></div>
+                                        <div className="forward-info">
+                                            <span className="forward-label">Forwarded message</span>
+                                            <span className="forward-from">{m.forward_meta.original_sender_name}</span>
+                                        </div>
+                                    </div>
+                                )}
                                 {repliedMsg ? (
                                     <div className="reply-quote" onClick={(e) => { e.stopPropagation(); scrollToMessage(m.reply_to_id); }}>
                                         <div className="reply-quote-bar"></div>
@@ -673,6 +682,9 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
                             <i className="fa-solid fa-download"></i> Download File
                         </button>
                     )}
+                    <button className="msg-action-btn" onClick={() => { onForward({...activeMenu.msg, resolved_sender_name: activeMenu.isMine ? currentUser.full_name : chatTitle}); setActiveMenu(null); }}>
+                        <i className="fa-solid fa-share"></i> Forward
+                    </button>
                     {activeMenu.isMine && (
                         <button className="msg-action-btn" onClick={() => startEditing(activeMenu.msg)}>
                             <i className="fa-solid fa-pen"></i> Edit
