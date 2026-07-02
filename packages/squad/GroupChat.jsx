@@ -791,6 +791,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const flowRef = useRef(null);
     const channelRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+    const localTypingRef = useRef(false);
 
     const markAsRead = async () => {
         if (!chat.conversation_id) return;
@@ -882,12 +883,14 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
             })
             .on('presence', { event: 'sync' }, () => {
                 const state = channel.presenceState();
+                console.log('[GroupChat:PresenceSync] State:', JSON.stringify(state));
                 const activeTypers = [];
                 Object.keys(state).forEach(uid => {
                     if (uid !== currentUser.id && state[uid][0]?.isTyping) {
                         activeTypers.push(uid);
                     }
                 });
+                console.log(`[GroupChat:PresenceSync] Active Typers:`, activeTypers);
                 setTypingUsers(activeTypers);
             })
             .subscribe(async (status) => {
@@ -1014,11 +1017,26 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
     const handleInputChange = (val) => {
         setInput(val);
         if (channelRef.current && !chat.is_preview) {
-            channelRef.current.track({ isTyping: val.length > 0 });
+            const isTypingNow = val.length > 0;
+            
+            if (isTypingNow && !localTypingRef.current) {
+                console.log(`[GroupChat] Starting to type -> track(isTyping: true)`);
+                channelRef.current.track({ isTyping: true }).catch(e => console.error("[GroupChat] Track error:", e));
+                localTypingRef.current = true;
+            } else if (!isTypingNow && localTypingRef.current) {
+                console.log(`[GroupChat] Input cleared -> track(isTyping: false)`);
+                channelRef.current.track({ isTyping: false }).catch(e => console.error("[GroupChat] Track error:", e));
+                localTypingRef.current = false;
+            }
+            
             if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-            typingTimeoutRef.current = setTimeout(() => {
-                if (channelRef.current) channelRef.current.track({ isTyping: false });
-            }, 2500);
+            if (isTypingNow) {
+                typingTimeoutRef.current = setTimeout(() => {
+                    console.log(`[GroupChat] Typing idle timeout -> track(isTyping: false)`);
+                    if (channelRef.current) channelRef.current.track({ isTyping: false });
+                    localTypingRef.current = false;
+                }, 2500);
+            }
         }
     };
 
@@ -1029,7 +1047,11 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining }) => {
 
         // Turn off typing indicator immediately when sending
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        if (channelRef.current) channelRef.current.track({ isTyping: false });
+        if (channelRef.current && localTypingRef.current) {
+            console.log(`[GroupChat] Message sent -> track(isTyping: false)`);
+            channelRef.current.track({ isTyping: false });
+            localTypingRef.current = false;
+        }
 
         // Handle Edit
         if (editingMessage) {
