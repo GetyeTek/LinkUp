@@ -119,8 +119,9 @@
 .forward-info { display: flex; flex-direction: column; font-size: 0.75rem; line-height: 1.2; }
 .forward-label { color: #aaa; }
 .sent .forward-label { color: rgba(0,0,0,0.5); }
-.forward-from { color: var(--accent-teal); font-weight: 600; }
+.forward-from { color: var(--accent-teal); font-weight: 600; display: flex; align-items: center; gap: 6px; }
 .sent .forward-from { color: #000; font-weight: 700; }
+.forward-avatar { width: 14px; height: 14px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.2); }
 
 /* Bubble Attachment Styles */
 .bubble-attachment {
