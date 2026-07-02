@@ -27,6 +27,7 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
     const flowRef = useRef(null);
     const typingTimeoutRef = useRef(null);
     const roomChannelRef = useRef(null);
+    const localTypingRef = useRef(false);
 
     const isOtherUserDeleted = chat.type === 'dm' && !chat.other_user_id;
     const chatTitle = isOtherUserDeleted ? 'Deleted Account' : (chat.type === 'dm' ? chat.other_user_name : chat.title);
@@ -77,8 +78,11 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
             })
             .on('presence', { event: 'sync' }, () => {
                 const state = channel.presenceState();
+                console.log('[UserChat:PresenceSync] State:', JSON.stringify(state));
                 const otherUserPresence = state[chat.other_user_id];
-                setIsOtherTyping(!!(otherUserPresence && otherUserPresence[0]?.isTyping));
+                const isTypingNow = !!(otherUserPresence && otherUserPresence[0]?.isTyping);
+                console.log(`[UserChat:PresenceSync] Other user (${chat.other_user_id}) typing?`, isTypingNow);
+                setIsOtherTyping(isTypingNow);
             })
             .subscribe(async (status) => {
                 if (status === 'SUBSCRIBED') {
@@ -189,11 +193,28 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
 
     const handleInputChange = (val) => {
         setInput(val);
-        if (roomChannelRef.current) roomChannelRef.current.track({ isTyping: true });
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => {
-            if (roomChannelRef.current) roomChannelRef.current.track({ isTyping: false });
-        }, 2500);
+        if (roomChannelRef.current) {
+            const isTypingNow = val.length > 0;
+            
+            if (isTypingNow && !localTypingRef.current) {
+                console.log(`[UserChat] Starting to type -> track(isTyping: true)`);
+                roomChannelRef.current.track({ isTyping: true }).catch(e => console.error("[UserChat] Track error:", e));
+                localTypingRef.current = true;
+            } else if (!isTypingNow && localTypingRef.current) {
+                console.log(`[UserChat] Input cleared -> track(isTyping: false)`);
+                roomChannelRef.current.track({ isTyping: false }).catch(e => console.error("[UserChat] Track error:", e));
+                localTypingRef.current = false;
+            }
+
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            if (isTypingNow) {
+                typingTimeoutRef.current = setTimeout(() => {
+                    console.log(`[UserChat] Typing idle timeout -> track(isTyping: false)`);
+                    if (roomChannelRef.current) roomChannelRef.current.track({ isTyping: false });
+                    localTypingRef.current = false;
+                }, 2500);
+            }
+        }
     };
 
     const handleFileSelect = (e) => {
@@ -215,7 +236,11 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         if ((!input.trim() && !pendingAttachment) || isUploading) return;
         
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        if (roomChannelRef.current) roomChannelRef.current.track({ isTyping: false });
+        if (roomChannelRef.current && localTypingRef.current) {
+            console.log(`[UserChat] Message sent -> track(isTyping: false)`);
+            roomChannelRef.current.track({ isTyping: false });
+            localTypingRef.current = false;
+        }
 
         const msgText = input;
         const currentAttachment = pendingAttachment;
