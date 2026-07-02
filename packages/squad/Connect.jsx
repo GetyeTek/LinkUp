@@ -386,6 +386,10 @@ const Connect = () => {
     const [replyTarget, setReplyTarget] = useState(null); // holds question object for full-screen reply
     const [replyText, setReplyText] = useState('');
     const [isSubmittingQA, setIsSubmittingQA] = useState(false);
+    
+    // Featured Events State
+    const [featuredEvents, setFeaturedEvents] = useState([]);
+    const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
 
     useEffect(() => {
         activeChatRef.current = activeChat;
@@ -448,6 +452,7 @@ const Connect = () => {
         fetchConversations();
         fetchSuggestedSquads();
         fetchPeerQuestions();
+        fetchFeaturedEvents();
         
         // 1. Subscribe to Realtime Messages and Read Receipt updates
         const msgChannel = supabase.channel('chat_list_updates')
@@ -540,6 +545,21 @@ const Connect = () => {
     const fetchPeerQuestions = async () => {
         const { data, error } = await supabase.rpc('get_peer_questions');
         if (data) setPeerQuestions(data);
+    };
+
+    const fetchFeaturedEvents = async () => {
+        const { data } = await supabase.rpc('get_featured_events');
+        if (data) setFeaturedEvents(data);
+    };
+
+    const handleFeaturedAction = (event) => {
+        if (event.action_type === 'html_room' && event.html_content) {
+            setActiveHtmlRoom(event.html_content);
+        } else if (event.action_type === 'external_link' && event.external_url) {
+            window.open(event.external_url, '_blank', 'noopener,noreferrer');
+        } else if (event.action_type === 'app_route' && event.app_route) {
+            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: event.app_route }));
+        }
     };
 
     const handlePostQuestion = async () => {
@@ -844,29 +864,23 @@ const Connect = () => {
                             </div>
                         </div>
 
-                        {/* Admin Featured Post 1 */}
-                        <div className="activity-card">
-                            <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80" className="activity-image" alt="Workshop" />
-                            <div className="activity-content">
-                                <div className="activity-tag" style={{color: '#ffab40'}}>Featured Event</div>
-                                <h2 className="activity-headline">Global Research & Methodology Workshop</h2>
-                                <p className="activity-snippet">Join top researchers from across the globe this Friday to learn about the future of STEM. Limited seats available for LinkUp scholars.</p>
-                                <button className="claim-btn" style={{marginTop: '1rem', width: '100%', background: '#ffab40', color: '#000'}}>Register Interest</button>
-                            </div>
-                        </div>
-
-                        {/* Admin Featured Post 2 */}
-                        <div className="activity-card">
-                            <img src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80" className="activity-image" alt="Scholarship" />
-                            <div className="activity-content">
-                                <div className="activity-tag">Admin Update</div>
-                                <h2 className="activity-headline">2026 Innovation Scholarships are Open</h2>
-                                <p className="activity-snippet">Check your eligibility criteria for this year's regional innovation grants. Applications close in 14 days.</p>
-                                <div style={{marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '0.8rem', color: '#888'}}>
-                                    <i className="fas fa-paperclip" style={{marginRight: '8px'}}></i> eligibility_guidelines_v2.pdf
+                        {featuredEvents.map(ev => (
+                            <div className="activity-card" key={ev.id}>
+                                {ev.image_url && <img src={ev.image_url} className="activity-image" alt="Event" />}
+                                <div className="activity-content">
+                                    <div className="activity-tag" style={{color: ev.tag_color}}>{ev.tag_text}</div>
+                                    <h2 className="activity-headline">{ev.title}</h2>
+                                    <p className="activity-snippet">{ev.body}</p>
+                                    <button 
+                                        className="claim-btn" 
+                                        style={{marginTop: '1rem', width: '100%', background: ev.button_color, color: '#000'}}
+                                        onClick={() => handleFeaturedAction(ev)}
+                                    >
+                                        {ev.button_text}
+                                    </button>
                                 </div>
                             </div>
-                        </div>
+                        ))}
 
                     </div>
                 </div>
@@ -1173,6 +1187,33 @@ const Connect = () => {
                             <button style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, fontFamily: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', fontSize: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setGlobalNotice(null)}>Okay</button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Immersive Sandboxed HTML Room Override */}
+            {activeHtmlRoom && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#0c0c0c', display: 'flex', flexDirection: 'column', animation: 'fadeInModal 0.3s ease-out' }}>
+                    <iframe 
+                        srcDoc={activeHtmlRoom} 
+                        sandbox="allow-scripts allow-forms" 
+                        style={{ flex: 1, width: '100%', border: 'none' }} 
+                        title="LinkUp Sandbox Environment"
+                    />
+                    <button 
+                        onClick={() => setActiveHtmlRoom(null)} 
+                        style={{ 
+                            position: 'absolute', top: '15px', right: '15px', width: '40px', height: '40px', 
+                            borderRadius: '50%', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', 
+                            border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, 
+                            transition: 'transform 0.2s', boxShadow: '0 5px 15px rgba(0,0,0,0.5)' 
+                        }}
+                        onMouseDown={e => e.currentTarget.style.transform = 'scale(0.9)'}
+                        onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                        <i className="fas fa-times"></i>
+                    </button>
                 </div>
             )}
         </div>
