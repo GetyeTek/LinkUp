@@ -80,12 +80,21 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
 
                     {step === 2 && (
                         <div className="gc-step animate-in">
-                            <label className="gc-label">Curriculum Focus</label>
+                            <label className="gc-label">Group Classification</label>
+                            
+                            <span className="gc-sub-label" style={{marginTop: 0}}>Academic Study</span>
                             <div className="gc-grid">
                                 {['Physics', 'Chemistry', 'Mathematics', 'Biology', 'CS', 'General'].map(f => (
                                     <div key={f} className={`gc-chip ${form.focus === f ? 'active' : ''}`} onClick={() => setForm({...form, focus: f})}>{f}</div>
                                 ))}
                             </div>
+
+                            <span className="gc-sub-label">Organization</span>
+                            <div className={`gc-chip large ${form.focus === 'Class' ? 'active' : ''}`} onClick={() => setForm({...form, focus: 'Class'})}>
+                                <div style={{fontSize: '0.95rem'}}><i className="fas fa-users-rectangle" style={{marginRight: '6px'}}></i> Class / Section</div>
+                                <div className="gc-chip-desc">Use this for official class coordination, section announcements, and batch communication rather than subject-specific study.</div>
+                            </div>
+
                             <div className="gc-nav">
                                 <button className="gc-btn secondary" onClick={() => setStep(1)}>Back</button>
                                 <button className="gc-btn primary" onClick={() => setStep(3)}>Next</button>
