@@ -148,6 +148,11 @@ const Connect = () => {
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [joiningSquadId, setJoiningSquadId] = useState(null);
     const [globalNotice, setGlobalNotice] = useState(null);
+    const activeChatRef = useRef(null);
+
+    useEffect(() => {
+        activeChatRef.current = activeChat;
+    }, [activeChat]);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -273,7 +278,13 @@ const Connect = () => {
 
     const fetchConversations = async () => {
         const { data, error } = await supabase.rpc('get_user_conversations', { req_user_id: currentUser.id });
-        if (data) setConversations(data);
+        if (data) {
+            const activeId = activeChatRef.current?.conversation_id;
+            // Force unread_count to 0 for the currently open chat to prevent ghost flashes
+            setConversations(data.map(c => 
+                c.conversation_id === activeId ? { ...c, unread_count: 0 } : c
+            ));
+        }
         if (error) console.error("Error fetching chats:", error);
     };
 
@@ -336,6 +347,7 @@ const Connect = () => {
 
         if (existing) {
             setActiveChat(existing);
+            setConversations(prev => prev.map(c => c.conversation_id === existing.conversation_id ? { ...c, unread_count: 0 } : c));
         } else {
             // 2. Open as a "Ghost Chat" - No DB entry created yet.
             // We pass the user details so the UI can render, but ID is null.
@@ -479,7 +491,10 @@ const Connect = () => {
                             </div>
                         ) : (
                             conversations.filter(c => c.type === 'group').map(chat => (
-                                <div className="messages-list-item" key={chat.conversation_id} onClick={() => setActiveChat(chat)}>
+                                <div className="messages-list-item" key={chat.conversation_id} onClick={() => {
+                                    setActiveChat(chat);
+                                    setConversations(prev => prev.map(c => c.conversation_id === chat.conversation_id ? { ...c, unread_count: 0 } : c));
+                                }}>
                                     <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)' }}>
                                         <i className="fas fa-users"></i>
                                     </div>
@@ -582,7 +597,10 @@ const Connect = () => {
                                 const title = isDm ? chat.other_user_name : chat.title;
                                 const avatar = isDm ? chat.other_user_avatar : chat.avatar_url;
                                 return (
-                                    <div className="messages-list-item" key={chat.conversation_id} onClick={() => setActiveChat(chat)}>
+                                    <div className="messages-list-item" key={chat.conversation_id} onClick={() => {
+                                        setActiveChat(chat);
+                                        setConversations(prev => prev.map(c => c.conversation_id === chat.conversation_id ? { ...c, unread_count: 0 } : c));
+                                    }}>
                                         <div style={{ position: 'relative' }}>
                                             {isDm ? (
                                                 <img src={avatar || 'https://via.placeholder.com/150'} alt="Avatar" />
