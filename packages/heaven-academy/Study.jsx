@@ -96,7 +96,7 @@ const Study = () => {
                             <i className="fas fa-bell"></i>
                             <span className="notification-badge">3</span>
                         </button>
-                        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto-format&fit=crop&w=880&q=80" alt="Profile" className="profile-avatar" style={{ width: '36px', height: '36px' }} />
+                        <img src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar" style={{ width: '36px', height: '36px' }} />
                     </div>
                 </header>
                 
