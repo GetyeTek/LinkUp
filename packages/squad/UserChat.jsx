@@ -202,10 +202,21 @@ const UserChat = ({ chat, currentUser, isOnline, onClose }) => {
         if (!activeConvId) return;
         // Anti-Clock-Skew: Offset by 5 seconds into the future to ensure server trusts we read it
         const skewAdjustedTime = new Date(Date.now() + 5000).toISOString();
-        await supabase.from('conversation_members')
+        console.log(`[UserChat:ReadReceipt] Attempting to mark ${activeConvId} as read at ${skewAdjustedTime}...`);
+        
+        const { data, error } = await supabase.from('conversation_members')
             .update({ last_read_at: skewAdjustedTime })
             .eq('conversation_id', activeConvId)
-            .eq('user_id', currentUser.id);
+            .eq('user_id', currentUser.id)
+            .select();
+            
+        if (error) {
+            console.error(`[UserChat:ReadReceipt] ERROR: Database rejected the read receipt!`, error);
+        } else if (!data || data.length === 0) {
+            console.error(`[UserChat:ReadReceipt] ERROR: Query succeeded but no rows were updated. Check RLS or member existence.`);
+        } else {
+            console.log(`[UserChat:ReadReceipt] SUCCESS: Database accepted read receipt:`, data);
+        }
     };
 
     const handleInputChange = (val) => {
