@@ -536,7 +536,10 @@ const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginCli
                                         <div className="forward-bar"></div>
                                         <div className="forward-info">
                                             <span className="forward-label">Forwarded message</span>
-                                            <span className="forward-from">{m.forward_meta.original_sender_name}</span>
+                                            <span className="forward-from">
+                                                {m.forward_meta.original_sender_avatar && <img src={m.forward_meta.original_sender_avatar} className="forward-avatar" alt="Avatar"/>}
+                                                {m.forward_meta.original_sender_name}
+                                            </span>
                                         </div>
                                     </div>
                                 )}
@@ -682,7 +685,14 @@ const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginCli
                             <i className="fa-solid fa-download"></i> Download File
                         </button>
                     )}
-                    <button className="msg-action-btn" onClick={() => { onForward({...activeMenu.msg, resolved_sender_name: activeMenu.isMine ? currentUser.full_name : chatTitle}); setActiveMenu(null); }}>
+                    <button className="msg-action-btn" onClick={() => { 
+                        onForward({
+                            ...activeMenu.msg, 
+                            resolved_sender_name: activeMenu.isMine ? userProfile?.full_name : chatTitle,
+                            resolved_sender_avatar: activeMenu.isMine ? userProfile?.avatar_url : chatAvatar
+                        }); 
+                        setActiveMenu(null); 
+                    }}>
                         <i className="fa-solid fa-share"></i> Forward
                     </button>
                     {activeMenu.isMine && (
