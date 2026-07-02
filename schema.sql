@@ -50,7 +50,7 @@ Table: exams
 created_at (timestamp with time zone), date (text), time_allowed_minutes (integer), general_instructions (text), id (uuid), total_marks (numeric), program (text), exam_type (text), university_id (uuid), course_id (uuid), media_summary (jsonb), exam_quality_notes (jsonb), constants_provided (jsonb)
 
 Table: messages
-reply_to_id (uuid), id (uuid), conversation_id (uuid), text (text), sender_id (uuid), attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean)
+reply_to_id (uuid), id (uuid), conversation_id (uuid), text (text), sender_id (uuid), attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean), forward_meta (jsonb)
 
 Table: migration_progress
 status (text), id (uuid), processed_at (timestamp with time zone), remote_id (text), pdf_name (text), page_index (text), error_message (text)
