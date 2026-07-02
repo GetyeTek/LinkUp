@@ -25,6 +25,8 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [editSlug, setEditSlug] = useState(chatInfo.metadata?.slug || '');
     const [slugStatus, setSlugStatus] = useState('idle'); // idle, saving, success, error
     const [slugError, setSlugError] = useState('');
+    const [editBio, setEditBio] = useState(chatInfo.metadata?.bio || '');
+    const [bioStatus, setBioStatus] = useState('idle');
     const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -44,6 +46,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         setEditTitle(chatInfo.title || '');
         setEditSlug(chatInfo.metadata?.slug || '');
         setEditPrivacy(chatInfo.metadata?.privacy || 'public');
+        setEditBio(chatInfo.metadata?.bio || '');
     }, [chatInfo.title, chatInfo.metadata]);
 
     // Reset avatar error state if the avatar URL actually changes
@@ -174,6 +177,31 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         onUpdateInfo({ ...chatInfo, title: editTitle });
         setNameStatus('success');
         setTimeout(() => setNameStatus('idle'), 3000);
+    };
+
+    const updateSquadBio = async () => {
+        const cleanBio = editBio.trim();
+        if (cleanBio === (chatInfo.metadata?.bio || '')) return;
+        
+        setBioStatus('saving');
+
+        const newMeta = { ...chatInfo.metadata, bio: cleanBio };
+        const { data: updatedRows, error } = await supabase
+            .from('conversations')
+            .update({ metadata: newMeta })
+            .eq('id', conversationId)
+            .select();
+        
+        if (error || !updatedRows || updatedRows.length === 0) {
+            setBioStatus('error');
+            setAlertNotice({ title: "Permission Denied", msg: "You do not have permission to edit this group.", success: false });
+            setEditBio(chatInfo.metadata?.bio || '');
+            return;
+        }
+
+        onUpdateInfo({ ...chatInfo, metadata: newMeta });
+        setBioStatus('success');
+        setTimeout(() => setBioStatus('idle'), 3000);
     };
 
     const updateSquadSlug = async () => {
@@ -359,6 +387,12 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         )}
                     </div>
 
+                    {chatInfo.metadata?.bio && (
+                        <div className="si-bio-display">
+                            {chatInfo.metadata.bio}
+                        </div>
+                    )}
+
                     {isPublic && (
                         <div className="si-invite-box">
                             <div className="si-invite-url">{inviteLink}</div>
@@ -490,6 +524,31 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                         )}
                                         {nameStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> {nameError}</span>}
                                         {nameStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Name updated!</span>}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="si-settings-group">
+                                <label className="si-label">Group Description / Rules</label>
+                                <div className="si-input-wrapper">
+                                    <textarea 
+                                        className="si-textarea" 
+                                        value={editBio} 
+                                        onChange={e => { setEditBio(e.target.value); setBioStatus('idle'); }} 
+                                        placeholder="What is this group about?"
+                                        maxLength={500}
+                                        rows={3}
+                                    />
+                                </div>
+                                {(editBio !== (chatInfo.metadata?.bio || '') || bioStatus !== 'idle') && (
+                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', minHeight: '30px' }}>
+                                        {editBio !== (chatInfo.metadata?.bio || '') && (
+                                            <button className="si-save-slug-btn" onClick={updateSquadBio} disabled={bioStatus === 'saving' || editBio.trim() === (chatInfo.metadata?.bio || '')}>
+                                                {bioStatus === 'saving' ? 'Saving...' : 'Save Description'}
+                                            </button>
+                                        )}
+                                        {bioStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> Failed</span>}
+                                        {bioStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Saved!</span>}
                                     </div>
                                 )}
                             </div>
