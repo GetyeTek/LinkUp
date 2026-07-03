@@ -106,6 +106,28 @@
     min-width: 0;
 }
 
+/* Naked Media Bubbles */
+.prism-bubble.media-bubble.naked {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+.prism-bubble.media-bubble.naked .bubble-image {
+    margin: 0; border-radius: 18px; border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Captioned Media Bubbles */
+.prism-bubble.media-bubble.captioned {
+    padding: 12px 6px 6px 6px;
+}
+.prism-bubble.media-bubble.captioned .bubble-image {
+    border-radius: 12px; margin-bottom: 4px; width: 100%; border: none;
+}
+.prism-bubble.media-bubble.captioned .bubble-text-content {
+    padding: 0 6px;
+}
+
 .bubble-text-content {
     word-break: break-word;
     white-space: pre-wrap;
