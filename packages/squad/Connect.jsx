@@ -352,7 +352,7 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) =>
 };
 
 const Connect = () => {
-    const { shell, user: userProfile, sessionUser: currentUser, unreadCount } = usePlatform();
+    const { shell, user: userProfile, sessionUser: currentUser, unreadCount, routePayload, clearRoutePayload } = usePlatform();
     const [forwardTargetMsg, setForwardTargetMsg] = useState(null);
     const [forwardSourceChat, setForwardSourceChat] = useState(null);
     const [toastNotice, setToastNotice] = useState(null);
@@ -386,6 +386,9 @@ const Connect = () => {
     const [replyTarget, setReplyTarget] = useState(null); // holds question object for full-screen reply
     const [replyText, setReplyText] = useState('');
     const [isSubmittingQA, setIsSubmittingQA] = useState(false);
+    const [targetMessageId, setTargetMessageId] = useState(null); // Deep link scroller
+    
+    // Featured Events State
     
     // Featured Events State
     const [featuredEvents, setFeaturedEvents] = useState([]);
@@ -448,6 +451,29 @@ const Connect = () => {
         };
 
         if (rawSquadId || shortSqCode) resolveSquad();
+        
+        // Handle Inbound Deep Links from Notifications
+        if (routePayload && routePayload.action === 'open_chat') {
+            setActiveView('messages');
+            
+            // Setup Ghost UI instantly to block glitches
+            setActiveChat({
+                conversation_id: routePayload.conversation_id,
+                type: routePayload.chat_type,
+                title: 'Loading...',
+                is_preview: true
+            });
+            setTargetMessageId(routePayload.message_id);
+
+            // Fetch true context silently
+            supabase.rpc('get_user_conversations', { req_user_id: currentUser.id }).then(({data}) => {
+                if (data) {
+                    const c = data.find(x => x.conversation_id === routePayload.conversation_id);
+                    if (c) setActiveChat(c);
+                }
+            });
+            clearRoutePayload();
+        }
 
         fetchConversations();
         fetchSuggestedSquads();
@@ -838,7 +864,7 @@ const Connect = () => {
                                     {q.body && <p className="activity-snippet">{q.body}</p>}
                                     {q.asker_id !== currentUser.id && (
                                         <button className="claim-btn claimable" style={{marginTop: '1rem'}} onClick={() => setReplyTarget(q)}>
-                                            Reply via DM <i className="fas fa-paper-plane" style={{marginLeft: '6px'}}></i>
+                                            Reply <i className="fas fa-reply" style={{marginLeft: '6px'}}></i>
                                         </button>
                                     )}
                                 </div>
@@ -847,23 +873,6 @@ const Connect = () => {
 
                         <div className="squads-delimiter"><span>Campus Highlights</span></div>
 
-                        <div className="activity-card">
-                            <div className="activity-content" style={{borderLeft: '4px solid var(--accent-teal)'}}>
-                                <div className="activity-tag">Live Study Group</div>
-                                <h2 className="activity-headline">Calculus II: Power Series</h2>
-                                <p className="activity-snippet">3 classmates from your department are studying this right now. Join and share notes!</p>
-                                <button className="claim-btn claimable" style={{marginTop: '1rem', width: '100%'}}>Join Session</button>
-                            </div>
-                        </div>
-
-                        <div className="activity-card">
-                            <div className="activity-content" style={{background: 'rgba(66, 215, 184, 0.05)'}}>
-                                <div className="activity-tag" style={{color: 'var(--cyber-gold)'}}>Miron Insight</div>
-                                <h2 className="activity-headline">Strengthen Projectile Motion</h2>
-                                <p className="activity-snippet">I noticed your quiz scores in this topic are dropping. Shall we do a quick 5-minute review?</p>
-                            </div>
-                        </div>
-
                         {featuredEvents.map(ev => (
                             <div className="activity-card" key={ev.id}>
                                 {ev.image_url && <img src={ev.image_url} className="activity-image" alt="Event" />}
@@ -871,13 +880,22 @@ const Connect = () => {
                                     <div className="activity-tag" style={{color: ev.tag_color}}>{ev.tag_text}</div>
                                     <h2 className="activity-headline">{ev.title}</h2>
                                     <p className="activity-snippet">{ev.body}</p>
-                                    <button 
-                                        className="claim-btn" 
-                                        style={{marginTop: '1rem', width: '100%', background: ev.button_color, color: '#000'}}
-                                        onClick={() => handleFeaturedAction(ev)}
-                                    >
-                                        {ev.button_text}
-                                    </button>
+                                    
+                                    {ev.metadata?.attachment_name && (
+                                        <div style={{marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '0.8rem', color: '#888', display: 'flex', alignItems: 'center'}}>
+                                            <i className="fas fa-paperclip" style={{marginRight: '8px'}}></i> {ev.metadata.attachment_name}
+                                        </div>
+                                    )}
+
+                                    {ev.action_type !== 'none' && (
+                                        <button 
+                                            className="claim-btn" 
+                                            style={{marginTop: '1rem', width: '100%', background: ev.button_color, color: '#000'}}
+                                            onClick={() => handleFeaturedAction(ev)}
+                                        >
+                                            {ev.button_text}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -1062,8 +1080,15 @@ const Connect = () => {
             </div>
             
             {/* The Shape-Shifting FAB */}
-            <div className="connect-fab" onClick={() => activeView === 'for-you' ? setIsQuestionModalOpen(true) : setShowDiscovery(true)}>
-                <i className={`fas ${activeView === 'for-you' ? 'fa-comment-dots' : 'fa-comment-medical'}`}></i>
+            <div 
+                className="connect-fab" 
+                style={{ 
+                    background: activeView === 'for-you' ? 'var(--purple-glow, #9b59b6)' : 'var(--accent-teal)',
+                    color: activeView === 'for-you' ? '#fff' : '#0c0c0c'
+                }}
+                onClick={() => activeView === 'for-you' ? setIsQuestionModalOpen(true) : setShowDiscovery(true)}
+            >
+                <i className={`fas ${activeView === 'for-you' ? 'fa-question' : 'fa-comment-medical'}`}></i>
             </div>
 
             {/* Q&A Composer Modal */}
@@ -1131,7 +1156,7 @@ const Connect = () => {
                         </div>
                         <textarea 
                             className="reply-textarea" 
-                            placeholder="Write your explanation or answer here. This will be sent directly to their DMs..."
+                            placeholder="Write your explanation or answer here..."
                             value={replyText}
                             onChange={e => setReplyText(e.target.value)}
                             autoFocus
@@ -1164,7 +1189,7 @@ const Connect = () => {
                 />
             )}
 
-            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />}
+            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} targetMessageId={targetMessageId} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />}
             {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />}
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {viewingUserId && <UserInfoPanel userId={viewingUserId} currentUser={currentUser} onClose={() => setViewingUserId(null)} />}
