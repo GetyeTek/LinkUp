@@ -41,13 +41,26 @@ body.library-open { overflow: hidden; }
 
 /* --- OFFLINE BANNER --- */
 .global-offline-banner {
-    position: fixed; top: 0; left: 0; right: 0;
-    background: var(--shell-warning); color: #000;
-    text-align: center; padding: 4px; font-size: 0.8rem; font-weight: 700;
-    z-index: 10000; animation: slideDownBanner 0.3s ease;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(30, 30, 30, 0.95); color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    padding: 10px 16px; font-size: 0.85rem; font-weight: 500;
+    z-index: 10000; display: flex; align-items: center; gap: 12px;
+    animation: slideDownPill 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(10px);
 }
-@keyframes slideDownBanner { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+.global-offline-banner.restored {
+    background: rgba(66, 215, 184, 0.15);
+    border-color: rgba(66, 215, 184, 0.4);
+}
+.global-offline-banner i.fa-wifi-slash { color: #ff5f5f; font-size: 1.1rem; }
+.global-offline-banner .close-btn { 
+    background: none; border: none; color: #888; cursor: pointer; 
+    display: flex; align-items: center; padding: 4px; transition: color 0.2s; font-size: 1rem;
+}
+.global-offline-banner .close-btn:hover { color: #fff; }
+@keyframes slideDownPill { from { transform: translate(-50%, -150%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 
 @media (max-width: 899px) {
     .app-container { max-width: 500px; border-right: 1px solid var(--border-color); border-left: 1px solid var(--border-color); }
