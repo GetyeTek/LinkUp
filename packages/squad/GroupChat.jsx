@@ -3,7 +3,7 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
 import './GroupChat.css';
 
-const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband, onOpenAdminSettings }) => {
+const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband, onOpenAdminSettings, onOpenUser }) => {
     const canSeeMembers = myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.hide_members !== true;
     
     const [activeTab, setActiveTab] = useState(canSeeMembers ? 'members' : 'media');
@@ -784,7 +784,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     );
 };
 
-const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, onOriginClick, onOpenUser }) => {
+const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoining, onForward, onOriginClick, onOpenUser }) => {
     const { user: userProfile } = usePlatform();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -867,6 +867,16 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
             .update({ last_read_at: skewAdjustedTime })
             .eq('conversation_id', chat.conversation_id)
             .eq('user_id', currentUser.id);
+    };
+
+    const fetchMessages = async () => {
+        if (!chat.conversation_id) return;
+        const { data } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', chat.conversation_id)
+            .order('created_at', { ascending: true });
+        if (data) setMessages(data.map(m => ({ ...m, status: 'sent' })));
     };
 
     useEffect(() => {
@@ -1002,7 +1012,6 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                         setMyMutedUntil(payload.new.muted_until);
                         setMyRole(payload.new.role);
                     } else {
-                        setOtherReadAt(payload.new.last_read_at);
                         setMembers(prev => ({...prev, [payload.new.user_id]: { ...prev[payload.new.user_id], role: payload.new.role }}));
                     }
                 } else if (payload.eventType === 'DELETE') {
@@ -1047,6 +1056,15 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
             supabase.removeChannel(convChannel);
         };
     }, [chat.conversation_id]);
+
+    // Handle deep linking scroll injection
+    useEffect(() => {
+        if (targetMessageId && messages.length > 0) {
+            setTimeout(() => {
+                scrollToMessage(targetMessageId);
+            }, 300); // Allow DOM paint to finish
+        }
+    }, [targetMessageId, messages.length]);
 
     useEffect(() => {
         // Smart Scroll: Only yank down if the user is already near the bottom (or on initial load)
@@ -1336,6 +1354,27 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
     const handleCopy = (text) => {
         navigator.clipboard.writeText(text);
         setActiveMenu(null);
+    };
+
+    const handleDownload = (url, filename) => {
+        setActiveMenu(null);
+        const downloadUrl = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`;
+        
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.target = '_self'; 
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleDownloadAll = (attachments) => {
+        setActiveMenu(null);
+        attachments.forEach((att, index) => {
+            setTimeout(() => {
+                handleDownload(att.url, att.name);
+            }, index * 400); // Stagger to avoid browser popup blocks
+        });
     };
 
     const startEditing = (msg) => {
@@ -1771,7 +1810,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                                         <span className="prog-text">{uploadProgress}%</span>
                                     </div>
                                 ) : (
-                                    <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim() && !pendingAttachment}>
+                                    <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim() && pendingAttachments.length === 0}>
                                         <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
                                     </button>
                                 )}
@@ -1885,6 +1924,7 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                     onUpdateInfo={setLocalChatInfo}
                     onDisband={onClose}
                     onOpenAdminSettings={() => setShowAdminSettings(true)}
+                    onOpenUser={onOpenUser}
                 />
             )}
             {fullscreenGallery && (
