@@ -347,7 +347,7 @@ const Notes = ({ currentUser, onClose }) => {
                         }}
                         rows="1"
                     />
-                    <button className="dock-btn send" onClick={handleSend} disabled={!input.trim() && !isUploading}>
+                    <button className="dock-btn send" onClick={handleSend} disabled={!input.trim() || isUploading}>
                         <i className="fas fa-arrow-up"></i>
                     </button>
                 </div>
