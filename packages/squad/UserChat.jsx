@@ -543,7 +543,12 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
                             }}
                             style={{ zIndex: isMenuOpen ? 100 : 1 }}
                         >
-                            <div className="prism-bubble">
+                            {(() => {
+                                const hasMedia = m.attachments && m.attachments.length > 0;
+                                const isNaked = hasMedia && (!m.text || m.text.trim() === '');
+                                const bubbleClass = `prism-bubble ${hasMedia ? (isNaked ? 'media-bubble naked' : 'media-bubble captioned') : ''}`;
+                                return (
+                            <div className={bubbleClass}>
                                 {m.forward_meta && (
                                     <div className="forward-indicator" onClick={(e) => { e.stopPropagation(); onOriginClick(m.forward_meta); }}>
                                         <div className="forward-bar"></div>
@@ -594,6 +599,8 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
 
                                 {m.text && <div className="bubble-text-content">{m.text}</div>}
                             </div>
+                            );
+                            })()}
                             <div className="prism-time">
                                 {m.is_edited && <span className="edited-label">edited</span>}
                                 {formatTime(m.created_at)}
@@ -661,7 +668,7 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
                         onChange={handleFileSelect} 
                     />
                     <button className="add-btn" onClick={() => fileInputRef.current.click()} disabled={isUploading}>
-                        <i className="fa-solid fa-plus"></i>
+                        <i className="fa-solid fa-paperclip"></i>
                     </button>
                     <input 
                         type="text" 
