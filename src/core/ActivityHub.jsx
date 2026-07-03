@@ -26,6 +26,13 @@ const ActivityHub = ({ onClose }) => {
         fetchNotifications();
     }, [sessionUser.id]);
 
+    const handleAction = (n) => {
+        if (n.action_data?.action === 'open_chat') {
+            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'connect', payload: n.action_data } }));
+            onClose();
+        }
+    };
+
     const formatTime = (isoString) => {
         const date = new Date(isoString);
         const diffInMins = Math.floor((new Date() - date) / 60000);
@@ -66,6 +73,9 @@ const ActivityHub = ({ onClose }) => {
                                 {n.insight && (
                                     <div className="miron-insight-box">"{n.insight}"</div>
                                 )}
+                                <div className="p-action-row">
+                                    <button className="p-btn primary" onClick={() => handleAction(n)}>View</button>
+                                </div>
                             </div>
                         </div>
                     ))}
