@@ -29,8 +29,13 @@ export default {
     const requestedHeaders = request.headers.get('Access-Control-Request-Headers');
     const clientSecret = request.headers.get('x-linkup-client');
 
+    // Detect browser direct media serving or file downloads (CORS/Public/Signed urls cannot pass custom headers)
+    const isStorageDownload = url.pathname.startsWith('/storage/v1/object/public/') || 
+                              url.pathname.startsWith('/storage/v1/object/sign/') ||
+                              url.pathname.startsWith('/storage/v1/render/image/public/');
+
     // Security: Require Custom Header (Gateway Handshake)
-    if (request.method !== 'OPTIONS' && clientSecret !== 'linkup-secure-client-2026') {
+    if (request.method !== 'OPTIONS' && !isStorageDownload && clientSecret !== 'linkup-secure-client-2026') {
       console.error(`[Gateway] ⛔ Blocked request missing valid client secret.`);
       return new Response(JSON.stringify({ error: "Unauthorized Client" }), { status: 403, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
