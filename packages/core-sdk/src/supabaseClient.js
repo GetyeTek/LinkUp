@@ -8,4 +8,10 @@ const supabaseUrl = 'https://linkup-gateway.getyeteklu2.workers.dev';
 // The Cloudflare Worker intercepts this and injects the real Supabase key server-side.
 const supabaseAnonKey = 'sys_pub_5e22b8c9d0a18d9e0a2f8d73b';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    headers: {
+      'x-linkup-client': 'linkup-secure-client-2026'
+    }
+  }
+});
