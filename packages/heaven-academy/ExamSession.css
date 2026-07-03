@@ -388,6 +388,7 @@
 }
 
 /* --- EXPLANATION CONTAINER --- */
+.ai-explanation-box {
     background: rgba(66, 215, 184, 0.06);
     border-left: 3px solid var(--accent-teal);
     border-radius: 0 8px 8px 0;
