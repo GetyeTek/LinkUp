@@ -524,6 +524,7 @@ const App = () => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showOfflineBanner, setShowOfflineBanner] = useState(!navigator.onLine);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [routePayload, setRoutePayload] = useState(null);
 
   useEffect(() => {
     const handleOnline = () => { 
