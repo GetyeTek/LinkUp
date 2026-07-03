@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './UserChat.css';
 
-const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginClick, onOpenUser }) => {
+const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onForward, onOriginClick, onOpenUser }) => {
     const { user: userProfile } = usePlatform();
     const [activeConvId, setActiveConvId] = useState(chat.conversation_id);
     const [messages, setMessages] = useState([]);
@@ -121,6 +121,15 @@ const UserChat = ({ chat, currentUser, isOnline, onClose, onForward, onOriginCli
             supabase.removeChannel(memberChannel);
         };
     }, [activeConvId]);
+
+    // Handle deep linking scroll injection
+    useEffect(() => {
+        if (targetMessageId && messages.length > 0) {
+            setTimeout(() => {
+                scrollToMessage(targetMessageId);
+            }, 300); // Allow DOM paint to finish
+        }
+    }, [targetMessageId, messages.length]);
 
     useEffect(() => {
         // Smart Scroll: Only yank down if the user is already near the bottom (or on initial load)
