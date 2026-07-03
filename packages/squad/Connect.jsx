@@ -390,9 +390,10 @@ const Connect = () => {
     
     // Featured Events State
     
-    // Featured Events State
+    // Featured Events & Live Sessions
     const [featuredEvents, setFeaturedEvents] = useState([]);
     const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
+    const [liveSessions, setLiveSessions] = useState([]);
 
     useEffect(() => {
         activeChatRef.current = activeChat;
@@ -479,6 +480,7 @@ const Connect = () => {
         fetchSuggestedSquads();
         fetchPeerQuestions();
         fetchFeaturedEvents();
+        fetchLiveSessions();
         
         // 1. Subscribe to Realtime Messages and Read Receipt updates
         const msgChannel = supabase.channel('chat_list_updates')
@@ -576,6 +578,11 @@ const Connect = () => {
     const fetchFeaturedEvents = async () => {
         const { data } = await supabase.rpc('get_featured_events');
         if (data) setFeaturedEvents(data);
+    };
+
+    const fetchLiveSessions = async () => {
+        const { data } = await supabase.rpc('get_live_study_sessions', { req_user_id: currentUser.id });
+        if (data) setLiveSessions(data);
     };
 
     const handleFeaturedAction = (event) => {
@@ -873,29 +880,21 @@ const Connect = () => {
 
                         <div className="squads-delimiter"><span>Campus Highlights</span></div>
 
-                        {featuredEvents.map(ev => (
-                            <div className="activity-card" key={ev.id}>
-                                {ev.image_url && <img src={ev.image_url} className="activity-image" alt="Event" />}
-                                <div className="activity-content">
-                                    <div className="activity-tag" style={{color: ev.tag_color}}>{ev.tag_text}</div>
-                                    <h2 className="activity-headline">{ev.title}</h2>
-                                    <p className="activity-snippet">{ev.body}</p>
-                                    
-                                    {ev.metadata?.attachment_name && (
-                                        <div style={{marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '0.8rem', color: '#888', display: 'flex', alignItems: 'center'}}>
-                                            <i className="fas fa-paperclip" style={{marginRight: '8px'}}></i> {ev.metadata.attachment_name}
-                                        </div>
-                                    )}
-
-                                    {ev.action_type !== 'none' && (
-                                        <button 
-                                            className="claim-btn" 
-                                            style={{marginTop: '1rem', width: '100%', background: ev.button_color, color: '#000'}}
-                                            onClick={() => handleFeaturedAction(ev)}
-                                        >
-                                            {ev.button_text}
-                                        </button>
-                                    )}
+                        {/* Dynamic Live Study Sessions computed via Miron & Proximity RPC */}
+                        {liveSessions.map(session => (
+                            <div className="activity-card" key={session.session_id}>
+                                <div className="activity-content" style={{borderLeft: '4px solid var(--accent-teal)'}}>
+                                    <div className="activity-tag">Live Study Group</div>
+                                    <h2 className="activity-headline">{session.course_name}: {session.lesson_topic}</h2>
+                                    <p className="activity-snippet">{session.dynamic_message}</p>
+                                    <button 
+                                        className="claim-btn claimable" 
+                                        style={{marginTop: '1rem', width: '100%'}}
+                                        onClick={(e) => handleJoinSquad(session.conversation_id, e)}
+                                        disabled={joiningSquadId === session.conversation_id}
+                                    >
+                                        {joiningSquadId === session.conversation_id ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Session'}
+                                    </button>
                                 </div>
                             </div>
                         ))}
