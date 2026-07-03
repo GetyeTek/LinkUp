@@ -523,6 +523,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [routePayload, setRoutePayload] = useState(null);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -545,7 +546,10 @@ const App = () => {
 
   // Global Tab Navigation Listener
   useEffect(() => {
-    const handleNav = (e) => setActiveTab(e.detail.tab);
+    const handleNav = (e) => {
+        setActiveTab(e.detail.tab);
+        if (e.detail.payload) setRoutePayload(e.detail.payload);
+    };
     window.addEventListener('navigate-tab', handleNav);
     return () => window.removeEventListener('navigate-tab', handleNav);
   }, []);
@@ -806,7 +810,9 @@ const App = () => {
       <PlatformProvider value={{ 
           user: userProfile, 
           sessionUser: session?.user, 
-          unreadCount, 
+          unreadCount,
+          routePayload,
+          clearRoutePayload: () => setRoutePayload(null),
           shell: { 
               openActivity: () => setIsActivityOpen(true), 
               openMiron: (text) => setMironContext({ text }),
