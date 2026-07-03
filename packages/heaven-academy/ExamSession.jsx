@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import { invokeBookReader } from './api.js';
 import { renderBookBlock } from './BookReader/subjects/Registry.jsx';
