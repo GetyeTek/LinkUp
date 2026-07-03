@@ -794,6 +794,9 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
     const [isLoading, setIsLoading] = useState(true);
     const [editingMessage, setEditingMessage] = useState(null);
     const [replyingTo, setReplyingTo] = useState(null);
+    const [pendingAttachment, setPendingAttachment] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef(null);
 
     const [alertNotice, setAlertNotice] = useState(null); // Parent Error Trapper
     const [typingUsers, setTypingUsers] = useState([]);
@@ -1122,10 +1125,28 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
         }
     };
 
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (file.size > 10 * 1024 * 1024) {
+            setAlertNotice({ title: "File too large", msg: "Please select a file smaller than 10MB." });
+            e.target.value = null;
+            return;
+        }
+        
+        const previewUrl = file.type.startsWith('image/') || file.type.startsWith('video/') ? URL.createObjectURL(file) : null;
+        setPendingAttachment({ file, previewUrl });
+        e.target.value = null;
+    };
+
     const handleSend = async () => {
-        if (!input.trim()) return;
+        if ((!input.trim() && !pendingAttachment) || isUploading) return;
         const msgText = input;
+        const currentAttachment = pendingAttachment;
+        
         setInput('');
+        setPendingAttachment(null);
 
         // Turn off typing indicator immediately when sending
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -1151,14 +1172,38 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
             id: tempId, conversation_id: chat.conversation_id,
             sender_id: currentUser.id, text: msgText,
             reply_to_id: currentReplyId,
+            attachments: currentAttachment ? [{ name: currentAttachment.file.name, type: currentAttachment.file.type, url: currentAttachment.previewUrl || '' }] : [],
             created_at: new Date().toISOString(), status: 'pending'
         }]);
+
+        let finalAttachments = [];
+
+        if (currentAttachment) {
+            setIsUploading(true);
+            try {
+                const file = currentAttachment.file;
+                const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+                const filePath = `groups/${chat.conversation_id}/${currentUser.id}/${Date.now()}_${safeName}`;
+                const arrayBuffer = await file.arrayBuffer();
+                const { error: uploadError } = await supabase.storage.from('chat_media').upload(filePath, arrayBuffer, { contentType: file.type, upsert: true });
+                if (uploadError) throw uploadError;
+                const { data: { publicUrl } } = supabase.storage.from('chat_media').getPublicUrl(filePath);
+                finalAttachments = [{ name: file.name, url: publicUrl, path: filePath, type: file.type, size: file.size }];
+            } catch (err) {
+                setAlertNotice({ title: "Upload Failed", msg: "Media upload blocked. Ensure the file is under 10MB." });
+                setIsUploading(false);
+                setMessages(prev => prev.filter(m => m.id !== tempId));
+                return;
+            }
+            setIsUploading(false);
+        }
 
         const { data, error } = await supabase.from('messages').insert({
             conversation_id: chat.conversation_id,
             sender_id: currentUser.id,
             text: msgText,
-            reply_to_id: currentReplyId
+            reply_to_id: currentReplyId,
+            attachments: finalAttachments
         }).select().maybeSingle();
         
         if (error) {
@@ -1389,7 +1434,12 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                                             {sender.role === 'owner' && <i className="fas fa-crown admin-crown"></i>}
                                         </div>
                                     )}
-                                    <div className="squad-bubble">
+                                    {(() => {
+                                        const hasMedia = m.attachments && m.attachments.length > 0;
+                                        const isNaked = hasMedia && (!m.text || m.text.trim() === '');
+                                        const bubbleClass = `squad-bubble ${hasMedia ? (isNaked ? 'media-bubble naked' : 'media-bubble captioned') : ''}`;
+                                        return (
+                                    <div className={bubbleClass}>
                                     {m.forward_meta && (
                                         <div className="forward-indicator" onClick={(e) => { e.stopPropagation(); onOriginClick(m.forward_meta); }}>
                                             <div className="forward-bar"></div>
@@ -1420,7 +1470,22 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                                         </div>
                                     ) : null}
                                     
-                                    {m.text}
+                                    {m.attachments && m.attachments.map((att, i) => (
+                                        <div key={i} className="bubble-attachment">
+                                            {att.type.startsWith('image/') ? (
+                                                <img src={att.url} alt="Shared Image" className="bubble-image" />
+                                            ) : (
+                                                <div className="bubble-file-box" onClick={(e) => { e.stopPropagation(); handleDownload(att.url, att.name); }}>
+                                                    <div className="bubble-file-icon"><i className="fas fa-file"></i></div>
+                                                    <div className="bubble-file-info">
+                                                        <span className="bubble-file-name">{att.name}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {m.text && <div className="bubble-text-content">{m.text}</div>}
                                     
                                     <div className={`squad-time-meta ${isMine ? 'mine-meta' : ''}`}>
                                         {m.is_edited && <span>edited</span>}
@@ -1432,6 +1497,8 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                                         )}
                                     </div>
                                 </div>
+                                    );
+                                })()}
                                 </div>
                             </div>
                         );
@@ -1511,6 +1578,25 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                             </div>
                         )}
                         
+                        {pendingAttachment && (
+                            <div className="squad-input-mode-header staging-mode">
+                                <div className="mode-border staging-preview-border"></div>
+                                <div className="staging-preview-content">
+                                    {pendingAttachment.previewUrl ? (
+                                        <img src={pendingAttachment.previewUrl} alt="Preview" className="staging-thumb" />
+                                    ) : (
+                                        <div className="staging-file-icon"><i className="fas fa-file"></i></div>
+                                    )}
+                                    <div className="staging-file-details">
+                                        <span className="staging-title">Attachment ready</span>
+                                        <span className="staging-name">{pendingAttachment.file.name}</span>
+                                    </div>
+                                </div>
+                                <button className="icon-button" onClick={() => setPendingAttachment(null)}>
+                                    <i className="fa-solid fa-times"></i>
+                                </button>
+                            </div>
+                        )}
                         {myMutedUntil && new Date(myMutedUntil) > new Date() ? (
                             <div className="squad-muted-notice">
                                 <i className="fas fa-microphone-slash"></i>
@@ -1523,14 +1609,28 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                         ) : (
                             <div className="squad-dock">
                                 <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    style={{display: 'none'}} 
+                                    onChange={handleFileSelect} 
+                                />
+                                <button className="add-btn" onClick={() => fileInputRef.current.click()} disabled={isUploading}>
+                                    <i className="fa-solid fa-paperclip"></i>
+                                </button>
+                                <input 
                                     type="text" 
                                     placeholder="Squad message..." 
+                                    disabled={isUploading}
                                     value={input}
                                     onChange={(e) => handleInputChange(e.target.value)}
                                     onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                                 />
-                                <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim()}>
-                                    <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
+                                <button className="squad-send-btn" onClick={handleSend} disabled={isUploading || (!input.trim() && !pendingAttachment)}>
+                                    {isUploading ? (
+                                        <i className="fa-solid fa-circle-notch fa-spin"></i>
+                                    ) : (
+                                        <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
+                                    )}
                                 </button>
                             </div>
                         )}
