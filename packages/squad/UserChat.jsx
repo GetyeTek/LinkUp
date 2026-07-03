@@ -14,6 +14,8 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
     const [input, setInput] = useState('');
     const [pendingAttachment, setPendingAttachment] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [fullscreenMedia, setFullscreenMedia] = useState(null);
     const [alertNotice, setAlertNotice] = useState(null);
     
     // Search State
@@ -259,7 +261,6 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
     const handleSend = async () => {
         if ((!input.trim() && !pendingAttachment) || isUploading) return;
         
-        // Turn off typing indicator immediately when sending
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         if (roomChannelRef.current && localTypingRef.current) {
             roomChannelRef.current.track({ isTyping: false, updatedAt: Date.now() });
@@ -273,19 +274,15 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
         setInput('');
         setPendingAttachment(null);
 
-        // 1. LAZY INITIALIZATION: Create conversation if this is a Ghost Chat
         if (!currentConvId) {
             console.log("[Squad:Chat] Lazy initializing DM with:", chat.other_user_id);
-            const { data: newId, error: initError } = await supabase.rpc('create_direct_message', { 
-                target_user_id: chat.other_user_id 
-            });
-            
+            const { data: newId, error: initError } = await supabase.rpc('create_direct_message', { target_user_id: chat.other_user_id });
             if (initError || !newId) {
-                setAlertNotice("Could not start conversation. The user might be restricted or network is unavailable.");
+                setAlertNotice({ title: "Initialization Error", msg: "Could not start conversation. The user might be restricted or network is unavailable." });
                 return;
             }
             currentConvId = newId;
-            setActiveConvId(newId); // This triggers the Realtime useEffect
+            setActiveConvId(newId);
         }
 
         if (editingMessage) {
@@ -311,19 +308,54 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
 
         if (currentAttachment) {
             setIsUploading(true);
+            setUploadProgress(0);
             try {
                 const file = currentAttachment.file;
                 const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
                 const filePath = `${currentConvId}/${currentUser.id}/${Date.now()}_${safeName}`;
-                const arrayBuffer = await file.arrayBuffer();
-                const { error: uploadError } = await supabase.storage.from('chat_media').upload(filePath, arrayBuffer, { contentType: file.type, upsert: true });
-                if (uploadError) throw uploadError;
-                const { data: { publicUrl } } = supabase.storage.from('chat_media').getPublicUrl(filePath);
+                
+                // Resilient Upload Logic with Retries and Progress via Gateway
+                const { data: { session } } = await supabase.auth.getSession();
+                const GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
+                const DUMMY_KEY = 'sq_pub_2d66a1b8c9e08d9e0a2f8d73b';
+
+                let publicUrl = '';
+                const attemptUpload = () => new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+                    });
+                    xhr.addEventListener('load', () => {
+                        if (xhr.status >= 200 && xhr.status < 300) resolve();
+                        else reject(new Error(`HTTP ${xhr.status}`));
+                    });
+                    xhr.addEventListener('error', () => reject(new Error("Network Error")));
+                    xhr.addEventListener('abort', () => reject(new Error("Aborted")));
+                    xhr.open('POST', `${GATEWAY}/storage/v1/object/chat_media/${filePath}`);
+                    xhr.setRequestHeader('apikey', DUMMY_KEY);
+                    xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
+                    xhr.setRequestHeader('x-linkup-client', 'linkup-secure-client-2026');
+                    xhr.setRequestHeader('Content-Type', file.type);
+                    xhr.send(file);
+                });
+
+                for (let i = 0; i < 3; i++) {
+                    try {
+                        await attemptUpload();
+                        const { data } = supabase.storage.from('chat_media').getPublicUrl(filePath);
+                        publicUrl = data.publicUrl;
+                        break;
+                    } catch (err) {
+                        if (i === 2) throw err;
+                        await new Promise(r => setTimeout(r, 1500)); // exponential backoff wait
+                    }
+                }
+
                 finalAttachments = [{ name: file.name, url: publicUrl, path: filePath, type: file.type, size: file.size }];
             } catch (err) {
-                setAlertNotice("Media upload blocked. Ensure the file is under 10MB and is a supported format.");
+                setAlertNotice({ title: "Upload Failed", msg: "Media upload blocked or network failed. Ensure the file is under 10MB." });
                 setIsUploading(false);
-                setMessages(prev => prev.filter(m => m.id !== tempId)); // Remove pending bubble
+                setMessages(prev => prev.filter(m => m.id !== tempId));
                 return;
             }
             setIsUploading(false);
@@ -339,8 +371,12 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
         
         if (error) {
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
-            setAlertNotice("Message failed to send. You may lack permission.");
+            setAlertNotice({ title: "Delivery Error", msg: "Message failed to send. You may lack permission." });
         } else if (data) {
+            // Anti-Stutter cache
+            if (currentAttachment && currentAttachment.previewUrl) {
+                data.attachments[0].url = currentAttachment.previewUrl;
+            }
             setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
         }
     };
@@ -585,8 +621,10 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
                                 {m.attachments && m.attachments.map((att, i) => (
                                     <div key={i} className="bubble-attachment">
                                         {att.type.startsWith('image/') ? (
-                                            <img src={att.url} alt="Shared Image" className="bubble-image" />
-                                        )                                         : (
+                                            <img src={att.url} alt="Shared Image" className="bubble-image" onClick={(e) => { e.stopPropagation(); setFullscreenMedia(att); }} />
+                                        ) : att.type.startsWith('video/') ? (
+                                            <video src={att.url} className="bubble-image" onClick={(e) => { e.stopPropagation(); setFullscreenMedia(att); }} />
+                                        ) : (
                                             <div className="bubble-file-box" onClick={(e) => { e.stopPropagation(); handleDownload(att.url, att.name); }}>
                                                 <div className="bubble-file-icon"><i className="fas fa-file"></i></div>
                                                 <div className="bubble-file-info">
@@ -678,13 +716,19 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
                         onChange={(e) => handleInputChange(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                     />
-                    <button className="prism-send-btn" onClick={handleSend} disabled={isUploading || (!input.trim() && !pendingAttachment)}>
-                        {isUploading ? (
-                            <i className="fa-solid fa-circle-notch fa-spin"></i>
-                        ) : (
+                    {isUploading ? (
+                        <div className="circular-progress-btn">
+                            <svg viewBox="0 0 36 36">
+                                <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path className="circle-fill" strokeDasharray={`${uploadProgress}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <span className="prog-text">{uploadProgress}%</span>
+                        </div>
+                    ) : (
+                        <button className="prism-send-btn" onClick={handleSend} disabled={!input.trim() && !pendingAttachment}>
                             <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
-                        )}
-                    </button>
+                        </button>
+                    )}
                 </div>
             </footer>
 
@@ -772,6 +816,18 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
                             ))}
                         </div>
                     </div>
+                </div>
+            )}
+            {fullscreenMedia && (
+                <div className="fullscreen-media-overlay" onClick={() => setFullscreenMedia(null)}>
+                    <button className="icon-button close-media" onClick={() => setFullscreenMedia(null)}>
+                        <i className="fas fa-times"></i>
+                    </button>
+                    {fullscreenMedia.type.startsWith('video/') ? (
+                        <video src={fullscreenMedia.url} controls autoPlay onClick={e => e.stopPropagation()} style={{maxWidth: '100%', maxHeight: '100%'}} />
+                    ) : (
+                        <img src={fullscreenMedia.url} alt="Fullscreen Media" onClick={e => e.stopPropagation()} />
+                    )}
                 </div>
             )}
         </div>
