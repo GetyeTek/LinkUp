@@ -794,10 +794,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
     const [isLoading, setIsLoading] = useState(true);
     const [editingMessage, setEditingMessage] = useState(null);
     const [replyingTo, setReplyingTo] = useState(null);
-    const [pendingAttachment, setPendingAttachment] = useState(null);
+    const [pendingAttachments, setPendingAttachments] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
-    const [fullscreenMedia, setFullscreenMedia] = useState(null);
+    const [fullscreenGallery, setFullscreenGallery] = useState(null);
     const fileInputRef = useRef(null);
 
     const [alertNotice, setAlertNotice] = useState(null); // Parent Error Trapper
@@ -1128,22 +1128,49 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
     };
 
     const handleFileSelect = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
         
-        if (file.size > 10 * 1024 * 1024) {
-            setAlertNotice({ title: "File too large", msg: "Please select a file smaller than 10MB." });
+        let validFiles = files;
+        if (pendingAttachments.length + files.length > 10) {
+            setAlertNotice({ title: "Limit Reached", msg: "You can only attach up to 10 files at once." });
+            const remainingSlots = 10 - pendingAttachments.length;
+            validFiles = files.slice(0, remainingSlots);
+        }
+        
+        const oversized = validFiles.find(f => f.size > 10 * 1024 * 1024);
+        if (oversized) {
+            setAlertNotice({ title: "File too large", msg: "One or more files exceed the 10MB limit." });
             e.target.value = null;
             return;
         }
         
-        const previewUrl = file.type.startsWith('image/') || file.type.startsWith('video/') ? URL.createObjectURL(file) : null;
-        setPendingAttachment({ file, previewUrl });
+        const processed = validFiles.map(file => ({
+            file,
+            previewUrl: file.type.startsWith('image/') || file.type.startsWith('video/') ? URL.createObjectURL(file) : null
+        }));
+        
+        setPendingAttachments(prev => [...prev, ...processed]);
         e.target.value = null;
     };
 
+    const getFileIconProps = (filename) => {
+        if (!filename) return { icon: 'fa-file', color: 'var(--accent-teal)' };
+        const ext = filename.split('.').pop().toLowerCase();
+        switch(ext) {
+            case 'pdf': return { icon: 'fa-file-pdf', color: '#ff4757' };
+            case 'doc': case 'docx': return { icon: 'fa-file-word', color: '#3498db' };
+            case 'xls': case 'xlsx': case 'csv': return { icon: 'fa-file-excel', color: '#2ecc71' };
+            case 'ppt': case 'pptx': return { icon: 'fa-file-powerpoint', color: '#e67e22' };
+            case 'txt': return { icon: 'fa-file-lines', color: '#95a5a6' };
+            case 'epub': return { icon: 'fa-book', color: '#9b59b6' };
+            case 'zip': case 'rar': case '7z': return { icon: 'fa-file-zipper', color: '#f1c40f' };
+            default: return { icon: 'fa-file', color: 'var(--accent-teal)' };
+        }
+    };
+
     const handleSend = async () => {
-        if ((!input.trim() && !pendingAttachment) || isUploading) return;
+        if ((!input.trim() && pendingAttachments.length === 0) || isUploading) return;
         
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         if (channelRef.current && localTypingRef.current) {
@@ -1152,10 +1179,10 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
         }
 
         const msgText = input;
-        const currentAttachment = pendingAttachment;
+        const currentAttachments = [...pendingAttachments];
         
         setInput('');
-        setPendingAttachment(null);
+        setPendingAttachments([]);
 
         if (editingMessage) {
             setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, text: msgText, is_edited: true } : m));
@@ -1172,64 +1199,76 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
             id: tempId, conversation_id: chat.conversation_id,
             sender_id: currentUser.id, text: msgText,
             reply_to_id: currentReplyId,
-            attachments: currentAttachment ? [{ name: currentAttachment.file.name, type: currentAttachment.file.type, url: currentAttachment.previewUrl || '' }] : [],
+            attachments: currentAttachments.map(a => ({ name: a.file.name, type: a.file.type, url: a.previewUrl || '' })),
             created_at: new Date().toISOString(), status: 'pending'
         }]);
 
         let finalAttachments = [];
 
-        if (currentAttachment) {
+        if (currentAttachments.length > 0) {
             setIsUploading(true);
             setUploadProgress(0);
-            try {
-                const file = currentAttachment.file;
-                const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-                const filePath = `groups/${chat.conversation_id}/${currentUser.id}/${Date.now()}_${safeName}`;
-                
-                const { data: { session } } = await supabase.auth.getSession();
-                const GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
-                const DUMMY_KEY = 'sq_pub_2d66a1b8c9e08d9e0a2f8d73b';
+            const totalFiles = currentAttachments.length;
+            let completedFiles = 0;
 
-                let publicUrl = '';
-                const attemptUpload = () => new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.upload.addEventListener('progress', (e) => {
-                        if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
-                    });
-                    xhr.addEventListener('load', () => {
-                        if (xhr.status >= 200 && xhr.status < 300) resolve();
-                        else reject(new Error(`HTTP ${xhr.status}`));
-                    });
-                    xhr.addEventListener('error', () => reject(new Error("Network Error")));
-                    xhr.addEventListener('abort', () => reject(new Error("Aborted")));
-                    xhr.open('POST', `${GATEWAY}/storage/v1/object/chat_media/${filePath}`);
-                    xhr.setRequestHeader('apikey', DUMMY_KEY);
-                    xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
-                    xhr.setRequestHeader('x-linkup-client', 'linkup-secure-client-2026');
-                    xhr.setRequestHeader('Content-Type', file.type);
-                    xhr.send(file);
-                });
+            const { data: { session } } = await supabase.auth.getSession();
+            const GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
+            const DUMMY_KEY = 'sq_pub_2d66a1b8c9e08d9e0a2f8d73b';
 
-                for (let i = 0; i < 3; i++) {
-                    try {
-                        await attemptUpload();
-                        const { data } = supabase.storage.from('chat_media').getPublicUrl(filePath);
-                        publicUrl = data.publicUrl;
-                        break;
-                    } catch (err) {
-                        if (i === 2) throw err;
-                        await new Promise(r => setTimeout(r, 1500));
+            for (const att of currentAttachments) {
+                try {
+                    const file = att.file;
+                    const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+                    const filePath = `groups/${chat.conversation_id}/${currentUser.id}/${Date.now()}_${safeName}`;
+                    let publicUrl = '';
+
+                    for (let retry = 0; retry < 3; retry++) {
+                        try {
+                            await new Promise((resolve, reject) => {
+                                const xhr = new XMLHttpRequest();
+                                xhr.upload.addEventListener('progress', (e) => {
+                                    if (e.lengthComputable) {
+                                        const fileProg = e.loaded / e.total;
+                                        const globalProg = Math.round(((completedFiles + fileProg) / totalFiles) * 100);
+                                        setUploadProgress(globalProg);
+                                    }
+                                });
+                                xhr.addEventListener('load', () => {
+                                    if (xhr.status >= 200 && xhr.status < 300) resolve();
+                                    else reject(new Error(`HTTP ${xhr.status}`));
+                                });
+                                xhr.addEventListener('error', () => reject(new Error("Network Error")));
+                                xhr.addEventListener('abort', () => reject(new Error("Aborted")));
+                                xhr.open('POST', `${GATEWAY}/storage/v1/object/chat_media/${filePath}`);
+                                xhr.setRequestHeader('apikey', DUMMY_KEY);
+                                xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
+                                xhr.setRequestHeader('x-linkup-client', 'linkup-secure-client-2026');
+                                xhr.setRequestHeader('Content-Type', file.type);
+                                xhr.send(file);
+                            });
+                            const { data } = supabase.storage.from('chat_media').getPublicUrl(filePath);
+                            publicUrl = data.publicUrl;
+                            break;
+                        } catch (err) {
+                            if (retry === 2) throw err;
+                            await new Promise(r => setTimeout(r, 1500));
+                        }
                     }
-                }
+                    
+                    finalAttachments.push({ name: file.name, url: publicUrl, path: filePath, type: file.type, size: file.size, previewUrl: att.previewUrl });
+                    completedFiles++;
+                    setUploadProgress(Math.round((completedFiles / totalFiles) * 100));
 
-                finalAttachments = [{ name: file.name, url: publicUrl, path: filePath, type: file.type, size: file.size }];
-            } catch (err) {
-                setAlertNotice({ title: "Upload Failed", msg: "Media upload blocked or network failed. Ensure the file is under 10MB.", success: false });
-                setIsUploading(false);
+                } catch (err) {
+                    setAlertNotice({ title: "Partial Upload Failure", msg: `Failed to upload ${att.file.name}. Sending successfully uploaded files.` });
+                }
+            }
+            
+            setIsUploading(false);
+            if (finalAttachments.length === 0) {
                 setMessages(prev => prev.filter(m => m.id !== tempId));
                 return;
             }
-            setIsUploading(false);
         }
 
         const { data, error } = await supabase.from('messages').insert({
@@ -1244,8 +1283,14 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
             setAlertNotice({ title: "Action Blocked", msg: error.message || "Message failed to send. You may lack permission.", success: false });
         } else if (data) {
-            if (currentAttachment && currentAttachment.previewUrl) {
-                data.attachments[0].url = currentAttachment.previewUrl;
+            if (finalAttachments.length > 0) {
+                data.attachments = data.attachments.map(dbAtt => {
+                    const localMatch = finalAttachments.find(fa => fa.name === dbAtt.name);
+                    if (localMatch && localMatch.previewUrl) {
+                        return { ...dbAtt, url: localMatch.previewUrl };
+                    }
+                    return dbAtt;
+                });
             }
             setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
         }
@@ -1506,22 +1551,55 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                                         </div>
                                     ) : null}
                                     
-                                    {m.attachments && m.attachments.map((att, i) => (
-                                        <div key={i} className="bubble-attachment">
-                                            {att.type.startsWith('image/') ? (
-                                                <img src={att.url} alt="Shared Image" className="bubble-image" onClick={(e) => { e.stopPropagation(); setFullscreenMedia(att); }} />
-                                            ) : att.type.startsWith('video/') ? (
-                                                <video src={att.url} className="bubble-image" onClick={(e) => { e.stopPropagation(); setFullscreenMedia(att); }} />
-                                            ) : (
-                                                <div className="bubble-file-box" onClick={(e) => { e.stopPropagation(); handleDownload(att.url, att.name); }}>
-                                                    <div className="bubble-file-icon"><i className="fas fa-file"></i></div>
-                                                    <div className="bubble-file-info">
-                                                        <span className="bubble-file-name">{att.name}</span>
+                                    {(() => {
+                                        if (!m.attachments || m.attachments.length === 0) return null;
+                                        
+                                        const mediaItems = m.attachments.filter(a => a.type.startsWith('image/') || a.type.startsWith('video/'));
+                                        const docItems = m.attachments.filter(a => !a.type.startsWith('image/') && !a.type.startsWith('video/'));
+                                        const hasMoreMedia = mediaItems.length > 5;
+                                        const displayMedia = mediaItems.slice(0, 5);
+
+                                        return (
+                                            <>
+                                                {displayMedia.length > 0 && (
+                                                    <div className="media-gallery-grid" data-count={displayMedia.length} data-more={hasMoreMedia.toString()}>
+                                                        {displayMedia.map((att, i) => {
+                                                            const isLast = i === 4;
+                                                            return (
+                                                                <div key={i} className="gallery-item" onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    setFullscreenGallery({ items: mediaItems, index: i });
+                                                                }}>
+                                                                    {att.type.startsWith('video/') ? (
+                                                                        <video src={att.url} />
+                                                                    ) : (
+                                                                        <img src={att.url} alt="Shared Image" />
+                                                                    )}
+                                                                    {isLast && hasMoreMedia && (
+                                                                        <div className="gallery-more-overlay" data-more-count={(mediaItems.length - 5).toString()}></div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                                )}
+                                                
+                                                {docItems.map((att, i) => {
+                                                    const iconData = getFileIconProps(att.name);
+                                                    return (
+                                                    <div key={i} className="bubble-attachment" style={{marginTop: i === 0 && displayMedia.length === 0 ? '0' : '4px'}}>
+                                                        <div className="bubble-file-box" onClick={(e) => { e.stopPropagation(); handleDownload(att.url, att.name); }}>
+                                                            <div className="bubble-file-icon" style={{color: iconData.color}}><i className={`fas ${iconData.icon}`}></i></div>
+                                                            <div className="bubble-file-info">
+                                                                <span className="bubble-file-name">{att.name}</span>
+                                                                <span style={{fontSize: '0.65rem', color: '#888'}}>{(att.size / 1024 / 1024).toFixed(2)} MB</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )})}
+                                            </>
+                                        );
+                                    })()}
 
                                     {m.text && <div className="bubble-text-content">{m.text}</div>}
                                     
@@ -1554,6 +1632,19 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                     {activeMenu.msg.text && (
                         <button className="squad-ctx-btn" onClick={() => handleCopy(activeMenu.msg.text)}>
                             <i className="fa-solid fa-copy"></i> Copy Text
+                        </button>
+                    )}
+                    {chat.metadata?.privacy !== 'private' && activeMenu.msg.attachments && activeMenu.msg.attachments.length > 0 && (
+                        <button className="squad-ctx-btn" onClick={() => {
+                            if (activeMenu.msg.attachments.length > 1) {
+                                if(window.confirm(`Download all ${activeMenu.msg.attachments.length} files?`)) {
+                                    handleDownloadAll(activeMenu.msg.attachments);
+                                }
+                            } else {
+                                handleDownload(activeMenu.msg.attachments[0].url, activeMenu.msg.attachments[0].name);
+                            }
+                        }}>
+                            <i className="fa-solid fa-download"></i> {activeMenu.msg.attachments.length > 1 ? 'Download All Files' : 'Download File'}
                         </button>
                     )}
                     {(!chat.metadata || chat.metadata.privacy !== 'private') && (
@@ -1615,23 +1706,31 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                                 </button>
                             </div>
                         )}
-                        
-                        {pendingAttachment && (
+                        {pendingAttachments.length > 0 && (
                             <div className="squad-input-mode-header staging-mode">
                                 <div className="mode-border staging-preview-border"></div>
-                                <div className="staging-preview-content">
-                                    {pendingAttachment.previewUrl ? (
-                                        <img src={pendingAttachment.previewUrl} alt="Preview" className="staging-thumb" />
-                                    ) : (
-                                        <div className="staging-file-icon"><i className="fas fa-file"></i></div>
-                                    )}
-                                    <div className="staging-file-details">
-                                        <span className="staging-title">Attachment ready</span>
-                                        <span className="staging-name">{pendingAttachment.file.name}</span>
-                                    </div>
+                                <div className="staging-preview-content" style={{ overflowX: 'auto', display: 'flex', gap: '8px' }}>
+                                    {pendingAttachments.map((pa, idx) => {
+                                        const iconData = getFileIconProps(pa.file.name);
+                                        return (
+                                        <div key={idx} style={{ position: 'relative', flexShrink: 0 }}>
+                                            {pa.previewUrl ? (
+                                                <img src={pa.previewUrl} alt="Preview" className="staging-thumb" />
+                                            ) : (
+                                                <div className="staging-file-icon" style={{color: iconData.color}}><i className={`fas ${iconData.icon}`}></i></div>
+                                            )}
+                                            <button 
+                                                className="icon-button" 
+                                                style={{ position: 'absolute', top: '-6px', right: '-6px', background: 'rgba(0,0,0,0.8)', width: '20px', height: '20px', fontSize: '0.6rem', border: '1px solid rgba(255,255,255,0.2)' }} 
+                                                onClick={() => setPendingAttachments(p => p.filter((_, i) => i !== idx))}
+                                            >
+                                                <i className="fa-solid fa-times"></i>
+                                            </button>
+                                        </div>
+                                    )})}
                                 </div>
-                                <button className="icon-button" onClick={() => setPendingAttachment(null)}>
-                                    <i className="fa-solid fa-times"></i>
+                                <button className="icon-button" onClick={() => setPendingAttachments([])} style={{color: '#ff5f5f', background: 'rgba(255,95,95,0.1)', width: '30px', height: '30px', flexShrink: 0}}>
+                                    <i className="fa-solid fa-trash"></i>
                                 </button>
                             </div>
                         )}
@@ -1788,15 +1887,36 @@ const GroupChat = ({ chat, currentUser, onClose, onJoin, isJoining, onForward, o
                     onOpenAdminSettings={() => setShowAdminSettings(true)}
                 />
             )}
-            {fullscreenMedia && (
-                <div className="fullscreen-media-overlay" onClick={() => setFullscreenMedia(null)}>
-                    <button className="icon-button close-media" onClick={() => setFullscreenMedia(null)}>
+            {fullscreenGallery && (
+                <div className="fullscreen-gallery-overlay" onClick={() => setFullscreenGallery(null)}>
+                    <button className="fg-close" onClick={() => setFullscreenGallery(null)}>
                         <i className="fas fa-times"></i>
                     </button>
-                    {fullscreenMedia.type.startsWith('video/') ? (
-                        <video src={fullscreenMedia.url} controls autoPlay onClick={e => e.stopPropagation()} style={{maxWidth: '100%', maxHeight: '100%'}} />
-                    ) : (
-                        <img src={fullscreenMedia.url} alt="Fullscreen Media" onClick={e => e.stopPropagation()} />
+                    
+                    {fullscreenGallery.items.length > 1 && (
+                        <button className="fg-nav prev" onClick={(e) => { e.stopPropagation(); setFullscreenGallery(p => ({ ...p, index: (p.index - 1 + p.items.length) % p.items.length })); }}>
+                            <i className="fas fa-chevron-left"></i>
+                        </button>
+                    )}
+                    
+                    <div className="fg-content" onClick={e => e.stopPropagation()}>
+                        {fullscreenGallery.items[fullscreenGallery.index].type.startsWith('video/') ? (
+                            <video src={fullscreenGallery.items[fullscreenGallery.index].url} controls autoPlay className="fg-item" />
+                        ) : (
+                            <img src={fullscreenGallery.items[fullscreenGallery.index].url} alt="Fullscreen Media" className="fg-item" />
+                        )}
+                    </div>
+
+                    {fullscreenGallery.items.length > 1 && (
+                        <button className="fg-nav next" onClick={(e) => { e.stopPropagation(); setFullscreenGallery(p => ({ ...p, index: (p.index + 1) % p.items.length })); }}>
+                            <i className="fas fa-chevron-right"></i>
+                        </button>
+                    )}
+                    
+                    {fullscreenGallery.items.length > 1 && (
+                        <div className="fg-counter">
+                            {fullscreenGallery.index + 1} / {fullscreenGallery.items.length}
+                        </div>
                     )}
                 </div>
             )}
