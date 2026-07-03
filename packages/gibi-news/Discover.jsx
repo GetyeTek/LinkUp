@@ -68,7 +68,7 @@ const TelegramCard = ({ post }) => {
 const Discover = () => {
     const { shell, user, unreadCount } = usePlatform();
     const onOpenActivity = shell.openActivity;
-    const [activeSubTab, setActiveSubTab] = useState('explore'); // 'explore' or 'feeds'
+    const [activeSubTab, setActiveSubTab] = useState('feeds'); // 'feeds' or 'explore'
     const [appsCollapsed, setAppsCollapsed] = useState(false);
     
     const [liveNews, setLiveNews] = useState([]);
@@ -120,19 +120,44 @@ const Discover = () => {
 
             <nav className="discover-sub-nav" ref={navRef}>
                 <div 
-                    className={`nav-item ${activeSubTab === 'explore' ? 'active' : ''}`} 
-                    onClick={() => setActiveSubTab('explore')}
-                >
-                    Explore
-                </div>
-                <div 
                     className={`nav-item ${activeSubTab === 'feeds' ? 'active' : ''}`} 
                     onClick={() => setActiveSubTab('feeds')}
                 >
-                    Feeds <span className="new-content-badge">New</span>
+                    Feeds
+                </div>
+                <div 
+                    className={`nav-item ${activeSubTab === 'explore' ? 'active' : ''}`} 
+                    onClick={() => setActiveSubTab('explore')}
+                >
+                    Explore <span className="new-content-badge">New</span>
                 </div>
                 <div className="nav-indicator" style={indicatorStyle}></div>
             </nav>
+
+            {/* Sub Tab: Feeds (Full Immersive Discovery Snap Feed) */}
+            <div className={`discover-sub-tab ${activeSubTab === 'feeds' ? 'active' : ''}`} id="discover-feeds">
+                <div className="feed-container">
+                    
+                    {/* LIVE SCRAPED TELEGRAM FEED INJECTION */}
+                    {newsLoading ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent-teal)' }}>
+                            <i className="fas fa-circle-notch fa-spin fa-2x"></i>
+                        </div>
+                    ) : (
+                        liveNews.length > 0 ? (
+                            liveNews.map(post => (
+                                <TelegramCard key={post.id} post={post} />
+                            ))
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#888' }}>
+                                <i className="fas fa-satellite-dish" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}></i>
+                                <p>Scanning frequencies...</p>
+                                <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>No live updates found. Make sure the sync worker has run.</p>
+                            </div>
+                        )
+                    )}
+                </div>
+            </div>
 
             {/* Sub Tab: Explore */}
             <div className={`discover-sub-tab ${activeSubTab === 'explore' ? 'active' : ''}`} id="discover-explore">
@@ -178,32 +203,6 @@ const Discover = () => {
                         </div>
                     </div>
                 </section>
-            </div>
-
-            {/* Sub Tab: Feeds (Full Immersive Discovery Snap Feed) */}
-            <div className={`discover-sub-tab ${activeSubTab === 'feeds' ? 'active' : ''}`} id="discover-feeds">
-                <div className="feed-container">
-                    
-                    {/* LIVE SCRAPED TELEGRAM FEED INJECTION */}
-                    {newsLoading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent-teal)' }}>
-                            <i className="fas fa-circle-notch fa-spin fa-2x"></i>
-                        </div>
-                    ) : (
-                        liveNews.length > 0 ? (
-                            liveNews.map(post => (
-                                <TelegramCard key={post.id} post={post} />
-                            ))
-                        ) : (
-                            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#888' }}>
-                                <i className="fas fa-satellite-dish" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}></i>
-                                <p>Scanning frequencies...</p>
-                                <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>No live updates found. Make sure the sync worker has run.</p>
-                            </div>
-                        )
-                    )}
-
-                </div>
             </div>
         </div>
     );
