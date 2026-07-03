@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-03T12:04:20.993Z
+-- Date: 2026-07-03T13:43:26.957Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -133,6 +133,8 @@ Table: notifications | Policy: Users can read own notifications | Cmd: SELECT | 
 Table: notifications | Policy: Users can update own notifications | Cmd: UPDATE | Using: (auth.uid() = user_id)
 Table: featured_events | Policy: Public read featured_events | Cmd: SELECT | Using: (is_active = true)
 Table: live_study_sessions | Policy: Public read active sessions | Cmd: SELECT | Using: true
+null
+null
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -1496,6 +1498,17 @@ BEGIN
     JOIN public.profiles p ON p.id = pq.user_id
     ORDER BY pq.created_at DESC
     LIMIT 50;
+END;
+
+
+-- Function: enforce_attachment_limits
+
+BEGIN
+    -- Check if attachments exist and if the array length exceeds 10
+    IF NEW.attachments IS NOT NULL AND jsonb_array_length(NEW.attachments) > 10 THEN
+        RAISE EXCEPTION 'Payload Rejected: Maximum of 10 attachments allowed per message.';
+    END IF;
+    RETURN NEW;
 END;
 
 
