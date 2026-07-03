@@ -1,86 +1,98 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-02T20:44:11.965Z
+-- Date: 2026-07-03T12:04:20.993Z
 
 -- ========================
 -- TABLES & COLUMNS
 -- ========================
 Table: api_keys
-service (text), is_active (boolean), id (bigint), created_at (text), cooldown_until (text), last_used_at (text), name (text), api_key (text)
+service (text), created_at (text), cooldown_until (text), name (text), is_active (boolean), id (bigint), last_used_at (text), api_key (text)
 
 Table: book_pages
-id (uuid), page_key (text), manual_flag (text), content_json (jsonb), page_number (integer), book_id (uuid), created_at (timestamp with time zone)
+page_number (integer), created_at (timestamp with time zone), book_id (uuid), content_json (jsonb), manual_flag (text), page_key (text), id (uuid)
 
 Table: book_question_links
-created_at (timestamp with time zone), question_id (uuid), chunk_id (uuid), id (uuid), similarity_score (double precision)
+question_id (uuid), chunk_id (uuid), id (uuid), created_at (timestamp with time zone), similarity_score (double precision)
 
 Table: books
-course_code (text), page_offset (integer), created_at (timestamp with time zone), toc (jsonb), id (uuid), title (text), category (text), cover_url (text), author (text)
+toc (jsonb), created_at (timestamp with time zone), cover_url (text), category (text), title (text), author (text), id (uuid), course_code (text), page_offset (integer)
 
 Table: chunks
-id (uuid), document_id (uuid), page_number (integer), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), prev_chunk_id (uuid), next_chunk_id (uuid), chunk_index (integer), chunk_text (text)
+next_chunk_id (uuid), chunk_text (text), id (uuid), document_id (uuid), page_number (integer), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), prev_chunk_id (uuid), chunk_index (integer)
 
 Table: conduit_favorites
-id (uuid), metadata (jsonb), repo_name (text), category (text), target_id (text), created_at (timestamp with time zone)
+repo_name (text), target_id (text), category (text), created_at (timestamp with time zone), id (uuid), metadata (jsonb)
 
 Table: conduit_history
-note (text), type (text), meta (text), created_at (timestamp with time zone), ops (jsonb), conduit_id (integer), id (uuid), repo_name (text), sha (text), title (text)
+conduit_id (integer), note (text), meta (text), type (text), title (text), sha (text), repo_name (text), created_at (timestamp with time zone), ops (jsonb), id (uuid)
 
 Table: conduit_logs
-repo_name (text), created_at (timestamp with time zone), id (uuid), type (text), data (jsonb)
+created_at (timestamp with time zone), data (jsonb), id (uuid), repo_name (text), type (text)
 
 Table: conversation_members
-created_at (timestamp with time zone), id (uuid), conversation_id (uuid), muted_until (timestamp with time zone), last_read_at (timestamp with time zone), role (USER-DEFINED), user_id (uuid)
+role (USER-DEFINED), conversation_id (uuid), user_id (uuid), id (uuid), muted_until (timestamp with time zone), created_at (timestamp with time zone), last_read_at (timestamp with time zone)
 
 Table: conversations
-title (character varying), avatar_url (text), metadata (jsonb), owner_id (uuid), last_message_at (timestamp with time zone), created_at (timestamp with time zone), type (USER-DEFINED), id (uuid)
+owner_id (uuid), created_at (timestamp with time zone), type (USER-DEFINED), id (uuid), title (character varying), avatar_url (text), metadata (jsonb), last_message_at (timestamp with time zone)
 
 Table: courses
-id (uuid), created_at (timestamp with time zone), department_id (uuid), name (text), code (text)
+id (uuid), created_at (timestamp with time zone), department_id (uuid), code (text), name (text)
 
 Table: departments
-id (uuid), name (text), created_at (timestamp with time zone)
+id (uuid), created_at (timestamp with time zone), name (text)
 
 Table: documents
-storage_path (text), last_processed_at (timestamp with time zone), page_count (integer), id (uuid), user_id (uuid), chunk_count (integer), created_at (timestamp with time zone), status (text), file_name (text)
+page_count (integer), last_processed_at (timestamp with time zone), id (uuid), file_name (text), storage_path (text), created_at (timestamp with time zone), chunk_count (integer), user_id (uuid), status (text)
 
 Table: embedding_progress
-status (text), book_id (uuid), updated_at (timestamp with time zone), locked_until (timestamp with time zone), error_message (text), block_index (integer), page_number (integer), id (uuid)
+status (text), id (uuid), page_number (integer), book_id (uuid), updated_at (timestamp with time zone), locked_until (timestamp with time zone), block_index (integer), error_message (text)
 
 Table: exams
-date (text), id (uuid), university_id (uuid), time_allowed_minutes (integer), total_marks (numeric), constants_provided (jsonb), exam_quality_notes (jsonb), media_summary (jsonb), created_at (timestamp with time zone), course_id (uuid), exam_type (text), program (text), general_instructions (text)
+date (text), program (text), time_allowed_minutes (integer), total_marks (numeric), constants_provided (jsonb), university_id (uuid), exam_quality_notes (jsonb), media_summary (jsonb), id (uuid), created_at (timestamp with time zone), course_id (uuid), general_instructions (text), exam_type (text)
+
+Table: featured_events
+button_text (text), tag_color (text), tag_text (text), image_url (text), body (text), action_type (text), title (text), id (uuid), app_route (jsonb), is_active (boolean), created_at (timestamp with time zone), metadata (jsonb), external_url (text), html_content (text), button_color (text)
+
+Table: live_study_sessions
+course_name (text), last_updated_at (timestamp with time zone), id (uuid), conversation_id (uuid), lesson_topic (text), active_user_ids (ARRAY)
 
 Table: messages
-is_edited (boolean), created_at (timestamp with time zone), attachments (jsonb), sender_id (uuid), conversation_id (uuid), id (uuid), text (text), forward_meta (jsonb), reply_to_id (uuid)
+attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean), id (uuid), forward_meta (jsonb), conversation_id (uuid), reply_to_id (uuid), text (text), sender_id (uuid)
 
 Table: migration_progress
-processed_at (timestamp with time zone), page_index (text), status (text), remote_id (text), pdf_name (text), id (uuid), error_message (text)
+id (uuid), processed_at (timestamp with time zone), status (text), error_message (text), page_index (text), pdf_name (text), remote_id (text)
 
 Table: migration_sync_state
-last_run_at (timestamp with time zone), id (integer), current_offset (integer)
+current_offset (integer), last_run_at (timestamp with time zone), id (integer)
 
 Table: news_feed
-telegram_id (bigint), full_text (text), image_url (text), post_url (text), snippet (text), title (text), channel (text), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), id (bigint)
+title (text), image_url (text), id (bigint), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), post_url (text), full_text (text), telegram_id (bigint), snippet (text), channel (text)
+
+Table: notifications
+description (text), action_data (jsonb), is_read (boolean), user_id (uuid), id (uuid), icon (text), type (text), created_at (timestamp with time zone), insight (text), title (text)
+
+Table: peer_questions
+created_at (timestamp with time zone), course_tag (text), body (text), id (uuid), title (text), user_id (uuid)
 
 Table: profiles
 bio (text), id (uuid), linkoin_balance (integer), updated_at (timestamp with time zone), last_seen_at (timestamp with time zone), university_id (uuid), last_username_change_at (timestamp with time zone), full_name (text), avatar_url (text), level (text), username (text), department (text), freshman_stream (text), year (text), target_department (text), program (text), phone (text)
 
 Table: question_book_mappings
-snippet (text), book_id (uuid), question_id (uuid), id (uuid), page_key (text), error_message (text), status (text), created_at (timestamp with time zone), processed_at (timestamp with time zone), content_index (integer), is_valid (boolean)
+created_at (timestamp with time zone), id (uuid), content_index (integer), is_valid (boolean), book_id (uuid), snippet (text), page_key (text), processed_at (timestamp with time zone), question_id (uuid), error_message (text), status (text)
 
 Table: question_reports
-id (uuid), created_at (timestamp with time zone), source (text), question_id (uuid), report_text (text), status (text)
+source (text), created_at (timestamp with time zone), id (uuid), question_id (uuid), status (text), report_text (text)
 
 Table: questions
-text (text), embedding (USER-DEFINED), retry_count (integer), created_at (timestamp with time zone), question_order (integer), question_number (text), transcription_quality (jsonb), question_type (text), media (jsonb), matching_data (jsonb), options (jsonb), points (numeric), section_id (uuid), id (uuid), embedding_status (text)
+question_order (integer), media (jsonb), transcription_quality (jsonb), matching_data (jsonb), question_type (text), question_number (text), created_at (timestamp with time zone), retry_count (integer), embedding (USER-DEFINED), id (uuid), section_id (uuid), text (text), embedding_status (text), points (numeric), options (jsonb)
 
 Table: sections
-exam_id (uuid), id (uuid), shared_context (jsonb), created_at (timestamp with time zone), section_order (integer), total_points (numeric), title (text), instructions (text)
+section_order (integer), created_at (timestamp with time zone), id (uuid), instructions (text), title (text), exam_id (uuid), total_points (numeric), shared_context (jsonb)
 
 Table: squad_bans
-id (uuid), created_at (timestamp with time zone), conversation_id (uuid), user_id (uuid), banned_until (timestamp with time zone)
+conversation_id (uuid), banned_until (timestamp with time zone), created_at (timestamp with time zone), id (uuid), user_id (uuid)
 
 Table: universities
-name (text), short_name (text), created_at (timestamp with time zone), id (uuid)
+created_at (timestamp with time zone), id (uuid), short_name (text), name (text)
 
 -- ========================
 -- RLS POLICIES
@@ -114,6 +126,13 @@ null
 Table: profiles | Policy: Sensitive data visibility | Cmd: SELECT | Using: (auth.uid() = id)
 Table: profiles | Policy: Users can delete their own profile | Cmd: DELETE | Using: (auth.uid() = id)
 Table: conversation_members | Policy: Users can update their own conversation member status | Cmd: UPDATE | Using: (auth.uid() = user_id)
+null
+Table: peer_questions | Policy: Public read peer_questions | Cmd: SELECT | Using: true
+null
+Table: notifications | Policy: Users can read own notifications | Cmd: SELECT | Using: (auth.uid() = user_id)
+Table: notifications | Policy: Users can update own notifications | Cmd: UPDATE | Using: (auth.uid() = user_id)
+Table: featured_events | Policy: Public read featured_events | Cmd: SELECT | Using: (is_active = true)
+Table: live_study_sessions | Policy: Public read active sessions | Cmd: SELECT | Using: true
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -748,55 +767,31 @@ END;
 
 -- Function: squad_kick_member
 
+DECLARE
+    executor_role text;
+    target_role text;
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM public.conversation_members 
-        WHERE conversation_id = req_conv_id 
-        AND user_id = auth.uid() 
-        AND role IN ('owner', 'admin')
-    ) THEN
+    -- 1. Get Executor Role
+    SELECT role INTO executor_role FROM public.conversation_members 
+    WHERE conversation_id = req_conv_id AND user_id = auth.uid();
+
+    IF executor_role NOT IN ('owner', 'admin') THEN
         RAISE EXCEPTION 'Access Denied: Administrative privileges required.';
     END IF;
 
-    DELETE FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = req_target_id;
-END;
-
-
--- Function: squad_ban_member
-
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM public.conversation_members 
-        WHERE conversation_id = req_conv_id 
-        AND user_id = auth.uid() 
-        AND role IN ('owner', 'admin')
-    ) THEN
-        RAISE EXCEPTION 'Access Denied: Administrative privileges required.';
-    END IF;
-    
-    INSERT INTO public.squad_bans (conversation_id, user_id, banned_until) 
-    VALUES (req_conv_id, req_target_id, req_banned_until)
-    ON CONFLICT (conversation_id, user_id) 
-    DO UPDATE SET banned_until = EXCLUDED.banned_until;
-    
-    DELETE FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = req_target_id;
-END;
-
-
--- Function: squad_mute_member
-
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM public.conversation_members 
-        WHERE conversation_id = req_conv_id 
-        AND user_id = auth.uid() 
-        AND role IN ('owner', 'admin')
-    ) THEN
-        RAISE EXCEPTION 'Access Denied: Administrative privileges required.';
-    END IF;
-    
-    UPDATE public.conversation_members SET muted_until = req_muted_until 
+    -- 2. Get Target Role
+    SELECT role INTO target_role FROM public.conversation_members 
     WHERE conversation_id = req_conv_id AND user_id = req_target_id;
+
+    -- 3. Enforce Hierarchy
+    IF target_role = 'owner' THEN
+        RAISE EXCEPTION 'Mutiny Prevented: You cannot kick the group owner.';
+    END IF;
+    IF target_role = 'admin' AND executor_role != 'owner' THEN
+        RAISE EXCEPTION 'Hierarchy Violation: Only the owner can kick an admin.';
+    END IF;
+
+    DELETE FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = req_target_id;
 END;
 
 
@@ -1037,45 +1032,6 @@ BEGIN
 END;
 
 
--- Function: protect_member_roles
-
-BEGIN
-    IF auth.role() = 'authenticated' AND NEW.role IS DISTINCT FROM OLD.role THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM conversation_members 
-            WHERE conversation_id = NEW.conversation_id AND user_id = auth.uid() AND role = 'owner'
-        ) THEN
-            RAISE EXCEPTION 'Security Violation: Role elevation is strictly prohibited.';
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-
-
--- Function: get_or_create_notes
-
-DECLARE
-    conv_id uuid;
-BEGIN
-    IF req_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Access Denied: You cannot create notes for another user.';
-    END IF;
-
-    SELECT c.id INTO conv_id
-    FROM public.conversations c
-    JOIN public.conversation_members cm ON c.id = cm.conversation_id
-    WHERE c.type = 'notes' AND cm.user_id = req_user_id
-    LIMIT 1;
-
-    IF conv_id IS NULL THEN
-        INSERT INTO public.conversations (type, title, owner_id) VALUES ('notes', 'My Notes', req_user_id) RETURNING id INTO conv_id;
-        INSERT INTO public.conversation_members (conversation_id, user_id, role) VALUES (conv_id, req_user_id, 'admin');
-    END IF;
-
-    RETURN conv_id;
-END;
-
-
 -- Function: get_social_discovery
 
 DECLARE
@@ -1104,6 +1060,52 @@ BEGIN
     )
     ORDER BY tier ASC, p.last_seen_at DESC NULLS LAST
     LIMIT 30;
+END;
+
+
+-- Function: protect_member_roles
+
+BEGIN
+    -- Only apply restrictions to API calls made by users (not server-side scripts)
+    IF auth.role() = 'authenticated' THEN
+        -- Check if either the role or the mute status is being modified
+        IF NEW.role IS DISTINCT FROM OLD.role OR NEW.muted_until IS DISTINCT FROM OLD.muted_until THEN
+            -- Only allow the modification if the user performing the action is an admin/owner
+            IF NOT EXISTS (
+                SELECT 1 FROM public.conversation_members 
+                WHERE conversation_id = NEW.conversation_id 
+                  AND user_id = auth.uid() 
+                  AND role IN ('owner', 'admin')
+            ) THEN
+                RAISE EXCEPTION 'Security Violation: You do not have permission to alter roles or mute durations.';
+            END IF;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+
+
+-- Function: get_or_create_notes
+
+DECLARE
+    conv_id uuid;
+BEGIN
+    IF req_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Access Denied: You cannot create notes for another user.';
+    END IF;
+
+    SELECT c.id INTO conv_id
+    FROM public.conversations c
+    JOIN public.conversation_members cm ON c.id = cm.conversation_id
+    WHERE c.type = 'notes' AND cm.user_id = req_user_id
+    LIMIT 1;
+
+    IF conv_id IS NULL THEN
+        INSERT INTO public.conversations (type, title, owner_id) VALUES ('notes', 'My Notes', req_user_id) RETURNING id INTO conv_id;
+        INSERT INTO public.conversation_members (conversation_id, user_id, role) VALUES (conv_id, req_user_id, 'admin');
+    END IF;
+
+    RETURN conv_id;
 END;
 
 
@@ -1175,11 +1177,171 @@ BEGIN
 END;
 
 
+-- Function: create_direct_message
+
+DECLARE
+  new_conv_id UUID;
+  existing_conv_id UUID;
+  recent_dm_count INTEGER;
+BEGIN
+  -- 1. Prevent concurrent creation of duplicate DMs
+  SELECT c.id INTO existing_conv_id
+  FROM public.conversations c
+  JOIN public.conversation_members cm1 ON c.id = cm1.conversation_id
+  JOIN public.conversation_members cm2 ON c.id = cm2.conversation_id
+  WHERE c.type = 'dm' 
+    AND cm1.user_id = auth.uid() 
+    AND cm2.user_id = target_user_id
+  LIMIT 1;
+
+  IF existing_conv_id IS NOT NULL THEN
+      RETURN existing_conv_id;
+  END IF;
+
+  -- 2. Anti-Spam: Limit new DMs to 15 per 24 hours to prevent DB blooming
+  SELECT COUNT(*) INTO recent_dm_count
+  FROM public.conversations c
+  JOIN public.conversation_members cm ON c.id = cm.conversation_id
+  WHERE c.type = 'dm' 
+    AND cm.user_id = auth.uid()
+    AND c.created_at > (now() - interval '24 hours');
+
+  IF recent_dm_count >= 15 THEN
+      RAISE EXCEPTION 'Anti-Spam limits engaged: You have reached the maximum number of new direct message threads (15) allowed per 24 hours.';
+  END IF;
+
+  -- 3. Create DM
+  INSERT INTO public.conversations (type) VALUES ('dm') RETURNING id INTO new_conv_id;
+  
+  INSERT INTO public.conversation_members (conversation_id, user_id) 
+  VALUES (new_conv_id, auth.uid()), (new_conv_id, target_user_id);
+  
+  RETURN new_conv_id;
+END;
+
+
 -- Function: leave_squad
 
 BEGIN
     DELETE FROM public.conversation_members
     WHERE conversation_id = req_conv_id AND user_id = auth.uid();
+END;
+
+
+-- Function: global_network_search
+
+BEGIN
+    RETURN QUERY
+    -- 1. Search Users (Matching Name or Username)
+    SELECT 
+        p.id,
+        'user'::TEXT AS type,
+        p.full_name AS title,
+        p.username AS subtitle,
+        p.avatar_url,
+        '{}'::JSONB AS metadata,
+        EXISTS (
+            SELECT 1 FROM conversation_members cm1
+            JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+            JOIN conversations c ON cm1.conversation_id = c.id
+            WHERE c.type = 'dm' AND cm1.user_id = req_user_id AND cm2.user_id = p.id
+        ) AS is_member
+    FROM public.profiles p
+    WHERE p.id != req_user_id
+      AND (p.full_name ILIKE ('%' || search_term || '%') OR p.username ILIKE ('%' || search_term || '%'))
+    
+    UNION ALL
+    
+    -- 2. Search Groups (Matching Group Title)
+    SELECT 
+        c.id,
+        'group'::TEXT AS type,
+        c.title,
+        COALESCE(c.metadata->>'focus', 'General') AS subtitle,
+        c.avatar_url,
+        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
+        EXISTS (
+            SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id
+        ) AS is_member
+    FROM public.conversations c
+    WHERE c.type = 'group'
+      AND c.title ILIKE ('%' || search_term || '%')
+      AND (
+          -- Include public groups, OR private groups the user is already a member of
+          (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
+          OR 
+          EXISTS (SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id)
+      )
+    LIMIT 30;
+END;
+
+
+-- Function: enforce_forward_privacy
+
+DECLARE
+   origin_privacy text;
+   origin_type text;
+   real_sender_name text;
+   real_sender_avatar text;
+BEGIN
+   IF NEW.forward_meta IS NOT NULL AND NEW.forward_meta->>'original_conversation_id' IS NOT NULL THEN
+      -- Fetch the truth about the origin conversation
+      SELECT type, metadata->>'privacy' INTO origin_type, origin_privacy
+      FROM public.conversations 
+      WHERE id = (NEW.forward_meta->>'original_conversation_id')::uuid;
+
+      -- BLOCK 1: Absolute blockade against extracting from private groups
+      IF origin_type = 'group' AND origin_privacy = 'private' THEN
+         RAISE EXCEPTION 'Access Denied: Cannot forward messages originating from a private group.';
+      END IF;
+
+      -- BLOCK 2: Anti-Spoofing. Force overwrite the sender's identity with DB truth.
+      IF NEW.forward_meta->>'original_sender_id' IS NOT NULL THEN
+          SELECT full_name, avatar_url INTO real_sender_name, real_sender_avatar
+          FROM public.profiles
+          WHERE id = (NEW.forward_meta->>'original_sender_id')::uuid;
+
+          IF FOUND THEN
+              -- Overwrite whatever the client sent with the absolute truth
+              NEW.forward_meta := jsonb_set(NEW.forward_meta, '{original_sender_name}', to_jsonb(real_sender_name), true);
+              NEW.forward_meta := jsonb_set(NEW.forward_meta, '{original_sender_avatar}', to_jsonb(COALESCE(real_sender_avatar, '')), true);
+          ELSE
+              -- If sender ID doesn't exist, flag it
+              NEW.forward_meta := jsonb_set(NEW.forward_meta, '{original_sender_name}', '"Deleted Account"', true);
+          END IF;
+      END IF;
+   END IF;
+   RETURN NEW;
+END;
+
+
+-- Function: join_study_group
+
+DECLARE
+    ban_record RECORD;
+    conv_privacy text;
+BEGIN
+    IF req_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Access Denied: You cannot force another user to join a group.';
+    END IF;
+
+    SELECT metadata->>'privacy' INTO conv_privacy FROM public.conversations WHERE id = req_conversation_id;
+    IF conv_privacy = 'private' THEN
+        RAISE EXCEPTION 'Access Denied: This group is private.';
+    END IF;
+
+    SELECT banned_until INTO ban_record FROM public.squad_bans WHERE conversation_id = req_conversation_id AND user_id = req_user_id;
+    IF FOUND THEN
+        IF ban_record.banned_until IS NULL OR ban_record.banned_until > now() THEN
+            RAISE EXCEPTION 'Access Denied: You are banned from this group.';
+        ELSE
+            DELETE FROM public.squad_bans WHERE conversation_id = req_conversation_id AND user_id = req_user_id;
+        END IF;
+    END IF;
+
+    INSERT INTO public.conversation_members (conversation_id, user_id, role)
+    VALUES (req_conversation_id, req_user_id, 'member')
+    ON CONFLICT DO NOTHING;
 END;
 
 
@@ -1239,131 +1401,213 @@ BEGIN
 END;
 
 
--- Function: create_direct_message
+-- Function: squad_ban_member
 
 DECLARE
-  new_conv_id UUID;
-  existing_conv_id UUID;
+    executor_role text;
+    target_role text;
 BEGIN
-  -- Prevent concurrent creation of duplicate DMs
-  SELECT c.id INTO existing_conv_id
-  FROM public.conversations c
-  JOIN public.conversation_members cm1 ON c.id = cm1.conversation_id
-  JOIN public.conversation_members cm2 ON c.id = cm2.conversation_id
-  WHERE c.type = 'dm' 
-    AND cm1.user_id = auth.uid() 
-    AND cm2.user_id = target_user_id
-  LIMIT 1;
+    SELECT role INTO executor_role FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = auth.uid();
+    IF executor_role NOT IN ('owner', 'admin') THEN RAISE EXCEPTION 'Access Denied: Administrative privileges required.'; END IF;
 
-  IF existing_conv_id IS NOT NULL THEN
-      RETURN existing_conv_id;
-  END IF;
+    SELECT role INTO target_role FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = req_target_id;
+    
+    IF target_role = 'owner' THEN RAISE EXCEPTION 'Mutiny Prevented: You cannot ban the group owner.'; END IF;
+    IF target_role = 'admin' AND executor_role != 'owner' THEN RAISE EXCEPTION 'Hierarchy Violation: Only the owner can ban an admin.'; END IF;
 
-  INSERT INTO public.conversations (type) VALUES ('dm') RETURNING id INTO new_conv_id;
-  
-  INSERT INTO public.conversation_members (conversation_id, user_id) 
-  VALUES (new_conv_id, auth.uid()), (new_conv_id, target_user_id);
-  
-  RETURN new_conv_id;
+    INSERT INTO public.squad_bans (conversation_id, user_id, banned_until) 
+    VALUES (req_conv_id, req_target_id, req_banned_until)
+    ON CONFLICT (conversation_id, user_id) 
+    DO UPDATE SET banned_until = EXCLUDED.banned_until;
+    
+    DELETE FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = req_target_id;
 END;
 
 
--- Function: join_study_group
+-- Function: squad_mute_member
 
 DECLARE
-    ban_record RECORD;
-    conv_privacy text;
+    executor_role text;
+    target_role text;
 BEGIN
-    IF req_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Access Denied: You cannot force another user to join a group.';
-    END IF;
+    SELECT role INTO executor_role FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = auth.uid();
+    IF executor_role NOT IN ('owner', 'admin') THEN RAISE EXCEPTION 'Access Denied: Administrative privileges required.'; END IF;
 
-    SELECT metadata->>'privacy' INTO conv_privacy FROM public.conversations WHERE id = req_conversation_id;
-    IF conv_privacy = 'private' THEN
-        RAISE EXCEPTION 'Access Denied: This group is private.';
-    END IF;
+    SELECT role INTO target_role FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = req_target_id;
+    
+    IF target_role = 'owner' THEN RAISE EXCEPTION 'Mutiny Prevented: You cannot mute the group owner.'; END IF;
+    IF target_role = 'admin' AND executor_role != 'owner' THEN RAISE EXCEPTION 'Hierarchy Violation: Only the owner can mute an admin.'; END IF;
 
-    SELECT banned_until INTO ban_record FROM public.squad_bans WHERE conversation_id = req_conversation_id AND user_id = req_user_id;
-    IF FOUND THEN
-        IF ban_record.banned_until IS NULL OR ban_record.banned_until > now() THEN
-            RAISE EXCEPTION 'Access Denied: You are banned from this group.';
-        ELSE
-            DELETE FROM public.squad_bans WHERE conversation_id = req_conversation_id AND user_id = req_user_id;
+    UPDATE public.conversation_members SET muted_until = req_muted_until 
+    WHERE conversation_id = req_conv_id AND user_id = req_target_id;
+END;
+
+
+-- Function: prevent_msg_tampering_fn
+
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        -- Prevent teleportation & impersonation (from previous patch)
+        IF NEW.conversation_id != OLD.conversation_id THEN RAISE EXCEPTION 'Security Violation: Cannot move messages.'; END IF;
+        IF NEW.sender_id != OLD.sender_id THEN RAISE EXCEPTION 'Security Violation: Cannot change sender.'; END IF;
+        IF NEW.forward_meta IS DISTINCT FROM OLD.forward_meta THEN RAISE EXCEPTION 'Security Violation: Cannot tamper with forward metadata.'; END IF;
+        IF NEW.attachments IS DISTINCT FROM OLD.attachments THEN RAISE EXCEPTION 'Security Violation: Cannot alter message attachments.'; END IF;
+        IF NEW.reply_to_id IS DISTINCT FROM OLD.reply_to_id THEN RAISE EXCEPTION 'Security Violation: Cannot alter reply target.'; END IF;
+        
+        -- NEW: Prevent editing messages older than 24 hours
+        IF NEW.text IS DISTINCT FROM OLD.text THEN
+            IF OLD.created_at < (now() - interval '24 hours') THEN
+                RAISE EXCEPTION 'Time Limit Exceeded: Messages cannot be edited after 24 hours.';
+            END IF;
         END IF;
     END IF;
-
-    INSERT INTO public.conversation_members (conversation_id, user_id, role)
-    VALUES (req_conversation_id, req_user_id, 'member')
-    ON CONFLICT DO NOTHING;
+    RETURN NEW;
 END;
 
 
--- Function: enforce_forward_privacy
+-- Function: rate_limit_messages_fn
 
 DECLARE
-   origin_privacy text;
-   origin_type text;
+    recent_count INTEGER;
 BEGIN
-   -- Only check if this is an explicitly forwarded message tracking an origin
-   IF NEW.forward_meta IS NOT NULL AND NEW.forward_meta->>'original_conversation_id' IS NOT NULL THEN
-      SELECT type, metadata->>'privacy' INTO origin_type, origin_privacy
-      FROM public.conversations 
-      WHERE id = (NEW.forward_meta->>'original_conversation_id')::uuid;
+    IF auth.role() = 'authenticated' THEN
+        -- Count how many messages this user sent in the last 60 seconds
+        SELECT COUNT(*) INTO recent_count
+        FROM public.messages
+        WHERE sender_id = NEW.sender_id
+        AND created_at > (now() - interval '1 minute');
 
-      -- Absolute blockade against extracting from private groups
-      IF origin_type = 'group' AND origin_privacy = 'private' THEN
-         RAISE EXCEPTION 'Access Denied: Cannot forward messages originating from a private group.';
-      END IF;
-   END IF;
-   RETURN NEW;
+        -- Cap at 60 messages per minute (1 per second on average is plenty)
+        IF recent_count >= 60 THEN
+            RAISE EXCEPTION 'Rate Limit Exceeded: You are sending messages too quickly. Please wait a minute.';
+        END IF;
+    END IF;
+    RETURN NEW;
 END;
 
 
--- Function: global_network_search
+-- Function: get_peer_questions
 
 BEGIN
     RETURN QUERY
-    -- 1. Search Users (Matching Name or Username)
+    SELECT pq.id, pq.title, pq.body, pq.course_tag, pq.created_at,
+           pq.user_id AS asker_id, p.full_name AS asker_name, p.avatar_url AS asker_avatar
+    FROM public.peer_questions pq
+    JOIN public.profiles p ON p.id = pq.user_id
+    ORDER BY pq.created_at DESC
+    LIMIT 50;
+END;
+
+
+-- Function: get_featured_events
+
+BEGIN
+    RETURN QUERY 
+    SELECT fe.id, fe.title, fe.body, fe.image_url, fe.tag_text, fe.tag_color, 
+           fe.button_text, fe.button_color, fe.action_type, fe.html_content, 
+           fe.external_url, fe.app_route, fe.metadata, fe.created_at
+    FROM public.featured_events fe
+    WHERE fe.is_active = true
+    ORDER BY fe.created_at DESC;
+END;
+
+
+-- Function: reply_to_peer_question
+
+DECLARE
+    v_asker_id uuid;
+    v_q_title text;
+    v_dm_id uuid;
+    v_replier_name text;
+    v_msg_id uuid;
+BEGIN
+    -- Locate target
+    SELECT user_id, title INTO v_asker_id, v_q_title FROM public.peer_questions WHERE id = req_question_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Question not found'; END IF;
+    IF v_asker_id = auth.uid() THEN RAISE EXCEPTION 'Cannot reply to your own question.'; END IF;
+
+    -- Get sender identity
+    SELECT full_name INTO v_replier_name FROM public.profiles WHERE id = auth.uid();
+
+    -- Instanciate or grab existing DM via our previous robust RPC
+    v_dm_id := public.create_direct_message(v_asker_id);
+
+    -- Insert the quoted message context and the reply, returning the specific message ID
+    INSERT INTO public.messages (conversation_id, sender_id, text)
+    VALUES (v_dm_id, auth.uid(), 'Replying to your question: "' || v_q_title || '"' || E'\n\n' || req_reply_text)
+    RETURNING id INTO v_msg_id;
+
+    -- Fire the refined notification with exact deep-link payload
+    INSERT INTO public.notifications (user_id, type, title, description, icon, action_data)
+    VALUES (
+        v_asker_id, 
+        'study', 
+        v_replier_name || ' answered your question!', 
+        'They replied to your question regarding "' || v_q_title || '".',
+        'fa-comment-dots',
+        jsonb_build_object('action', 'open_chat', 'conversation_id', v_dm_id, 'message_id', v_msg_id, 'chat_type', 'dm')
+    );
+END;
+
+
+-- Function: get_live_study_sessions
+
+DECLARE
+    my_uni uuid;
+    my_stream text;
+BEGIN
+    -- Get the viewer's academic profile
+    SELECT university_id, freshman_stream INTO my_uni, my_stream
+    FROM public.profiles WHERE id = req_user_id;
+
+    RETURN QUERY
+    WITH EligibleSessions AS (
+        SELECT s.id, s.conversation_id, s.course_name, s.lesson_topic, s.active_user_ids, s.last_updated_at
+        FROM public.live_study_sessions s
+        WHERE 
+        -- Only consider sessions active in the last 2 hours
+        s.last_updated_at > now() - interval '2 hours'
+        AND
+        -- Miron's Intelligent Course Routing Filter
+        CASE 
+            WHEN s.course_name ILIKE ANY(ARRAY['%Biology%', '%Chemistry%', '%Physics%']) THEN my_stream = 'Natural Science'
+            WHEN s.course_name ILIKE ANY(ARRAY['%Geography%', '%History%', '%Anthropology%']) THEN my_stream = 'Social Science'
+            ELSE TRUE -- Universal courses like Math, English, Logic
+        END
+    ),
+    SessionStats AS (
+        SELECT 
+            es.id AS sid,
+            -- Tally exact relational proximity (ignoring the viewer themselves)
+            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id = my_uni AND p.freshman_stream = my_stream) AS classmates_count,
+            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id = my_uni AND p.freshman_stream != my_stream) AS campus_mates_count,
+            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id != my_uni AND p.freshman_stream = my_stream) AS scholars_count,
+            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id) AS total_count
+        FROM EligibleSessions es
+    )
     SELECT 
-        p.id,
-        'user'::TEXT AS type,
-        p.full_name AS title,
-        p.username AS subtitle,
-        p.avatar_url,
-        '{}'::JSONB AS metadata,
-        EXISTS (
-            SELECT 1 FROM conversation_members cm1
-            JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
-            JOIN conversations c ON cm1.conversation_id = c.id
-            WHERE c.type = 'dm' AND cm1.user_id = req_user_id AND cm2.user_id = p.id
-        ) AS is_member
-    FROM public.profiles p
-    WHERE p.id != req_user_id
-      AND (p.full_name ILIKE ('%' || search_term || '%') OR p.username ILIKE ('%' || search_term || '%'))
-    
-    UNION ALL
-    
-    -- 2. Search Groups (Matching Group Title)
-    SELECT 
-        c.id,
-        'group'::TEXT AS type,
-        c.title,
-        COALESCE(c.metadata->>'focus', 'General') AS subtitle,
-        c.avatar_url,
-        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
-        EXISTS (
-            SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id
-        ) AS is_member
-    FROM public.conversations c
-    WHERE c.type = 'group'
-      AND c.title ILIKE ('%' || search_term || '%')
-      AND (
-          -- Include public groups, OR private groups the user is already a member of
-          (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
-          OR 
-          EXISTS (SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id)
-      )
-    LIMIT 30;
+        es.id,
+        es.conversation_id,
+        es.course_name,
+        es.lesson_topic,
+        -- The Dynamic Text Engine
+        CASE
+            WHEN ss.classmates_count > 0 THEN 
+                ss.classmates_count::text || ' classmates from your stream are studying this right now. Join and share notes!'
+            WHEN ss.campus_mates_count > 0 THEN 
+                ss.campus_mates_count::text || ' students from your campus are studying this right now. Join and share notes!'
+            WHEN ss.scholars_count > 0 THEN 
+                ss.scholars_count::text || ' freshman scholars from other universities are studying this right now.'
+            ELSE 
+                ss.total_count::text || ' students are studying this right now. Join the session!'
+        END AS dynamic_message,
+        ss.total_count::integer AS participant_count,
+        es.last_updated_at
+    FROM EligibleSessions es
+    JOIN SessionStats ss ON es.id = ss.sid
+    WHERE ss.total_count > 0
+    ORDER BY ss.classmates_count DESC, ss.total_count DESC, es.last_updated_at DESC
+    LIMIT 5;
 END;
 
 
