@@ -522,12 +522,18 @@ const App = () => {
   const [requiresPasswordReset, setRequiresPasswordReset] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [showOfflineBanner, setShowOfflineBanner] = useState(!navigator.onLine);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [routePayload, setRoutePayload] = useState(null);
 
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => { 
+        setIsOffline(false); 
+        setTimeout(() => setShowOfflineBanner(false), 3000); 
+    };
+    const handleOffline = () => { 
+        setIsOffline(true); 
+        setShowOfflineBanner(true); 
+    };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
@@ -802,9 +808,14 @@ const App = () => {
 
   return (
     <div className="app-container">
-      {isOffline && (
-          <div className="global-offline-banner">
-              <i className="fas fa-wifi-slash"></i> Offline Mode - Messages will sync when connection is restored.
+      {showOfflineBanner && (
+          <div className={`global-offline-banner ${!isOffline ? 'restored' : ''}`}>
+              {isOffline ? (
+                  <><i className="fas fa-wifi-slash"></i> <span>Offline. Waiting for network...</span></>
+              ) : (
+                  <><i className="fas fa-wifi" style={{color: '#42d7b8'}}></i> <span style={{color: '#42d7b8'}}>Connection restored.</span></>
+              )}
+              <button className="close-btn" onClick={() => setShowOfflineBanner(false)}><i className="fas fa-times"></i></button>
           </div>
       )}
       <PlatformProvider value={{ 
