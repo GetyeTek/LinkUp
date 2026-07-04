@@ -1,0 +1,7 @@
+{
+  "name": "gemini-live-proxy",
+  "type": "module",
+  "dependencies": {
+    "agents": "^0.10.0"
+  }
+}
