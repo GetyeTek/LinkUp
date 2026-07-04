@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
-import { LiveKitRoom, useParticipants, RoomAudioRenderer } from 'https://cdn.jsdelivr.net/npm/@livekit/components-react@2.6.2/+esm';
+import { LiveKitRoom, useParticipants, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
 import { invokeLiveToken } from './api.js';
 import './GroupChat.css';
