@@ -12,4 +12,4 @@ class_name = "GeminiLiveAgent"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["GeminiLiveAgent"]
+new_sqlite_classes = ["GeminiLiveAgent"]
