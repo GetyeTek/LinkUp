@@ -722,8 +722,8 @@
 
 .stage-core {
     flex: 1; display: flex; flex-direction: column; justify-content: flex-start;
-    align-items: center; gap: 1.5rem; z-index: 10; padding: 2rem 1.5rem; position: relative;
-    overflow-y: auto; /* Traps the scroll inside the stage */
+    align-items: center; gap: 1.5rem; z-index: 10; padding: 1.5rem 1.5rem 0.5rem; position: relative;
+    overflow: hidden; /* Reverts full-screen scrolling */
     min-height: 0; 
     width: 100%;
 }
@@ -764,8 +764,12 @@
 
 .stage-questions-box {
     width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px;
-    flex: none; /* Let it grow naturally inside the scrolling stage-core */
+    flex: 1; min-height: 0; overflow-y: auto; /* Let only the list scroll */
+    padding-bottom: 1rem;
+    mask-image: linear-gradient(to top, transparent, white 10%);
+    -webkit-mask-image: linear-gradient(to top, transparent, white 10%);
 }
+.stage-questions-box::-webkit-scrollbar { display: none; }
 
 .stage-question-card {
     background: rgba(155, 89, 182, 0.1); border-left: 3px solid var(--purple-glow);
@@ -798,16 +802,21 @@
 /* Hostess Moderation Panel */
 .host-mod-panel {
     width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 10px;
-    flex: none; height: auto; /* Let it grow naturally inside the scrolling stage-core */
+    flex: 1; min-height: 0; overflow: hidden; /* Keeps the list confined */
 }
-.mod-tabs { display: flex; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px; margin-bottom: 4px; }
+.mod-tabs { display: flex; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px; margin-bottom: 4px; flex-shrink: 0; }
 .mod-tabs button {
     flex: 1; background: transparent; border: none; padding: 8px; color: #888;
     font-weight: 600; font-size: 0.8rem; border-radius: 8px; cursor: pointer; transition: all 0.2s;
 }
 .mod-tabs button.active { background: #333; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
 
-.mod-q-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 1rem; }
+.mod-q-list { 
+    flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 1rem; 
+    mask-image: linear-gradient(to top, transparent, white 10%);
+    -webkit-mask-image: linear-gradient(to top, transparent, white 10%);
+}
+.mod-q-list::-webkit-scrollbar { display: none; }
 .mod-q-list::-webkit-scrollbar { display: none; }
 .mod-q-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; }
 .mqc-header { font-size: 0.75rem; font-weight: 600; color: var(--accent-teal); margin-bottom: 4px; }
