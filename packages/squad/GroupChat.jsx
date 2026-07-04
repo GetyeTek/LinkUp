@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
-import { LiveKitRoom, useParticipants, useIsSpeaking, RoomAudioRenderer } from '@livekit/components-react';
+import { LiveKitRoom, useParticipants, useIsSpeaking, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?bundle&deps=livekit-client@2.6.2&external=react,react-dom';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
 import { invokeLiveToken } from './api.js';
 import './GroupChat.css';
 
-const FloatingLiveOrb = ({ hostAvatar, onClick }) => {
+const FloatingLiveOrb = ({ hostAvatar, hostId, onClick }) => {
     const orbRef = useRef(null);
     const [pos, setPos] = useState({ x: window.innerWidth - 96, y: window.innerHeight - 240 });
     const dragStart = useRef(null);
-    const isSpeaking = useIsSpeaking(useParticipants().find(p => p.isSpeaking));
+    const participants = useParticipants();
+    const hostParticipant = participants.find(p => p.identity === hostId);
+    const isSpeaking = useIsSpeaking(hostParticipant);
 
     const handlePointerDown = (e) => {
         e.target.setPointerCapture(e.pointerId);
@@ -67,7 +69,7 @@ const LiveStageContent = ({ chatInfo, members, liveState, setLiveState, onLeave,
     }, [liveQuestions]);
 
     if (liveState === 'minimized') {
-        return <FloatingLiveOrb hostAvatar={hostInfo.avatar} onClick={() => setLiveState('full')} />;
+        return <FloatingLiveOrb hostAvatar={hostInfo.avatar} hostId={hostId} onClick={() => setLiveState('full')} />;
     }
 
     return (
