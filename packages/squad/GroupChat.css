@@ -712,7 +712,10 @@
     background: rgba(255,255,255,0.05); border: none; color: #fff;
     width: 38px; height: 38px; border-radius: 50%; display: flex;
     align-items: center; justify-content: center; cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.1s ease-out, background 0.2s;
 }
+.minimize-stage-btn:active { transform: scale(0.85); background: rgba(255,255,255,0.1); }
 
 .stage-title-wrap { text-align: center; }
 .stage-topic-title { font-family: 'Newsreader', serif; font-size: 1.25rem; font-weight: 500; }
