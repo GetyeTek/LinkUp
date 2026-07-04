@@ -1,4 +1,4 @@
-import { Agent, routeAgentRequest } from "agents";
+import { Agent, routeAgentRequest, getAgentByName } from "agents";
 
 // ==============================================================================
 // 1. THE STATEFUL DURABLE OBJECT VOICE AGENT (MIRON)
@@ -158,8 +158,7 @@ export default {
       const agentId = url.searchParams.get("agent");
       if (!agentId) return new Response("Missing agent ID", { status: 400 });
       
-      const id = env.GeminiLiveAgent.idFromName(agentId);
-      const stub = env.GeminiLiveAgent.get(id);
+      const stub = await getAgentByName(env.GeminiLiveAgent, agentId);
       return stub.fetch(request);
     }
 
