@@ -52,21 +52,71 @@ const FloatingLiveOrb = ({ hostAvatar, hostId, onClick }) => {
     );
 };
 
-const LiveStageContent = ({ chatInfo, members, liveState, setLiveState, onLeave, onSendQuestion, messages }) => {
+const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser }) => {
     const [qInput, setQInput] = useState('');
+    const [liveQuestions, setLiveQuestions] = useState([]);
+    const [isSending, setIsSending] = useState(false);
     const participants = useParticipants();
+    
     const hostId = chatInfo.metadata?.live_host_id;
     const hostInfo = members[hostId] || { name: 'Host', avatar: 'https://via.placeholder.com/150' };
+    const isMeHost = currentUser.id === hostId;
     
     const hostParticipant = participants.find(p => p.identity === hostId);
     const isHostSpeaking = hostParticipant ? hostParticipant.isSpeaking : false;
 
-    const liveQuestions = messages.filter(m => m.forward_meta?.is_live_question).slice(-5);
+    // Derived Pause State based on Heartbeat
+    const heartBeatTime = new Date(chatInfo.metadata?.live_heartbeat || 0).getTime();
+    const timeSinceBeat = Date.now() - heartBeatTime;
+    const isHostPaused = timeSinceBeat > 45000 && !isMeHost; // Attendants see paused if beat is missing for 45s
+
     const questionsEndRef = useRef(null);
+
+    // Heartbeat Engine (Host Only)
+    useEffect(() => {
+        if (liveState !== 'full' || !isMeHost) return;
+        const beat = () => {
+            supabase.rpc('heartbeat_live_session', { conv_id: conversationId, req_host_id: currentUser.id });
+        };
+        beat(); // Initial pulse
+        const int = setInterval(beat, 15000); // Pulse every 15s
+        return () => clearInterval(int);
+    }, [liveState, isMeHost, conversationId, currentUser.id]);
+
+    // Independent Live Questions Subscription
+    useEffect(() => {
+        const fetchQs = async () => {
+            const { data } = await supabase.from('live_stage_questions')
+                .select('*')
+                .eq('conversation_id', conversationId)
+                .order('created_at', { ascending: true });
+            if (data) setLiveQuestions(data.slice(-10)); // Keep last 10 in memory
+        };
+        fetchQs();
+
+        const sub = supabase.channel(`live_qs_${conversationId}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_stage_questions', filter: `conversation_id=eq.${conversationId}` }, payload => {
+                setLiveQuestions(p => [...p, payload.new].slice(-10));
+            }).subscribe();
+        
+        return () => supabase.removeChannel(sub);
+    }, [conversationId]);
 
     useEffect(() => {
         if (questionsEndRef.current) questionsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }, [liveQuestions]);
+
+    const handleSendQuestion = async () => {
+        if (!qInput.trim() || isSending) return;
+        setIsSending(true);
+        const { error } = await supabase.from('live_stage_questions').insert({
+            conversation_id: conversationId,
+            sender_id: currentUser.id,
+            text: qInput.trim()
+        });
+        if (!error) setQInput('');
+        setIsSending(false);
+    };
 
     if (liveState === 'minimized') {
         return <FloatingLiveOrb hostAvatar={hostInfo.avatar} hostId={hostId} onClick={() => setLiveState('full')} />;
@@ -88,18 +138,28 @@ const LiveStageContent = ({ chatInfo, members, liveState, setLiveState, onLeave,
 
             <main className="stage-core">
                 <div className="stage-host-node">
-                    {isHostSpeaking && (
+                    {/* The Tide Pulse */}
+                    <div className="tide-pulse-ring"></div>
+                    
+                    {isHostSpeaking && !isHostPaused && (
                         <>
                             <div className="voice-halo-ring"></div>
                             <div className="voice-halo-ring" style={{animationDelay: '0.6s'}}></div>
                         </>
                     )}
-                    <img src={hostInfo.avatar} className="host-image-clip" alt="Host" />
+                    
+                    <img src={hostInfo.avatar} className="host-image-clip" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none' }} alt="Host" />
+                    
+                    {isHostPaused && (
+                        <div className="host-offline-veil">
+                            <i className="fas fa-satellite-dish"></i>
+                        </div>
+                    )}
                 </div>
 
                 <div className="stage-host-label">
                     <h2>{hostInfo.name}</h2>
-                    <p>Broadcasting • Host</p>
+                    <p>{isHostPaused ? "Reconnecting..." : "Broadcasting • Host"}</p>
                 </div>
 
                 <div className="immersive-listeners-panel">
@@ -126,20 +186,23 @@ const LiveStageContent = ({ chatInfo, members, liveState, setLiveState, onLeave,
                 </div>
             </main>
 
-            <footer className="immersive-input-area">
-                <div className="immersive-dock">
-                    <input 
-                        type="text" 
-                        placeholder={`Shoot a question to ${hostInfo.name.split(' ')[0]}...`} 
-                        value={qInput} 
-                        onChange={e => setQInput(e.target.value)} 
-                        onKeyPress={e => { if (e.key === 'Enter') { onSendQuestion(qInput); setQInput(''); } }} 
-                    />
-                    <button className="question-send-btn" onClick={() => { onSendQuestion(qInput); setQInput(''); }}>
-                        <i className="fa-solid fa-arrow-up"></i>
-                    </button>
-                </div>
-            </footer>
+            {!isMeHost && (
+                <footer className="immersive-input-area">
+                    <div className="immersive-dock">
+                        <input 
+                            type="text" 
+                            placeholder={`Shoot a question to ${hostInfo.name.split(' ')[0]}...`} 
+                            value={qInput} 
+                            onChange={e => setQInput(e.target.value)} 
+                            onKeyPress={e => { if (e.key === 'Enter') handleSendQuestion(); }} 
+                            disabled={isSending}
+                        />
+                        <button className="question-send-btn" onClick={handleSendQuestion} disabled={!qInput.trim() || isSending}>
+                            {isSending ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-arrow-up"></i>}
+                        </button>
+                    </div>
+                </footer>
+            )}
         </div>
     );
 };
@@ -994,6 +1057,7 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
     const [liveState, setLiveState] = useState('none'); // 'none', 'full', 'minimized'
     const [liveCredentials, setLiveCredentials] = useState(null); // { token, url }
     const [isStartingLive, setIsStartingLive] = useState(false);
+    const [showRecoveryModal, setShowRecoveryModal] = useState(false);
     const [searchResults, setSearchResults] = useState([]);
     const [currentSearchIndex, setCurrentSearchIndex] = useState(-1);
     const [showSearchList, setShowSearchList] = useState(false);
@@ -1004,6 +1068,29 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
     const typingTimeoutRef = useRef(null);
     const localTypingRef = useRef(false);
 
+    // Session Recovery & Heartbeat Diagnostics
+    const heartBeatTime = new Date(localChatInfo.metadata?.live_heartbeat || 0).getTime();
+    const timeSinceBeat = Date.now() - heartBeatTime;
+    const isLiveDead = timeSinceBeat > 10 * 60 * 1000; // 10 minutes
+    const isLivePaused = timeSinceBeat > 45000; // 45 seconds
+
+    const isLiveActive = localChatInfo.metadata?.is_live && !isLiveDead;
+    const isMeHost = localChatInfo.metadata?.live_host_id === currentUser.id;
+    
+    // Attendants shouldn't see the banner if the host is paused/offline
+    const showLiveBanner = isLiveActive && (!isLivePaused || isMeHost);
+
+    useEffect(() => {
+        if (localChatInfo.metadata?.is_live && isMeHost && liveState === 'none') {
+            if (isLiveDead) {
+                // Auto-cleanup dead sessions
+                supabase.rpc('kill_live_session', { conv_id: chat.conversation_id });
+            } else {
+                setShowRecoveryModal(true);
+            }
+        }
+    }, [localChatInfo.metadata?.is_live, isMeHost, liveState, isLiveDead, chat.conversation_id]);
+
     const startLiveSession = async () => {
         setIsStartingLive(true);
         try {
@@ -1011,13 +1098,19 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
             if (res.error) throw new Error(res.error);
             setLiveCredentials({ token: res.token, url: res.ws_url });
             
-            // Broadcast live state to DB
-            const newMeta = { ...localChatInfo.metadata, is_live: true, live_host_id: currentUser.id };
-            await supabase.from('conversations').update({ metadata: newMeta }).eq('id', chat.conversation_id);
-            setLocalChatInfo(prev => ({ ...prev, metadata: newMeta }));
+            // Broadcast live state to DB immediately with heartbeat
+            await supabase.rpc('heartbeat_live_session', { conv_id: chat.conversation_id, req_host_id: currentUser.id });
+            
+            // Optimistic Local State Update
+            setLocalChatInfo(prev => ({ 
+                ...prev, 
+                metadata: { ...prev.metadata, is_live: true, live_host_id: currentUser.id, live_status: 'active', live_heartbeat: new Date().toISOString() } 
+            }));
+            
             setLiveState('full');
+            setShowRecoveryModal(false);
         } catch (err) {
-            setAlertNotice({ title: "Live Error", msg: err.message, success: false });
+            setAlertNotice({ title: "Stage Error", msg: err.message, success: false });
         }
         setIsStartingLive(false);
     };
@@ -1030,44 +1123,18 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
             setLiveCredentials({ token: res.token, url: res.ws_url });
             setLiveState('full');
         } catch (err) {
-            setAlertNotice({ title: "Live Error", msg: err.message, success: false });
+            setAlertNotice({ title: "Connection Error", msg: err.message, success: false });
         }
         setIsStartingLive(false);
     };
 
-    const endLiveSession = async () => {
+    const endLiveSession = async (forceKill = false) => {
         setLiveState('none');
         setLiveCredentials(null);
-        if (localChatInfo.metadata?.live_host_id === currentUser.id) {
-            const newMeta = { ...localChatInfo.metadata };
-            delete newMeta.is_live;
-            delete newMeta.live_host_id;
-            await supabase.from('conversations').update({ metadata: newMeta }).eq('id', chat.conversation_id);
-            setLocalChatInfo(prev => ({ ...prev, metadata: newMeta }));
+        setShowRecoveryModal(false);
+        if (isMeHost || forceKill) {
+            await supabase.rpc('kill_live_session', { conv_id: chat.conversation_id });
         }
-    };
-
-    const handleSendQuestion = async (text) => {
-        if (!text.trim()) return;
-        const msgText = text.trim();
-        const tempId = `temp-${Date.now()}`;
-        
-        setMessages(prev => [...prev, {
-            id: tempId, conversation_id: chat.conversation_id,
-            sender_id: currentUser.id, text: msgText,
-            forward_meta: { is_live_question: true },
-            attachments: [], created_at: new Date().toISOString(), status: 'pending'
-        }]);
-
-        const { data, error } = await supabase.from('messages').insert({
-            conversation_id: chat.conversation_id,
-            sender_id: currentUser.id,
-            text: msgText,
-            forward_meta: { is_live_question: true },
-            attachments: []
-        }).select().maybeSingle();
-        
-        if (data) setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
     };
 
     const markAsRead = async () => {
@@ -1696,18 +1763,39 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                 </header>
             )}
 
-            {localChatInfo.metadata?.is_live && liveState === 'none' && (
+            {showLiveBanner && liveState === 'none' && (
                 <div className="live-stage-banner" style={{ display: 'flex' }}>
                     <div className="live-banner-left">
                         <div className="pulse-indicator"></div>
                         <div className="live-banner-text">
-                            <div>Squad is Live</div>
-                            <div>{members[localChatInfo.metadata.live_host_id]?.name || 'Host'} is speaking</div>
+                            <div>{isMeHost ? "You're Live" : "Squad is Live"}</div>
+                            <div>{isMeHost ? "Broadcasting to the group" : `${members[localChatInfo.metadata.live_host_id]?.name || 'Host'} is speaking`}</div>
                         </div>
                     </div>
-                    <button className="join-stage-action-btn" onClick={joinLiveSession} disabled={isStartingLive}>
-                        {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Stage'}
-                    </button>
+                    {isMeHost ? (
+                        <button className="join-stage-action-btn" onClick={startLiveSession} disabled={isStartingLive}>
+                            {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Resume Stage'}
+                        </button>
+                    ) : (
+                        <button className="join-stage-action-btn" onClick={joinLiveSession} disabled={isStartingLive}>
+                            {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Stage'}
+                        </button>
+                    )}
+                </div>
+            )}
+            
+            {showRecoveryModal && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-card">
+                        <h3>Active Session Detected</h3>
+                        <p>You previously started a live broadcast. Would you like to resume your session or end it?</p>
+                        <div className="cm-footer">
+                            <button className="cm-btn-danger" onClick={() => endLiveSession(true)} disabled={isStartingLive}>End Session</button>
+                            <button className="cm-btn-primary" onClick={startLiveSession} disabled={isStartingLive}>
+                                {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Resume'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -2036,10 +2124,9 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                                         </svg>
                                         <span className="prog-text">{uploadProgress}%</span>
                                     </div>
-                                ) : (!input.trim() && pendingAttachments.length === 0 && !editingMessage && (myRole === 'owner' || myRole === 'admin') && !localChatInfo.metadata?.is_live) ? (
+                                ) : (!input.trim() && pendingAttachments.length === 0 && !editingMessage && (myRole === 'owner' || myRole === 'admin') && !isLiveActive) ? (
                                     <button className="live-trigger-btn" onClick={startLiveSession} disabled={isStartingLive}>
-                                        <div className="pulse-ring"></div>
-                                        <i className="fas fa-broadcast-tower"></i>
+                                        {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-broadcast-tower"></i>}
                                     </button>
                                 ) : (
                                     <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim() && pendingAttachments.length === 0}>
@@ -2198,24 +2285,24 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                     serverUrl={liveCredentials.url}
                     token={liveCredentials.token}
                     connect={true}
-                    audio={localChatInfo.metadata?.live_host_id === currentUser.id}
+                    audio={isMeHost}
                     video={false}
                     options={{
                         webAudioMix: true,
                         publishDefaults: {
-                            audioBitrate: 48000, // High-fidelity podcast quality voice
-                            dtx: true // Discontinuous Transmission (saves bandwidth when silent)
+                            audioBitrate: 48000,
+                            dtx: true
                         }
                     }}
                 >
                     <LiveStageContent 
+                        conversationId={chat.conversation_id}
                         chatInfo={localChatInfo}
                         members={members}
                         liveState={liveState}
                         setLiveState={setLiveState}
                         onLeave={endLiveSession}
-                        onSendQuestion={handleSendQuestion}
-                        messages={messages}
+                        currentUser={currentUser}
                     />
                     <RoomAudioRenderer />
                 </LiveKitRoom>
