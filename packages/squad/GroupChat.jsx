@@ -1,7 +1,146 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { LiveKitRoom, useParticipants, useIsSpeaking, RoomAudioRenderer } from '@livekit/components-react';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
+import { invokeLiveToken } from './api.js';
 import './GroupChat.css';
+
+const FloatingLiveOrb = ({ hostAvatar, onClick }) => {
+    const orbRef = useRef(null);
+    const [pos, setPos] = useState({ x: window.innerWidth - 96, y: window.innerHeight - 240 });
+    const dragStart = useRef(null);
+    const isSpeaking = useIsSpeaking(useParticipants().find(p => p.isSpeaking));
+
+    const handlePointerDown = (e) => {
+        e.target.setPointerCapture(e.pointerId);
+        dragStart.current = { x: e.clientX - pos.x, y: e.clientY - pos.y, isDragging: false };
+    };
+
+    const handlePointerMove = (e) => {
+        if (!dragStart.current) return;
+        dragStart.current.isDragging = true;
+        const newX = e.clientX - dragStart.current.x;
+        const newY = e.clientY - dragStart.current.y;
+        setPos({ 
+            x: Math.max(10, Math.min(newX, window.innerWidth - 86)), 
+            y: Math.max(50, Math.min(newY, window.innerHeight - 100)) 
+        });
+    };
+
+    const handlePointerUp = (e) => {
+        if (dragStart.current && !dragStart.current.isDragging) {
+            onClick();
+        }
+        dragStart.current = null;
+    };
+
+    return (
+        <div 
+            className="floating-live-orb" 
+            ref={orbRef} 
+            style={{ left: pos.x, top: pos.y, display: 'flex' }}
+            onPointerDown={handlePointerDown} 
+            onPointerMove={handlePointerMove} 
+            onPointerUp={handlePointerUp}
+        >
+            {isSpeaking && <div className="orb-pulse-ring"></div>}
+            <img src={hostAvatar} className="floating-orb-host" alt="Live Host" />
+            <div className="orb-expand-badge"><i className="fas fa-expand-alt"></i></div>
+        </div>
+    );
+};
+
+const LiveStageContent = ({ chatInfo, members, liveState, setLiveState, onLeave, onSendQuestion, messages }) => {
+    const [qInput, setQInput] = useState('');
+    const participants = useParticipants();
+    const hostId = chatInfo.metadata?.live_host_id;
+    const hostInfo = members[hostId] || { name: 'Host', avatar: 'https://via.placeholder.com/150' };
+    
+    const hostParticipant = participants.find(p => p.identity === hostId);
+    const isHostSpeaking = useIsSpeaking(hostParticipant);
+
+    const liveQuestions = messages.filter(m => m.forward_meta?.is_live_question).slice(-5);
+    const questionsEndRef = useRef(null);
+
+    useEffect(() => {
+        if (questionsEndRef.current) questionsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }, [liveQuestions]);
+
+    if (liveState === 'minimized') {
+        return <FloatingLiveOrb hostAvatar={hostInfo.avatar} onClick={() => setLiveState('full')} />;
+    }
+
+    return (
+        <div className="live-immersive-overlay" style={{ display: 'flex' }}>
+            <div className="immersive-ambient"></div>
+            <header className="immersive-header">
+                <button className="minimize-stage-btn" onClick={() => setLiveState('minimized')}><i className="fas fa-compress-alt"></i></button>
+                <div className="stage-title-wrap">
+                    <div className="stage-meta-indicator">
+                        <span className="stage-live-dot"></span> Live Stage
+                    </div>
+                    <h2 className="stage-topic-title">{chatInfo.title}</h2>
+                </div>
+                <button className="minimize-stage-btn" onClick={onLeave} style={{color: '#ff5f5f'}}><i className="fas fa-phone-slash"></i></button>
+            </header>
+
+            <main className="stage-core">
+                <div className="stage-host-node">
+                    {isHostSpeaking && (
+                        <>
+                            <div className="voice-halo-ring"></div>
+                            <div className="voice-halo-ring" style={{animationDelay: '0.6s'}}></div>
+                        </>
+                    )}
+                    <img src={hostInfo.avatar} className="host-image-clip" alt="Host" />
+                </div>
+
+                <div className="stage-host-label">
+                    <h2>{hostInfo.name}</h2>
+                    <p>Broadcasting • Host</p>
+                </div>
+
+                <div className="immersive-listeners-panel">
+                    <span className="listeners-title">{participants.length} Listening</span>
+                    <div className="listeners-row">
+                        {participants.slice(0, 4).map((p, i) => (
+                            <img key={p.identity || i} src={members[p.identity]?.avatar || 'https://via.placeholder.com/150'} alt="Listener" />
+                        ))}
+                        {participants.length > 4 && <div className="listeners-overflow">+{participants.length - 4}</div>}
+                    </div>
+                </div>
+
+                <div className="stage-questions-box">
+                    {liveQuestions.map(q => (
+                        <div key={q.id} className="stage-question-card">
+                            <div className="sq-meta">
+                                <span>{members[q.sender_id]?.name || 'Student'}</span>
+                                <span>Question</span>
+                            </div>
+                            <p className="sq-body-text">{q.text}</p>
+                        </div>
+                    ))}
+                    <div ref={questionsEndRef} />
+                </div>
+            </main>
+
+            <footer className="immersive-input-area">
+                <div className="immersive-dock">
+                    <input 
+                        type="text" 
+                        placeholder={`Shoot a question to ${hostInfo.name.split(' ')[0]}...`} 
+                        value={qInput} 
+                        onChange={e => setQInput(e.target.value)} 
+                        onKeyPress={e => { if (e.key === 'Enter') { onSendQuestion(qInput); setQInput(''); } }} 
+                    />
+                    <button className="question-send-btn" onClick={() => { onSendQuestion(qInput); setQInput(''); }}>
+                        <i className="fa-solid fa-arrow-up"></i>
+                    </button>
+                </div>
+            </footer>
+        </div>
+    );
+};
 
 const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband, onOpenAdminSettings, onOpenUser }) => {
     const canSeeMembers = myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.hide_members !== true;
@@ -848,6 +987,11 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    
+    // LiveKit Immersive State
+    const [liveState, setLiveState] = useState('none'); // 'none', 'full', 'minimized'
+    const [liveCredentials, setLiveCredentials] = useState(null); // { token, url }
+    const [isStartingLive, setIsStartingLive] = useState(false);
     const [searchResults, setSearchResults] = useState([]);
     const [currentSearchIndex, setCurrentSearchIndex] = useState(-1);
     const [showSearchList, setShowSearchList] = useState(false);
@@ -857,6 +1001,72 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
     const isAutoScrollEnabled = useRef(true);
     const typingTimeoutRef = useRef(null);
     const localTypingRef = useRef(false);
+
+    const startLiveSession = async () => {
+        setIsStartingLive(true);
+        try {
+            const res = await invokeLiveToken({ conversation_id: chat.conversation_id });
+            if (res.error) throw new Error(res.error);
+            setLiveCredentials({ token: res.token, url: res.ws_url });
+            
+            // Broadcast live state to DB
+            const newMeta = { ...localChatInfo.metadata, is_live: true, live_host_id: currentUser.id };
+            await supabase.from('conversations').update({ metadata: newMeta }).eq('id', chat.conversation_id);
+            setLocalChatInfo(prev => ({ ...prev, metadata: newMeta }));
+            setLiveState('full');
+        } catch (err) {
+            setAlertNotice({ title: "Live Error", msg: err.message, success: false });
+        }
+        setIsStartingLive(false);
+    };
+
+    const joinLiveSession = async () => {
+        setIsStartingLive(true);
+        try {
+            const res = await invokeLiveToken({ conversation_id: chat.conversation_id });
+            if (res.error) throw new Error(res.error);
+            setLiveCredentials({ token: res.token, url: res.ws_url });
+            setLiveState('full');
+        } catch (err) {
+            setAlertNotice({ title: "Live Error", msg: err.message, success: false });
+        }
+        setIsStartingLive(false);
+    };
+
+    const endLiveSession = async () => {
+        setLiveState('none');
+        setLiveCredentials(null);
+        if (localChatInfo.metadata?.live_host_id === currentUser.id) {
+            const newMeta = { ...localChatInfo.metadata };
+            delete newMeta.is_live;
+            delete newMeta.live_host_id;
+            await supabase.from('conversations').update({ metadata: newMeta }).eq('id', chat.conversation_id);
+            setLocalChatInfo(prev => ({ ...prev, metadata: newMeta }));
+        }
+    };
+
+    const handleSendQuestion = async (text) => {
+        if (!text.trim()) return;
+        const msgText = text.trim();
+        const tempId = `temp-${Date.now()}`;
+        
+        setMessages(prev => [...prev, {
+            id: tempId, conversation_id: activeConvId,
+            sender_id: currentUser.id, text: msgText,
+            forward_meta: { is_live_question: true },
+            attachments: [], created_at: new Date().toISOString(), status: 'pending'
+        }]);
+
+        const { data, error } = await supabase.from('messages').insert({
+            conversation_id: chat.conversation_id,
+            sender_id: currentUser.id,
+            text: msgText,
+            forward_meta: { is_live_question: true },
+            attachments: []
+        }).select().maybeSingle();
+        
+        if (data) setMessages(prev => prev.map(m => m.id === tempId ? { ...data, status: 'sent' } : m));
+    };
 
     const markAsRead = async () => {
         if (!chat.conversation_id) return;
@@ -1484,6 +1694,21 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                 </header>
             )}
 
+            {localChatInfo.metadata?.is_live && liveState === 'none' && (
+                <div className="live-stage-banner" style={{ display: 'flex' }}>
+                    <div className="live-banner-left">
+                        <div className="pulse-indicator"></div>
+                        <div className="live-banner-text">
+                            <div>Squad is Live</div>
+                            <div>{members[localChatInfo.metadata.live_host_id]?.name || 'Host'} is speaking</div>
+                        </div>
+                    </div>
+                    <button className="join-stage-action-btn" onClick={joinLiveSession} disabled={isStartingLive}>
+                        {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Stage'}
+                    </button>
+                </div>
+            )}
+
             <main className="squad-flow" ref={flowRef} onClick={() => setActiveMenu(null)} onScroll={(e) => {
                 setActiveMenu(null);
                 const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
@@ -1809,6 +2034,11 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                                         </svg>
                                         <span className="prog-text">{uploadProgress}%</span>
                                     </div>
+                                ) : (!input.trim() && pendingAttachments.length === 0 && !editingMessage && (myRole === 'owner' || myRole === 'admin') && !localChatInfo.metadata?.is_live) ? (
+                                    <button className="live-trigger-btn" onClick={startLiveSession} disabled={isStartingLive}>
+                                        <div className="pulse-ring"></div>
+                                        <i className="fas fa-broadcast-tower"></i>
+                                    </button>
                                 ) : (
                                     <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim() && pendingAttachments.length === 0}>
                                         <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
@@ -1959,6 +2189,27 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                         </div>
                     )}
                 </div>
+            )}
+
+            {liveState !== 'none' && liveCredentials && (
+                <LiveKitRoom
+                    serverUrl={liveCredentials.url}
+                    token={liveCredentials.token}
+                    connect={true}
+                    audio={true}
+                    video={false}
+                >
+                    <LiveStageContent 
+                        chatInfo={localChatInfo}
+                        members={members}
+                        liveState={liveState}
+                        setLiveState={setLiveState}
+                        onLeave={endLiveSession}
+                        onSendQuestion={handleSendQuestion}
+                        messages={messages}
+                    />
+                    <RoomAudioRenderer />
+                </LiveKitRoom>
             )}
         </div>
     );
