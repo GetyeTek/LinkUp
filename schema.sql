@@ -1,101 +1,98 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-04T07:42:01.638Z
+-- Date: 2026-07-04T07:49:59.473Z
 
 -- ========================
 -- TABLES & COLUMNS
 -- ========================
 Table: api_keys
-last_used_at (text), cooldown_until (text), name (text), is_active (boolean), api_key (text), id (bigint), created_at (text), service (text)
+service (text), created_at (text), cooldown_until (text), name (text), is_active (boolean), id (bigint), last_used_at (text), api_key (text)
 
 Table: book_pages
-manual_flag (text), page_number (integer), content_json (jsonb), page_key (text), id (uuid), book_id (uuid), created_at (timestamp with time zone)
+page_number (integer), created_at (timestamp with time zone), book_id (uuid), content_json (jsonb), manual_flag (text), page_key (text), id (uuid)
 
 Table: book_question_links
-created_at (timestamp with time zone), similarity_score (double precision), id (uuid), chunk_id (uuid), question_id (uuid)
+question_id (uuid), chunk_id (uuid), id (uuid), created_at (timestamp with time zone), similarity_score (double precision)
 
 Table: books
-id (uuid), created_at (timestamp with time zone), page_offset (integer), toc (jsonb), author (text), cover_url (text), category (text), title (text), course_code (text)
+toc (jsonb), created_at (timestamp with time zone), cover_url (text), category (text), title (text), author (text), id (uuid), course_code (text), page_offset (integer)
 
 Table: chunks
-created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), prev_chunk_id (uuid), next_chunk_id (uuid), chunk_index (integer), chunk_text (text), id (uuid), document_id (uuid), page_number (integer)
+next_chunk_id (uuid), chunk_text (text), id (uuid), document_id (uuid), page_number (integer), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), prev_chunk_id (uuid), chunk_index (integer)
 
 Table: conduit_favorites
-metadata (jsonb), created_at (timestamp with time zone), category (text), target_id (text), repo_name (text), id (uuid)
+repo_name (text), target_id (text), category (text), created_at (timestamp with time zone), id (uuid), metadata (jsonb)
 
 Table: conduit_history
-note (text), created_at (timestamp with time zone), ops (jsonb), sha (text), repo_name (text), title (text), conduit_id (integer), meta (text), type (text), id (uuid)
+conduit_id (integer), note (text), meta (text), type (text), title (text), sha (text), repo_name (text), created_at (timestamp with time zone), ops (jsonb), id (uuid)
 
 Table: conduit_logs
-type (text), created_at (timestamp with time zone), data (jsonb), id (uuid), repo_name (text)
-
-Table: conduit_sync_test
-created_at (timestamp with time zone), test_name (text), id (integer)
+created_at (timestamp with time zone), data (jsonb), id (uuid), repo_name (text), type (text)
 
 Table: conversation_members
-conversation_id (uuid), user_id (uuid), role (USER-DEFINED), muted_until (timestamp with time zone), created_at (timestamp with time zone), last_read_at (timestamp with time zone), id (uuid)
+role (USER-DEFINED), conversation_id (uuid), user_id (uuid), id (uuid), muted_until (timestamp with time zone), created_at (timestamp with time zone), last_read_at (timestamp with time zone)
 
 Table: conversations
-last_message_at (timestamp with time zone), id (uuid), type (USER-DEFINED), created_at (timestamp with time zone), avatar_url (text), title (character varying), metadata (jsonb), owner_id (uuid)
+owner_id (uuid), created_at (timestamp with time zone), type (USER-DEFINED), id (uuid), title (character varying), avatar_url (text), metadata (jsonb), last_message_at (timestamp with time zone)
 
 Table: courses
-created_at (timestamp with time zone), id (uuid), code (text), name (text), department_id (uuid)
+id (uuid), created_at (timestamp with time zone), department_id (uuid), code (text), name (text)
 
 Table: departments
-created_at (timestamp with time zone), name (text), id (uuid)
+id (uuid), created_at (timestamp with time zone), name (text)
 
 Table: documents
-last_processed_at (timestamp with time zone), page_count (integer), status (text), id (uuid), user_id (uuid), chunk_count (integer), created_at (timestamp with time zone), file_name (text), storage_path (text)
+page_count (integer), last_processed_at (timestamp with time zone), id (uuid), file_name (text), storage_path (text), created_at (timestamp with time zone), chunk_count (integer), user_id (uuid), status (text)
 
 Table: embedding_progress
-book_id (uuid), block_index (integer), locked_until (timestamp with time zone), status (text), error_message (text), updated_at (timestamp with time zone), id (uuid), page_number (integer)
+status (text), id (uuid), page_number (integer), book_id (uuid), updated_at (timestamp with time zone), locked_until (timestamp with time zone), block_index (integer), error_message (text)
 
 Table: exams
-general_instructions (text), date (text), exam_type (text), course_id (uuid), created_at (timestamp with time zone), media_summary (jsonb), exam_quality_notes (jsonb), constants_provided (jsonb), total_marks (numeric), time_allowed_minutes (integer), university_id (uuid), id (uuid), program (text)
+date (text), program (text), time_allowed_minutes (integer), total_marks (numeric), constants_provided (jsonb), university_id (uuid), exam_quality_notes (jsonb), media_summary (jsonb), id (uuid), created_at (timestamp with time zone), course_id (uuid), general_instructions (text), exam_type (text)
 
 Table: featured_events
-tag_text (text), html_content (text), action_type (text), title (text), body (text), image_url (text), tag_color (text), external_url (text), metadata (jsonb), created_at (timestamp with time zone), is_active (boolean), button_text (text), app_route (jsonb), button_color (text), id (uuid)
+button_text (text), tag_color (text), tag_text (text), image_url (text), body (text), action_type (text), title (text), id (uuid), app_route (jsonb), is_active (boolean), created_at (timestamp with time zone), metadata (jsonb), external_url (text), html_content (text), button_color (text)
 
 Table: live_study_sessions
-id (uuid), conversation_id (uuid), course_name (text), lesson_topic (text), last_updated_at (timestamp with time zone), active_user_ids (ARRAY)
+course_name (text), last_updated_at (timestamp with time zone), id (uuid), conversation_id (uuid), lesson_topic (text), active_user_ids (ARRAY)
 
 Table: messages
-conversation_id (uuid), id (uuid), sender_id (uuid), attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean), reply_to_id (uuid), forward_meta (jsonb), text (text)
+attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean), id (uuid), forward_meta (jsonb), conversation_id (uuid), reply_to_id (uuid), text (text), sender_id (uuid)
 
 Table: migration_progress
-page_index (text), error_message (text), pdf_name (text), remote_id (text), id (uuid), status (text), processed_at (timestamp with time zone)
+id (uuid), processed_at (timestamp with time zone), status (text), error_message (text), page_index (text), pdf_name (text), remote_id (text)
 
 Table: migration_sync_state
-id (integer), last_run_at (timestamp with time zone), current_offset (integer)
+current_offset (integer), last_run_at (timestamp with time zone), id (integer)
 
 Table: news_feed
-full_text (text), post_url (text), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), telegram_id (bigint), id (bigint), channel (text), title (text), snippet (text), image_url (text)
+title (text), image_url (text), id (bigint), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), post_url (text), full_text (text), telegram_id (bigint), snippet (text), channel (text)
 
 Table: notifications
-user_id (uuid), id (uuid), insight (text), icon (text), type (text), title (text), description (text), created_at (timestamp with time zone), action_data (jsonb), is_read (boolean)
+description (text), action_data (jsonb), is_read (boolean), user_id (uuid), id (uuid), icon (text), type (text), created_at (timestamp with time zone), insight (text), title (text)
 
 Table: peer_questions
-id (uuid), created_at (timestamp with time zone), user_id (uuid), title (text), body (text), course_tag (text)
+created_at (timestamp with time zone), course_tag (text), body (text), id (uuid), title (text), user_id (uuid)
 
 Table: profiles
-department (text), full_name (text), avatar_url (text), level (text), username (text), university_id (uuid), linkoin_balance (integer), bio (text), phone (text), program (text), target_department (text), id (uuid), last_seen_at (timestamp with time zone), year (text), freshman_stream (text), last_username_change_at (timestamp with time zone), updated_at (timestamp with time zone)
+bio (text), id (uuid), linkoin_balance (integer), updated_at (timestamp with time zone), last_seen_at (timestamp with time zone), university_id (uuid), last_username_change_at (timestamp with time zone), full_name (text), avatar_url (text), level (text), username (text), department (text), freshman_stream (text), year (text), target_department (text), program (text), phone (text)
 
 Table: question_book_mappings
-status (text), content_index (integer), is_valid (boolean), book_id (uuid), question_id (uuid), id (uuid), page_key (text), snippet (text), error_message (text), created_at (timestamp with time zone), processed_at (timestamp with time zone)
+created_at (timestamp with time zone), id (uuid), content_index (integer), is_valid (boolean), book_id (uuid), snippet (text), page_key (text), processed_at (timestamp with time zone), question_id (uuid), error_message (text), status (text)
 
 Table: question_reports
-source (text), created_at (timestamp with time zone), question_id (uuid), id (uuid), status (text), report_text (text)
+source (text), created_at (timestamp with time zone), id (uuid), question_id (uuid), status (text), report_text (text)
 
 Table: questions
-transcription_quality (jsonb), media (jsonb), matching_data (jsonb), embedding_status (text), text (text), options (jsonb), points (numeric), id (uuid), question_number (text), section_id (uuid), question_type (text), embedding (USER-DEFINED), retry_count (integer), created_at (timestamp with time zone), question_order (integer)
+question_order (integer), media (jsonb), transcription_quality (jsonb), matching_data (jsonb), question_type (text), question_number (text), created_at (timestamp with time zone), retry_count (integer), embedding (USER-DEFINED), id (uuid), section_id (uuid), text (text), embedding_status (text), points (numeric), options (jsonb)
 
 Table: sections
-shared_context (jsonb), section_order (integer), exam_id (uuid), created_at (timestamp with time zone), instructions (text), title (text), id (uuid), total_points (numeric)
+section_order (integer), created_at (timestamp with time zone), id (uuid), instructions (text), title (text), exam_id (uuid), total_points (numeric), shared_context (jsonb)
 
 Table: squad_bans
-id (uuid), created_at (timestamp with time zone), banned_until (timestamp with time zone), user_id (uuid), conversation_id (uuid)
+conversation_id (uuid), banned_until (timestamp with time zone), created_at (timestamp with time zone), id (uuid), user_id (uuid)
 
 Table: universities
-short_name (text), name (text), created_at (timestamp with time zone), id (uuid)
+created_at (timestamp with time zone), id (uuid), short_name (text), name (text)
 
 -- ========================
 -- RLS POLICIES
@@ -138,7 +135,6 @@ Table: featured_events | Policy: Public read featured_events | Cmd: SELECT | Usi
 Table: live_study_sessions | Policy: Public read active sessions | Cmd: SELECT | Using: true
 null
 null
-Table: conduit_sync_test | Policy: Allow public read | Cmd: SELECT | Using: true
 
 -- ========================
 -- FUNCTIONS & RPCs
