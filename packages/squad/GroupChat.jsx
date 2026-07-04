@@ -199,13 +199,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
             <main className="stage-core">
                 <div className="stage-host-node">
-                    {/* The Tide Pulse */}
-                    <div className="tide-pulse-ring"></div>
-                    
                     {isHostSpeaking && !isHostPaused && (
                         <>
                             <div className="voice-halo-ring"></div>
-                            <div className="voice-halo-ring" style={{animationDelay: '0.6s'}}></div>
+                            <div className="voice-halo-ring"></div>
                         </>
                     )}
                     
