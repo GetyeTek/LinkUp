@@ -103,16 +103,31 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     // Independent Live Questions Subscription (Robust CRUD support)
     useEffect(() => {
         const fetchQs = async () => {
-            const { data } = await supabase.from('live_stage_questions')
+            const startedAt = chatInfo.metadata?.live_started_at;
+            
+            let query = supabase.from('live_stage_questions')
                 .select('*')
-                .eq('conversation_id', conversationId)
-                .order('created_at', { ascending: true });
+                .eq('conversation_id', conversationId);
+                
+            if (startedAt) {
+                // Chronological Isolation: Only fetch questions asked during this session
+                query = query.gte('created_at', startedAt);
+            }
+
+            const { data } = await query.order('created_at', { ascending: true });
             if (data) setLiveQuestions(data.slice(-30)); // Hold up to 30 to support moderation queues
         };
         fetchQs();
 
         const sub = supabase.channel(`live_qs_${conversationId}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'live_stage_questions', filter: `conversation_id=eq.${conversationId}` }, payload => {
+                const startedAt = chatInfo.metadata?.live_started_at;
+                
+                // Realtime Filter: Ignore incoming messages originating from previous session windows
+                if (payload.eventType === 'INSERT' && startedAt && new Date(payload.new.created_at) < new Date(startedAt)) {
+                    return;
+                }
+
                 setLiveQuestions(p => {
                     if (payload.eventType === 'INSERT') return [...p, payload.new].slice(-30);
                     if (payload.eventType === 'UPDATE') return p.map(q => q.id === payload.new.id ? payload.new : q);
@@ -122,7 +137,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             }).subscribe();
         
         return () => supabase.removeChannel(sub);
-    }, [conversationId]);
+    }, [conversationId, chatInfo.metadata?.live_started_at]);
 
     useEffect(() => {
         if (questionsEndRef.current && !isMeHost) questionsEndRef.current.scrollIntoView({ behavior: 'smooth' });
