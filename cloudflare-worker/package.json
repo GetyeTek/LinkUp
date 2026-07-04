@@ -3,5 +3,8 @@
   "type": "module",
   "dependencies": {
     "agents": "^0.10.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.107.0"
   }
 }
