@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-04T13:22:30.363Z
+-- Date: 2026-07-04T21:32:39.612Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -148,6 +148,9 @@ Table: live_stage_questions | Policy: Hostess can update live questions | Cmd: U
 Table: live_stage_questions | Policy: Hostess can delete live questions | Cmd: DELETE | Using: (auth.uid() = ( SELECT ((conversations.metadata ->> 'live_host_id'::text))::uuid AS uuid
    FROM conversations
   WHERE (conversations.id = live_stage_questions.conversation_id)))
+Table: messages | Policy: Admins and Owners can delete any group messages | Cmd: DELETE | Using: (EXISTS ( SELECT 1
+   FROM conversation_members cm
+  WHERE ((cm.conversation_id = messages.conversation_id) AND (cm.user_id = auth.uid()) AND (cm.role = ANY (ARRAY['owner'::member_role, 'admin'::member_role])))))
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -567,27 +570,6 @@ BEGIN
 END;
 
 
--- Function: heartbeat_live_session
-
-BEGIN
-    UPDATE public.conversations 
-    SET metadata = jsonb_set(
-        jsonb_set(metadata, '{live_status}', '"active"'),
-        '{live_heartbeat}', to_jsonb(now())
-    )
-    WHERE id = conv_id AND metadata->>'live_host_id' = req_host_id::text;
-END;
-
-
--- Function: kill_live_session
-
-BEGIN
-    UPDATE public.conversations 
-    SET metadata = metadata - 'is_live' - 'live_host_id' - 'live_status' - 'live_heartbeat'
-    WHERE id = conv_id;
-END;
-
-
 -- Function: atomic_unpin_question
 
 BEGIN
@@ -600,6 +582,76 @@ BEGIN
           AND is_pinned = true;
     END IF;
     RETURN NEW;
+END;
+
+
+-- Function: heartbeat_live_session
+
+DECLARE
+    v_role text;
+    v_metadata jsonb;
+BEGIN
+    -- Verify the requester's rank in the conversation
+    SELECT role INTO v_role 
+    FROM public.conversation_members 
+    WHERE conversation_id = conv_id AND user_id = req_host_id;
+
+    IF v_role IS NULL OR v_role NOT IN ('owner', 'admin') THEN
+        RAISE EXCEPTION 'Access Denied: Only group owners or admins are authorized to host live sessions.';
+    END IF;
+
+    -- Fetch current metadata
+    SELECT metadata INTO v_metadata FROM public.conversations WHERE id = conv_id;
+
+    -- Initialize live_started_at with the current timestamp ONLY on fresh session starts
+    IF NOT (v_metadata ? 'live_started_at') THEN
+        v_metadata := jsonb_set(COALESCE(v_metadata, '{}'::jsonb), '{live_started_at}', to_jsonb(now()));
+    END IF;
+
+    -- Apply standard live status & heartbeat updates
+    v_metadata := jsonb_set(
+        jsonb_set(
+            jsonb_set(v_metadata, '{is_live}', 'true'::jsonb),
+            '{live_host_id}', to_jsonb(req_host_id::text)
+        ),
+        '{live_status}', '"active"'::jsonb
+    );
+    
+    v_metadata := jsonb_set(v_metadata, '{live_heartbeat}', to_jsonb(now()));
+
+    UPDATE public.conversations 
+    SET metadata = v_metadata
+    WHERE id = conv_id AND (
+        (metadata->>'live_host_id' IS NULL) OR 
+        (metadata->>'live_host_id' = req_host_id::text)
+    );
+END;
+
+
+-- Function: kill_live_session
+
+DECLARE
+    v_role text;
+    v_host_id text;
+BEGIN
+    -- 1. Identify who is currently hosting
+    SELECT metadata->>'live_host_id' INTO v_host_id 
+    FROM public.conversations WHERE id = conv_id;
+    
+    -- 2. Identify the rank of the person trying to kill the session
+    SELECT role INTO v_role 
+    FROM public.conversation_members 
+    WHERE conversation_id = conv_id AND user_id = auth.uid();
+
+    -- 3. The Law: You can only kill it if you are the active host, OR an Admin/Owner
+    IF auth.uid()::text != v_host_id AND (v_role IS NULL OR v_role NOT IN ('owner', 'admin')) THEN
+        RAISE EXCEPTION 'Security Violation: You are not authorized to terminate this broadcast.';
+    END IF;
+
+    -- 4. Execute the safe cleanup
+    UPDATE public.conversations 
+    SET metadata = metadata - 'is_live' - 'live_host_id' - 'live_status' - 'live_heartbeat' - 'live_started_at'
+    WHERE id = conv_id;
 END;
 
 
