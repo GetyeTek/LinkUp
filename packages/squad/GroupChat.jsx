@@ -156,21 +156,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             aiSocketRef.current = ws;
 
             ws.onopen = () => {
-                console.log("[Client|Stage] WS Connection Opened.");
-                if (isMeHost) {
-                    const setupPayload = {
-                        setup: {
-                            model: "models/gemini-2.0-flash-exp",
-                            generationConfig: {
-                                responseModalities: ["AUDIO"],
-                                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } }
-                            },
-                            systemInstruction: { parts: [{ text: "You are Miron, a helpful AI tutor hosting a live study group. Speak concisely and clearly." }] }
-                        }
-                    };
-                    console.log("[Client|Stage] Sending Setup Payload:", setupPayload);
-                    ws.send(JSON.stringify(setupPayload));
-                }
+                console.log("[Client|Stage] WS Connection Opened. Edge Worker handles Gemini configuration.");
             };
 
             let timeoutId;
