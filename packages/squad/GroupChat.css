@@ -638,11 +638,26 @@
     display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
     position: relative; transition: transform 0.2s;
 }
-.live-trigger-btn:active { transform: scale(0.9); }
-.live-trigger-btn .pulse-ring {
-    position: absolute; inset: -4px; border-radius: 50%;
-    border: 2px solid #ff5f5f; animation: pulseRing 1.5s infinite ease-out;
+.live-trigger-btn:active:not(:disabled) { transform: scale(0.9); }
+.live-trigger-btn:disabled { background: rgba(255, 95, 95, 0.5); cursor: not-allowed; }
+
+.tide-pulse-ring {
+    position: absolute; inset: -20px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(66, 215, 184, 0.3) 0%, transparent 70%);
+    animation: tidePulse 3s ease-in-out infinite; z-index: 1; pointer-events: none;
 }
+@keyframes tidePulse {
+    0% { transform: scale(0.8); opacity: 0.3; }
+    50% { transform: scale(1.4); opacity: 1; }
+    100% { transform: scale(0.8); opacity: 0.3; }
+}
+
+.host-offline-veil {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.7); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; z-index: 5;
+}
+.host-offline-veil i { color: #ffab40; font-size: 1.5rem; animation: pulseFade 1.5s infinite; }
+@keyframes pulseFade { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
 .live-stage-banner {
     display: none;
@@ -718,11 +733,11 @@
 
 .voice-halo-ring {
     position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent-teal);
-    z-index: 1; animation: voiceHalo 2s infinite ease-out; opacity: 0;
+    z-index: 2; animation: voiceHalo 2s infinite ease-out; opacity: 0;
 }
 @keyframes voiceHalo { 0% { transform: scale(0.7); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
 
-.stage-host-label { text-align: center; }
+.stage-host-label { text-align: center; position: relative; z-index: 10; }
 .stage-host-label h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 2px; }
 .stage-host-label p { font-size: 0.75rem; color: var(--accent-teal); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
 
