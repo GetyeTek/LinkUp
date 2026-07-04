@@ -10,6 +10,8 @@
     "dev": "echo 'Social Dev Active'"
   },
   "dependencies": {
-    "@linkup-platform/sdk-core": "^2.4.1"
+    "@linkup-platform/sdk-core": "^2.4.1",
+    "livekit-client": "^2.0.4",
+    "@livekit/components-react": "^2.0.2"
   }
 }
