@@ -367,7 +367,8 @@ const Connect = () => {
     }, [toastNotice]);
     const onOpenActivity = shell.openActivity;
     const [activeView, setActiveView] = useState('messages');
-    const [activeChat, setActiveChat] = useState(null);
+    const [mountedChats, setMountedChats] = useState({});
+    const [activeChatId, setActiveChatId] = useState(null);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
     const [isGroupCreatorOpen, setIsGroupCreatorOpen] = useState(false);
     const [conversations, setConversations] = useState([]);
@@ -396,8 +397,8 @@ const Connect = () => {
     const [liveSessions, setLiveSessions] = useState([]);
 
     useEffect(() => {
-        activeChatRef.current = activeChat;
-    }, [activeChat]);
+        activeChatRef.current = mountedChats[activeChatId];
+    }, [mountedChats, activeChatId]);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -457,20 +458,22 @@ const Connect = () => {
         if (routePayload && routePayload.action === 'open_chat') {
             setActiveView('messages');
             
-            // Setup Ghost UI instantly to block glitches
-            setActiveChat({
+            const ghostChat = {
                 conversation_id: routePayload.conversation_id,
                 type: routePayload.chat_type,
                 title: 'Loading...',
                 is_preview: true
-            });
+            };
+            
+            setMountedChats(prev => ({ ...prev, [routePayload.conversation_id]: ghostChat }));
+            setActiveChatId(routePayload.conversation_id);
             setTargetMessageId(routePayload.message_id);
 
             // Fetch true context silently
             supabase.rpc('get_user_conversations', { req_user_id: currentUser.id }).then(({data}) => {
                 if (data) {
                     const c = data.find(x => x.conversation_id === routePayload.conversation_id);
-                    if (c) setActiveChat(c);
+                    if (c) setMountedChats(prev => ({ ...prev, [c.conversation_id]: c }));
                 }
             });
             clearRoutePayload();
@@ -657,7 +660,6 @@ const Connect = () => {
             return;
         }
 
-        // Ironclad Verification: Catch silent RLS failures or function exits
         const { data: verifyData } = await supabase.from('conversation_members')
             .select('role')
             .eq('conversation_id', squadId)
@@ -675,39 +677,41 @@ const Connect = () => {
         
         setJoiningSquadId(null);
         
-        setActiveChat(prev => {
-            if (prev && prev.conversation_id === squadId) {
-                return { ...prev, is_preview: false };
-            }
+        setMountedChats(prev => {
+            const existing = prev[squadId];
             return {
-                conversation_id: squadId,
-                type: 'group',
-                title: joinedSquadInfo.title || 'Squad',
-                metadata: joinedSquadInfo.metadata || {}
+                ...prev,
+                [squadId]: existing 
+                    ? { ...existing, is_preview: false } 
+                    : { conversation_id: squadId, type: 'group', title: joinedSquadInfo.title || 'Squad', metadata: joinedSquadInfo.metadata || {} }
             };
         });
+        setActiveChatId(squadId);
     };
 
     const startDirectMessage = (targetUser) => {
-        // 1. Check if DM already exists locally
         const existing = conversations.find(c => c.type === 'dm' && c.other_user_id === targetUser.id);
-        
         setShowDiscovery(false);
 
         if (existing) {
-            setActiveChat(existing);
+            setMountedChats(prev => ({ ...prev, [existing.conversation_id]: existing }));
+            setActiveChatId(existing.conversation_id);
             setConversations(prev => prev.map(c => c.conversation_id === existing.conversation_id ? { ...c, unread_count: 0 } : c));
         } else {
-            // 2. Open as a "Ghost Chat" - No DB entry created yet.
-            // We pass the user details so the UI can render, but ID is null.
-            setActiveChat({
-                conversation_id: null, // Critical: Triggers lazy init on first message
-                type: 'dm',
-                other_user_id: targetUser.id,
-                other_user_name: targetUser.full_name || targetUser.username,
-                other_user_avatar: targetUser.avatar_url,
-                is_ghost: true
-            });
+            const ghostId = `ghost_${targetUser.id}`;
+            setMountedChats(prev => ({
+                ...prev,
+                [ghostId]: {
+                    conversation_id: null,
+                    type: 'dm',
+                    other_user_id: targetUser.id,
+                    other_user_name: targetUser.full_name || targetUser.username,
+                    other_user_avatar: targetUser.avatar_url,
+                    is_ghost: true,
+                    ghost_key: ghostId
+                }
+            }));
+            setActiveChatId(ghostId);
         }
     };
 
@@ -721,6 +725,20 @@ const Connect = () => {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const closeChat = (id) => {
+        setMountedChats(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+        if (activeChatId === id) setActiveChatId(null);
+        fetchConversations();
+    };
+
+    const minimizeChat = () => {
+        setActiveChatId(null);
+    };
+
     const handleExecuteForward = async (targetChat) => {
         if (targetChat === 'miron') {
             shell.openMiron(forwardTargetMsg.text);
@@ -728,7 +746,6 @@ const Connect = () => {
             return;
         }
 
-        // Chain forwarding meta or create fresh
         let meta = forwardTargetMsg.forward_meta;
         if (!meta) {
             meta = {
@@ -740,8 +757,8 @@ const Connect = () => {
             };
         }
         
-        // Optimistically drop out of forward mode and open target
-        setActiveChat(targetChat);
+        setMountedChats(prev => ({ ...prev, [targetChat.conversation_id]: targetChat }));
+        setActiveChatId(targetChat.conversation_id);
         setForwardTargetMsg(null);
 
         const { error } = await supabase.from('messages').insert({
@@ -763,7 +780,8 @@ const Connect = () => {
         if (forwardTargetMsg) {
             handleExecuteForward(chat);
         } else {
-            setActiveChat(chat);
+            setMountedChats(prev => ({ ...prev, [chat.conversation_id]: chat }));
+            setActiveChatId(chat.conversation_id);
             setConversations(prev => prev.map(c => c.conversation_id === chat.conversation_id ? { ...c, unread_count: 0 } : c));
         }
     };
@@ -779,13 +797,15 @@ const Connect = () => {
                         return;
                     }
                 }
-                setActiveChat({
+                const originChat = {
                     conversation_id: data.id,
                     type: 'group',
                     title: data.title,
                     metadata: data.metadata,
                     is_preview: true
-                });
+                };
+                setMountedChats(prev => ({ ...prev, [data.id]: originChat }));
+                setActiveChatId(data.id);
             }
         } else if (meta.original_sender_id) {
             setViewingUserId(meta.original_sender_id);
@@ -955,13 +975,15 @@ const Connect = () => {
                                                 setGlobalNotice("This group is private. You need an invite link to join.");
                                                 return;
                                             }
-                                            setActiveChat({
+                                            const previewChat = {
                                                 conversation_id: chat.conversation_id,
                                                 type: 'group',
                                                 title: chat.title,
                                                 metadata: chat.metadata,
                                                 is_preview: true
-                                            });
+                                            };
+                                            setMountedChats(prev => ({ ...prev, [chat.conversation_id]: previewChat }));
+                                            setActiveChatId(chat.conversation_id);
                                         }}>
                                             <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)' }}>
                                                 <i className="fas fa-globe"></i>
@@ -1183,13 +1205,23 @@ const Connect = () => {
                             setToastNotice("You must join this group first to forward messages.");
                             return;
                         }
-                        setActiveChat(group);
+                        setMountedChats(prev => ({ ...prev, [group.conversation_id]: group }));
+                        setActiveChatId(group.conversation_id);
                     }} 
                 />
             )}
 
-            {activeChat && activeChat.type === 'dm' && <UserChat chat={activeChat} currentUser={currentUser} targetMessageId={targetMessageId} isOnline={onlineUsers.has(activeChat.other_user_id)} onClose={() => { setActiveChat(null); fetchConversations(); }} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />}
-            {activeChat && activeChat.type === 'group' && <GroupChat chat={activeChat} currentUser={currentUser} targetMessageId={targetMessageId} onClose={() => { setActiveChat(null); fetchConversations(); }} onJoin={handleJoinSquad} isJoining={joiningSquadId === activeChat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(activeChat); setActiveChat(null); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />}
+            {Object.entries(mountedChats).map(([id, chat]) => {
+                const isHidden = activeChatId !== id;
+                if (chat.type === 'dm') {
+                    return <UserChat key={id} isHidden={isHidden} chat={chat} currentUser={currentUser} targetMessageId={targetMessageId} isOnline={onlineUsers.has(chat.other_user_id)} onClose={() => closeChat(id)} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(chat); minimizeChat(); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />;
+                }
+                if (chat.type === 'group') {
+                    return <GroupChat key={id} isHidden={isHidden} chat={chat} currentUser={currentUser} targetMessageId={targetMessageId} onClose={() => closeChat(id)} onMinimize={minimizeChat} onJoin={handleJoinSquad} isJoining={joiningSquadId === chat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(chat); minimizeChat(); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />;
+                }
+                return null;
+            })}
+            
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {viewingUserId && <UserInfoPanel userId={viewingUserId} currentUser={currentUser} onClose={() => setViewingUserId(null)} />}
             {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); }} />}
