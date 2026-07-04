@@ -144,6 +144,18 @@ export class GeminiLiveAgent extends Agent {
 
 export default {
   async fetch(request, env) {
-    return (await routeAgentRequest(request, env)) ?? new Response("Connect using WebSockets.", { status: 426 });
+    const url = new URL(request.url);
+    console.log(`[Gateway] 🚀 Incoming Request: ${request.method} ${url.pathname}`);
+
+    // AI Agent WebSocket Passthrough
+    if (url.pathname === '/realtime-ai') {
+      const agentId = url.searchParams.get("agent");
+      if (!agentId) return new Response("Missing agent ID", { status: 400 });
+      const targetUrl = new URL(`/?agent=${agentId}`, "https://gemini-live-proxy.getyeteklu2.workers.dev");
+      
+      // Preserve headers for upgrade but rewrite the destination
+      const proxyRequest = new Request(targetUrl, request);
+      return fetch(proxyRequest);
+    }
   }
 };
