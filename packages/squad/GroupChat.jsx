@@ -143,10 +143,14 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
     // Moderation Actions
     const updateQuestion = async (id, updates) => {
-        await supabase.from('live_stage_questions').update(updates).eq('id', id);
+        setLiveQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q));
+        const { error } = await supabase.from('live_stage_questions').update(updates).eq('id', id);
+        if (error) console.error("Update failed:", error);
     };
     const deleteQuestion = async (id) => {
-        await supabase.from('live_stage_questions').delete().eq('id', id);
+        setLiveQuestions(prev => prev.filter(q => q.id !== id));
+        const { error } = await supabase.from('live_stage_questions').delete().eq('id', id);
+        if (error) console.error("Drop failed:", error);
     };
 
     const pinnedQ = liveQuestions.find(q => q.is_pinned);
