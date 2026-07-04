@@ -56,6 +56,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const [qInput, setQInput] = useState('');
     const [liveQuestions, setLiveQuestions] = useState([]);
     const [isSending, setIsSending] = useState(false);
+    const [hostTab, setHostTab] = useState('pending'); // 'pending' | 'approved'
     const participants = useParticipants();
     
     const hostId = chatInfo.metadata?.live_host_id;
@@ -83,28 +84,33 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         return () => clearInterval(int);
     }, [liveState, isMeHost, conversationId, currentUser.id]);
 
-    // Independent Live Questions Subscription
+    // Independent Live Questions Subscription (Robust CRUD support)
     useEffect(() => {
         const fetchQs = async () => {
             const { data } = await supabase.from('live_stage_questions')
                 .select('*')
                 .eq('conversation_id', conversationId)
                 .order('created_at', { ascending: true });
-            if (data) setLiveQuestions(data.slice(-10)); // Keep last 10 in memory
+            if (data) setLiveQuestions(data.slice(-30)); // Hold up to 30 to support moderation queues
         };
         fetchQs();
 
         const sub = supabase.channel(`live_qs_${conversationId}`)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_stage_questions', filter: `conversation_id=eq.${conversationId}` }, payload => {
-                setLiveQuestions(p => [...p, payload.new].slice(-10));
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_stage_questions', filter: `conversation_id=eq.${conversationId}` }, payload => {
+                setLiveQuestions(p => {
+                    if (payload.eventType === 'INSERT') return [...p, payload.new].slice(-30);
+                    if (payload.eventType === 'UPDATE') return p.map(q => q.id === payload.new.id ? payload.new : q);
+                    if (payload.eventType === 'DELETE') return p.filter(q => q.id !== payload.old.id);
+                    return p;
+                });
             }).subscribe();
         
         return () => supabase.removeChannel(sub);
     }, [conversationId]);
 
     useEffect(() => {
-        if (questionsEndRef.current) questionsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }, [liveQuestions]);
+        if (questionsEndRef.current && !isMeHost) questionsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }, [liveQuestions, isMeHost]);
 
     const handleSendQuestion = async () => {
         if (!qInput.trim() || isSending) return;
@@ -112,11 +118,26 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         const { error } = await supabase.from('live_stage_questions').insert({
             conversation_id: conversationId,
             sender_id: currentUser.id,
-            text: qInput.trim()
+            text: qInput.trim(),
+            status: 'pending' // Defaults to pending
         });
         if (!error) setQInput('');
         setIsSending(false);
     };
+
+    // Moderation Actions
+    const updateQuestion = async (id, updates) => {
+        await supabase.from('live_stage_questions').update(updates).eq('id', id);
+    };
+    const deleteQuestion = async (id) => {
+        await supabase.from('live_stage_questions').delete().eq('id', id);
+    };
+
+    const pinnedQ = liveQuestions.find(q => q.is_pinned);
+    const pendingQs = liveQuestions.filter(q => q.status === 'pending');
+    const approvedQs = liveQuestions.filter(q => q.status === 'approved' && !q.is_pinned);
+    // Attendants see approved/pinned, and their OWN pending questions
+    const attendantViewQs = liveQuestions.filter(q => !q.is_pinned && (q.status === 'approved' || (q.status === 'pending' && q.sender_id === currentUser.id)));
 
     if (liveState === 'minimized') {
         return <FloatingLiveOrb hostAvatar={hostInfo.avatar} hostId={hostId} onClick={() => setLiveState('full')} />;
@@ -162,6 +183,21 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     <p>{isHostPaused ? "Reconnecting..." : "Broadcasting • Host"}</p>
                 </div>
 
+                {pinnedQ && (
+                    <div className="pinned-hero-card">
+                        <div className="ph-header">
+                            <span className="ph-label"><i className="fas fa-thumbtack"></i> Pinned Topic</span>
+                            {isMeHost && (
+                                <button className="icon-button ph-unpin" onClick={() => updateQuestion(pinnedQ.id, { is_pinned: false })}>
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            )}
+                        </div>
+                        <div className="ph-asker">{members[pinnedQ.sender_id]?.name || 'Student'} asks:</div>
+                        <div className="ph-text">{pinnedQ.text}</div>
+                    </div>
+                )}
+
                 <div className="immersive-listeners-panel">
                     <span className="listeners-title">{participants.length} Listening</span>
                     <div className="listeners-row">
@@ -172,18 +208,59 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     </div>
                 </div>
 
-                <div className="stage-questions-box">
-                    {liveQuestions.map(q => (
-                        <div key={q.id} className="stage-question-card">
-                            <div className="sq-meta">
-                                <span>{members[q.sender_id]?.name || 'Student'}</span>
-                                <span>Question</span>
-                            </div>
-                            <p className="sq-body-text">{q.text}</p>
+                {isMeHost ? (
+                    <div className="host-mod-panel">
+                        <div className="mod-tabs">
+                            <button className={hostTab === 'pending' ? 'active' : ''} onClick={() => setHostTab('pending')}>
+                                Pending Review ({pendingQs.length})
+                            </button>
+                            <button className={hostTab === 'approved' ? 'active' : ''} onClick={() => setHostTab('approved')}>
+                                Approved Log
+                            </button>
                         </div>
-                    ))}
-                    <div ref={questionsEndRef} />
-                </div>
+                        <div className="mod-q-list">
+                            {(hostTab === 'pending' ? pendingQs : approvedQs).map(q => (
+                                <div key={q.id} className="mod-q-card">
+                                    <div className="mqc-header">{members[q.sender_id]?.name || 'Student'}</div>
+                                    <div className="mqc-text">{q.text}</div>
+                                    <div className="mqc-actions">
+                                        <button className="mod-btn pin" onClick={() => updateQuestion(q.id, { is_pinned: true, status: 'approved' })}>
+                                            <i className="fas fa-thumbtack"></i> Pin
+                                        </button>
+                                        {hostTab === 'pending' && (
+                                            <button className="mod-btn approve" onClick={() => updateQuestion(q.id, { status: 'approved' })}>
+                                                <i className="fas fa-check"></i> Approve
+                                            </button>
+                                        )}
+                                        <button className="mod-btn dismiss" onClick={() => deleteQuestion(q.id)}>
+                                            <i className="fas fa-trash"></i> Drop
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {(hostTab === 'pending' ? pendingQs : approvedQs).length === 0 && (
+                                <div className="mod-empty">No questions in this queue.</div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="stage-questions-box">
+                        {attendantViewQs.map(q => (
+                            <div key={q.id} className="stage-question-card" style={{ opacity: q.status === 'pending' ? 0.6 : 1 }}>
+                                <div className="sq-meta">
+                                    <span>{members[q.sender_id]?.name || 'Student'}</span>
+                                    {q.status === 'pending' ? (
+                                        <span className="q-status-badge">Pending Review <i className="fas fa-clock"></i></span>
+                                    ) : (
+                                        <span>Question</span>
+                                    )}
+                                </div>
+                                <p className="sq-body-text">{q.text}</p>
+                            </div>
+                        ))}
+                        <div ref={questionsEndRef} />
+                    </div>
+                )}
             </main>
 
             {!isMeHost && (
