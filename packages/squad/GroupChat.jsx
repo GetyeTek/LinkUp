@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import { createPortal } from 'react-dom';
-import { LiveKitRoom, useParticipants, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
+import { LiveKitRoom, useParticipants, useLocalParticipant, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
 import { invokeLiveToken } from './api.js';
 import './GroupChat.css';
@@ -73,10 +73,11 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const [qInput, setQInput] = useState('');
     const [liveQuestions, setLiveQuestions] = useState([]);
     const [isSending, setIsSending] = useState(false);
-    const [hostTab, setHostTab] = useState('pending'); // 'pending' | 'approved'
+    const [hostTab, setHostTab] = useState('pending');
     const [showEndConfirm, setShowEndConfirm] = useState(false);
-    const [modLoading, setModLoading] = useState(null); // Tracks processing state: { id, action }
+    const [modLoading, setModLoading] = useState(null);
     const participants = useParticipants();
+    const { localParticipant } = useLocalParticipant();
     
     const hostId = chatInfo.metadata?.live_host_id;
     const hostInfo = members[hostId] || { name: 'Host', avatar: 'https://via.placeholder.com/150' };
@@ -84,11 +85,27 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     
     const hostParticipant = participants.find(p => p.identity === hostId);
     const isHostSpeaking = hostParticipant ? hostParticipant.isSpeaking : false;
-
-    // Derived Pause State based on WebRTC presence (fixes clock skew and DB sync delays)
     const isHostPaused = !isMeHost && !hostParticipant;
 
     const questionsEndRef = useRef(null);
+
+    // AI Stage State
+    const isAiHosting = chatInfo.metadata?.ai_hosting === true;
+    const [hostessMicEnabled, setHostessMicEnabled] = useState(false);
+    const hostessMicEnabledRef = useRef(hostessMicEnabled);
+    const [isMironSpeaking, setIsMironSpeaking] = useState(false);
+    const aiSocketRef = useRef(null);
+    const audioContextRef = useRef(null);
+    const nextStartTimeRef = useRef(0);
+
+    useEffect(() => { hostessMicEnabledRef.current = hostessMicEnabled; }, [hostessMicEnabled]);
+
+    // LiveKit Mic Control override
+    useEffect(() => {
+        if (isMeHost && localParticipant) {
+            localParticipant.setMicrophoneEnabled(!isAiHosting || hostessMicEnabled);
+        }
+    }, [isAiHosting, hostessMicEnabled, isMeHost, localParticipant]);
 
     // Heartbeat Engine (Host Only)
     useEffect(() => {
@@ -100,6 +117,118 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         const int = setInterval(beat, 15000); // Pulse every 15s
         return () => clearInterval(int);
     }, [liveState, isMeHost, conversationId, currentUser.id]);
+
+    // Web Audio Player for Gemini
+    const playAudioChunk = (base64Data) => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+        }
+        const ctx = audioContextRef.current;
+        if (ctx.state === 'suspended') ctx.resume();
+        
+        const rawString = atob(base64Data);
+        const array = new Uint8Array(new ArrayBuffer(rawString.length));
+        for (let i = 0; i < rawString.length; i++) array[i] = rawString.charCodeAt(i);
+        const pcm16 = new Int16Array(array.buffer);
+        const float32 = new Float32Array(pcm16.length);
+        for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768.0;
+
+        const buffer = ctx.createBuffer(1, float32.length, 24000);
+        buffer.getChannelData(0).set(float32);
+        
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        
+        const currTime = ctx.currentTime;
+        if (nextStartTimeRef.current < currTime) nextStartTimeRef.current = currTime;
+        
+        source.start(nextStartTimeRef.current);
+        nextStartTimeRef.current += buffer.duration;
+    };
+
+    // AI Stage WebSocket Bridge
+    useEffect(() => {
+        if (liveState === 'full' && isAiHosting) {
+            const gatewayUrl = `wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${conversationId}`;
+            const ws = new WebSocket(gatewayUrl);
+            aiSocketRef.current = ws;
+
+            ws.onopen = () => {
+                if (isMeHost) {
+                    ws.send(JSON.stringify({
+                        setup: {
+                            model: "models/gemini-2.0-flash-exp",
+                            generationConfig: {
+                                responseModalities: ["AUDIO"],
+                                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } }
+                            },
+                            systemInstruction: { parts: [{ text: "You are Miron, a helpful AI tutor hosting a live study group. Speak concisely and clearly." }] }
+                        }
+                    }));
+                }
+            };
+
+            let timeoutId;
+            ws.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    if (payload.serverContent?.modelTurn?.parts) {
+                        for (const part of payload.serverContent.modelTurn.parts) {
+                            if (part.inlineData?.data) {
+                                playAudioChunk(part.inlineData.data);
+                                setIsMironSpeaking(true);
+                                clearTimeout(timeoutId);
+                                timeoutId = setTimeout(() => setIsMironSpeaking(false), 800);
+                            }
+                        }
+                    }
+                } catch (e) {}
+            };
+
+            return () => {
+                ws.close();
+                aiSocketRef.current = null;
+            };
+        }
+    }, [liveState, isAiHosting, conversationId, isMeHost]);
+
+    // Hostess Audio Input to Gemini Processor
+    useEffect(() => {
+        let stream, ctx, processor;
+        if (isAiHosting && isMeHost) {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+                stream = s;
+                ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const source = ctx.createMediaStreamSource(stream);
+                processor = ctx.createScriptProcessor(2048, 1, 1);
+                
+                processor.onaudioprocess = (e) => {
+                    if (!hostessMicEnabledRef.current) return;
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    const pcmData = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+                    }
+                    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
+                    
+                    if (aiSocketRef.current?.readyState === WebSocket.OPEN) {
+                        aiSocketRef.current.send(JSON.stringify({
+                            realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Audio }] }
+                        }));
+                    }
+                };
+                
+                source.connect(processor);
+                processor.connect(ctx.destination);
+            }).catch(e => console.error("Mic access denied:", e));
+        }
+        return () => {
+            if (processor) processor.disconnect();
+            if (ctx) ctx.close();
+            if (stream) stream.getTracks().forEach(t => t.stop());
+        };
+    }, [isAiHosting, isMeHost]);
 
     // Independent Live Questions Subscription (Robust CRUD support)
     useEffect(() => {
@@ -147,6 +276,17 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const handleSendQuestion = async () => {
         if (!qInput.trim() || isSending) return;
         setIsSending(true);
+        
+        // Pass immediately to Miron if AI is hosting
+        if (isAiHosting && aiSocketRef.current?.readyState === WebSocket.OPEN) {
+            aiSocketRef.current.send(JSON.stringify({
+                clientContent: {
+                    turns: [{ role: "user", parts: [{ text: `${members[currentUser.id]?.name || 'A student'} asks: ${qInput.trim()}` }] }],
+                    turnComplete: true
+                }
+            }));
+        }
+
         const { error } = await supabase.from('live_stage_questions').insert({
             conversation_id: conversationId,
             sender_id: currentUser.id,
@@ -155,6 +295,15 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         });
         if (!error) setQInput('');
         setIsSending(false);
+    };
+
+    const toggleMironState = async (turnOn) => {
+        const newMeta = { ...chatInfo.metadata };
+        if (turnOn) newMeta.ai_hosting = true;
+        else delete newMeta.ai_hosting;
+        
+        await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
+        if (!turnOn) setHostessMicEnabled(false);
     };
 
     // Moderation Actions
@@ -221,26 +370,63 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
             <main className="stage-core">
                 <div className="stage-host-node">
-                    {isHostSpeaking && !isHostPaused && (
+                    {isAiHosting ? (
                         <>
-                            <div className="voice-halo-ring"></div>
-                            <div className="voice-halo-ring"></div>
+                            {isMironSpeaking && (
+                                <>
+                                    <div className="voice-halo-ring miron-halo"></div>
+                                    <div className="voice-halo-ring miron-halo"></div>
+                                </>
+                            )}
+                            <div className="miron-host-orb">
+                                <i className="fas fa-sparkles"></i>
+                            </div>
                         </>
-                    )}
-                    
-                    <img src={hostInfo.avatar} className="host-image-clip" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none' }} alt="Host" />
-                    
-                    {isHostPaused && (
-                        <div className="host-offline-veil">
-                            <i className="fas fa-satellite-dish"></i>
-                        </div>
+                    ) : (
+                        <>
+                            {isHostSpeaking && !isHostPaused && (
+                                <>
+                                    <div className="voice-halo-ring"></div>
+                                    <div className="voice-halo-ring"></div>
+                                </>
+                            )}
+                            <img src={hostInfo.avatar} className="host-image-clip" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none' }} alt="Host" />
+                            {isHostPaused && (
+                                <div className="host-offline-veil">
+                                    <i className="fas fa-satellite-dish"></i>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
 
                 <div className="stage-host-label">
-                    <h2>{hostInfo.name}</h2>
-                    <p>{isHostPaused ? "Connecting..." : "Broadcasting • Host"}</p>
+                    <h2>{isAiHosting ? 'Miron Athena' : hostInfo.name}</h2>
+                    <p>{isAiHosting ? 'AI Study Guide • Hosting' : (isHostPaused ? "Connecting..." : "Broadcasting • Host")}</p>
                 </div>
+
+                {isMeHost && (
+                    <div className="hostess-ai-controls">
+                        {!isAiHosting ? (
+                            <button className="miron-control-btn" onClick={() => toggleMironState(true)}>
+                                <i className="fas fa-sparkles"></i> Let Miron Host
+                            </button>
+                        ) : (
+                            <>
+                                <button 
+                                    className={`miron-control-btn ${hostessMicEnabled ? 'active-mic' : ''}`}
+                                    onClick={() => setHostessMicEnabled(!hostessMicEnabled)}
+                                >
+                                    <i className={`fas fa-microphone${hostessMicEnabled ? '' : '-slash'}`}></i> 
+                                    {hostessMicEnabled ? 'Recording...' : 'Host Mic'}
+                                </button>
+                                <button className="miron-control-btn danger" onClick={() => toggleMironState(false)}>
+                                    <i className="fas fa-times"></i> Drop Miron
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
 
                 {pinnedQ && (
                     <div className="pinned-hero-card">
