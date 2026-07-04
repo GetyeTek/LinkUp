@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
-import { LiveKitRoom, useParticipants, useIsSpeaking, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?bundle&deps=livekit-client@2.6.2&external=react,react-dom';
+import { LiveKitRoom, useParticipants, RoomAudioRenderer } from 'https://cdn.jsdelivr.net/npm/@livekit/components-react@2.6.2/+esm';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
 import { invokeLiveToken } from './api.js';
 import './GroupChat.css';
@@ -11,7 +11,7 @@ const FloatingLiveOrb = ({ hostAvatar, hostId, onClick }) => {
     const dragStart = useRef(null);
     const participants = useParticipants();
     const hostParticipant = participants.find(p => p.identity === hostId);
-    const isSpeaking = useIsSpeaking(hostParticipant);
+    const isSpeaking = hostParticipant ? hostParticipant.isSpeaking : false;
 
     const handlePointerDown = (e) => {
         e.target.setPointerCapture(e.pointerId);
@@ -59,7 +59,7 @@ const LiveStageContent = ({ chatInfo, members, liveState, setLiveState, onLeave,
     const hostInfo = members[hostId] || { name: 'Host', avatar: 'https://via.placeholder.com/150' };
     
     const hostParticipant = participants.find(p => p.identity === hostId);
-    const isHostSpeaking = useIsSpeaking(hostParticipant);
+    const isHostSpeaking = hostParticipant ? hostParticipant.isSpeaking : false;
 
     const liveQuestions = messages.filter(m => m.forward_meta?.is_live_question).slice(-5);
     const questionsEndRef = useRef(null);
