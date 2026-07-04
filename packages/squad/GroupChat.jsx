@@ -1173,6 +1173,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
     const isLiveActive = localChatInfo.metadata?.is_live && !isLiveDead;
     const isMeHost = localChatInfo.metadata?.live_host_id === currentUser.id;
+    const hasRecoverableSession = isLiveActive && isMeHost && liveState === 'none';
     
     // Attendants shouldn't see the banner if the host is paused/offline
     const showLiveBanner = isLiveActive && (!isLivePaused || isMeHost);
