@@ -150,13 +150,15 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     // AI Stage WebSocket Bridge
     useEffect(() => {
         if (liveState === 'full' && isAiHosting) {
+            console.log(`[Client|Stage] Initializing AI Stage WS... Target: ${conversationId}`);
             const gatewayUrl = `wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${conversationId}`;
             const ws = new WebSocket(gatewayUrl);
             aiSocketRef.current = ws;
 
             ws.onopen = () => {
+                console.log("[Client|Stage] WS Connection Opened.");
                 if (isMeHost) {
-                    ws.send(JSON.stringify({
+                    const setupPayload = {
                         setup: {
                             model: "models/gemini-2.0-flash-exp",
                             generationConfig: {
@@ -165,7 +167,9 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             },
                             systemInstruction: { parts: [{ text: "You are Miron, a helpful AI tutor hosting a live study group. Speak concisely and clearly." }] }
                         }
-                    }));
+                    };
+                    console.log("[Client|Stage] Sending Setup Payload:", setupPayload);
+                    ws.send(JSON.stringify(setupPayload));
                 }
             };
 
@@ -173,6 +177,17 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             ws.onmessage = (event) => {
                 try {
                     const payload = JSON.parse(event.data);
+                    
+                    if (payload.serverContent?.modelTurn) {
+                        console.log("[Client|Stage] 🗣️ Received Audio/Turn from Miron!");
+                    } else if (payload.serverContent?.turnComplete) {
+                        console.log("[Client|Stage] 🏁 Miron finished turn.");
+                    } else if (payload.setupComplete) {
+                        console.log("[Client|Stage] ✅ Miron Setup Complete!");
+                    } else {
+                        console.log("[Client|Stage] 📩 Received payload:", payload);
+                    }
+
                     if (payload.serverContent?.modelTurn?.parts) {
                         for (const part of payload.serverContent.modelTurn.parts) {
                             if (part.inlineData?.data) {
@@ -183,7 +198,9 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             }
                         }
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.warn("[Client|Stage] Non-JSON message or parse error:", event.data);
+                }
             };
 
             return () => {
@@ -194,17 +211,23 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     }, [liveState, isAiHosting, conversationId, isMeHost]);
 
     // Hostess Audio Input to Gemini Processor
+    const hasLoggedAudioRef = useRef(false);
     useEffect(() => {
         let stream, ctx, processor;
         if (isAiHosting && isMeHost) {
+            console.log("[Client|Stage] Requesting microphone access for Host...");
             navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+                console.log("[Client|Stage] Microphone acquired. Creating processor...");
                 stream = s;
                 ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
                 const source = ctx.createMediaStreamSource(stream);
                 processor = ctx.createScriptProcessor(2048, 1, 1);
                 
                 processor.onaudioprocess = (e) => {
-                    if (!hostessMicEnabledRef.current) return;
+                    if (!hostessMicEnabledRef.current) {
+                        hasLoggedAudioRef.current = false;
+                        return;
+                    }
                     const inputData = e.inputBuffer.getChannelData(0);
                     const pcmData = new Int16Array(inputData.length);
                     for (let i = 0; i < inputData.length; i++) {
@@ -213,6 +236,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
                     
                     if (aiSocketRef.current?.readyState === WebSocket.OPEN) {
+                        if (!hasLoggedAudioRef.current) {
+                            console.log("[Client|Stage] 🎙️ MIC OPEN: Streaming PCM audio to Gemini...");
+                            hasLoggedAudioRef.current = true;
+                        }
                         aiSocketRef.current.send(JSON.stringify({
                             realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Audio }] }
                         }));
@@ -279,12 +306,16 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         
         // Pass immediately to Miron if AI is hosting
         if (isAiHosting && aiSocketRef.current?.readyState === WebSocket.OPEN) {
-            aiSocketRef.current.send(JSON.stringify({
+            const payload = {
                 clientContent: {
                     turns: [{ role: "user", parts: [{ text: `${members[currentUser.id]?.name || 'A student'} asks: ${qInput.trim()}` }] }],
                     turnComplete: true
                 }
-            }));
+            };
+            console.log("[Client|Stage] Sending Text Question to Gemini:", payload);
+            aiSocketRef.current.send(JSON.stringify(payload));
+        } else if (isAiHosting) {
+            console.warn("[Client|Stage] Wanted to send text to Gemini, but WS is not open!");
         }
 
         const { error } = await supabase.from('live_stage_questions').insert({
