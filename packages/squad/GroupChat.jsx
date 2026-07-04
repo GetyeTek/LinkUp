@@ -84,10 +84,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const hostParticipant = participants.find(p => p.identity === hostId);
     const isHostSpeaking = hostParticipant ? hostParticipant.isSpeaking : false;
 
-    // Derived Pause State based on Heartbeat
-    const heartBeatTime = new Date(chatInfo.metadata?.live_heartbeat || 0).getTime();
-    const timeSinceBeat = Date.now() - heartBeatTime;
-    const isHostPaused = timeSinceBeat > 45000 && !isMeHost; // Attendants see paused if beat is missing for 45s
+    // Derived Pause State based on WebRTC presence (fixes clock skew and DB sync delays)
+    const isHostPaused = !isMeHost && !hostParticipant;
 
     const questionsEndRef = useRef(null);
 
@@ -218,7 +216,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
                 <div className="stage-host-label">
                     <h2>{hostInfo.name}</h2>
-                    <p>{isHostPaused ? "Reconnecting..." : "Broadcasting • Host"}</p>
+                    <p>{isHostPaused ? "Connecting..." : "Broadcasting • Host"}</p>
                 </div>
 
                 {pinnedQ && (
@@ -1189,15 +1187,17 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         : Date.now(); // Default to now to prevent instant death for fresh sessions
         
     const timeSinceBeat = Date.now() - heartBeatTime;
-    const isLiveDead = timeSinceBeat > 10 * 60 * 1000; // 10 minutes
-    const isLivePaused = timeSinceBeat > 45000; // 45 seconds
+    
+    // Allow a generous 15-minute window for session death to mitigate minor client clock skews
+    const isLiveDead = timeSinceBeat > 15 * 60 * 1000; 
 
     const isLiveActive = localChatInfo.metadata?.is_live && !isLiveDead;
     const isMeHost = localChatInfo.metadata?.live_host_id === currentUser.id;
     const hasRecoverableSession = isLiveActive && isMeHost && liveState === 'none';
     
-    // Attendants shouldn't see the banner if the host is paused/offline
-    const showLiveBanner = isLiveActive && (!isLivePaused || isMeHost);
+    // Show banner as long as the session is technically active in DB. 
+    // (If the host is dropping packets, attendants can wait inside the room).
+    const showLiveBanner = isLiveActive;
 
     useEffect(() => {
         if (localChatInfo.metadata?.is_live && isMeHost && liveState === 'none') {
