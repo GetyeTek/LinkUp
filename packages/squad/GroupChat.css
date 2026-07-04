@@ -689,8 +689,8 @@
 
 /* Immersive Screen */
 .live-immersive-overlay {
-    display: none; position: absolute; inset: 0; background-color: #030303;
-    z-index: 100; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    display: none; position: fixed; inset: 0; background-color: #030303;
+    z-index: 10000; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -827,7 +827,7 @@
 .floating-live-orb {
     display: none; position: absolute; width: 76px; height: 76px; border-radius: 50%;
     background: var(--surface-dark); border: 2px solid var(--accent-teal);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 999; cursor: grab;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 10000; cursor: grab;
     justify-content: center; align-items: center; touch-action: none;
 }
 .floating-live-orb:active { cursor: grabbing; }
