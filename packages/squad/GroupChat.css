@@ -642,14 +642,7 @@
 .live-trigger-btn:disabled { background: rgba(255, 95, 95, 0.5); cursor: not-allowed; }
 
 .tide-pulse-ring {
-    position: absolute; inset: -20px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(66, 215, 184, 0.3) 0%, transparent 70%);
-    animation: tidePulse 3s ease-in-out infinite; z-index: 1; pointer-events: none;
-}
-@keyframes tidePulse {
-    0% { transform: scale(0.8); opacity: 0.3; }
-    50% { transform: scale(1.4); opacity: 1; }
-    100% { transform: scale(0.8); opacity: 0.3; }
+    display: none;
 }
 
 .host-offline-veil {
@@ -691,6 +684,7 @@
 .live-immersive-overlay {
     display: none; position: fixed; inset: 0; background-color: #030303;
     z-index: 10000; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    min-height: 0; /* Crucial to prevent flex-child explosion */
 }
 
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -727,8 +721,11 @@
 .stage-live-dot { width: 8px; height: 8px; background: #ff5f5f; border-radius: 50%; }
 
 .stage-core {
-    flex: 1; display: flex; flex-direction: column; justify-content: center;
-    align-items: center; gap: 1.5rem; z-index: 10; padding: 2rem; position: relative;
+    flex: 1; display: flex; flex-direction: column; justify-content: flex-start;
+    align-items: center; gap: 1.5rem; z-index: 10; padding: 2rem 1.5rem; position: relative;
+    overflow-y: auto; /* Traps the scroll inside the stage */
+    min-height: 0; 
+    width: 100%;
 }
 
 .stage-host-node { position: relative; width: 140px; height: 140px; display: flex; justify-content: center; align-items: center; }
@@ -736,9 +733,15 @@
 
 .voice-halo-ring {
     position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent-teal);
-    z-index: 2; animation: voiceHalo 2s infinite ease-out; opacity: 0;
+    z-index: 1; animation: voiceHalo 2s infinite ease-out; opacity: 0;
 }
-@keyframes voiceHalo { 0% { transform: scale(0.7); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+.voice-halo-ring:nth-child(2) {
+    animation-delay: 0.6s;
+}
+@keyframes voiceHalo { 
+    0% { transform: scale(0.7); opacity: 1; } 
+    100% { transform: scale(1.4); opacity: 0; } 
+}
 
 .stage-host-label { text-align: center; position: relative; z-index: 10; }
 .stage-host-label h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 2px; }
@@ -761,9 +764,7 @@
 
 .stage-questions-box {
     width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px;
-    max-height: 180px; overflow-y: auto;
-    mask-image: linear-gradient(to top, transparent, white 20%);
-    -webkit-mask-image: linear-gradient(to top, transparent, white 20%);
+    flex: none; /* Let it grow naturally inside the scrolling stage-core */
 }
 
 .stage-question-card {
@@ -797,7 +798,7 @@
 /* Hostess Moderation Panel */
 .host-mod-panel {
     width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 10px;
-    flex: 1; min-height: 0;
+    flex: none; height: auto; /* Let it grow naturally inside the scrolling stage-core */
 }
 .mod-tabs { display: flex; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px; margin-bottom: 4px; }
 .mod-tabs button {
@@ -806,7 +807,7 @@
 }
 .mod-tabs button.active { background: #333; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
 
-.mod-q-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 1rem; mask-image: linear-gradient(to top, transparent, white 10%); -webkit-mask-image: linear-gradient(to top, transparent, white 10%); }
+.mod-q-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 1rem; }
 .mod-q-list::-webkit-scrollbar { display: none; }
 .mod-q-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; }
 .mqc-header { font-size: 0.75rem; font-weight: 600; color: var(--accent-teal); margin-bottom: 4px; }
