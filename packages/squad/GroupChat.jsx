@@ -75,6 +75,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const [isSending, setIsSending] = useState(false);
     const [hostTab, setHostTab] = useState('pending'); // 'pending' | 'approved'
     const [showEndConfirm, setShowEndConfirm] = useState(false);
+    const [modLoading, setModLoading] = useState(null); // Tracks processing state: { id, action }
     const participants = useParticipants();
     
     const hostId = chatInfo.metadata?.live_host_id;
@@ -157,22 +158,28 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     };
 
     // Moderation Actions
-    const updateQuestion = async (id, updates) => {
-        setLiveQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q));
+    const handleModAction = async (id, action, updates) => {
+        setModLoading({ id, action });
         const { error } = await supabase.from('live_stage_questions').update(updates).eq('id', id);
-        if (error) console.error("Update failed:", error);
-    };
-    const deleteQuestion = async (id) => {
-        setLiveQuestions(prev => prev.filter(q => q.id !== id));
-        const { error } = await supabase.from('live_stage_questions').delete().eq('id', id);
-        if (error) console.error("Drop failed:", error);
+        if (!error) {
+            setLiveQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q));
+        } else {
+            console.error("Moderation action failed:", error);
+        }
+        setModLoading(null);
     };
 
-    const pinnedQ = liveQuestions.find(q => q.is_pinned);
+    const pinnedQ = liveQuestions.find(q => q.is_pinned && q.status !== 'dropped');
     const pendingQs = liveQuestions.filter(q => q.status === 'pending');
     const approvedQs = liveQuestions.filter(q => q.status === 'approved' && !q.is_pinned);
-    // Attendants see approved/pinned, and their OWN pending questions
-    const attendantViewQs = liveQuestions.filter(q => !q.is_pinned && (q.status === 'approved' || (q.status === 'pending' && q.sender_id === currentUser.id)));
+    // Attendants see approved/pinned, and their OWN pending or dropped questions
+    const attendantViewQs = liveQuestions.filter(q => 
+        !q.is_pinned && 
+        (
+            q.status === 'approved' || 
+            ((q.status === 'pending' || q.status === 'dropped') && q.sender_id === currentUser.id)
+        )
+    );
 
     if (liveState === 'minimized') {
         return <FloatingLiveOrb hostAvatar={hostInfo.avatar} hostId={hostId} onClick={() => setLiveState('full')} />;
@@ -240,8 +247,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         <div className="ph-header">
                             <span className="ph-label"><i className="fas fa-thumbtack"></i> Pinned Topic</span>
                             {isMeHost && (
-                                <button className="icon-button ph-unpin" onClick={() => updateQuestion(pinnedQ.id, { is_pinned: false })}>
-                                    <i className="fas fa-times"></i>
+                                <button className="icon-button ph-unpin" onClick={() => handleModAction(pinnedQ.id, 'unpin', { is_pinned: false })} disabled={modLoading?.id === pinnedQ.id}>
+                                    {modLoading?.id === pinnedQ.id && modLoading?.action === 'unpin' ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-times"></i>}
                                 </button>
                             )}
                         </div>
@@ -276,16 +283,16 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                     <div className="mqc-header">{members[q.sender_id]?.name || 'Student'}</div>
                                     <div className="mqc-text">{q.text}</div>
                                     <div className="mqc-actions">
-                                        <button className="mod-btn pin" onClick={() => updateQuestion(q.id, { is_pinned: true, status: 'approved' })}>
-                                            <i className="fas fa-thumbtack"></i> Pin
+                                        <button className="mod-btn pin" onClick={() => handleModAction(q.id, 'pin', { is_pinned: true, status: 'approved' })} disabled={modLoading?.id === q.id}>
+                                            {modLoading?.id === q.id && modLoading?.action === 'pin' ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fas fa-thumbtack"></i> Pin</>}
                                         </button>
                                         {hostTab === 'pending' && (
-                                            <button className="mod-btn approve" onClick={() => updateQuestion(q.id, { status: 'approved' })}>
-                                                <i className="fas fa-check"></i> Approve
+                                            <button className="mod-btn approve" onClick={() => handleModAction(q.id, 'approve', { status: 'approved' })} disabled={modLoading?.id === q.id}>
+                                                {modLoading?.id === q.id && modLoading?.action === 'approve' ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fas fa-check"></i> Approve</>}
                                             </button>
                                         )}
-                                        <button className="mod-btn dismiss" onClick={() => deleteQuestion(q.id)}>
-                                            <i className="fas fa-trash"></i> Drop
+                                        <button className="mod-btn dismiss" onClick={() => handleModAction(q.id, 'drop', { status: 'dropped', is_pinned: false })} disabled={modLoading?.id === q.id}>
+                                            {modLoading?.id === q.id && modLoading?.action === 'drop' ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fas fa-trash"></i> Drop</>}
                                         </button>
                                     </div>
                                 </div>
@@ -298,16 +305,18 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 ) : (
                     <div className="stage-questions-box">
                         {attendantViewQs.map(q => (
-                            <div key={q.id} className="stage-question-card" style={{ opacity: q.status === 'pending' ? 0.6 : 1 }}>
+                            <div key={q.id} className="stage-question-card" style={{ opacity: (q.status === 'pending' || q.status === 'dropped') ? 0.6 : 1 }}>
                                 <div className="sq-meta">
                                     <span>{members[q.sender_id]?.name || 'Student'}</span>
                                     {q.status === 'pending' ? (
                                         <span className="q-status-badge">Pending Review <i className="fas fa-clock"></i></span>
+                                    ) : q.status === 'dropped' ? (
+                                        <span className="q-status-badge" style={{background: 'rgba(255, 95, 95, 0.15)', color: '#ff5f5f', border: '1px solid rgba(255, 95, 95, 0.3)'}}>Dropped <i className="fas fa-times"></i></span>
                                     ) : (
                                         <span>Question</span>
                                     )}
                                 </div>
-                                <p className="sq-body-text">{q.text}</p>
+                                <p className="sq-body-text" style={{ textDecoration: q.status === 'dropped' ? 'line-through' : 'none' }}>{q.text}</p>
                             </div>
                         ))}
                         <div ref={questionsEndRef} />
