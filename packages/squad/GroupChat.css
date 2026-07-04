@@ -770,8 +770,51 @@
 
 @keyframes slideUpQuestion { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.sq-meta { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--purple-glow); font-weight: 700; margin-bottom: 4px; }
+.sq-meta { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--purple-glow); font-weight: 700; margin-bottom: 4px; align-items: center; }
 .sq-body-text { font-size: 0.85rem; color: #e0e0e0; line-height: 1.4; margin: 0; }
+
+.q-status-badge { background: rgba(255, 171, 64, 0.15); color: #ffab40; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; border: 1px solid rgba(255, 171, 64, 0.3); }
+
+/* Pinned Hero Card */
+.pinned-hero-card {
+    width: 100%; max-width: 340px; background: rgba(66, 215, 184, 0.05);
+    border: 1px solid var(--accent-teal); border-radius: 16px; padding: 14px;
+    box-shadow: 0 10px 30px rgba(66, 215, 184, 0.15); margin: 0 auto;
+    animation: slideDownHero 0.4s cubic-bezier(0.16, 1, 0.3, 1); position: relative; z-index: 20;
+}
+@keyframes slideDownHero { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+
+.ph-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.ph-label { font-size: 0.7rem; font-weight: 700; color: var(--accent-teal); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+.ph-unpin { color: #888; font-size: 1rem; width: 24px; height: 24px; padding: 0; }
+.ph-unpin:hover { color: #ff5f5f; }
+.ph-asker { font-size: 0.8rem; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.ph-text { font-size: 0.95rem; color: #e0e0e0; line-height: 1.4; font-family: 'Newsreader', serif; }
+
+/* Hostess Moderation Panel */
+.host-mod-panel {
+    width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 10px;
+    flex: 1; min-height: 0;
+}
+.mod-tabs { display: flex; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px; margin-bottom: 4px; }
+.mod-tabs button {
+    flex: 1; background: transparent; border: none; padding: 8px; color: #888;
+    font-weight: 600; font-size: 0.8rem; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+}
+.mod-tabs button.active { background: #333; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+
+.mod-q-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 1rem; mask-image: linear-gradient(to top, transparent, white 10%); -webkit-mask-image: linear-gradient(to top, transparent, white 10%); }
+.mod-q-list::-webkit-scrollbar { display: none; }
+.mod-q-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; }
+.mqc-header { font-size: 0.75rem; font-weight: 600; color: var(--accent-teal); margin-bottom: 4px; }
+.mqc-text { font-size: 0.85rem; color: #ccc; line-height: 1.4; margin-bottom: 12px; }
+.mqc-actions { display: flex; gap: 6px; }
+.mod-btn { flex: 1; padding: 6px; border-radius: 6px; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; transition: transform 0.2s; }
+.mod-btn:active { transform: scale(0.95); }
+.mod-btn.pin { background: rgba(66, 215, 184, 0.15); color: var(--accent-teal); }
+.mod-btn.approve { background: rgba(255,255,255,0.1); color: #fff; }
+.mod-btn.dismiss { background: rgba(255, 95, 95, 0.1); color: #ff5f5f; }
+.mod-empty { text-align: center; color: #666; font-size: 0.85rem; padding: 2rem 0; font-style: italic; }
 
 .immersive-input-area { padding: 1.5rem; background: rgba(3, 3, 3, 0.8); border-top: 1px solid rgba(255,255,255,0.04); z-index: 10; }
 .immersive-dock { display: flex; align-items: center; background: #14141c; border: 1px solid var(--glass-border); border-radius: 99px; padding: 6px 6px 6px 18px; }
