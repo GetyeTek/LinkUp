@@ -15,18 +15,34 @@ const FloatingLiveOrb = ({ hostAvatar, hostId, onClick }) => {
 
     const handlePointerDown = (e) => {
         e.target.setPointerCapture(e.pointerId);
-        dragStart.current = { x: e.clientX - pos.x, y: e.clientY - pos.y, isDragging: false };
+        dragStart.current = { 
+            offsetX: e.clientX - pos.x, 
+            offsetY: e.clientY - pos.y, 
+            startX: e.clientX,
+            startY: e.clientY,
+            isDragging: false 
+        };
     };
 
     const handlePointerMove = (e) => {
         if (!dragStart.current) return;
-        dragStart.current.isDragging = true;
-        const newX = e.clientX - dragStart.current.x;
-        const newY = e.clientY - dragStart.current.y;
-        setPos({ 
-            x: Math.max(10, Math.min(newX, window.innerWidth - 86)), 
-            y: Math.max(50, Math.min(newY, window.innerHeight - 100)) 
-        });
+        
+        const dx = Math.abs(e.clientX - dragStart.current.startX);
+        const dy = Math.abs(e.clientY - dragStart.current.startY);
+        
+        // Touch jitter deadzone: Must move more than 8 pixels to be considered a drag
+        if (dx > 8 || dy > 8) {
+            dragStart.current.isDragging = true;
+        }
+
+        if (dragStart.current.isDragging) {
+            const newX = e.clientX - dragStart.current.offsetX;
+            const newY = e.clientY - dragStart.current.offsetY;
+            setPos({ 
+                x: Math.max(10, Math.min(newX, window.innerWidth - 86)), 
+                y: Math.max(50, Math.min(newY, window.innerHeight - 100)) 
+            });
+        }
     };
 
     const handlePointerUp = (e) => {
@@ -147,14 +163,14 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         <div className="live-immersive-overlay" style={{ display: 'flex' }}>
             <div className="immersive-ambient"></div>
             <header className="immersive-header">
-                <button className="minimize-stage-btn" onClick={() => setLiveState('minimized')}><i className="fas fa-compress-alt"></i></button>
+                <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}><i className="fas fa-compress-alt"></i></button>
                 <div className="stage-title-wrap">
                     <div className="stage-meta-indicator">
                         <span className="stage-live-dot"></span> Live Stage
                     </div>
                     <h2 className="stage-topic-title">{chatInfo.title}</h2>
                 </div>
-                <button className="minimize-stage-btn" onClick={onLeave} style={{color: '#ff5f5f'}}><i className="fas fa-phone-slash"></i></button>
+                <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLeave(); }} style={{color: '#ff5f5f'}}><i className="fas fa-phone-slash"></i></button>
             </header>
 
             <main className="stage-core">
