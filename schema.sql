@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-04T07:22:36.224Z
+-- Date: 2026-07-04T07:42:01.638Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -138,6 +138,7 @@ Table: featured_events | Policy: Public read featured_events | Cmd: SELECT | Usi
 Table: live_study_sessions | Policy: Public read active sessions | Cmd: SELECT | Using: true
 null
 null
+Table: conduit_sync_test | Policy: Allow public read | Cmd: SELECT | Using: true
 
 -- ========================
 -- FUNCTIONS & RPCs
