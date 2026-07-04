@@ -31,8 +31,6 @@ jobs:
           workingDirectory: cloudflare-worker
           wranglerVersion: '4.107.0'
           secrets: |
-            SUPABASE_URL
             SUPABASE_SERVICE_ROLE_KEY
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
