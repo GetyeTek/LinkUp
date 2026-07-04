@@ -2201,6 +2201,7 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                     audio={localChatInfo.metadata?.live_host_id === currentUser.id}
                     video={false}
                     options={{
+                        webAudioMix: true,
                         publishDefaults: {
                             audioBitrate: 48000, // High-fidelity podcast quality voice
                             dtx: true // Discontinuous Transmission (saves bandwidth when silent)
