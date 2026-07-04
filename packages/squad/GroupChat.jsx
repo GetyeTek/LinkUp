@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { createPortal } from 'react-dom';
 import { LiveKitRoom, useParticipants, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
 import { invokeLiveToken } from './api.js';
@@ -1081,7 +1082,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     );
 };
 
-const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoining, onForward, onOriginClick, onOpenUser }) => {
+const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMinimize, onJoin, isJoining, onForward, onOriginClick, onOpenUser }) => {
     const { user: userProfile } = usePlatform();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -1162,7 +1163,10 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
     const localTypingRef = useRef(false);
 
     // Session Recovery & Heartbeat Diagnostics
-    const heartBeatTime = new Date(localChatInfo.metadata?.live_heartbeat || 0).getTime();
+    const heartBeatTime = localChatInfo.metadata?.live_heartbeat 
+        ? new Date(localChatInfo.metadata.live_heartbeat).getTime() 
+        : Date.now(); // Default to now to prevent instant death for fresh sessions
+        
     const timeSinceBeat = Date.now() - heartBeatTime;
     const isLiveDead = timeSinceBeat > 10 * 60 * 1000; // 10 minutes
     const isLivePaused = timeSinceBeat > 45000; // 45 seconds
@@ -1775,8 +1779,14 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
 
     const isMember = !!members[currentUser.id];
 
+    const handleBack = () => {
+        if (liveState !== 'none') onMinimize();
+        else onClose();
+    };
+
     return (
-        <div className="squad-chat-overlay" onTouchStart={e => e.stopPropagation()}>
+        <>
+        <div className="squad-chat-overlay" style={{ display: isHidden ? 'none' : 'flex' }} onTouchStart={e => e.stopPropagation()}>
             <div className="ambient-prism-light"></div>
 
             {kickedNotice && (
@@ -1827,7 +1837,7 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                 </header>
             ) : (
                 <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '1.2rem' }}>
-                    <button className="icon-button back-btn" onClick={onClose}><i className="fas fa-chevron-left"></i></button>
+                    <button className="icon-button back-btn" onClick={handleBack}><i className="fas fa-chevron-left"></i></button>
                     <div className="squad-contact-profile" onClick={() => setIsInfoOpen(true)} style={{cursor: 'pointer'}}>
                         <div className="squad-avatar-ring">
                             {localChatInfo.avatar_url && !avatarError ? (
@@ -2217,6 +2227,10 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                                         </svg>
                                         <span className="prog-text">{uploadProgress}%</span>
                                     </div>
+                                ) : hasRecoverableSession ? (
+                                    <button className="live-trigger-btn" style={{ background: '#ffab40' }} onClick={() => setShowRecoveryModal(true)}>
+                                        <i className="fas fa-play"></i>
+                                    </button>
                                 ) : (!input.trim() && pendingAttachments.length === 0 && !editingMessage && (myRole === 'owner' || myRole === 'admin') && !isLiveActive) ? (
                                     <button className="live-trigger-btn" onClick={startLiveSession} disabled={isStartingLive}>
                                         {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-broadcast-tower"></i>}
@@ -2373,34 +2387,38 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                 </div>
             )}
 
-            {liveState !== 'none' && liveCredentials && (
-                <LiveKitRoom
-                    serverUrl={liveCredentials.url}
-                    token={liveCredentials.token}
-                    connect={true}
-                    audio={isMeHost}
-                    video={false}
-                    options={{
-                        webAudioMix: true,
-                        publishDefaults: {
-                            audioBitrate: 48000,
-                            dtx: true
-                        }
-                    }}
-                >
-                    <LiveStageContent 
-                        conversationId={chat.conversation_id}
-                        chatInfo={localChatInfo}
-                        members={members}
-                        liveState={liveState}
-                        setLiveState={setLiveState}
-                        onLeave={endLiveSession}
-                        currentUser={currentUser}
-                    />
-                    <RoomAudioRenderer />
-                </LiveKitRoom>
-            )}
         </div>
+        
+        {/* React Portal escapes the Hidden Window boundary to float across the entire app */}
+        {liveState !== 'none' && liveCredentials && createPortal(
+            <LiveKitRoom
+                serverUrl={liveCredentials.url}
+                token={liveCredentials.token}
+                connect={true}
+                audio={isMeHost}
+                video={false}
+                options={{
+                    webAudioMix: true,
+                    publishDefaults: {
+                        audioBitrate: 48000,
+                        dtx: true
+                    }
+                }}
+            >
+                <LiveStageContent 
+                    conversationId={chat.conversation_id}
+                    chatInfo={localChatInfo}
+                    members={members}
+                    liveState={liveState}
+                    setLiveState={setLiveState}
+                    onLeave={endLiveSession}
+                    currentUser={currentUser}
+                />
+                <RoomAudioRenderer />
+            </LiveKitRoom>,
+            document.body
+        )}
+        </>
     );
 };
 export default GroupChat;
