@@ -756,27 +756,32 @@ const App = () => {
     'profile': 4
   };
 
-  const renderContent = () => {
-    const content = (() => {
-      switch(activeTab) {
-        case 'home': return <Home />;
-        case 'discover': return <Discover />;
-        case 'study': return <Study />;
-        case 'connect': return <Connect />;
-        case 'profile': return <Profile />;
-        default: return <Home />;
-      }
-    })();
+  const Fallback = () => (
+    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#42d7b8', flexDirection: 'column', gap: '1rem' }}>
+      <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '2rem' }}></i>
+      <div style={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.9rem', letterSpacing: '2px' }}>LOADING MODULE</div>
+    </div>
+  );
 
+  const renderContent = () => {
     return (
-      <Suspense fallback={
-        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#42d7b8', fontFamily: 'Roboto Mono, monospace', fontSize: '0.9rem', letterSpacing: '2px', flexDirection: 'column', gap: '1rem' }}>
-          <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '2rem' }}></i>
-          <div>LOADING MODULE</div>
+      <>
+        <div style={{ display: activeTab === 'home' ? 'flex' : 'none', height: '100%', width: '100%', flexDirection: 'column' }}>
+          <Suspense fallback={<Fallback />}><Home /></Suspense>
         </div>
-      }>
-        {content}
-      </Suspense>
+        <div style={{ display: activeTab === 'discover' ? 'flex' : 'none', height: '100%', width: '100%', flexDirection: 'column' }}>
+          <Suspense fallback={<Fallback />}><Discover /></Suspense>
+        </div>
+        <div style={{ display: activeTab === 'study' ? 'flex' : 'none', height: '100%', width: '100%', flexDirection: 'column' }}>
+          <Suspense fallback={<Fallback />}><Study /></Suspense>
+        </div>
+        <div style={{ display: activeTab === 'connect' ? 'flex' : 'none', height: '100%', width: '100%', flexDirection: 'column' }}>
+          <Suspense fallback={<Fallback />}><Connect /></Suspense>
+        </div>
+        <div style={{ display: activeTab === 'profile' ? 'flex' : 'none', height: '100%', width: '100%', flexDirection: 'column' }}>
+          <Suspense fallback={<Fallback />}><Profile /></Suspense>
+        </div>
+      </>
     );
   };
 
