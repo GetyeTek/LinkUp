@@ -2198,8 +2198,14 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
                     serverUrl={liveCredentials.url}
                     token={liveCredentials.token}
                     connect={true}
-                    audio={true}
+                    audio={localChatInfo.metadata?.live_host_id === currentUser.id}
                     video={false}
+                    options={{
+                        publishDefaults: {
+                            audioBitrate: 48000, // High-fidelity podcast quality voice
+                            dtx: true // Discontinuous Transmission (saves bandwidth when silent)
+                        }
+                    }}
                 >
                     <LiveStageContent 
                         chatInfo={localChatInfo}
