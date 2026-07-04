@@ -9,6 +9,7 @@ export class GeminiLiveAgent extends Agent {
     this.connections = new Set();
     this.geminiWs = null;
     this.isInitializingGemini = false;
+    this.messageQueue = [];
   }
 
   // Triggered when any user (hostess or attendant) joins this specific stage UUID
@@ -21,12 +22,18 @@ export class GeminiLiveAgent extends Agent {
 
     // Route incoming audio/text from ANY client on the stage to the single Gemini instance
     connection.addEventListener("message", (event) => {
+      const sample = typeof event.data === 'string' ? event.data.substring(0, 150).replace(/\n/g, '') : 'Binary Payload';
+      console.log(`[Agent|IN] From Client: ${sample}`);
+      
       if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN) {
         try {
           this.geminiWs.send(event.data);
         } catch (err) {
           console.error("[Agent] Error piping client data to shared Gemini:", err.message);
         }
+      } else {
+        console.log(`[Agent|QUEUE] Upstream WS not ready. Queueing message.`);
+        this.messageQueue.push(event.data);
       }
     });
 
@@ -95,6 +102,16 @@ export class GeminiLiveAgent extends Agent {
       ws.accept();
       this.geminiWs = ws;
       this.isInitializingGemini = false;
+      
+      console.log(`[Agent|GEMINI] Handshake accepted! Flushing ${this.messageQueue.length} queued messages...`);
+      while (this.messageQueue.length > 0) {
+        const msg = this.messageQueue.shift();
+        try {
+          ws.send(msg);
+        } catch(e) {
+          console.error("[Agent|GEMINI] Error flushing queue msg:", e.message);
+        }
+      }
 
       // Broadcast Gemini's raw binary voice/text outputs to ALL clients currently on the stage
       ws.addEventListener("message", async (event) => {
@@ -109,6 +126,9 @@ export class GeminiLiveAgent extends Agent {
             return;
           }
         }
+        
+        const preview = typeof data === 'string' ? data.substring(0, 150).replace(/\n/g, '') : 'Binary';
+        console.log(`[Agent|GEMINI] -> [Clients] Broadcasting: ${preview}`);
         
         // Push the voice bytes to every student/hostess listening on this stage
         this.broadcast(data);
