@@ -74,6 +74,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const [liveQuestions, setLiveQuestions] = useState([]);
     const [isSending, setIsSending] = useState(false);
     const [hostTab, setHostTab] = useState('pending'); // 'pending' | 'approved'
+    const [showEndConfirm, setShowEndConfirm] = useState(false);
     const participants = useParticipants();
     
     const hostId = chatInfo.metadata?.live_host_id;
@@ -163,6 +164,20 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     return (
         <div className="live-immersive-overlay" style={{ display: 'flex' }}>
             <div className="immersive-ambient"></div>
+            
+            {showEndConfirm && (
+                <div className="custom-modal-overlay" style={{ zIndex: 10001 }}>
+                    <div className="custom-modal-card">
+                        <h3>End Live Session</h3>
+                        <p>Are you sure you want to end the broadcast? This will disconnect all listeners and close the stage.</p>
+                        <div className="cm-footer">
+                            <button className="cm-btn-cancel" onClick={() => setShowEndConfirm(false)}>Cancel</button>
+                            <button className="cm-btn-danger" onClick={() => { setShowEndConfirm(false); onLeave(true); }}>End Session</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <header className="immersive-header">
                 <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}><i className="fas fa-compress-alt"></i></button>
                 <div className="stage-title-wrap">
@@ -171,7 +186,13 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     </div>
                     <h2 className="stage-topic-title">{chatInfo.title}</h2>
                 </div>
-                <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLeave(); }} style={{color: '#ff5f5f'}}><i className="fas fa-phone-slash"></i></button>
+                <button 
+                    className="minimize-stage-btn" 
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); isMeHost ? setShowEndConfirm(true) : onLeave(); }} 
+                    style={{color: '#ff5f5f'}}
+                >
+                    <i className="fas fa-phone-slash"></i>
+                </button>
             </header>
 
             <main className="stage-core">
@@ -1227,10 +1248,25 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     };
 
     const endLiveSession = async (forceKill = false) => {
+        // ROBUST OPTIMISTIC UPDATE:
+        // Clear metadata immediately so the Recovery Modal Effect doesn't see a "crashed" state
+        if (isMeHost || forceKill) {
+            setLocalChatInfo(prev => {
+                const nextMeta = { ...prev.metadata };
+                delete nextMeta.is_live;
+                delete nextMeta.live_host_id;
+                delete nextMeta.live_status;
+                delete nextMeta.live_heartbeat;
+                return { ...prev, metadata: nextMeta };
+            });
+        }
+
         setLiveState('none');
         setLiveCredentials(null);
         setShowRecoveryModal(false);
+        
         if (isMeHost || forceKill) {
+            // Background cleanup in DB
             await supabase.rpc('kill_live_session', { conv_id: chat.conversation_id });
         }
     };
