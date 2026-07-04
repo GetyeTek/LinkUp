@@ -1,0 +1,14 @@
+name = "gemini-live-proxy"
+main = "src/index.js"
+compatibility_date = "2026-05-20"
+
+[vars]
+SUPABASE_URL = "https://ryaxynjczfwqyqvpmorl.supabase.co"
+
+[[durable_objects.bindings]]
+name = "GeminiLiveAgent"
+class_name = "GeminiLiveAgent"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["GeminiLiveAgent"]
