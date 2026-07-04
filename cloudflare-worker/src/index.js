@@ -17,8 +17,7 @@ export class GeminiLiveAgent extends Agent {
     console.log(`[Agent] Client joined live stage instance: ${this.id}`);
     this.connections.add(connection);
 
-    // Accept the client WebSocket connection immediately
-    connection.accept();
+    // Connection is automatically accepted by the Agents SDK (hibernation enabled)
 
     // Route incoming audio/text from ANY client on the stage to the single Gemini instance
     connection.addEventListener("message", (event) => {
