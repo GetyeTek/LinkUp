@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './UserChat.css';
 
-const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onForward, onOriginClick, onOpenUser }) => {
+const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onClose, onForward, onOriginClick, onOpenUser }) => {
     const { user: userProfile } = usePlatform();
     const [activeConvId, setActiveConvId] = useState(chat.conversation_id);
     const [messages, setMessages] = useState([]);
@@ -533,7 +533,7 @@ const UserChat = ({ chat, currentUser, isOnline, targetMessageId, onClose, onFor
         observer.observe(el);
     };
     return (
-        <div className="user-chat-overlay" onTouchStart={e => e.stopPropagation()}>
+        <div className="user-chat-overlay" style={{ display: isHidden ? 'none' : 'flex' }} onTouchStart={e => e.stopPropagation()}>
             <div className="ambient-prism-light"></div>
 
             {isSearchActive ? (
