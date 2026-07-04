@@ -112,11 +112,36 @@ export class GeminiLiveAgent extends Agent {
       ws.accept();
       this.geminiWs = ws;
       this.isInitializingGemini = false;
+
+      // 1. Send the Gemini Setup Payload natively from the Edge Worker
+      // This guarantees Gemini is always configured instantly, regardless of which client triggers the DO.
+      const setupMessage = JSON.stringify({
+        setup: {
+          model: "models/gemini-2.0-flash-exp",
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } }
+          },
+          systemInstruction: { parts: [{ text: "You are Miron, a helpful AI tutor hosting a live study group. Speak concisely and clearly." }] }
+        }
+      });
+      
+      try {
+        ws.send(setupMessage);
+        console.log("[Agent|GEMINI] Setup payload sent natively from Worker.");
+      } catch (e) {
+        console.error("[Agent|GEMINI] Failed to send setup payload:", e.message);
+      }
       
       console.log(`[Agent|GEMINI] Handshake accepted! Flushing ${this.messageQueue.length} queued messages...`);
       while (this.messageQueue.length > 0) {
         const msg = this.messageQueue.shift();
         try {
+          // If a legacy client previously sent a setup payload, discard it to prevent protocol errors
+          if (typeof msg === 'string' && msg.includes('"setup"')) {
+            console.log("[Agent|GEMINI] Discarding redundant client setup payload.");
+            continue;
+          }
           ws.send(msg);
         } catch(e) {
           console.error("[Agent|GEMINI] Error flushing queue msg:", e.message);
