@@ -1053,7 +1053,7 @@ const GroupChat = ({ chat, currentUser, targetMessageId, onClose, onJoin, isJoin
         const tempId = `temp-${Date.now()}`;
         
         setMessages(prev => [...prev, {
-            id: tempId, conversation_id: activeConvId,
+            id: tempId, conversation_id: chat.conversation_id,
             sender_id: currentUser.id, text: msgText,
             forward_meta: { is_live_question: true },
             attachments: [], created_at: new Date().toISOString(), status: 'pending'
