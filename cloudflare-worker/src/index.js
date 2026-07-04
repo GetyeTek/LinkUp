@@ -65,7 +65,12 @@ export class GeminiLiveAgent extends Agent {
     try {
       const supabaseUrl = this.env.SUPABASE_URL;
       const serviceRoleKey = this.env.SUPABASE_SERVICE_ROLE_KEY;
-      const rpcUrl = `${supabaseUrl}/rest/v1/rpc/get_and_rotate_gemini_key`;
+      
+      if (!supabaseUrl || !serviceRoleKey) {
+         throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in Worker environment variables.");
+      }
+
+      const rpcUrl = `${supabaseUrl}/rest/v1/rpc/lease_gemini_api_key`;
 
       const dbResponse = await fetch(rpcUrl, {
         method: "POST",
@@ -77,14 +82,20 @@ export class GeminiLiveAgent extends Agent {
       });
 
       if (!dbResponse.ok) {
-        throw new Error(`Supabase RPC status ${dbResponse.status}`);
+        const errText = await dbResponse.text();
+        throw new Error(`Supabase RPC HTTP ${dbResponse.status}: ${errText}`);
       }
 
       const dbData = await dbResponse.json();
-      geminiKey = dbData[0].selected_key;
+      if (!dbData || !dbData[0] || !dbData[0].api_key) {
+         throw new Error("RPC returned empty or invalid key payload: " + JSON.stringify(dbData));
+      }
+      
+      geminiKey = dbData[0].api_key;
+      console.log("[Agent] Successfully leased Gemini API Key from database.");
     } catch (err) {
       console.error("[Agent] Failed to lease key for shared stage:", err.message);
-      this.broadcast(JSON.stringify({ error: "Database key lease failed" }));
+      this.broadcast(JSON.stringify({ error: `Database key lease failed: ${err.message}` }));
       this.isInitializingGemini = false;
       return;
     }
