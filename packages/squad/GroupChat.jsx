@@ -160,6 +160,15 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             };
 
             let timeoutId;
+            
+            ws.onerror = (error) => {
+                console.error("[Client|Stage] ❌ WS Error:", error);
+            };
+
+            ws.onclose = (event) => {
+                console.warn(`[Client|Stage] 🔌 WS Closed. Code: ${event.code}, Reason: ${event.reason}`);
+            };
+
             ws.onmessage = (event) => {
                 try {
                     const payload = JSON.parse(event.data);
@@ -169,7 +178,9 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     } else if (payload.serverContent?.turnComplete) {
                         console.log("[Client|Stage] 🏁 Miron finished turn.");
                     } else if (payload.setupComplete) {
-                        console.log("[Client|Stage] ✅ Miron Setup Complete!");
+                        console.log("[Client|Stage] ✅ Miron Setup Complete intercepted at Client!");
+                    } else if (payload.error) {
+                        console.error("[Client|Stage] ❌ Gemini Error Payload:", payload.error);
                     } else {
                         console.log("[Client|Stage] 📩 Received payload:", payload);
                     }
@@ -211,24 +222,42 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 
                 processor.onaudioprocess = (e) => {
                     if (!hostessMicEnabledRef.current) {
+                        if (hasLoggedAudioRef.current) {
+                            console.log("[Client|Stage] 🎙️ MIC PAUSED: Stopped sending audio to Gemini.");
+                        }
                         hasLoggedAudioRef.current = false;
                         return;
                     }
-                    const inputData = e.inputBuffer.getChannelData(0);
-                    const pcmData = new Int16Array(inputData.length);
-                    for (let i = 0; i < inputData.length; i++) {
-                        pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
-                    }
-                    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
                     
-                    if (aiSocketRef.current?.readyState === WebSocket.OPEN) {
-                        if (!hasLoggedAudioRef.current) {
-                            console.log("[Client|Stage] 🎙️ MIC OPEN: Streaming PCM audio to Gemini...");
-                            hasLoggedAudioRef.current = true;
+                    try {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const pcmData = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
                         }
-                        aiSocketRef.current.send(JSON.stringify({
-                            realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Audio }] }
-                        }));
+                        
+                        // Optimized Base64 Conversion to prevent GC spikes and Call Stack exhaustion
+                        let binary = '';
+                        const bytes = new Uint8Array(pcmData.buffer);
+                        const len = bytes.byteLength;
+                        for (let i = 0; i < len; i++) {
+                            binary += String.fromCharCode(bytes[i]);
+                        }
+                        const base64Audio = btoa(binary);
+                        
+                        if (aiSocketRef.current?.readyState === WebSocket.OPEN) {
+                            if (!hasLoggedAudioRef.current) {
+                                console.log(`[Client|Stage] 🎙️ MIC OPEN: Streaming PCM audio to Gemini... Chunk size: ${len} bytes`);
+                                hasLoggedAudioRef.current = true;
+                            }
+                            aiSocketRef.current.send(JSON.stringify({
+                                realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Audio }] }
+                            }));
+                        } else {
+                            console.warn(`[Client|Stage] ⚠️ Audio processor skipping: WebSocket not open (State: ${aiSocketRef.current?.readyState})`);
+                        }
+                    } catch (err) {
+                        console.error("[Client|Stage] ❌ Audio processor crashed:", err);
                     }
                 };
                 
@@ -290,6 +319,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         if (!qInput.trim() || isSending) return;
         setIsSending(true);
         
+        console.log(`[Client|Stage] 📝 handleSendQuestion triggered. Payload text: "${qInput.trim()}"`);
+        
         // Pass immediately to Miron if AI is hosting
         if (isAiHosting && aiSocketRef.current?.readyState === WebSocket.OPEN) {
             const payload = {
@@ -298,10 +329,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     turnComplete: true
                 }
             };
-            console.log("[Client|Stage] Sending Text Question to Gemini:", payload);
+            console.log("[Client|Stage] 🚀 Sending Text Question to Gemini (WS OPEN):", JSON.stringify(payload));
             aiSocketRef.current.send(JSON.stringify(payload));
         } else if (isAiHosting) {
-            console.warn("[Client|Stage] Wanted to send text to Gemini, but WS is not open!");
+            console.warn(`[Client|Stage] ⚠️ Cannot send text to Gemini! WS State: ${aiSocketRef.current?.readyState}`);
         }
 
         const { error } = await supabase.from('live_stage_questions').insert({
