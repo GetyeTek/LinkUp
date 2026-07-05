@@ -6,8 +6,6 @@ import { Agent, routeAgentRequest, getAgentByName } from "agents";
 export class GeminiLiveAgent extends Agent {
   constructor(state, env) {
     super(state, env);
-    this.env = env; // Explicit assignment for strict DO safety
-    this.state = state;
     this.connections = new Set();
     this.geminiWs = null;
     this.isInitializingGemini = false;
