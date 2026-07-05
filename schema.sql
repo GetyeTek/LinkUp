@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-04T21:32:39.612Z
+-- Date: 2026-07-05T06:34:54.886Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -218,15 +218,16 @@ BEGIN
     FROM api_keys k
     WHERE k.service = 'gemini'
       AND k.is_active = true
-      -- Look how clean this is now! Native date comparison.
-      AND (k.cooldown_until IS NULL OR k.cooldown_until <= NOW())
+      -- The Fix: Explicitly cast the text column to a timestamp before comparing
+      AND (k.cooldown_until IS NULL OR k.cooldown_until::timestamp with time zone <= NOW())
     ORDER BY k.last_used_at ASC NULLS FIRST
     LIMIT 1
     FOR UPDATE SKIP LOCKED;
 
     IF selected_id IS NOT NULL THEN
+        -- The Fix: Cast NOW() to text before updating the text column
         UPDATE api_keys AS ak
-        SET last_used_at = NOW()
+        SET last_used_at = NOW()::text
         WHERE ak.id = selected_id;
 
         RETURN QUERY 
