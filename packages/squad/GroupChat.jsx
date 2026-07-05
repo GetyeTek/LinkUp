@@ -237,12 +237,12 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
                         }
                         
-                        // Optimized Base64 Conversion to prevent GC spikes and Call Stack exhaustion
+                        // Ultra-Fast ArrayBuffer to Base64 (Zero String-Concat Loop)
                         let binary = '';
                         const bytes = new Uint8Array(pcmData.buffer);
-                        const len = bytes.byteLength;
-                        for (let i = 0; i < len; i++) {
-                            binary += String.fromCharCode(bytes[i]);
+                        const chunkSize = 0x8000; // 32768 bytes
+                        for (let i = 0; i < bytes.length; i += chunkSize) {
+                            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
                         }
                         const base64Audio = btoa(binary);
                         
