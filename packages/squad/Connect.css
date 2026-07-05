@@ -275,6 +275,25 @@
 #connect-content .typewriter-text { display: inline-block; white-space: nowrap; overflow: hidden; letter-spacing: .05em; animation: typing-connect 7s steps(50, end) infinite; }
 @keyframes typing-connect { from { width: 0 } to { width: 100% } 70%, 100% { width: 100% } }
 
+.list-live-pulse-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid var(--accent-teal);
+    animation: connectPulseRing 1.5s infinite ease-out;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.list-live-pulse-ring.square {
+    border-radius: 18px;
+}
+
+@keyframes connectPulseRing {
+    0% { transform: scale(0.9); opacity: 1; }
+    100% { transform: scale(1.4); opacity: 0; }
+}
+
 @media (min-width: 900px) {
     #connect-content .content-panel { overflow-y: auto; height: 100%; padding: 2rem; }
     #connect-content .interactive-header { max-width: 1200px; margin: 0 auto; width: 100%; }
