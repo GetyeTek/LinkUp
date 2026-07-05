@@ -248,7 +248,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         
                         if (aiSocketRef.current?.readyState === WebSocket.OPEN) {
                             if (!hasLoggedAudioRef.current) {
-                                console.log(`[Client|Stage] 🎙️ MIC OPEN: Streaming PCM audio to Gemini... Chunk size: ${len} bytes`);
+                                console.log(`[Client|Stage] 🎙️ MIC OPEN: Streaming PCM audio to Gemini... Chunk size: ${bytes.length} bytes`);
                                 hasLoggedAudioRef.current = true;
                             }
                             aiSocketRef.current.send(JSON.stringify({
