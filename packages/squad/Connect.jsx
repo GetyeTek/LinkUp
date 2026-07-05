@@ -954,8 +954,11 @@ const Connect = () => {
                                 ) : (
                                     conversations.filter(c => c.type === 'group').map(chat => (
                                         <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
-                                            <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)' }}>
-                                                <i className="fas fa-users"></i>
+                                            <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
+                                                {chat.metadata?.is_live && <div className="list-live-pulse-ring square"></div>}
+                                                <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
+                                                    {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-users"></i>}
+                                                </div>
                                             </div>
                                             <div className="message-info">
                                                 <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -994,8 +997,11 @@ const Connect = () => {
                                             setMountedChats(prev => ({ ...prev, [chat.conversation_id]: previewChat }));
                                             setActiveChatId(chat.conversation_id);
                                         }}>
-                                            <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)' }}>
-                                                <i className="fas fa-globe"></i>
+                                            <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
+                                                {chat.metadata?.is_live && <div className="list-live-pulse-ring square"></div>}
+                                                <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
+                                                    {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-globe"></i>}
+                                                </div>
                                             </div>
                                             <div className="message-info">
                                                 <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff' }}>
@@ -1075,16 +1081,19 @@ const Connect = () => {
                                 const avatar = isDm ? chat.other_user_avatar : chat.avatar_url;
                                 return (
                                     <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
-                                        <div style={{ position: 'relative' }}>
+                                        <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                                             {isDm ? (
-                                                <img src={avatar || 'https://via.placeholder.com/150'} alt="Avatar" />
+                                                <img src={avatar || 'https://via.placeholder.com/150'} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                                             ) : (
-                                                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                    <i className="fas fa-users"></i>
-                                                </div>
+                                                <>
+                                                    {chat.metadata?.is_live && <div className="list-live-pulse-ring"></div>}
+                                                    <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', position: 'relative', zIndex: 2 }}>
+                                                        {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-users"></i>}
+                                                    </div>
+                                                </>
                                             )}
                                             {isDm && onlineUsers.has(chat.other_user_id) && (
-                                                <div style={{ position: 'absolute', bottom: '0', right: '0', width: '12px', height: '12px', background: '#42d7b8', borderRadius: '50%', border: '2px solid #1e1e1e' }}></div>
+                                                <div style={{ position: 'absolute', bottom: '0', right: '0', width: '12px', height: '12px', background: '#42d7b8', borderRadius: '50%', border: '2px solid #1e1e1e', zIndex: 3 }}></div>
                                             )}
                                         </div>
                                         <div className="message-info">
