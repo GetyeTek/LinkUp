@@ -10,6 +10,10 @@ SUPABASE_URL = "https://ryaxynjczfwqyqvpmorl.supabase.co"
 binding = "GEMINI_WORKER"
 service = "gemini-live-worker"
 
+[[migrations]]
+tag = "v2"
+deleted_classes = ["GeminiLiveAgent"]
+
 [observability]
 enabled = true
 head_sampling_rate = 1
