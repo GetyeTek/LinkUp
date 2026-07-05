@@ -436,8 +436,6 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         ) : (
                             <img src={hostInfo.avatar} className="header-host-avatar" alt="Host" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none' }} />
                         )}
-                        {!isHostPaused && !isAiHosting && <div className="header-pulse-ring"></div>}
-                        {isAiHosting && isMironSpeaking && <div className="header-pulse-ring"></div>}
                     </div>
                     <div className="stage-title-wrap">
                         <h2 className="stage-topic-title" title={chatInfo.metadata?.live_topic || chatInfo.title}>{chatInfo.metadata?.live_topic || chatInfo.title}</h2>
