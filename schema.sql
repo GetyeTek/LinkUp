@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-05T11:14:26.227Z
+-- Date: 2026-07-05T19:43:49.169Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -138,9 +138,6 @@ Table: featured_events | Policy: Public read featured_events | Cmd: SELECT | Usi
 Table: live_study_sessions | Policy: Public read active sessions | Cmd: SELECT | Using: true
 null
 null
-Table: live_stage_questions | Policy: Members can read live questions | Cmd: SELECT | Using: (is_member_of(conversation_id) AND ((status = 'approved'::text) OR (is_pinned = true) OR (sender_id = auth.uid()) OR (auth.uid() = ( SELECT ((conversations.metadata ->> 'live_host_id'::text))::uuid AS uuid
-   FROM conversations
-  WHERE (conversations.id = live_stage_questions.conversation_id)))))
 null
 Table: live_stage_questions | Policy: Hostess can update live questions | Cmd: UPDATE | Using: (auth.uid() = ( SELECT ((conversations.metadata ->> 'live_host_id'::text))::uuid AS uuid
    FROM conversations
@@ -151,6 +148,10 @@ Table: live_stage_questions | Policy: Hostess can delete live questions | Cmd: D
 Table: messages | Policy: Admins and Owners can delete any group messages | Cmd: DELETE | Using: (EXISTS ( SELECT 1
    FROM conversation_members cm
   WHERE ((cm.conversation_id = messages.conversation_id) AND (cm.user_id = auth.uid()) AND (cm.role = ANY (ARRAY['owner'::member_role, 'admin'::member_role])))))
+Table: live_study_sessions | Policy: Hosts can manage live sessions | Cmd: ALL | Using: (EXISTS ( SELECT 1
+   FROM conversation_members cm
+  WHERE ((cm.conversation_id = live_study_sessions.conversation_id) AND (cm.user_id = auth.uid()) AND (cm.role = ANY (ARRAY['owner'::member_role, 'admin'::member_role])))))
+Table: live_stage_questions | Policy: Members can read live questions | Cmd: SELECT | Using: is_member_of(conversation_id)
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -627,33 +628,6 @@ BEGIN
 END;
 
 
--- Function: kill_live_session
-
-DECLARE
-    v_role text;
-    v_host_id text;
-BEGIN
-    -- 1. Identify who is currently hosting
-    SELECT metadata->>'live_host_id' INTO v_host_id 
-    FROM public.conversations WHERE id = conv_id;
-    
-    -- 2. Identify the rank of the person trying to kill the session
-    SELECT role INTO v_role 
-    FROM public.conversation_members 
-    WHERE conversation_id = conv_id AND user_id = auth.uid();
-
-    -- 3. The Law: You can only kill it if you are the active host, OR an Admin/Owner
-    IF auth.uid()::text != v_host_id AND (v_role IS NULL OR v_role NOT IN ('owner', 'admin')) THEN
-        RAISE EXCEPTION 'Security Violation: You are not authorized to terminate this broadcast.';
-    END IF;
-
-    -- 4. Execute the safe cleanup
-    UPDATE public.conversations 
-    SET metadata = metadata - 'is_live' - 'live_host_id' - 'live_status' - 'live_heartbeat' - 'live_started_at'
-    WHERE id = conv_id;
-END;
-
-
 -- Function: get_suggested_squads
 
 BEGIN
@@ -976,15 +950,27 @@ DECLARE
     ban_record RECORD;
     conv_privacy text;
 BEGIN
+    -- 1. Enforce executor rights
     IF req_user_id != auth.uid() THEN
         RAISE EXCEPTION 'Access Denied: You cannot force another user to join a group.';
     END IF;
 
+    -- 2. CRITICAL FIX: Check if the user is ALREADY an active member first.
+    -- If they are, they are allowed inside regardless of privacy configurations!
+    IF EXISTS (
+        SELECT 1 FROM public.conversation_members 
+        WHERE conversation_id = req_conversation_id AND user_id = req_user_id
+    ) THEN
+        RETURN;
+    END IF;
+
+    -- 3. Evaluate privacy blocks for new joins
     SELECT metadata->>'privacy' INTO conv_privacy FROM public.conversations WHERE id = req_conversation_id;
     IF conv_privacy = 'private' THEN
         RAISE EXCEPTION 'Access Denied: This group is private.';
     END IF;
 
+    -- 4. Evaluate ban records
     SELECT banned_until INTO ban_record FROM public.squad_bans WHERE conversation_id = req_conversation_id AND user_id = req_user_id;
     IF FOUND THEN
         IF ban_record.banned_until IS NULL OR ban_record.banned_until > now() THEN
@@ -994,6 +980,7 @@ BEGIN
         END IF;
     END IF;
 
+    -- 5. Insert new member
     INSERT INTO public.conversation_members (conversation_id, user_id, role)
     VALUES (req_conversation_id, req_user_id, 'member')
     ON CONFLICT DO NOTHING;
@@ -1315,6 +1302,36 @@ BEGIN
     SET cooldown_until = now() + INTERVAL '5 minutes'
     WHERE api_key = expired_key
       AND service = 'gemini';
+END;
+
+
+-- Function: kill_live_session
+
+DECLARE
+    v_role text;
+    v_host_id text;
+BEGIN
+    -- 1. Identify who is currently hosting
+    SELECT metadata->>'live_host_id' INTO v_host_id 
+    FROM public.conversations WHERE id = conv_id;
+    
+    -- 2. Identify the rank of the person trying to kill the session
+    SELECT role INTO v_role 
+    FROM public.conversation_members 
+    WHERE conversation_id = conv_id AND user_id = auth.uid();
+
+    -- 3. The Law: You can only kill it if you are the active host, OR an Admin/Owner
+    IF auth.uid()::text != v_host_id AND (v_role IS NULL OR v_role NOT IN ('owner', 'admin')) THEN
+        RAISE EXCEPTION 'Security Violation: You are not authorized to terminate this broadcast.';
+    END IF;
+
+    -- 4. Execute the safe cleanup of metadata
+    UPDATE public.conversations 
+    SET metadata = metadata - 'is_live' - 'live_host_id' - 'live_status' - 'live_heartbeat' - 'live_started_at'
+    WHERE id = conv_id;
+
+    -- 5. CRITICAL NEW STEP: Purge the discovery engine record so it disappears from the global 'For You' feed
+    DELETE FROM public.live_study_sessions WHERE conversation_id = conv_id;
 END;
 
 
