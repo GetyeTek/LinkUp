@@ -9,6 +9,7 @@ export class GeminiLiveAgent extends Agent {
     this.connections = new Set();
     this.geminiWs = null;
     this.isInitializingGemini = false;
+    this.isGeminiSetupComplete = false; // NEW: Lock to prevent premature queue flushing
     this.messageQueue = [];
   }
 
@@ -24,14 +25,15 @@ export class GeminiLiveAgent extends Agent {
       const sample = typeof event.data === 'string' ? event.data.substring(0, 150).replace(/\n/g, '') : 'Binary Payload';
       console.log(`[Agent|IN] From Client: ${sample}`);
       
-      if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN) {
+      // Enforce lock: Ensure Gemini has replied with setupComplete before forwarding data
+      if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
         try {
           this.geminiWs.send(event.data);
         } catch (err) {
           console.error("[Agent] Error piping client data to shared Gemini:", err.message);
         }
       } else {
-        console.log(`[Agent|QUEUE] Upstream WS not ready. Queueing message.`);
+        console.log(`[Agent|QUEUE] Upstream not ready or setup pending. Queueing message. Queue Size: ${this.messageQueue.length + 1}`);
         this.messageQueue.push(event.data);
       }
     });
@@ -133,26 +135,11 @@ export class GeminiLiveAgent extends Agent {
       
       try {
         ws.send(setupMessage);
-        console.log("[Agent|GEMINI] Setup payload sent natively from Worker.");
+        console.log("[Agent|GEMINI] Setup payload sent natively from Worker. Awaiting SetupComplete...");
       } catch (e) {
         console.error("[Agent|GEMINI] Failed to send setup payload:", e.message);
       }
       
-      console.log(`[Agent|GEMINI] Handshake accepted! Flushing ${this.messageQueue.length} queued messages...`);
-      while (this.messageQueue.length > 0) {
-        const msg = this.messageQueue.shift();
-        try {
-          // If a legacy client previously sent a setup payload, discard it to prevent protocol errors
-          if (typeof msg === 'string' && msg.includes('"setup"')) {
-            console.log("[Agent|GEMINI] Discarding redundant client setup payload.");
-            continue;
-          }
-          ws.send(msg);
-        } catch(e) {
-          console.error("[Agent|GEMINI] Error flushing queue msg:", e.message);
-        }
-      }
-
       // Broadcast Gemini's raw binary voice/text outputs to ALL clients currently on the stage
       ws.addEventListener("message", async (event) => {
         let data = event.data;
@@ -170,6 +157,26 @@ export class GeminiLiveAgent extends Agent {
         const preview = typeof data === 'string' ? data.substring(0, 150).replace(/\n/g, '') : 'Binary';
         console.log(`[Agent|GEMINI] -> [Clients] Broadcasting: ${preview}`);
         
+        // INTERCEPT SETUP COMPLETE
+        if (typeof data === 'string' && data.includes('"setupComplete"')) {
+          console.log("[Agent|GEMINI] 🟢 SetupComplete received! Gemini is ready. Flushing queue...");
+          this.isGeminiSetupComplete = true;
+
+          while (this.messageQueue.length > 0) {
+            const msg = this.messageQueue.shift();
+            try {
+              if (typeof msg === 'string' && msg.includes('"setup"')) {
+                console.log("[Agent|GEMINI] Discarding redundant client setup payload.");
+                continue;
+              }
+              console.log("[Agent|GEMINI] Flushing queued message to Gemini...");
+              ws.send(msg);
+            } catch(e) {
+              console.error("[Agent|GEMINI] Error flushing queue msg:", e.message);
+            }
+          }
+        }
+
         // Push the voice bytes to every student/hostess listening on this stage
         this.broadcast(data);
       });
@@ -177,6 +184,7 @@ export class GeminiLiveAgent extends Agent {
       ws.addEventListener("close", (event) => {
         console.log(`[Agent] Upstream Gemini closed. Code: ${event.code}, Reason: ${event.reason}`);
         this.geminiWs = null;
+        this.isGeminiSetupComplete = false;
         this.broadcast(JSON.stringify({ 
           event: "stage_closed", 
           reason: "Gemini ended session",
