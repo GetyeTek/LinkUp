@@ -389,6 +389,9 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     // Everyone sees everything flowing through the feed (minus the pinned hero card)
     const attendantViewQs = liveQuestions.filter(q => !q.is_pinned);
 
+    // DYNAMIC LAYOUT RULE: Compress spacing if a pin is active or we have questions to review
+    const shouldCompressStage = !!pinnedQ || liveQuestions.length > 0;
+
     if (liveState === 'minimized') {
         return <FloatingLiveOrb hostAvatar={hostInfo.avatar} hostId={hostId} onClick={() => setLiveState('full')} />;
     }
@@ -412,11 +415,21 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
             <header className="immersive-header">
                 <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}><i className="fas fa-compress-alt"></i></button>
-                <div className="stage-title-wrap">
-                    <div className="stage-meta-indicator">
-                        <span className="stage-live-dot"></span> {participants.length} Attending
+                <div className="stage-header-center">
+                    <div className="header-host-indicator">
+                        {isAiHosting ? (
+                            <div className="header-miron-orb"><i className="fas fa-sparkles"></i></div>
+                        ) : (
+                            <img src={hostInfo.avatar} className="header-host-avatar" alt="Host" />
+                        )}
+                        {!isHostPaused && <div className="header-pulse-ring"></div>}
                     </div>
-                    <h2 className="stage-topic-title">{chatInfo.metadata?.live_topic || chatInfo.title}</h2>
+                    <div className="stage-title-wrap">
+                        <h2 className="stage-topic-title" title={chatInfo.metadata?.live_topic || chatInfo.title}>{chatInfo.metadata?.live_topic || chatInfo.title}</h2>
+                        <div className="stage-meta-indicator">
+                            <span className="stage-live-dot"></span> {participants.length} Attending
+                        </div>
+                    </div>
                 </div>
                 <button 
                     className="minimize-stage-btn" 
@@ -427,7 +440,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 </button>
             </header>
 
-            <main className="stage-core">
+            <main className={`stage-core ${shouldCompressStage ? 'compact-stage-mode' : ''}`}>
                 <div className="stage-host-node">
                     {isAiHosting ? (
                         <>
@@ -515,10 +528,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     <div className="host-mod-panel">
                         <div className="mod-tabs">
                             <button className={hostTab === 'pending' ? 'active' : ''} onClick={() => setHostTab('pending')}>
-                                Pending Review ({pendingQs.length})
+                                Inbox {pendingQs.length > 0 && <span className="tab-counter-badge">{pendingQs.length}</span>}
                             </button>
                             <button className={hostTab === 'approved' ? 'active' : ''} onClick={() => setHostTab('approved')}>
-                                Approved Log
+                                Approved {approvedQs.length > 0 && <span className="tab-counter-badge">{approvedQs.length}</span>}
                             </button>
                         </div>
                         <div className="mod-q-list">
