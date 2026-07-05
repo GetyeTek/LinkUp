@@ -1521,10 +1521,10 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             if (res.error) throw new Error(res.error);
             setLiveCredentials({ token: res.token, url: res.ws_url });
             
-            // Broadcast live state to DB immediately with heartbeat
+            // 1. Broadcast live state to DB immediately with heartbeat and wait for completion
             await supabase.rpc('heartbeat_live_session', { conv_id: chat.conversation_id, req_host_id: currentUser.id });
             
-            // Populate live_study_sessions to feed the For You algorithm
+            // 2. Populate live_study_sessions to feed the For You algorithm
             if (setupData) {
                 await supabase.from('live_study_sessions').delete().eq('conversation_id', chat.conversation_id);
                 await supabase.from('live_study_sessions').insert({
@@ -1535,22 +1535,39 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     last_updated_at: new Date().toISOString()
                 });
             }
+
+            // 3. Fetch the absolute latest metadata from the DB post-heartbeat to avoid clobbering system fields
+            const { data: latestConv } = await supabase
+                .from('conversations')
+                .select('metadata')
+                .eq('id', chat.conversation_id)
+                .single();
+
+            const latestMeta = latestConv?.metadata || {};
             
-            // Optimistic Local State Update
-            setLocalChatInfo(prev => {
-                const newMeta = { ...prev.metadata, is_live: true, live_host_id: currentUser.id, live_status: 'active', live_heartbeat: new Date().toISOString() };
-                
-                if (setupData?.topic) {
-                    newMeta.live_topic = setupData.topic;
-                }
-                
-                delete newMeta.ai_hosting; // Force user hosting by default
-                
-                // Sync with backend to ensure ai_hosting is cleared for listeners
-                supabase.from('conversations').update({ metadata: newMeta }).eq('id', chat.conversation_id);
-                
-                return { ...prev, metadata: newMeta };
-            });
+            // 4. Construct clean, unified metadata payload
+            const updatedMeta = {
+                ...latestMeta,
+                is_live: true,
+                live_host_id: currentUser.id,
+                live_status: 'active',
+                live_heartbeat: new Date().toISOString()
+            };
+            
+            if (setupData?.topic) {
+                updatedMeta.live_topic = setupData.topic;
+            }
+            
+            delete updatedMeta.ai_hosting; // Force user hosting by default
+
+            // 5. Update the DB and wait for it to commit securely
+            await supabase.from('conversations').update({ metadata: updatedMeta }).eq('id', chat.conversation_id);
+            
+            // 6. Update local state cleanly on main thread
+            setLocalChatInfo(prev => ({
+                ...prev,
+                metadata: updatedMeta
+            }));
             
             setLiveState('full');
             setShowRecoveryModal(false);
