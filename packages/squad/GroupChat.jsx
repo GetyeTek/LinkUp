@@ -360,11 +360,16 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
     const toggleMironState = async (turnOn) => {
         const newMeta = { ...chatInfo.metadata };
-        if (turnOn) newMeta.ai_hosting = true;
-        else delete newMeta.ai_hosting;
+        if (turnOn) {
+            newMeta.ai_hosting = true;
+            if (stageMicEnabled) {
+                setStageMicEnabled(false);
+            }
+        } else {
+            delete newMeta.ai_hosting;
+        }
         
         await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
-        if (!turnOn) setHostessMicEnabled(false);
     };
 
     // Moderation Actions
@@ -414,15 +419,15 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             )}
 
             <header className="immersive-header">
-                <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}><i className="fas fa-compress-alt"></i></button>
-                <div className="stage-header-center">
+                <div className="header-left-cluster">
                     <div className="header-host-indicator">
                         {isAiHosting ? (
                             <div className="header-miron-orb"><i className="fas fa-sparkles"></i></div>
                         ) : (
-                            <img src={hostInfo.avatar} className="header-host-avatar" alt="Host" />
+                            <img src={hostInfo.avatar} className="header-host-avatar" alt="Host" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none' }} />
                         )}
-                        {!isHostPaused && <div className="header-pulse-ring"></div>}
+                        {!isHostPaused && !isAiHosting && <div className="header-pulse-ring"></div>}
+                        {isAiHosting && isMironSpeaking && <div className="header-pulse-ring"></div>}
                     </div>
                     <div className="stage-title-wrap">
                         <h2 className="stage-topic-title" title={chatInfo.metadata?.live_topic || chatInfo.title}>{chatInfo.metadata?.live_topic || chatInfo.title}</h2>
@@ -431,13 +436,28 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         </div>
                     </div>
                 </div>
-                <button 
-                    className="minimize-stage-btn" 
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); isMeHost ? setShowEndConfirm(true) : onLeave(); }} 
-                    style={{color: '#ff5f5f'}}
-                >
-                    <i className="fas fa-phone-slash"></i>
-                </button>
+                
+                <div className="header-right-cluster">
+                    {isMeHost && (
+                        <button 
+                            className={`miron-header-toggle ${isAiHosting ? 'active' : ''}`} 
+                            onClick={() => toggleMironState(!isAiHosting)}
+                            title={isAiHosting ? "Disconnect Miron" : "Let Miron Host"}
+                        >
+                            {isAiHosting ? <i className="fas fa-pause"></i> : <i className="fas fa-sparkles"></i>}
+                        </button>
+                    )}
+                    <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}>
+                        <i className="fas fa-compress-alt"></i>
+                    </button>
+                    <button 
+                        className="minimize-stage-btn" 
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); isMeHost ? setShowEndConfirm(true) : onLeave(); }} 
+                        style={{color: '#ff5f5f'}}
+                    >
+                        <i className="fas fa-phone-slash"></i>
+                    </button>
+                </div>
             </header>
 
             <main className={`stage-core ${shouldCompressStage ? 'compact-stage-mode' : ''}`}>
@@ -478,24 +498,14 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 </div>
 
                 {isMeHost && (
-                    <div className="hostess-ai-controls">
+                    <div className="hostess-ai-controls" style={{ width: '100%', maxWidth: '340px', margin: '0 auto' }}>
                         <button 
-                            className={`miron-control-btn ${stageMicEnabled ? 'active-mic' : ''}`}
+                            className={`big-mic-btn ${stageMicEnabled ? 'active-mic' : ''}`}
                             onClick={() => setStageMicEnabled(!stageMicEnabled)}
                         >
                             <i className={`fas fa-microphone${stageMicEnabled ? '' : '-slash'}`}></i> 
-                            {stageMicEnabled ? 'Mic Live' : 'Enable Mic'}
+                            {stageMicEnabled ? 'Transmitting Audio...' : 'Tap to Start Talking'}
                         </button>
-
-                        {!isAiHosting ? (
-                            <button className="miron-control-btn" onClick={() => toggleMironState(true)}>
-                                <i className="fas fa-sparkles"></i> Let Miron Host
-                            </button>
-                        ) : (
-                            <button className="miron-control-btn danger" onClick={() => toggleMironState(false)}>
-                                <i className="fas fa-times"></i> Drop Miron
-                            </button>
-                        )}
                     </div>
                 )}
 
