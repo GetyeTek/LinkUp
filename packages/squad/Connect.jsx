@@ -677,13 +677,22 @@ const Connect = () => {
         
         setJoiningSquadId(null);
         
+        const existingChat = conversations.find(c => c.conversation_id === squadId);
+        if (existingChat) {
+            setMountedChats(prev => ({
+                ...prev,
+                [squadId]: { ...existingChat, is_preview: false, auto_join_live: true }
+            }));
+            setActiveChatId(squadId);
+            return;
+        }
         setMountedChats(prev => {
             const existing = prev[squadId];
             return {
                 ...prev,
                 [squadId]: existing 
-                    ? { ...existing, is_preview: false } 
-                    : { conversation_id: squadId, type: 'group', title: joinedSquadInfo.title || 'Squad', metadata: joinedSquadInfo.metadata || {} }
+                    ? { ...existing, is_preview: false, auto_join_live: true } 
+                    : { conversation_id: squadId, type: 'group', title: joinedSquadInfo.title || 'Squad', metadata: joinedSquadInfo.metadata || {}, auto_join_live: true }
             };
         });
         setActiveChatId(squadId);
