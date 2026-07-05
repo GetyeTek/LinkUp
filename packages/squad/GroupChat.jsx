@@ -211,7 +211,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const hasLoggedAudioRef = useRef(false);
     useEffect(() => {
         let stream, ctx, processor;
-        if (isAiHosting && isMeHost) {
+        // ONLY request hardware access if the hostess explicitly activates the mic
+        if (isAiHosting && isMeHost && hostessMicEnabled) {
             console.log("[Client|Stage] Requesting microphone access for Host...");
             navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
                 console.log("[Client|Stage] Microphone acquired. Creating processor...");
@@ -266,11 +267,12 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             }).catch(e => console.error("Mic access denied:", e));
         }
         return () => {
+            // Hardware Cleanup: Completely stop hardware tracks and kill the red recording dot
             if (processor) processor.disconnect();
             if (ctx) ctx.close();
             if (stream) stream.getTracks().forEach(t => t.stop());
         };
-    }, [isAiHosting, isMeHost]);
+    }, [isAiHosting, isMeHost, hostessMicEnabled]);
 
     // Independent Live Questions Subscription (Robust CRUD support)
     useEffect(() => {
