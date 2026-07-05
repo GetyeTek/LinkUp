@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-05T09:58:39.277Z
+-- Date: 2026-07-05T11:14:26.227Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -218,16 +218,14 @@ BEGIN
     FROM api_keys k
     WHERE k.service = 'gemini'
       AND k.is_active = true
-      -- The Fix: Explicitly cast the text column to a timestamp before comparing
-      AND (k.cooldown_until IS NULL OR k.cooldown_until::timestamp with time zone <= NOW())
+      AND (k.cooldown_until IS NULL OR k.cooldown_until <= NOW())
     ORDER BY k.last_used_at ASC NULLS FIRST
     LIMIT 1
     FOR UPDATE SKIP LOCKED;
 
     IF selected_id IS NOT NULL THEN
-        -- The Fix: Cast NOW() to text before updating the text column
         UPDATE api_keys AS ak
-        SET last_used_at = NOW()::text
+        SET last_used_at = NOW()
         WHERE ak.id = selected_id;
 
         RETURN QUERY 
@@ -259,15 +257,6 @@ BEGIN
         error_message = p_error,
         updated_at = now()
     WHERE id = p_job_id;
-END;
-
-
--- Function: cooldown_api_key
-
-BEGIN
-    UPDATE public.api_keys
-    SET cooldown_until = (now() + interval '5 minutes')::text
-    WHERE id = p_key_id;
 END;
 
 
@@ -364,6 +353,15 @@ BEGIN
     END IF;
 
     DELETE FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = req_target_id;
+END;
+
+
+-- Function: cooldown_api_key
+
+BEGIN
+    UPDATE public.api_keys
+    SET cooldown_until = (now() + interval '5 minutes')
+    WHERE id = p_key_id;
 END;
 
 
