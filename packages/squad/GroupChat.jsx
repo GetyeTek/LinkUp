@@ -212,26 +212,40 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     useEffect(() => {
         let stream, ctx, processor;
         // ONLY request hardware access if the hostess explicitly activates the mic
-        if (isAiHosting && isMeHost && hostessMicEnabled) {
-            console.log("[Client|Stage] Requesting microphone access for Host...");
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-                console.log("[Client|Stage] Microphone acquired. Creating processor...");
+                        if (isAiHosting && isMeHost && hostessMicEnabled) {
+                    console.log("[Client|Stage] Requesting microphone access for Host...");
+                    navigator.mediaDevices.getUserMedia({ 
+                        audio: { 
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } 
+                    }).then(s => {
+                        console.log("[Client|Stage] Microphone acquired. Creating processor...");
                 stream = s;
                 ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
                 const source = ctx.createMediaStreamSource(stream);
                 processor = ctx.createScriptProcessor(2048, 1, 1);
                 
-                processor.onaudioprocess = (e) => {
-                    if (!hostessMicEnabledRef.current) {
-                        if (hasLoggedAudioRef.current) {
-                            console.log("[Client|Stage] 🎙️ MIC PAUSED: Stopped sending audio to Gemini.");
-                        }
-                        hasLoggedAudioRef.current = false;
-                        return;
-                    }
-                    
-                    try {
-                        const inputData = e.inputBuffer.getChannelData(0);
+                                        processor.onaudioprocess = (e) => {
+                            if (!hostessMicEnabledRef.current) {
+                                if (hasLoggedAudioRef.current) {
+                                    console.log("[Client|Stage] 🎙️ MIC PAUSED: Stopped sending audio to Gemini.");
+                                }
+                                hasLoggedAudioRef.current = false;
+                                return;
+                            }
+
+                            // Software Acoustic Echo Cancellation (Half-Duplex)
+                            // If Miron's voice is actively playing from the speakers, drop the mic frame 
+                            // to prevent Gemini from hearing its own voice and looping infinitely.
+                            // We add a 400ms tail to account for physical room reverberation.
+                            if (audioContextRef.current && audioContextRef.current.currentTime < nextStartTimeRef.current + 0.4) {
+                                return;
+                            }
+                            
+                            try {
+                                const inputData = e.inputBuffer.getChannelData(0);
                         const pcmData = new Int16Array(inputData.length);
                         for (let i = 0; i < inputData.length; i++) {
                             pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
