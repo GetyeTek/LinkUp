@@ -286,7 +286,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             if (ctx) ctx.close();
             if (stream) stream.getTracks().forEach(t => t.stop());
         };
-    }, [isAiHosting, isMeHost, hostessMicEnabled]);
+    }, [isAiHosting, isMeHost, stageMicEnabled]);
 
     // Independent Live Questions Subscription (Robust CRUD support)
     useEffect(() => {
