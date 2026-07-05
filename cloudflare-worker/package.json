@@ -1,9 +1,7 @@
 {
   "name": "gemini-live-proxy",
   "type": "module",
-  "dependencies": {
-    "agents": "^0.10.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "wrangler": "^4.107.0"
   }
