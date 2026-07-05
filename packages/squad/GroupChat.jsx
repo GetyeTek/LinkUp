@@ -91,21 +91,21 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
     // AI Stage State
     const isAiHosting = chatInfo.metadata?.ai_hosting === true;
-    const [hostessMicEnabled, setHostessMicEnabled] = useState(false);
-    const hostessMicEnabledRef = useRef(hostessMicEnabled);
+    const [stageMicEnabled, setStageMicEnabled] = useState(false);
+    const stageMicEnabledRef = useRef(stageMicEnabled);
     const [isMironSpeaking, setIsMironSpeaking] = useState(false);
     const aiSocketRef = useRef(null);
     const audioContextRef = useRef(null);
     const nextStartTimeRef = useRef(0);
 
-    useEffect(() => { hostessMicEnabledRef.current = hostessMicEnabled; }, [hostessMicEnabled]);
+    useEffect(() => { stageMicEnabledRef.current = stageMicEnabled; }, [stageMicEnabled]);
 
     // LiveKit Mic Control override
     useEffect(() => {
         if (isMeHost && localParticipant) {
-            localParticipant.setMicrophoneEnabled(!isAiHosting || hostessMicEnabled);
+            localParticipant.setMicrophoneEnabled(stageMicEnabled);
         }
-    }, [isAiHosting, hostessMicEnabled, isMeHost, localParticipant]);
+    }, [stageMicEnabled, isMeHost, localParticipant]);
 
     // Heartbeat Engine (Host Only)
     useEffect(() => {
@@ -207,13 +207,13 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         }
     }, [liveState, isAiHosting, conversationId, isMeHost]);
 
-    // Hostess Audio Input to Gemini Processor
+        // Hostess Audio Input to Gemini Processor
     const hasLoggedAudioRef = useRef(false);
     useEffect(() => {
         let stream, ctx, processor;
         // ONLY request hardware access if the hostess explicitly activates the mic
-                        if (isAiHosting && isMeHost && hostessMicEnabled) {
-                    console.log("[Client|Stage] Requesting microphone access for Host...");
+        if (isAiHosting && isMeHost && stageMicEnabled) {
+            console.log("[Client|Stage] Requesting microphone access for Host...");
                     navigator.mediaDevices.getUserMedia({ 
                         audio: { 
                             echoCancellation: true,
@@ -228,7 +228,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 processor = ctx.createScriptProcessor(2048, 1, 1);
                 
                                         processor.onaudioprocess = (e) => {
-                            if (!hostessMicEnabledRef.current) {
+                            if (!stageMicEnabledRef.current) {
                                 if (hasLoggedAudioRef.current) {
                                     console.log("[Client|Stage] 🎙️ MIC PAUSED: Stopped sending audio to Gemini.");
                                 }
@@ -471,23 +471,22 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
                 {isMeHost && (
                     <div className="hostess-ai-controls">
+                        <button 
+                            className={`miron-control-btn ${stageMicEnabled ? 'active-mic' : ''}`}
+                            onClick={() => setStageMicEnabled(!stageMicEnabled)}
+                        >
+                            <i className={`fas fa-microphone${stageMicEnabled ? '' : '-slash'}`}></i> 
+                            {stageMicEnabled ? 'Mic Live' : 'Enable Mic'}
+                        </button>
+
                         {!isAiHosting ? (
                             <button className="miron-control-btn" onClick={() => toggleMironState(true)}>
                                 <i className="fas fa-sparkles"></i> Let Miron Host
                             </button>
                         ) : (
-                            <>
-                                <button 
-                                    className={`miron-control-btn ${hostessMicEnabled ? 'active-mic' : ''}`}
-                                    onClick={() => setHostessMicEnabled(!hostessMicEnabled)}
-                                >
-                                    <i className={`fas fa-microphone${hostessMicEnabled ? '' : '-slash'}`}></i> 
-                                    {hostessMicEnabled ? 'Recording...' : 'Host Mic'}
-                                </button>
-                                <button className="miron-control-btn danger" onClick={() => toggleMironState(false)}>
-                                    <i className="fas fa-times"></i> Drop Miron
-                                </button>
-                            </>
+                            <button className="miron-control-btn danger" onClick={() => toggleMironState(false)}>
+                                <i className="fas fa-times"></i> Drop Miron
+                            </button>
                         )}
                     </div>
                 )}
@@ -1398,6 +1397,10 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const [localChatInfo, setLocalChatInfo] = useState({ title: chat.title, avatar_url: chat.avatar_url, metadata: chat.metadata });
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     
+    // Live Setup State
+    const [showLiveSetup, setShowLiveSetup] = useState(false);
+    const [liveSetupData, setLiveSetupData] = useState({ topic: '', description: '', course: '' });
+    
     // Auto-hide success toasts on parent
     useEffect(() => {
         if (alertNotice?.success) {
@@ -1485,7 +1488,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         }
     }, [localChatInfo.metadata?.is_live, isMeHost, liveState, isLiveDead, chat.conversation_id]);
 
-    const startLiveSession = async () => {
+    const startLiveSession = async (setupData = null) => {
         setIsStartingLive(true);
         try {
             const res = await invokeLiveToken({ conversation_id: chat.conversation_id });
@@ -1495,11 +1498,28 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             // Broadcast live state to DB immediately with heartbeat
             await supabase.rpc('heartbeat_live_session', { conv_id: chat.conversation_id, req_host_id: currentUser.id });
             
+            // Populate live_study_sessions to feed the For You algorithm
+            if (setupData) {
+                await supabase.from('live_study_sessions').delete().eq('conversation_id', chat.conversation_id);
+                await supabase.from('live_study_sessions').insert({
+                    conversation_id: chat.conversation_id,
+                    course_name: setupData.course || 'General Study',
+                    lesson_topic: setupData.topic,
+                    active_user_ids: [currentUser.id],
+                    last_updated_at: new Date().toISOString()
+                });
+            }
+            
             // Optimistic Local State Update
-            setLocalChatInfo(prev => ({ 
-                ...prev, 
-                metadata: { ...prev.metadata, is_live: true, live_host_id: currentUser.id, live_status: 'active', live_heartbeat: new Date().toISOString() } 
-            }));
+            setLocalChatInfo(prev => {
+                const newMeta = { ...prev.metadata, is_live: true, live_host_id: currentUser.id, live_status: 'active', live_heartbeat: new Date().toISOString() };
+                delete newMeta.ai_hosting; // Force user hosting by default
+                
+                // Sync with backend to ensure ai_hosting is cleared for listeners
+                supabase.from('conversations').update({ metadata: newMeta }).eq('id', chat.conversation_id);
+                
+                return { ...prev, metadata: newMeta };
+            });
             
             setLiveState('full');
             setShowRecoveryModal(false);
@@ -1542,6 +1562,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         
         if (isMeHost || forceKill) {
             // Background cleanup in DB
+            await supabase.from('live_study_sessions').delete().eq('conversation_id', chat.conversation_id);
             await supabase.rpc('kill_live_session', { conv_id: chat.conversation_id });
         }
     };
@@ -2206,8 +2227,65 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         <p>You previously started a live broadcast. Would you like to resume your session or end it?</p>
                         <div className="cm-footer">
                             <button className="cm-btn-danger" onClick={() => endLiveSession(true)} disabled={isStartingLive}>End Session</button>
-                            <button className="cm-btn-primary" onClick={startLiveSession} disabled={isStartingLive}>
+                            <button className="cm-btn-primary" onClick={() => startLiveSession()} disabled={isStartingLive}>
                                 {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Resume'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showLiveSetup && (
+                <div className="custom-modal-overlay" onClick={() => setShowLiveSetup(false)}>
+                    <div className="custom-modal-card" onClick={e => e.stopPropagation()}>
+                        <h3 style={{marginBottom: '1rem'}}><i className="fas fa-broadcast-tower" style={{color: 'var(--accent-teal)', marginRight: '8px'}}></i> Host Live Session</h3>
+                        
+                        <div className="si-settings-group">
+                            <label className="si-label">Main Topic</label>
+                            <input 
+                                type="text" 
+                                className="cm-text-input" 
+                                placeholder="e.g. Thermodynamics Review"
+                                value={liveSetupData.topic}
+                                onChange={e => setLiveSetupData({...liveSetupData, topic: e.target.value})}
+                                style={{marginBottom: '1rem'}}
+                            />
+                            
+                            <label className="si-label">Description (Optional)</label>
+                            <input 
+                                type="text" 
+                                className="cm-text-input" 
+                                placeholder="e.g. Chapters 3-5"
+                                value={liveSetupData.description}
+                                onChange={e => setLiveSetupData({...liveSetupData, description: e.target.value})}
+                                style={{marginBottom: '1rem'}}
+                            />
+
+                            <label className="si-label">Course</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                                {['Physics', 'Chemistry', 'Mathematics', 'Biology', 'CS', 'General'].map(c => (
+                                    <div 
+                                        key={c} 
+                                        className={`qa-pill ${liveSetupData.course === c ? 'active' : ''}`} 
+                                        onClick={() => setLiveSetupData({...liveSetupData, course: c})}
+                                    >
+                                        {c}
+                                    </div>
+                                ))}
+                            </div>
+                            <input 
+                                type="text" 
+                                className="cm-text-input" 
+                                placeholder="Or type custom course..."
+                                value={liveSetupData.course}
+                                onChange={e => setLiveSetupData({...liveSetupData, course: e.target.value})}
+                            />
+                        </div>
+                        
+                        <div className="cm-footer" style={{marginTop: '1rem'}}>
+                            <button className="cm-btn-cancel" onClick={() => setShowLiveSetup(false)}>Cancel</button>
+                            <button className="cm-btn-primary" onClick={() => { setShowLiveSetup(false); startLiveSession(liveSetupData); }} disabled={!liveSetupData.topic || !liveSetupData.course || isStartingLive}>
+                                {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Go Live'}
                             </button>
                         </div>
                     </div>
@@ -2544,7 +2622,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                                         <i className="fas fa-play"></i>
                                     </button>
                                 ) : (!input.trim() && pendingAttachments.length === 0 && !editingMessage && (myRole === 'owner' || myRole === 'admin') && !isLiveActive) ? (
-                                    <button className="live-trigger-btn" onClick={startLiveSession} disabled={isStartingLive}>
+                                    <button className="live-trigger-btn" onClick={() => setShowLiveSetup(true)} disabled={isStartingLive}>
                                         {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-broadcast-tower"></i>}
                                     </button>
                                 ) : (
@@ -2707,7 +2785,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 serverUrl={liveCredentials.url}
                 token={liveCredentials.token}
                 connect={true}
-                audio={isMeHost}
+                audio={false}
                 video={false}
                 options={{
                     webAudioMix: true,
