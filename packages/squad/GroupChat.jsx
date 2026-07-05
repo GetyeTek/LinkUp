@@ -1505,6 +1505,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
     useEffect(() => {
         if (localChatInfo.metadata?.is_live && isMeHost && liveState === 'none') {
+            if (isStartingLive) return; // Short-circuit: Prevent recovery popups while we are actively launching a session
             if (isLiveDead) {
                 // Auto-cleanup dead sessions
                 supabase.rpc('kill_live_session', { conv_id: chat.conversation_id });
@@ -1512,7 +1513,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 setShowRecoveryModal(true);
             }
         }
-    }, [localChatInfo.metadata?.is_live, isMeHost, liveState, isLiveDead, chat.conversation_id]);
+    }, [localChatInfo.metadata?.is_live, isMeHost, liveState, isLiveDead, chat.conversation_id, isStartingLive]);
 
     const startLiveSession = async (setupData = null) => {
         setIsStartingLive(true);
