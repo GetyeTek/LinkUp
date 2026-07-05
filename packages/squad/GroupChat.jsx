@@ -2354,7 +2354,11 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         
                         <div className="cm-footer" style={{marginTop: '1rem'}}>
                             <button className="cm-btn-cancel" onClick={() => setShowLiveSetup(false)}>Cancel</button>
-                            <button className="cm-btn-primary" onClick={() => { setShowLiveSetup(false); startLiveSession(liveSetupData); }} disabled={!liveSetupData.topic || !liveSetupData.course || isStartingLive}>
+                            <button 
+                                className="cm-btn-primary" 
+                                onClick={() => { setShowLiveSetup(false); startLiveSession(liveSetupData); }} 
+                                disabled={!liveSetupData.topic?.trim() || !liveSetupData.course?.trim() || isStartingLive}
+                            >
                                 {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Go Live'}
                             </button>
                         </div>
