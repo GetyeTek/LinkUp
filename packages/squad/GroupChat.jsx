@@ -10,9 +10,6 @@ const FloatingLiveOrb = ({ hostAvatar, hostId, onClick }) => {
     const orbRef = useRef(null);
     const [pos, setPos] = useState({ x: window.innerWidth - 96, y: window.innerHeight - 240 });
     const dragStart = useRef(null);
-    const participants = useParticipants();
-    const hostParticipant = participants.find(p => p.identity === hostId);
-    const isSpeaking = hostParticipant ? hostParticipant.isSpeaking : false;
 
     const handlePointerDown = (e) => {
         e.target.setPointerCapture(e.pointerId);
@@ -53,20 +50,20 @@ const FloatingLiveOrb = ({ hostAvatar, hostId, onClick }) => {
         dragStart.current = null;
     };
 
-    return (
-        <div 
-            className="floating-live-orb" 
-            ref={orbRef} 
-            style={{ left: pos.x, top: pos.y, display: 'flex' }}
-            onPointerDown={handlePointerDown} 
-            onPointerMove={handlePointerMove} 
-            onPointerUp={handlePointerUp}
-        >
-            {isSpeaking && <div className="orb-pulse-ring"></div>}
-            <img src={hostAvatar} className="floating-orb-host" alt="Live Host" />
-            <div className="orb-expand-badge"><i className="fas fa-expand-alt"></i></div>
-        </div>
-    );
+            return (
+            <div 
+                className="floating-live-orb" 
+                ref={orbRef} 
+                style={{ left: pos.x, top: pos.y, display: 'flex' }}
+                onPointerDown={handlePointerDown} 
+                onPointerMove={handlePointerMove} 
+                onPointerUp={handlePointerUp}
+            >
+                <div className="orb-pulse-ring"></div>
+                <img src={hostAvatar} className="floating-orb-host" alt="Live Host" />
+                <div className="orb-expand-badge"><i className="fas fa-expand-alt"></i></div>
+            </div>
+        );
 };
 
 const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser }) => {
@@ -419,9 +416,9 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}><i className="fas fa-compress-alt"></i></button>
                 <div className="stage-title-wrap">
                     <div className="stage-meta-indicator">
-                        <span className="stage-live-dot"></span> Live Stage
+                        <span className="stage-live-dot"></span> {participants.length} Attending
                     </div>
-                    <h2 className="stage-topic-title">{chatInfo.title}</h2>
+                    <h2 className="stage-topic-title">{chatInfo.metadata?.live_topic || chatInfo.title}</h2>
                 </div>
                 <button 
                     className="minimize-stage-btn" 
@@ -448,7 +445,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         </>
                     ) : (
                         <>
-                            {isHostSpeaking && !isHostPaused && (
+                            {!isHostPaused && (
                                 <>
                                     <div className="voice-halo-ring"></div>
                                     <div className="voice-halo-ring"></div>
@@ -1513,6 +1510,11 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             // Optimistic Local State Update
             setLocalChatInfo(prev => {
                 const newMeta = { ...prev.metadata, is_live: true, live_host_id: currentUser.id, live_status: 'active', live_heartbeat: new Date().toISOString() };
+                
+                if (setupData?.topic) {
+                    newMeta.live_topic = setupData.topic;
+                }
+                
                 delete newMeta.ai_hosting; // Force user hosting by default
                 
                 // Sync with backend to ensure ai_hosting is cleared for listeners
@@ -2225,8 +2227,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     <div className="live-banner-left">
                         <div className="pulse-indicator"></div>
                         <div className="live-banner-text">
-                            <div>{isMeHost ? "You're Live" : "Squad is Live"}</div>
-                            <div>{isMeHost ? "Broadcasting to the group" : `${members[localChatInfo.metadata.live_host_id]?.name || 'Host'} is speaking`}</div>
+                            <div>Study Session is Live</div>
+                            <div>{localChatInfo.metadata?.live_topic ? `${localChatInfo.metadata.live_topic} • ` : ''}Join stage</div>
                         </div>
                     </div>
                     {isMeHost ? (
