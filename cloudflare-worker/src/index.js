@@ -128,15 +128,13 @@ export class GeminiLiveAgent extends Agent {
       this.isInitializingGemini = false;
 
       // 1. Send the Gemini Setup Payload natively from the Edge Worker
-      // This guarantees Gemini is always configured instantly, regardless of which client triggers the DO.
+      // Optimized lean setup to prevent internal Google server-side hangs on experimental models
       const setupMessage = JSON.stringify({
         setup: {
           model: "models/gemini-3.1-flash-live-preview",
           generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } }
-          },
-          systemInstruction: { parts: [{ text: "You are Miron, a helpful AI tutor hosting a live study group. Speak concisely and clearly." }] }
+            responseModalities: ["AUDIO"]
+          }
         }
       });
       
