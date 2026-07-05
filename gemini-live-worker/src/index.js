@@ -1,77 +1,86 @@
-import { Agent, getAgentByName } from "agents";
-
 // ==============================================================================
-// THE STATEFUL DURABLE OBJECT VOICE AGENT (MIRON)
+// THE STATEFUL DURABLE OBJECT VOICE AGENT (BARE METAL WEBSOCKET HIBERNATION)
 // ==============================================================================
-export class GeminiLiveAgent extends Agent {
-  constructor(state, env) {
-    super(state, env);
-    this.connections = new Set();
+export class GeminiLiveAgent {
+  constructor(ctx, env) {
+    this.ctx = ctx;
+    this.env = env;
     this.geminiWs = null;
     this.isInitializingGemini = false;
     this.isGeminiSetupComplete = false;
     this.messageQueue = [];
-    console.log(`[Agent|DO|INIT] 🏗️ Constructor initialized. DO ID: ${this.id}`);
+    console.log(`[Agent|DO|INIT] 🏗️ Native Constructor initialized.`);
   }
 
-  async onConnect(connection) {
-    console.log(`[Agent|DO|CONNECT] Client joined live stage. Active connections before: ${this.connections.size}`);
-    this.connections.add(connection);
+  async fetch(request) {
+    console.log(`[Agent|DO|FETCH] 🚀 Intercepting WebSocket upgrade request...`);
+    if (request.headers.get("Upgrade") !== "websocket") {
+      return new Response("Expected Upgrade: websocket", { status: 426 });
+    }
 
-    connection.addEventListener("message", (event) => {
-      const isString = typeof event.data === 'string';
-      const byteLen = isString ? new Blob([event.data]).size : event.data.byteLength;
-      
-      console.log(`[Agent|CLIENT->DO] Message Received. Type: ${isString ? 'String' : 'Binary/Buffer'}, Size: ${byteLen} bytes`);
-      
-      if (isString) {
-          const sample = event.data.substring(0, 150).replace(/\n/g, '');
-          console.log(`[Agent|CLIENT->DO|PAYLOAD] ${sample}`);
-      } else {
-          console.log(`[Agent|CLIENT->DO|BINARY] ArrayBuffer/Blob of length ${byteLen} received.`);
-      }
+    const { 0: client, 1: server } = new WebSocketPair();
+    this.ctx.acceptWebSocket(server);
 
-      if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
-        try {
-          this.geminiWs.send(event.data);
-          // Only log string payloads natively to prevent binary log spam, but log the fact it went through
-          if (isString && event.data.includes('"realtimeInput"')) {
-               // Normal audio frame, silently pipe
-          } else {
-               console.log(`[Agent|DO->GEMINI] Forwarded ${byteLen} bytes successfully.`);
-          }
-        } catch (err) {
-          console.error(`[Agent|DO->GEMINI] ❌ Send Error: ${err.message}`, err.stack);
-        }
-      } else {
-        if (isString && event.data.includes('"realtimeInput"')) {
-           console.log(`[Agent|DO|DROP] Dropping realtime audio frame. Gemini not ready. State: WS=${this.geminiWs?.readyState}, SetupComplete=${this.isGeminiSetupComplete}`);
-        } else {
-           console.log(`[Agent|DO|QUEUE] ⏳ Upstream not ready. Queueing message. Queue size: ${this.messageQueue.length + 1}`);
-           this.messageQueue.push(event.data);
-        }
-      }
-    });
+    console.log(`[Agent|DO|CONNECT] Client securely joined live stage.`);
 
-    connection.addEventListener("close", (event) => {
-      console.log(`[Agent|DO|DISCONNECT] Client left stage. Code: ${event.code}, Reason: ${event.reason}`);
-      this.connections.delete(connection);
-
-      if (this.connections.size === 0 && this.geminiWs) {
-        console.log("[Agent|DO|CLEANUP] Stage empty. Closing upstream Gemini WS.");
-        try {
-          this.geminiWs.close(1000, "Stage empty");
-        } catch (e) {
-          console.error("[Agent|DO|CLEANUP] Error closing Gemini WS:", e.message);
-        }
-        this.geminiWs = null;
-      }
-    });
-
+    // Trigger Gemini sync asynchronously so we don't block the handshake
     if (!this.geminiWs && !this.isInitializingGemini) {
       console.log(`[Agent|DO] First client connected. Triggering Gemini initialization.`);
-      await this.initSharedGemini();
+      this.initSharedGemini();
     }
+
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(ws, message) {
+    const isString = typeof message === 'string';
+    const byteLen = isString ? new Blob([message]).size : message.byteLength;
+    
+    if (isString) {
+        const sample = message.substring(0, 150).replace(/\n/g, '');
+        console.log(`[Agent|CLIENT->DO|PAYLOAD] ${sample}`);
+    } else {
+        console.log(`[Agent|CLIENT->DO] Binary payload received. Size: ${byteLen} bytes`);
+    }
+
+    if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
+      try {
+        this.geminiWs.send(message);
+        if (!isString || !message.includes('"realtimeInput"')) {
+             console.log(`[Agent|DO->GEMINI] Forwarded ${byteLen} bytes to Google successfully.`);
+        }
+      } catch (err) {
+        console.error(`[Agent|DO->GEMINI] ❌ Send Error: ${err.message}`, err.stack);
+      }
+    } else {
+      if (isString && message.includes('"realtimeInput"')) {
+         console.log(`[Agent|DO|DROP] Dropping realtime audio frame. Gemini not ready.`);
+      } else {
+         console.log(`[Agent|DO|QUEUE] ⏳ Upstream not ready. Queueing message. Queue size: ${this.messageQueue.length + 1}`);
+         this.messageQueue.push(message);
+      }
+    }
+  }
+
+  async webSocketClose(ws, code, reason, wasClean) {
+    console.log(`[Agent|DO|DISCONNECT] Client left stage. Code: ${code}, Reason: ${reason}`);
+    
+    // Auto-cleanup if all connected clients disconnect
+    const sockets = this.ctx.getWebSockets();
+    if (sockets.length === 0 && this.geminiWs) {
+      console.log("[Agent|DO|CLEANUP] Stage empty. Closing upstream Gemini WS.");
+      try {
+        this.geminiWs.close(1000, "Stage empty");
+      } catch (e) {
+        console.error("[Agent|DO|CLEANUP] Error closing Gemini WS:", e.message);
+      }
+      this.geminiWs = null;
+      this.isGeminiSetupComplete = false;
+    }
+  }
+
+  async webSocketError(ws, error) {
+    console.error(`[Agent|DO|ERROR] Client WebSocket threw an error:`, error);
   }
 
   async initSharedGemini() {
@@ -248,23 +257,22 @@ export class GeminiLiveAgent extends Agent {
   }
 
   broadcast(data) {
+    const sockets = this.ctx.getWebSockets();
     let sentCount = 0;
-    let failCount = 0;
-    for (const conn of this.connections) {
+    for (const sock of sockets) {
       try {
-        conn.send(data);
+        sock.send(data);
         sentCount++;
       } catch (err) {
-        console.error(`[Agent|DO|BROADCAST] ❌ Failed to broadcast payload to connection:`, err.message);
-        failCount++;
+        console.error(`[Agent|DO|BROADCAST] ❌ Failed to broadcast payload to a connection:`, err.message);
       }
-    }
-    if (failCount > 0) {
-       console.log(`[Agent|DO|BROADCAST] Success: ${sentCount}, Failed: ${failCount}`);
     }
   }
 }
 
+// ==============================================================================
+// PURE ROUTER
+// ==============================================================================
 export default {
   async fetch(request, env, ctx) {
     console.log(`[GeminiWorker|Router] 🚀 Incoming request: ${request.method} ${request.url}`);
@@ -277,17 +285,19 @@ export default {
          return new Response("Missing agent ID", { status: 400 });
       }
       
-      console.log(`[GeminiWorker|Router] Resolving Durable Object for Agent ID: ${agentId}`);
+      console.log(`[GeminiWorker|Router] Resolving Native Durable Object for Stage UUID: ${agentId}`);
       try {
-         const stub = await getAgentByName(env.GeminiLiveAgent, agentId);
+         // Raw native DO initialization
+         const id = env.GeminiLiveAgent.idFromName(agentId);
+         const stub = env.GeminiLiveAgent.get(id);
          console.log(`[GeminiWorker|Router] Forwarding request to DO stub...`);
          return stub.fetch(request);
       } catch(err) {
-         console.error(`[GeminiWorker|Router] ❌ Error routing to Agent: ${err.message}\nStack: ${err.stack}`);
-         return new Response(`Agent routing error: ${err.message}`, { status: 500 });
+         console.error(`[GeminiWorker|Router] ❌ Error routing to Native DO: ${err.message}\nStack: ${err.stack}`);
+         return new Response(`Native DO routing error: ${err.message}`, { status: 500 });
       }
     }
     
-    return new Response("Gemini Live Edge Worker active. Use /realtime-ai endpoint.", { status: 200 });
+    return new Response("Gemini Live Edge Worker active. Hit /realtime-ai to initialize DO.", { status: 200 });
   }
 }
