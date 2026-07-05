@@ -208,6 +208,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const hasLoggedAudioRef = useRef(false);
     useEffect(() => {
         let stream, ctx, processor;
+        let isCancelled = false; // Guard prevents hardware leaks from async race conditions
+        
         // ONLY request hardware access if the hostess explicitly activates the mic
         if (isAiHosting && isMeHost && stageMicEnabled) {
             console.log("[Client|Stage] Requesting microphone access for Host...");
@@ -218,6 +220,11 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             autoGainControl: true
                         } 
                     }).then(s => {
+                        if (isCancelled) {
+                            console.log("[Client|Stage] Component unmounted before mic acquired. Terminating tracks...");
+                            s.getTracks().forEach(t => t.stop());
+                            return;
+                        }
                         console.log("[Client|Stage] Microphone acquired. Creating processor...");
                 stream = s;
                 ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
@@ -278,9 +285,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             }).catch(e => console.error("Mic access denied:", e));
         }
         return () => {
+            isCancelled = true;
             // Hardware Cleanup: Completely stop hardware tracks and kill the red recording dot
             if (processor) processor.disconnect();
-            if (ctx) ctx.close();
+            if (ctx && ctx.state !== 'closed') ctx.close();
             if (stream) stream.getTracks().forEach(t => t.stop());
         };
     }, [isAiHosting, isMeHost, stageMicEnabled]);
@@ -362,11 +370,13 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         const newMeta = { ...chatInfo.metadata };
         if (turnOn) {
             newMeta.ai_hosting = true;
-            if (stageMicEnabled) {
-                setStageMicEnabled(false);
-            }
         } else {
             delete newMeta.ai_hosting;
+        }
+        
+        // Safety lock: Force mic off on any mode switch to prevent hot-mics
+        if (stageMicEnabled) {
+            setStageMicEnabled(false);
         }
         
         await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
