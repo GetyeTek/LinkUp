@@ -6,11 +6,14 @@ import { Agent, routeAgentRequest, getAgentByName } from "agents";
 export class GeminiLiveAgent extends Agent {
   constructor(state, env) {
     super(state, env);
+    this.env = env; // Explicit assignment for strict DO safety
+    this.state = state;
     this.connections = new Set();
     this.geminiWs = null;
     this.isInitializingGemini = false;
-    this.isGeminiSetupComplete = false; // NEW: Lock to prevent premature queue flushing
+    this.isGeminiSetupComplete = false;
     this.messageQueue = [];
+    console.log("[Agent|DO] 🏗️ Constructor initialized.");
   }
 
   // Triggered when any user (hostess or attendant) joins this specific stage UUID
@@ -30,11 +33,16 @@ export class GeminiLiveAgent extends Agent {
         try {
           this.geminiWs.send(event.data);
         } catch (err) {
-          console.error("[Agent] Error piping client data to shared Gemini:", err.message);
+          console.error("[Agent|GEMINI] ❌ Error piping client data to shared Gemini:", err.message);
         }
       } else {
-        console.log(`[Agent|QUEUE] Upstream not ready or setup pending. Queueing message. Queue Size: ${this.messageQueue.length + 1}`);
-        this.messageQueue.push(event.data);
+        // PREVENT BURST CRASH: Drop real-time audio if setup is pending. Only queue text/control payloads.
+        if (typeof event.data === 'string' && event.data.includes('"realtimeInput"')) {
+           // Silently drop early audio frames to prevent bombing Google's WS receiver on flush
+        } else {
+           console.log(`[Agent|QUEUE] ⏳ Upstream not ready. Queueing message. Size: ${this.messageQueue.length + 1}`);
+           this.messageQueue.push(event.data);
+        }
       }
     });
 
@@ -61,12 +69,13 @@ export class GeminiLiveAgent extends Agent {
   // Spawns the single, shared Gemini instance for this live stage room
   async initSharedGemini() {
     this.isInitializingGemini = true;
-    console.log("[Agent] Spawning shared Gemini brain for the stage...");
+    console.log("[Agent|GEMINI] 🚀 Spawning shared Gemini brain for the stage...");
 
     let geminiKey;
     try {
-      const supabaseUrl = this.env.SUPABASE_URL;
-      const serviceRoleKey = this.env.SUPABASE_SERVICE_ROLE_KEY;
+      const supabaseUrl = this.env?.SUPABASE_URL;
+      const serviceRoleKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
+      console.log(`[Agent|GEMINI] 🔑 Fetching key from Supabase: ${supabaseUrl ? 'URL Present' : 'URL MISSING'}`);
       
       if (!supabaseUrl || !serviceRoleKey) {
          throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in Worker environment variables.");
@@ -104,7 +113,7 @@ export class GeminiLiveAgent extends Agent {
 
     const geminiUrl = `https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${geminiKey}`;
     try {
-      console.log("[Agent|GEMINI] Initiating WebSocket connection to Google...");
+      console.log("[Agent|GEMINI] 🌐 Initiating WebSocket connection to Google...");
       const geminiResponse = await fetch(geminiUrl, { headers: { "Upgrade": "websocket" } });
       const ws = geminiResponse.webSocket;
       
@@ -182,7 +191,7 @@ export class GeminiLiveAgent extends Agent {
       });
 
       ws.addEventListener("close", (event) => {
-        console.log(`[Agent] Upstream Gemini closed. Code: ${event.code}, Reason: ${event.reason}`);
+        console.log(`[Agent|GEMINI] 🔴 Upstream Gemini closed. Code: ${event.code}, Reason: ${event.reason}`);
         this.geminiWs = null;
         this.isGeminiSetupComplete = false;
         this.broadcast(JSON.stringify({ 
@@ -194,10 +203,10 @@ export class GeminiLiveAgent extends Agent {
       });
 
       ws.addEventListener("error", (err) => {
-        console.error("[Agent] Upstream Gemini error event:", err.message);
+        console.error("[Agent|GEMINI] ❌ Upstream Gemini error:", err.message || err.error);
         this.broadcast(JSON.stringify({
           event: "gemini_error",
-          error: err.message
+          error: err.message || "Unknown WebSocket error"
         }));
       });
 
