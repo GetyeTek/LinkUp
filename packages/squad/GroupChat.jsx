@@ -1567,6 +1567,27 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         }
     };
 
+    // Auto-Join Interceptor for Live Links
+    useEffect(() => {
+        if (chat.auto_join_live) {
+            chat.auto_join_live = false; // Consume flag to prevent loops
+            if (liveState === 'none') {
+                const isLive = localChatInfo.metadata?.is_live || chat.metadata?.is_live;
+                if (isLive) {
+                    const currentHostId = localChatInfo.metadata?.live_host_id || chat.metadata?.live_host_id;
+                    if (currentHostId === currentUser.id) {
+                        // If they are the host, this acts as a resume
+                        startLiveSession();
+                    } else {
+                        joinLiveSession();
+                    }
+                }
+            } else if (liveState === 'minimized') {
+                setLiveState('full');
+            }
+        }
+    }, [chat.auto_join_live, liveState, localChatInfo.metadata, chat.metadata]);
+
     const markAsRead = async () => {
         if (!chat.conversation_id) return;
         // Anti-Clock-Skew: Offset by 5 seconds into the future to ensure server trusts we read it
