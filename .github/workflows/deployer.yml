@@ -1,15 +1,12 @@
-name: Deploy Worker
+name: Deploy Gateway Worker
 
 on:
-  push:
-    branches:
-      - main
-      - master
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/conduit-dev'
     name: Deploy to Cloudflare Workers
     steps:
       - name: Checkout
