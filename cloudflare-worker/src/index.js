@@ -102,11 +102,16 @@ export class GeminiLiveAgent extends Agent {
 
     const geminiUrl = `https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${geminiKey}`;
     try {
+      console.log("[Agent|GEMINI] Initiating WebSocket connection to Google...");
       const geminiResponse = await fetch(geminiUrl, { headers: { "Upgrade": "websocket" } });
       const ws = geminiResponse.webSocket;
       
       if (!ws) {
-        throw new Error("Handshake rejected by Google servers.");
+        let errText = "Unknown handshake rejection.";
+        try {
+          errText = await geminiResponse.text();
+        } catch (e) {}
+        throw new Error(`Google Handshake HTTP ${geminiResponse.status}: ${errText}`);
       }
 
       ws.accept();
@@ -170,20 +175,29 @@ export class GeminiLiveAgent extends Agent {
       });
 
       ws.addEventListener("close", (event) => {
-        console.log("[Agent] Shared Gemini closed session.");
+        console.log(`[Agent] Upstream Gemini closed. Code: ${event.code}, Reason: ${event.reason}`);
         this.geminiWs = null;
-        this.broadcast(JSON.stringify({ event: "stage_closed", reason: "Gemini ended session" }));
+        this.broadcast(JSON.stringify({ 
+          event: "stage_closed", 
+          reason: "Gemini ended session",
+          code: event.code,
+          details: event.reason
+        }));
       });
 
       ws.addEventListener("error", (err) => {
-        console.error("[Agent] Upstream Gemini WS error:", err.message);
+        console.error("[Agent] Upstream Gemini error event:", err.message);
+        this.broadcast(JSON.stringify({
+          event: "gemini_error",
+          error: err.message
+        }));
       });
 
       console.log("[Agent] Shared Gemini brain is active and broadcasting to the stage!");
 
     } catch (err) {
       console.error("[Agent] Failed to initialize Gemini Live connection:", err.message);
-      this.broadcast(JSON.stringify({ error: "Gemini connection failed" }));
+      this.broadcast(JSON.stringify({ error: `Gemini connection failed: ${err.message}` }));
       this.isInitializingGemini = false;
     }
   }
