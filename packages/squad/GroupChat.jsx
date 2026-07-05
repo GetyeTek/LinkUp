@@ -252,7 +252,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                 hasLoggedAudioRef.current = true;
                             }
                             aiSocketRef.current.send(JSON.stringify({
-                                realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Audio }] }
+                                realtimeInput: { audio: { mimeType: "audio/pcm;rate=16000", data: base64Audio } }
                             }));
                         } else {
                             console.warn(`[Client|Stage] ⚠️ Audio processor skipping: WebSocket not open (State: ${aiSocketRef.current?.readyState})`);
