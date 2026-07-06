@@ -118,12 +118,7 @@ const Discover = () => {
                         src={user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} 
                         alt="Profile" 
                         className="profile-avatar" 
-                        onClick={() => {
-                            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }));
-                            setTimeout(() => {
-                                window.dispatchEvent(new CustomEvent('open-profile-editor'));
-                            }, 100);
-                        }}
+                        onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }))}
                         style={{ cursor: 'pointer' }}
                     />
                 </div>
