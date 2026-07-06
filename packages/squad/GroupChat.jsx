@@ -1546,6 +1546,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const isLiveDead = timeSinceBeat > 5 * 60 * 1000 || (presenceSynced && !localChatInfo.metadata?.ai_hosting && !isHostOnline);
 
     const isLiveActive = localChatInfo.metadata?.is_live && !isLiveDead;
+    const isMeHost = localChatInfo.metadata?.live_host_id === currentUser.id;
 
     // Eject attendants instantly if the session is explicitly killed
     useEffect(() => {
