@@ -1263,7 +1263,7 @@ const Connect = () => {
                     return <UserChat key={id} isHidden={isHidden} chat={chat} currentUser={currentUser} targetMessageId={targetMessageId} isOnline={onlineUsers.has(chat.other_user_id)} onClose={() => closeChat(id)} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(chat); minimizeChat(); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />;
                 }
                 if (chat.type === 'group') {
-                    return <GroupChat key={id} isHidden={isHidden} chat={chat} currentUser={currentUser} targetMessageId={targetMessageId} onClose={() => closeChat(id)} onMinimize={minimizeChat} onJoin={handleJoinSquad} isJoining={joiningSquadId === chat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(chat); minimizeChat(); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />;
+                    return <GroupChat key={id} isHidden={isHidden} chat={chat} currentUser={currentUser} targetMessageId={targetMessageId} onClose={() => closeChat(id)} onMinimize={minimizeChat} onJoin={handleJoinSquad} isJoining={joiningSquadId === chat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(chat); minimizeChat(); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} onlineUsers={onlineUsers} presenceSynced={presenceSynced} />;
                 }
                 return null;
             })}
