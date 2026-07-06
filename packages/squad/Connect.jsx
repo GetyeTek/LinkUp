@@ -83,11 +83,14 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
             if (uploadError) throw uploadError;
             
             const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-            await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', currentUser.id);
+            const { error: dbError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', currentUser.id);
+            if (dbError) throw dbError;
+
             setProfile(prev => ({ ...prev, avatar_url: publicUrl }));
-            setStatusMsg({ text: "Avatar updated!", type: "success" });
+            setStatusMsg({ text: "Avatar updated successfully!", type: "success" });
         } catch (err) {
-            setStatusMsg({ text: "Failed to upload avatar.", type: "error" });
+            console.error("Personal avatar update error:", err);
+            setStatusMsg({ text: err.message || "Failed to upload avatar.", type: "error" });
         } finally {
             setIsSaving(false);
         }
