@@ -399,6 +399,12 @@ const Connect = () => {
     const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
     const [liveSessions, setLiveSessions] = useState([]);
 
+    const isSessionLive = (metadata) => {
+        if (!metadata?.is_live) return false;
+        const hb = metadata.live_heartbeat ? new Date(metadata.live_heartbeat).getTime() : Date.now();
+        return (Date.now() - hb) <= 15 * 60 * 1000; // 15 minute heartbeat diagnostic
+    };
+
     useEffect(() => {
         activeChatRef.current = mountedChats[activeChatId];
     }, [mountedChats, activeChatId]);
@@ -967,7 +973,7 @@ const Connect = () => {
                                     conversations.filter(c => c.type === 'group').map(chat => (
                                         <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
                                             <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
-                                                {chat.metadata?.is_live && <div className="list-live-pulse-ring square"></div>}
+                                                {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
                                                 <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
                                                     {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-users"></i>}
                                                 </div>
@@ -1010,7 +1016,7 @@ const Connect = () => {
                                             setActiveChatId(chat.conversation_id);
                                         }}>
                                             <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
-                                                {chat.metadata?.is_live && <div className="list-live-pulse-ring square"></div>}
+                                                {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
                                                 <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
                                                     {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-globe"></i>}
                                                 </div>
@@ -1098,7 +1104,7 @@ const Connect = () => {
                                                 <img src={avatar || 'https://via.placeholder.com/150'} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                                             ) : (
                                                 <>
-                                                    {chat.metadata?.is_live && <div className="list-live-pulse-ring"></div>}
+                                                    {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring"></div>}
                                                     <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', position: 'relative', zIndex: 2 }}>
                                                         {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-users"></i>}
                                                     </div>
