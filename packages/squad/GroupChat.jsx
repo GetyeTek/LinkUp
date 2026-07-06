@@ -2222,10 +2222,28 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
     const isMember = !!members[currentUser.id];
 
-    const handleBack = () => {
-        if (liveState !== 'none') onMinimize();
-        else onClose();
-    };
+            const handleBack = () => {
+            if (liveState !== 'none') onMinimize();
+            else onClose();
+        };
+
+        const showHeaderLiveBtn = isLiveActive || (myRole === 'owner' || myRole === 'admin');
+
+        const handleHeaderLiveClick = () => {
+            if (isLiveActive) {
+                if (liveState === 'minimized') {
+                    setLiveState('full');
+                } else if (liveState === 'none') {
+                    if (isMeHost) {
+                        startLiveSession();
+                    } else {
+                        joinLiveSession();
+                    }
+                }
+            } else {
+                setShowLiveSetup(true);
+            }
+        };
 
     return (
         <>
@@ -2305,6 +2323,67 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     </div>
                     <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button className="icon-button" onClick={() => setIsSearchActive(true)}><i className="fas fa-search"></i></button>
+                        {showHeaderLiveBtn && (
+                            <button 
+                                className="header-live-trigger-btn"
+                                onClick={handleHeaderLiveClick}
+                                disabled={isStartingLive}
+                                style={{ background: 'transparent', padding: 0, border: 'none', borderRadius: 0, width: '38px', height: '38px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                {isStartingLive ? (
+                                    <i className="fas fa-circle-notch fa-spin"></i>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style={{ width: '100%', height: '100%', display: 'block' }}>
+                                      <defs>
+                                        <linearGradient id="header-live-pulse-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                                          <stop offset="0%" stopColor="#0b0f19" />
+                                          <stop offset="100%" stopColor="#1e293b" />
+                                        </linearGradient>
+
+                                        <linearGradient id="header-neon-cyan-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                          <stop offset="0%" stopColor="#00f0ff" />
+                                          <stop offset="100%" stopColor="#0066ff" />
+                                        </linearGradient>
+
+                                        <filter id="header-neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                                          <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                          </feMerge>
+                                        </filter>
+
+                                        <filter id="header-red-dot-glow" x="-30%" y="-30%" width="160%" height="160%">
+                                          <feGaussianBlur stdDeviation="1.5" result="blur" />
+                                          <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                          </feMerge>
+                                        </filter>
+                                      </defs>
+
+                                      <rect x="2" y="2" width="96" height="96" rx="26" fill="url(#header-live-pulse-bg)" stroke="#1e293b" strokeWidth="2.5" />
+
+                                      <path d="M 22,50 C 22,34.5 34.5,22 50,22 C 65.5,22 78,34.5 78,50 C 78,65.5 65.5,78 50,78 C 45,78 40,76.5 36,74 L 18,78 L 22,64 C 20.7,60 22,55 22,50 Z" 
+                                            fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+
+                                      <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
+                                            fill="none" stroke="#00f0ff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" filter="url(#header-neon-glow)" />
+
+                                      <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
+                                            fill="none" stroke="url(#header-neon-cyan-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                                      {isLiveActive && (
+                                          <circle cx="35" cy="37" r="3.5" fill="#ef4444" filter="url(#header-red-dot-glow)" />
+                                      )}
+
+                                      <text x="57" y="41" fill="#ffffff" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="12" letterSpacing="1" textAnchor="middle">
+                                          {isLiveActive ? "LIVE" : "START"}
+                                      </text>
+                                    </svg>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </header>
             )}
@@ -2731,75 +2810,6 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                                         </svg>
                                         <span className="prog-text">{uploadProgress}%</span>
                                     </div>
-                                ) : hasRecoverableSession ? (
-                                    <button className="live-trigger-btn" style={{ background: '#ffab40' }} onClick={() => setShowRecoveryModal(true)}>
-                                        <i className="fas fa-play"></i>
-                                    </button>
-                                ) : (!input.trim() && pendingAttachments.length === 0 && !editingMessage && (myRole === 'owner' || myRole === 'admin') && !isLiveActive) ? (
-                                    <button 
-                                        className="live-trigger-btn" 
-                                        onClick={() => setShowLiveSetup(true)} 
-                                        disabled={isStartingLive}
-                                        style={isStartingLive ? {} : { background: 'transparent', padding: 0, border: 'none', borderRadius: 0, width: '46px', height: '46px', margin: '0 2px' }}
-                                    >
-                                        {isStartingLive ? (
-                                            <i className="fas fa-circle-notch fa-spin"></i>
-                                        ) : (
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style={{ width: '100%', height: '100%', display: 'block' }}>
-                                              <defs>
-                                                {/* Deep midnight background gradient */}
-                                                <linearGradient id="live-pulse-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                  <stop offset="0%" stopColor="#0b0f19" />
-                                                  <stop offset="100%" stopColor="#1e293b" />
-                                                </linearGradient>
-
-                                                {/* Electric neon cyan for the ECG heartbeat */}
-                                                <linearGradient id="neon-cyan-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                                  <stop offset="0%" stopColor="#00f0ff" />
-                                                  <stop offset="100%" stopColor="#0066ff" />
-                                                </linearGradient>
-
-                                                {/* Glowing neon filter effects */}
-                                                <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
-                                                  <feGaussianBlur stdDeviation="2.5" result="blur" />
-                                                  <feMerge>
-                                                    <feMergeNode in="blur" />
-                                                    <feMergeNode in="SourceGraphic" />
-                                                  </feMerge>
-                                                </filter>
-
-                                                <filter id="red-dot-glow" x="-30%" y="-30%" width="160%" height="160%">
-                                                  <feGaussianBlur stdDeviation="1.5" result="blur" />
-                                                  <feMerge>
-                                                    <feMergeNode in="blur" />
-                                                    <feMergeNode in="SourceGraphic" />
-                                                  </feMerge>
-                                                </filter>
-                                              </defs>
-
-                                              {/* Button Container (Squircle) */}
-                                              <rect x="2" y="2" width="96" height="96" rx="26" fill="url(#live-pulse-bg)" stroke="#1e293b" strokeWidth="2.5" />
-
-                                              {/* Background Chat Bubble Frame (Subtle outline) */}
-                                              <path d="M 22,50 C 22,34.5 34.5,22 50,22 C 65.5,22 78,34.5 78,50 C 78,65.5 65.5,78 50,78 C 45,78 40,76.5 36,74 L 18,78 L 22,64 C 20.7,60 22,55 22,50 Z" 
-                                                    fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
-
-                                              {/* Glow effect duplicate for EKG line (creates the base ambient light) */}
-                                              <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
-                                                    fill="none" stroke="#00f0ff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" filter="url(#neon-glow)" />
-
-                                              {/* Crisp Main ECG Heartbeat Line (Zigzag) */}
-                                              <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
-                                                    fill="none" stroke="url(#neon-cyan-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-
-                                              {/* Active "LIVE" Red Status Indicator Dot */}
-                                              <circle cx="35" cy="37" r="3.5" fill="#ef4444" filter="url(#red-dot-glow)" />
-
-                                              {/* Modern bold status text */}
-                                              <text x="57" y="41" fill="#ffffff" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="12" letterSpacing="1" textAnchor="middle">LIVE</text>
-                                            </svg>
-                                        )}
-                                    </button>
                                 ) : (
                                     <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim() && pendingAttachments.length === 0}>
                                         <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
