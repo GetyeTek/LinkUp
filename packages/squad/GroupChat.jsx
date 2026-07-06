@@ -3,7 +3,7 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import { createPortal } from 'react-dom';
 import { LiveKitRoom, useParticipants, useLocalParticipant, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
-import { invokeLiveToken } from './api.js';
+import { invokeLiveToken, invokeSocial } from './api.js';
 import './GroupChat.css';
 
 const FloatingLiveOrb = ({ hostAvatar, hostId, onClick }) => {
@@ -378,19 +378,14 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     };
 
     const toggleMironState = async (turnOn) => {
-        const newMeta = { ...chatInfo.metadata };
-        if (turnOn) {
-            newMeta.ai_hosting = true;
-        } else {
-            delete newMeta.ai_hosting;
-        }
-        
         // Safety lock: Force mic off on any mode switch to prevent hot-mics
-        if (stageMicEnabled) {
-            setStageMicEnabled(false);
+        if (stageMicEnabled) setStageMicEnabled(false);
+        try {
+            const res = await invokeSocial({ action: 'toggle_miron', conversation_id: conversationId, ai_hosting: turnOn });
+            if (res.error) throw new Error(res.error);
+        } catch(e) {
+            console.error("Failed to toggle Miron:", e.message);
         }
-        
-        await supabase.from('conversations').update({ metadata: newMeta }).eq('id', conversationId);
     };
 
     // Moderation Actions
@@ -785,134 +780,88 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const executeAddMember = async () => {
         if (!confirmAddUser) return;
         setIsProcessing(true);
-        const { error } = await supabase.from('conversation_members').insert({
-            conversation_id: conversationId, user_id: confirmAddUser.other_user_id, role: 'member'
-        });
-        setIsProcessing(false);
-        
-        if (error) {
-            setAlertNotice({ title: "Permission Denied", msg: "You are not allowed to add members.", success: false });
-        } else {
+        try {
+            const res = await invokeSocial({ action: 'admin_add_member', conversation_id: conversationId, target_user_id: confirmAddUser.other_user_id });
+            if (res.error) throw new Error(res.error);
+            
             setMembers(prev => ({
                 ...prev,
                 [confirmAddUser.other_user_id]: { role: 'member', name: confirmAddUser.other_user_name, avatar: confirmAddUser.other_user_avatar }
             }));
             setAlertNotice({ title: "Member Added", msg: `${confirmAddUser.other_user_name} has joined the squad!`, success: true });
+        } catch(e) {
+            setAlertNotice({ title: "Permission Denied", msg: e.message || "You are not allowed to add members.", success: false });
         }
+        setIsProcessing(false);
         setConfirmAddUser(null);
         setShowAddMember(false);
     };
 
     const updateSquadPrivacy = async (val) => {
         setIsProcessing(true);
-        const newMeta = { ...chatInfo.metadata, privacy: val };
-        const { data: updatedRows, error } = await supabase
-            .from('conversations')
-            .update({ metadata: newMeta })
-            .eq('id', conversationId)
-            .select();
-        setIsProcessing(false);
-            
-        if (error || !updatedRows || updatedRows.length === 0) {
-            setAlertNotice({ title: "Permission Denied", msg: "You are not authorized to update this group's settings.", success: false });
+        try {
+            const res = await invokeSocial({ action: 'update_group_meta', conversation_id: conversationId, updates: { privacy: val } });
+            if (res.error) throw new Error(res.error);
+            onUpdateInfo({ ...chatInfo, metadata: res.metadata });
+            setEditPrivacy(val);
             setPrivacyModal(false);
-            return;
+            setAlertNotice({ title: "Privacy Updated", msg: `The group is now ${val}.`, success: true });
+        } catch(e) {
+            setAlertNotice({ title: "Permission Denied", msg: e.message, success: false });
+            setPrivacyModal(false);
         }
-        
-        const finalMeta = updatedRows[0].metadata;
-        onUpdateInfo({ ...chatInfo, metadata: finalMeta });
-        setEditPrivacy(val);
-        setEditSlug(finalMeta.slug || '');
-        setPrivacyModal(false);
-        setAlertNotice({ title: "Privacy Updated", msg: `The group is now ${val}.`, success: true });
+        setIsProcessing(false);
     };
 
     const updateSquadName = async () => {
         if (!editTitle.trim() || editTitle === chatInfo.title) return;
-        
         setNameStatus('saving');
-        const { data: updatedRows, error } = await supabase
-            .from('conversations')
-            .update({ title: editTitle })
-            .eq('id', conversationId)
-            .select();
-            
-        if (error || !updatedRows || updatedRows.length === 0) {
+        try {
+            const res = await invokeSocial({ action: 'update_group_meta', conversation_id: conversationId, updates: { title: editTitle } });
+            if (res.error) throw new Error(res.error);
+            onUpdateInfo({ ...chatInfo, title: res.title, metadata: res.metadata });
+            setNameStatus('success');
+            setTimeout(() => setNameStatus('idle'), 3000);
+        } catch(e) {
             setNameStatus('error');
-            setNameError("Permission denied.");
-            setEditTitle(chatInfo.title); // Revert UI
-            return;
+            setNameError(e.message);
+            setEditTitle(chatInfo.title);
         }
-        
-        onUpdateInfo({ ...chatInfo, title: editTitle });
-        setNameStatus('success');
-        setTimeout(() => setNameStatus('idle'), 3000);
     };
 
     const updateSquadBio = async () => {
         const cleanBio = editBio.trim();
         if (cleanBio === (chatInfo.metadata?.bio || '')) return;
-        
         setBioStatus('saving');
-
-        const newMeta = { ...chatInfo.metadata, bio: cleanBio };
-        const { data: updatedRows, error } = await supabase
-            .from('conversations')
-            .update({ metadata: newMeta })
-            .eq('id', conversationId)
-            .select();
-        
-        if (error || !updatedRows || updatedRows.length === 0) {
+        try {
+            const res = await invokeSocial({ action: 'update_group_meta', conversation_id: conversationId, updates: { bio: cleanBio } });
+            if (res.error) throw new Error(res.error);
+            onUpdateInfo({ ...chatInfo, metadata: res.metadata });
+            setBioStatus('success');
+            setTimeout(() => setBioStatus('idle'), 3000);
+        } catch(e) {
             setBioStatus('error');
-            setAlertNotice({ title: "Permission Denied", msg: "You do not have permission to edit this group.", success: false });
+            setAlertNotice({ title: "Permission Denied", msg: e.message, success: false });
             setEditBio(chatInfo.metadata?.bio || '');
-            return;
         }
-
-        onUpdateInfo({ ...chatInfo, metadata: newMeta });
-        setBioStatus('success');
-        setTimeout(() => setBioStatus('idle'), 3000);
     };
 
     const updateSquadSlug = async () => {
         const cleanSlug = editSlug.toLowerCase().replace(/[^a-z0-9]/g, '');
         if (!cleanSlug || cleanSlug === chatInfo.metadata?.slug) return;
-        
         setSlugStatus('saving');
-
-        // 1. Manually enforce uniqueness across the JSONB column
-        const { data: existing } = await supabase
-            .from('conversations')
-            .select('id')
-            .contains('metadata', { slug: cleanSlug })
-            .neq('id', conversationId)
-            .maybeSingle();
-
-        if (existing) {
+        try {
+            const res = await invokeSocial({ action: 'update_group_meta', conversation_id: conversationId, updates: { slug: cleanSlug } });
+            if (res.error) throw new Error(res.error);
+            onUpdateInfo({ ...chatInfo, metadata: res.metadata });
+            setEditSlug(cleanSlug);
+            setSlugStatus('success');
+            setTimeout(() => setSlugStatus('idle'), 3000);
+        } catch(e) {
             setSlugStatus('error');
-            setSlugError("Handle is already taken by another group.");
-            return;
+            setSlugError(e.message);
+            setEditSlug(chatInfo.metadata?.slug || '');
         }
-
-        // 2. Perform Update and force response data to verify RLS success
-        const newMeta = { ...chatInfo.metadata, slug: cleanSlug };
-        const { data: updatedRows, error } = await supabase
-            .from('conversations')
-            .update({ metadata: newMeta })
-            .eq('id', conversationId)
-            .select();
-        
-        if (error || !updatedRows || updatedRows.length === 0) {
-            setSlugStatus('error');
-            setSlugError("Permission denied. Update rejected.");
-            setEditSlug(chatInfo.metadata?.slug || ''); // Revert UI to truth
-            return;
-        }
-
-        onUpdateInfo({ ...chatInfo, metadata: newMeta });
-        setEditSlug(cleanSlug);
-        setSlugStatus('success');
-        setTimeout(() => setSlugStatus('idle'), 3000);
     };
 
     const handleAvatarUpdate = async (blob) => {
@@ -1511,15 +1460,16 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const toggleAdminSetting = async (key, currentVal) => {
         let defaultVal = false;
         if (key === 'members_can_post' || key === 'members_can_add') defaultVal = true;
-        
         const actualVal = currentVal ?? defaultVal;
-        const newMeta = { ...localChatInfo.metadata, [key]: !actualVal };
+        const newValue = !actualVal;
         
         // Optimistic UI Update
-        setLocalChatInfo(prev => ({ ...prev, metadata: newMeta }));
+        setLocalChatInfo(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: newValue } }));
         
-        const { error } = await supabase.from('conversations').update({ metadata: newMeta }).eq('id', chat.conversation_id);
-        if (error) {
+        try {
+            const res = await invokeSocial({ action: 'toggle_admin_setting', conversation_id: chat.conversation_id, key, value: newValue });
+            if (res.error) throw new Error(res.error);
+        } catch(e) {
             // Revert on error
             setLocalChatInfo(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: actualVal } }));
             setAlertNotice("Action denied. You do not have permission to alter group settings.");
@@ -1593,58 +1543,14 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const startLiveSession = async (setupData = null) => {
         setIsStartingLive(true);
         try {
-            const res = await invokeLiveToken({ conversation_id: chat.conversation_id });
-            if (res.error) throw new Error(res.error);
-            setLiveCredentials({ token: res.token, url: res.ws_url });
+            const resToken = await invokeLiveToken({ conversation_id: chat.conversation_id });
+            if (resToken.error) throw new Error(resToken.error);
+            setLiveCredentials({ token: resToken.token, url: resToken.ws_url });
             
-            // 1. Broadcast live state to DB immediately with heartbeat and wait for completion
-            await supabase.rpc('heartbeat_live_session', { conv_id: chat.conversation_id, req_host_id: currentUser.id });
+            const resMeta = await invokeSocial({ action: 'start_live_session', conversation_id: chat.conversation_id, setupData });
+            if (resMeta.error) throw new Error(resMeta.error);
             
-            // 2. Populate live_study_sessions to feed the For You algorithm
-            if (setupData) {
-                await supabase.from('live_study_sessions').delete().eq('conversation_id', chat.conversation_id);
-                await supabase.from('live_study_sessions').insert({
-                    conversation_id: chat.conversation_id,
-                    course_name: setupData.course || 'General Study',
-                    lesson_topic: setupData.topic,
-                    active_user_ids: [currentUser.id],
-                    last_updated_at: new Date().toISOString()
-                });
-            }
-
-            // 3. Fetch the absolute latest metadata from the DB post-heartbeat to avoid clobbering system fields
-            const { data: latestConv } = await supabase
-                .from('conversations')
-                .select('metadata')
-                .eq('id', chat.conversation_id)
-                .single();
-
-            const latestMeta = latestConv?.metadata || {};
-            
-            // 4. Construct clean, unified metadata payload
-            const updatedMeta = {
-                ...latestMeta,
-                is_live: true,
-                live_host_id: currentUser.id,
-                live_status: 'active',
-                live_heartbeat: new Date().toISOString()
-            };
-            
-            if (setupData?.topic) {
-                updatedMeta.live_topic = setupData.topic;
-            }
-            
-            delete updatedMeta.ai_hosting; // Force user hosting by default
-
-            // 5. Update the DB and wait for it to commit securely
-            await supabase.from('conversations').update({ metadata: updatedMeta }).eq('id', chat.conversation_id);
-            
-            // 6. Update local state cleanly on main thread
-            setLocalChatInfo(prev => ({
-                ...prev,
-                metadata: updatedMeta
-            }));
-            
+            setLocalChatInfo(prev => ({ ...prev, metadata: resMeta.metadata }));
             setLiveState('full');
             setShowRecoveryModal(false);
         } catch (err) {
