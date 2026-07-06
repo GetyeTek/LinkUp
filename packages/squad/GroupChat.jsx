@@ -66,9 +66,16 @@ const FloatingLiveOrb = ({ hostAvatar, hostId, onClick }) => {
         );
 };
 
+const ConnectionRing = ({ isConnected }) => (
+    <svg className="connection-ring-svg" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="48" className={`ring-path ${isConnected ? 'connected' : 'connecting'}`} />
+    </svg>
+);
+
 const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser }) => {
     const [qInput, setQInput] = useState('');
     const [liveQuestions, setLiveQuestions] = useState([]);
+    const [aiConnected, setAiConnected] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [hostTab, setHostTab] = useState('pending');
     const [showEndConfirm, setShowEndConfirm] = useState(false);
@@ -156,6 +163,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
             ws.onopen = () => {
                 console.log("[Client|Stage] WS Connection Opened. Edge Worker handles Gemini configuration.");
+                setAiConnected(true);
             };
 
             let timeoutId;
@@ -166,6 +174,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
             ws.onclose = (event) => {
                 console.warn(`[Client|Stage] 🔌 WS Closed. Code: ${event.code}, Reason: ${event.reason}`);
+                setAiConnected(false);
             };
 
             ws.onmessage = (event) => {
@@ -408,6 +417,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
     // DYNAMIC LAYOUT RULE: Compress spacing if a pin is active or we have questions to review
     const shouldCompressStage = !!pinnedQ || liveQuestions.length > 0;
+    
+    const isConnected = isAiHosting ? aiConnected : !isHostPaused;
 
     if (liveState === 'minimized') {
         return <FloatingLiveOrb hostAvatar={hostInfo.avatar} hostId={hostId} onClick={() => setLiveState('full')} />;
@@ -483,15 +494,16 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
             <main className={`stage-core ${shouldCompressStage ? 'compact-stage-mode' : ''}`}>
                 <div className="stage-host-node">
-                    {isAiHosting ? (
-                        <>
-                            {isMironSpeaking && (
-                                <>
-                                    <div className="voice-halo-ring miron-halo"></div>
-                                    <div className="voice-halo-ring miron-halo"></div>
-                                </>
-                            )}
-                            <div className="miron-host-orb" style={{ overflow: 'hidden' }}>
+                    <div style={{position: 'relative', width: '110px', height: '110px', borderRadius: '50%'}}>
+                        <ConnectionRing isConnected={isConnected} />
+                        {isConnected && (
+                            <>
+                                <div className={`voice-halo-ring ${isAiHosting ? 'miron-halo' : ''}`}></div>
+                                <div className={`voice-halo-ring ${isAiHosting ? 'miron-halo' : ''}`} style={{animationDelay: '0.6s'}}></div>
+                            </>
+                        )}
+                        {isAiHosting ? (
+                            <div className="miron-host-orb" style={{ overflow: 'hidden', width: '100%', height: '100%', margin: 0, position: 'relative', zIndex: 2 }}>
                                 {!mironAvatarError ? (
                                     <img 
                                         src={mironAvatarUrl} 
@@ -503,23 +515,17 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                     <i className="fas fa-sparkles"></i>
                                 )}
                             </div>
-                        </>
-                    ) : (
-                        <>
-                            {!isHostPaused && (
-                                <>
-                                    <div className="voice-halo-ring"></div>
-                                    <div className="voice-halo-ring"></div>
-                                </>
-                            )}
-                            <img src={hostInfo.avatar} className="host-image-clip" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none' }} alt="Host" />
-                            {isHostPaused && (
-                                <div className="host-offline-veil">
-                                    <i className="fas fa-satellite-dish"></i>
-                                </div>
-                            )}
-                        </>
-                    )}
+                        ) : (
+                            <>
+                                <img src={hostInfo.avatar} className="host-image-clip" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none', width: '100%', height: '100%', margin: 0, position: 'relative', zIndex: 2 }} alt="Host" />
+                                {isHostPaused && (
+                                    <div className="host-offline-veil" style={{borderRadius: '50%'}}>
+                                        <i className="fas fa-satellite-dish"></i>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 <div className="stage-host-label">
