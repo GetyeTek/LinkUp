@@ -485,7 +485,7 @@ const Connect = () => {
         fetchFeaturedEvents();
         fetchLiveSessions();
         
-        // 1. Subscribe to Realtime Messages and Read Receipt updates
+        // 1. Subscribe to Realtime Messages, Read Receipts, and Conversation updates
         const msgChannel = supabase.channel('chat_list_updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
                 fetchConversations();
@@ -498,6 +498,15 @@ const Connect = () => {
             }, () => {
                 // Refresh list when I mark a chat as read to clear badges instantly
                 fetchConversations();
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'conversations'
+            }, () => {
+                // Instantly update lists when a group goes live, stops, or alters metadata
+                fetchConversations();
+                fetchSuggestedSquads();
             })
             .subscribe();
 
