@@ -409,9 +409,9 @@ const Connect = () => {
             return false;
         }
 
-        // 2. Fallback network heartbeat check (15 mins) for Edge Workers (Miron) or minor network drops
+        // 2. Fallback network heartbeat check (5 mins) for Edge Workers (Miron) or minor network drops
         const hb = metadata.live_heartbeat ? new Date(metadata.live_heartbeat).getTime() : Date.now();
-        return (Date.now() - hb) <= 15 * 60 * 1000;
+        return (Date.now() - hb) <= 5 * 60 * 1000;
     };
 
     useEffect(() => {
