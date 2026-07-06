@@ -2148,6 +2148,45 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         setActiveMenu(null);
     };
 
+    const handlePinMessage = async (msg) => {
+        setActiveMenu(null);
+        const pinText = msg.text || (msg.attachments?.length > 0 ? '📎 Attachment' : 'Message');
+        const senderName = msg.sender_id === currentUser.id ? 'You' : (members[msg.sender_id]?.name || 'Unknown');
+        const payload = { id: msg.id, text: pinText, sender_name: senderName };
+        
+        // Optimistic UI Update
+        setLocalChatInfo(prev => ({ ...prev, metadata: { ...prev.metadata, pinned_message: payload } }));
+        
+        try {
+            const res = await invokeSocial({ action: 'pin_message', conversation_id: chat.conversation_id, pinned_message: payload });
+            if (res.error) throw new Error(res.error);
+        } catch(e) {
+            setAlertNotice({ title: "Pin Failed", msg: e.message, success: false });
+            // Revert optimistic update on failure
+            setLocalChatInfo(prev => {
+                const nextMeta = { ...prev.metadata };
+                delete nextMeta.pinned_message;
+                return { ...prev, metadata: nextMeta };
+            });
+        }
+    };
+
+    const handleUnpinMessage = async () => {
+        // Optimistic UI Update
+        setLocalChatInfo(prev => {
+            const nextMeta = { ...prev.metadata };
+            delete nextMeta.pinned_message;
+            return { ...prev, metadata: nextMeta };
+        });
+        
+        try {
+            const res = await invokeSocial({ action: 'pin_message', conversation_id: chat.conversation_id, pinned_message: null });
+            if (res.error) throw new Error(res.error);
+        } catch(e) {
+            setAlertNotice({ title: "Unpin Failed", msg: e.message, success: false });
+        }
+    };
+
     const scrollToMessage = (id) => {
         const el = document.getElementById(`sq-msg-${id}`);
         if (!el) return;
@@ -2345,6 +2384,24 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     ) : (
                         <button className="join-stage-action-btn" onClick={joinLiveSession} disabled={isStartingLive}>
                             {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Stage'}
+                        </button>
+                    )}
+                </div>
+            )}
+            
+            {localChatInfo.metadata?.pinned_message && !isSearchActive && liveState === 'none' && (
+                <div className="pinned-msg-banner" onClick={() => scrollToMessage(localChatInfo.metadata.pinned_message.id)}>
+                    <div className="pinned-bar"></div>
+                    <div className="pinned-info">
+                        <div className="pinned-title">Pinned Message</div>
+                        <div className="pinned-snippet">
+                            <span className="pinned-author">{localChatInfo.metadata.pinned_message.sender_name}:</span>
+                            <span className="pinned-text">{localChatInfo.metadata.pinned_message.text}</span>
+                        </div>
+                    </div>
+                    {(myRole === 'owner' || myRole === 'admin') && (
+                        <button className="icon-button pinned-close-btn" onClick={(e) => { e.stopPropagation(); handleUnpinMessage(); }} title="Unpin message">
+                            <i className="fas fa-times"></i>
                         </button>
                     )}
                 </div>
@@ -2643,6 +2700,11 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     {activeMenu.isMine && (
                         <button className="squad-ctx-btn" onClick={() => startEditing(activeMenu.msg)}>
                             <i className="fa-solid fa-pen"></i> Edit
+                        </button>
+                    )}
+                    {(myRole === 'owner' || myRole === 'admin') && (
+                        <button className="squad-ctx-btn" onClick={() => handlePinMessage(activeMenu.msg)}>
+                            <i className="fa-solid fa-thumbtack"></i> Pin
                         </button>
                     )}
                     {(activeMenu.isMine || myRole === 'owner' || myRole === 'admin') && (
