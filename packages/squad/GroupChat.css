@@ -937,6 +937,45 @@
 .orb-pulse-ring { position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--accent-teal); animation: orbPulse 1.5s infinite ease-out; pointer-events: none; }
 @keyframes orbPulse { 0% { transform: scale(0.9); opacity: 1; } 100% { transform: scale(1.2); opacity: 0; } }
 .orb-expand-badge { position: absolute; bottom: -2px; right: -2px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-teal); color: #000; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 2px solid var(--surface-dark); }
+
+/* --- CONNECTION RING --- */
+.connection-ring-svg {
+    position: absolute;
+    top: -6px; left: -6px; right: -6px; bottom: -6px;
+    width: calc(100% + 12px);
+    height: calc(100% + 12px);
+    z-index: 10;
+    pointer-events: none;
+    transform: rotate(-90deg);
+}
+
+.ring-path {
+    fill: none;
+    stroke: var(--accent-teal);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 302;
+    stroke-dashoffset: 302;
+}
+
+.ring-path.connecting {
+    animation: drawConnecting 1.5s ease-in-out infinite alternate, spinRing 2s linear infinite;
+    transform-origin: 50px 50px;
+}
+
+@keyframes drawConnecting {
+    0% { stroke-dashoffset: 280; }
+    100% { stroke-dashoffset: 60; }
+}
+
+@keyframes spinRing {
+    100% { transform: rotate(360deg); }
+}
+
+.ring-path.connected {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.8s ease-out;
+}
 @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
 .si-save-btn:active:not(:disabled) { transform: scale(0.98); }
 .si-disband-btn { width: 100%; background: rgba(255, 95, 95, 0.1); color: #ff5f5f; border: 1px solid rgba(255, 95, 95, 0.3); padding: 14px; border-radius: 12px; font-weight: 700; font-size: 0.95rem; cursor: pointer; margin-top: 1rem; transition: transform 0.2s; }
