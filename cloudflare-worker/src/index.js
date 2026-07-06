@@ -6,6 +6,51 @@ export default {
     const url = new URL(request.url);
     console.log(`[Gateway] 🚀 Incoming Request: ${request.method} ${url.pathname}`);
 
+    // Telegram Image Redirect Proxy (Zero-Storage Solution)
+    if (url.pathname === '/telegram-image-proxy') {
+      const channel = url.searchParams.get('channel');
+      const id = url.searchParams.get('id');
+      if (!channel || !id) {
+        return new Response("Missing channel or id", { status: 400 });
+      }
+
+      const telegramUrl = `https://t.me/${channel}/${id}?embed=1`;
+      
+      try {
+        const response = await fetch(telegramUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 TelegramBot (like TwitterBot)'
+          }
+        });
+
+        if (!response.ok) {
+          return new Response("Failed to fetch Telegram embed page", { status: 502 });
+        }
+
+        const html = await response.text();
+        // Regex extracts background-image URL inside the HTML embed widget
+        const regex = /background-image:\s*url\(\s*['"]?([^'")]+)['"]?\s*\)/i;
+        const match = html.match(regex);
+
+        if (match && match[1]) {
+          const freshImgUrl = match[1];
+          // Return 302 redirect with caching so Cloudflare edge caches the fresh redirect for 1 hour
+          return new Response(null, {
+            status: 302,
+            headers: {
+              'Location': freshImgUrl,
+              'Cache-Control': 'public, s-maxage=3600, max-age=3600',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+
+        return new Response("Image URL not found in Telegram page", { status: 404 });
+      } catch (err) {
+        return new Response(`Error crawling Telegram: ${err.message}`, { status: 500 });
+      }
+    }
+
     // A. Route AI Stage WebSocket connections directly to the Gemini Live edge worker service binding
     if (url.pathname === '/realtime-ai') {
       console.log(`[Gateway] 🔁 Forwarding /realtime-ai to GEMINI_WORKER service binding...`);
