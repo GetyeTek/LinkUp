@@ -157,25 +157,86 @@ const MironChat = ({ onClose, initialContext }) => {
         <div className="miron-chat-overlay">
             <div className="athena-bg"></div>
 
-            <header className="athena-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
-                <button className="athena-close" onClick={onClose} style={{ background: 'transparent' }}>
-                    <i className="fas fa-chevron-left"></i>
-                </button>
-                <div className="athena-brand">
-                    <div className="athena-orb" style={{ overflow: 'hidden' }}>
-                        {!avatarError ? (
-                            <img 
-                                src={mironAvatarUrl} 
-                                alt="Miron" 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
-                                onError={() => setAvatarError(true)} 
-                            />
-                        ) : (
-                            <i className="fa-solid fa-sparkles" style={{fontSize: '0.8rem'}}></i>
-                        )}
+            <header className="athena-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button className="athena-close" onClick={onClose} style={{ background: 'transparent' }}>
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
+                    <div className="athena-brand">
+                        <div className="athena-orb" style={{ overflow: 'hidden' }}>
+                            {!avatarError ? (
+                                <img 
+                                    src={mironAvatarUrl} 
+                                    alt="Miron" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                                    onError={() => setAvatarError(true)} 
+                                />
+                            ) : (
+                                <i className="fa-solid fa-sparkles" style={{fontSize: '0.8rem'}}></i>
+                            )}
+                        </div>
+                        <h1 className="athena-title">Miron</h1>
                     </div>
-                    <h1 className="athena-title">Miron</h1>
                 </div>
+                
+                <button 
+                    className="athena-live-btn"
+                    onClick={() => {
+                        window.dispatchEvent(new CustomEvent('miron:open-live-session'));
+                    }}
+                    style={{ background: 'transparent', padding: 0, border: 'none', borderRadius: 0, width: '38px', height: '38px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style={{ width: '100%', height: '100%', display: 'block' }}>
+                      <defs>
+                        <linearGradient id="miron-live-pulse-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#0b0f19" />
+                          <stop offset="100%" stopColor="#1e293b" />
+                        </linearGradient>
+
+                        <linearGradient id="miron-neon-cyan-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#00f0ff" />
+                          <stop offset="100%" stopColor="#0066ff" />
+                        </linearGradient>
+
+                        <filter id="miron-neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+
+                        <filter id="miron-red-dot-glow" x="-30%" y="-30%" width="160%" height="160%">
+                          <feGaussianBlur stdDeviation="1.5" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                      </defs>
+
+                      {/* Button Container (Squircle) */}
+                      <rect x="2" y="2" width="96" height="96" rx="26" fill="url(#miron-live-pulse-bg)" stroke="#1e293b" strokeWidth="2.5" />
+
+                      {/* Background Chat Bubble Frame (Subtle outline) */}
+                      <path d="M 22,50 C 22,34.5 34.5,22 50,22 C 65.5,22 78,34.5 78,50 C 78,65.5 65.5,78 50,78 C 45,78 40,76.5 36,74 L 18,78 L 22,64 C 20.7,60 22,55 22,50 Z" 
+                            fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+
+                      {/* Glow effect duplicate for EKG line (creates the base ambient light) */}
+                      <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
+                            fill="none" stroke="#00f0ff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" filter="url(#miron-neon-glow)" />
+
+                      {/* Crisp Main ECG Heartbeat Line (Zigzag) */}
+                      <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
+                            fill="none" stroke="url(#miron-neon-cyan-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                      {/* Active "LIVE" Red Status Indicator Dot */}
+                      <circle cx="35" cy="37" r="3.5" fill="#ef4444" filter="url(#miron-red-dot-glow)" />
+
+                      {/* Modern bold status text */}
+                      <text x="57" y="41" fill="#ffffff" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="12" letterSpacing="1" textAnchor="middle">LIVE</text>
+                    </svg>
+                </button>
             </header>
 
             <main className="athena-flow" ref={flowRef}>
