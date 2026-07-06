@@ -123,7 +123,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             return [...prev, { id: Date.now(), role: 'user', text: userText, isFinal: true }];
                         }
                     });
-                    return;
                 }
 
                 // 2. Intercept Gemini Speech Transcript natively
@@ -139,7 +138,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             return [...prev, { id: Date.now(), role: 'miron', text: mironText, isFinal: false }];
                         }
                     });
-                    return;
                 }
 
                 // 3. Lock the bubble when the turn is over
@@ -155,7 +153,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     });
                 }
 
-                // 4. Play Voice Output Chunks
+                // 4. Play Voice Output Chunks (Failsafe sequential flow)
                 if (payload.serverContent?.modelTurn?.parts) {
                     for (const part of payload.serverContent.modelTurn.parts) {
                         if (part.inlineData?.data) {
