@@ -2740,7 +2740,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                                         className="live-trigger-btn" 
                                         onClick={() => setShowLiveSetup(true)} 
                                         disabled={isStartingLive}
-                                        style={isStartingLive ? {} : { background: 'transparent', padding: 0, border: 'none', borderRadius: 0, width: '40px', height: '40px' }}
+                                        style={isStartingLive ? {} : { background: 'transparent', padding: 0, border: 'none', borderRadius: 0, width: '46px', height: '46px', margin: '0 2px' }}
                                     >
                                         {isStartingLive ? (
                                             <i className="fas fa-circle-notch fa-spin"></i>
@@ -2778,7 +2778,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                                               </defs>
 
                                               {/* Button Container (Squircle) */}
-                                              <rect x="6" y="6" width="88" height="88" rx="24" fill="url(#live-pulse-bg)" stroke="#1e293b" strokeWidth="2.5" />
+                                              <rect x="2" y="2" width="96" height="96" rx="26" fill="url(#live-pulse-bg)" stroke="#1e293b" strokeWidth="2.5" />
 
                                               {/* Background Chat Bubble Frame (Subtle outline) */}
                                               <path d="M 22,50 C 22,34.5 34.5,22 50,22 C 65.5,22 78,34.5 78,50 C 78,65.5 65.5,78 50,78 C 45,78 40,76.5 36,74 L 18,78 L 22,64 C 20.7,60 22,55 22,50 Z" 
