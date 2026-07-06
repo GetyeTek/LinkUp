@@ -420,6 +420,95 @@
     40% { transform: scale(1); opacity: 1; box-shadow: 0 0 8px #42d7b8; }
 }
 
+/* --- MIRON LIVE SESSION UI --- */
+.ml-overlay {
+    position: absolute; inset: 0; z-index: 3000;
+    background: #050505; display: flex; flex-direction: column;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ml-ambient {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 30%, rgba(66, 215, 184, 0.15) 0%, transparent 60%);
+    z-index: 0; pointer-events: none;
+}
+.ml-header {
+    padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;
+    z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(5,5,5,0.8); backdrop-filter: blur(10px);
+}
+.ml-status {
+    display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: #fff;
+}
+.live-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #ff5f5f;
+    box-shadow: 0 0 8px #ff5f5f; animation: blink 1.5s infinite;
+}
+@keyframes blink { 50% { opacity: 0.5; } }
+.ml-stage {
+    flex: 1; display: flex; align-items: center; justify-content: center; z-index: 10;
+    min-height: 200px;
+}
+.ml-avatar-container {
+    position: relative; width: 140px; height: 140px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+}
+.ml-avatar {
+    width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
+    border: 3px solid var(--accent-teal); z-index: 2; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.ml-halo {
+    position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent-teal);
+    z-index: 1; opacity: 0;
+}
+.ml-avatar-container.speaking .ml-halo { animation: mlHalo 2s infinite ease-out; }
+.ml-avatar-container.speaking .ml-halo:nth-child(2) { animation-delay: 0.6s; }
+@keyframes mlHalo { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+
+.ml-transcript-area {
+    height: 250px; padding: 0 1.5rem; display: flex; flex-direction: column; z-index: 10;
+    mask-image: linear-gradient(to bottom, transparent, black 15%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 90%, transparent);
+}
+.ml-transcript-scroll {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 1rem 0;
+}
+.ml-transcript-scroll::-webkit-scrollbar { display: none; }
+.ml-empty-prompt { text-align: center; color: rgba(255,255,255,0.3); font-style: italic; margin-top: auto; padding-bottom: 2rem;}
+.ml-bubble-wrap { display: flex; width: 100%; }
+.ml-bubble-wrap.user { justify-content: flex-end; }
+.ml-bubble-wrap.miron { justify-content: flex-start; }
+.ml-bubble {
+    max-width: 85%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.5;
+}
+.ml-bubble-wrap.user .ml-bubble {
+    background: var(--accent-teal); color: #000; border-bottom-right-radius: 4px; font-weight: 500;
+}
+.ml-bubble-wrap.miron .ml-bubble {
+    background: rgba(255,255,255,0.1); color: #fff; border-bottom-left-radius: 4px;
+    backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05);
+}
+.ml-typing-dots { font-size: 1.2rem; line-height: 1; letter-spacing: 2px; opacity: 0.7; }
+
+.ml-dock-container {
+    padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
+    background: rgba(5, 5, 5, 0.9); z-index: 10; border-top: 1px solid rgba(255,255,255,0.05);
+}
+.ml-dock {
+    display: flex; align-items: center; background: #14141c; border: 1px solid var(--glass-border);
+    border-radius: 99px; padding: 6px 6px 6px 18px; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.ml-dock input {
+    flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.95rem; font-family: 'Poppins', sans-serif;
+}
+.ml-dock input::placeholder { color: #666; }
+.ml-action-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; flex-shrink: 0;
+}
+.ml-action-btn:active { transform: scale(0.9); }
+.ml-send-btn { background: var(--accent-teal); color: #000; }
+.ml-mic-btn { background: rgba(255,255,255,0.05); color: #fff; }
+.ml-mic-btn.active { background: #ff5f5f; color: #fff; animation: pulseRed 2s infinite; }
+@keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255,95,95,0.4); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
 /* --- FLOATING INPUT DOCK --- */
 .athena-input-area {
     padding: 1rem 1.5rem;
