@@ -11,6 +11,7 @@ export const invokeNews = async (payload) => {
         headers: { 
             'Content-Type': 'application/json',
             'apikey': DUMMY_KEY,
+            'x-linkup-client': 'linkup-secure-client-2026',
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload)
@@ -25,6 +26,7 @@ export const fetchLiveNewsFeed = async () => {
         headers: { 
             'Content-Type': 'application/json',
             'apikey': DUMMY_KEY,
+            'x-linkup-client': 'linkup-secure-client-2026',
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         }
     });
