@@ -5,8 +5,70 @@ import { getComponent, usePlatform } from '@linkup-platform/sdk-core';
 import DOMPurify from 'dompurify';
 import './MironChat.css';
 
+const FloatingMironOrb = ({ mironAvatarUrl, onClick }) => {
+    const orbRef = useRef(null);
+    const [pos, setPos] = useState({ x: window.innerWidth - 96, y: window.innerHeight - 240 });
+    const dragStart = useRef(null);
+
+    const handlePointerDown = (e) => {
+        e.target.setPointerCapture(e.pointerId);
+        dragStart.current = { 
+            offsetX: e.clientX - pos.x, 
+            offsetY: e.clientY - pos.y, 
+            startX: e.clientX,
+            startY: e.clientY,
+            isDragging: false 
+        };
+    };
+
+    const handlePointerMove = (e) => {
+        if (!dragStart.current) return;
+        const dx = Math.abs(e.clientX - dragStart.current.startX);
+        const dy = Math.abs(e.clientY - dragStart.current.startY);
+        
+        if (dx > 8 || dy > 8) dragStart.current.isDragging = true;
+
+        if (dragStart.current.isDragging) {
+            const newX = e.clientX - dragStart.current.offsetX;
+            const newY = e.clientY - dragStart.current.offsetY;
+            setPos({ 
+                x: Math.max(10, Math.min(newX, window.innerWidth - 86)), 
+                y: Math.max(50, Math.min(newY, window.innerHeight - 100)) 
+            });
+        }
+    };
+
+    const handlePointerUp = (e) => {
+        if (dragStart.current && !dragStart.current.isDragging) onClick();
+        dragStart.current = null;
+    };
+
+    return (
+        <div 
+            className="floating-live-orb" 
+            ref={orbRef} 
+            style={{ left: pos.x, top: pos.y, display: 'flex' }}
+            onPointerDown={handlePointerDown} 
+            onPointerMove={handlePointerMove} 
+            onPointerUp={handlePointerUp}
+        >
+            <div className="orb-pulse-ring"></div>
+            <img src={mironAvatarUrl} className="floating-orb-host" alt="Live Host" />
+            <div className="orb-expand-badge"><i className="fas fa-expand-alt"></i></div>
+        </div>
+    );
+};
+
+const ConnectionRing = ({ isConnected }) => (
+    <svg className="connection-ring-svg" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="48" className={`ring-path ${isConnected ? 'connected' : 'connecting'}`} />
+    </svg>
+);
+
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const { sessionUser } = usePlatform();
+    const [viewState, setViewState] = useState('full');
+    const [isConnected, setIsConnected] = useState(false);
     const [micActive, setMicActive] = useState(false);
     const [textInput, setTextInput] = useState('');
     const [transcripts, setTranscripts] = useState([]);
@@ -39,7 +101,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         const ws = new WebSocket(`wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${agentId}`);
         wsRef.current = ws;
 
-        ws.onopen = () => console.log("[Miron Live] Secure Neural Link Established");
+        ws.onopen = () => {
+            console.log("[Miron Live] Secure Neural Link Established");
+            setIsConnected(true);
+        };
 
         ws.onmessage = (e) => {
             try {
@@ -88,6 +153,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 console.error("WS Parse error", err);
             }
         };
+
+        ws.onclose = () => setIsConnected(false);
 
         return () => ws.close();
     }, [sessionUser?.id]);
@@ -249,22 +316,31 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     };
 
+    if (viewState === 'minimized') {
+        return <FloatingMironOrb mironAvatarUrl={mironAvatarUrl} onClick={() => setViewState('full')} />;
+    }
+
     return (
         <div className="ml-overlay">
             <div className="ml-ambient"></div>
             
             <header className="ml-header">
-                <button className="athena-close" onClick={onClose}><i className="fas fa-chevron-down"></i></button>
+                <button className="athena-close" onClick={() => setViewState('minimized')}><i className="fas fa-chevron-down"></i></button>
                 <div className="ml-status">
                     <span className="live-dot"></span> Live Voice Session
                 </div>
-                <div style={{width: '36px'}}></div>
+                <button className="athena-close" onClick={onClose} style={{color: '#ff5f5f'}}><i className="fas fa-phone-slash"></i></button>
             </header>
 
             <div className="ml-stage">
-                <div className={`ml-avatar-container ${isMironSpeaking ? 'speaking' : ''}`}>
-                    <div className="ml-halo"></div>
-                    <div className="ml-halo"></div>
+                <div className="ml-avatar-container">
+                    <ConnectionRing isConnected={isConnected} />
+                    {isConnected && (
+                        <>
+                            <div className="ml-halo"></div>
+                            <div className="ml-halo" style={{animationDelay: '0.6s'}}></div>
+                        </>
+                    )}
                     <img src={mironAvatarUrl} alt="Miron" className="ml-avatar" />
                 </div>
             </div>
