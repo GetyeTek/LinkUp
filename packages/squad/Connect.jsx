@@ -381,6 +381,7 @@ const Connect = () => {
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [joiningSquadId, setJoiningSquadId] = useState(null);
     const [globalNotice, setGlobalNotice] = useState(null);
+    const [presenceSynced, setPresenceSynced] = useState(false);
     const activeChatRef = useRef(null);
     
     // Q&A State
@@ -401,8 +402,16 @@ const Connect = () => {
 
     const isSessionLive = (metadata) => {
         if (!metadata?.is_live) return false;
+        
+        // 1. Instant Cleanup Hook: If a human host force-closed the app, their global presence drops instantly.
+        // We ensure presence has synced at least once to prevent a false-negative flash on page load.
+        if (presenceSynced && !metadata.ai_hosting && metadata.live_host_id && !onlineUsers.has(metadata.live_host_id)) {
+            return false;
+        }
+
+        // 2. Fallback network heartbeat check (15 mins) for Edge Workers (Miron) or minor network drops
         const hb = metadata.live_heartbeat ? new Date(metadata.live_heartbeat).getTime() : Date.now();
-        return (Date.now() - hb) <= 15 * 60 * 1000; // 15 minute heartbeat diagnostic
+        return (Date.now() - hb) <= 15 * 60 * 1000;
     };
 
     useEffect(() => {
@@ -527,6 +536,7 @@ const Connect = () => {
         presenceChannel.on('presence', { event: 'sync' }, () => {
             const state = presenceChannel.presenceState();
             setOnlineUsers(new Set(Object.keys(state)));
+            setPresenceSynced(true);
         }).subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
                 await presenceChannel.track({ online_at: new Date().toISOString() });
