@@ -57,7 +57,7 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
 
 const MironChat = ({ onClose, initialContext }) => {
     const [avatarError, setAvatarError] = useState(false);
-    const mironAvatarUrl = "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=110";
+    const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
     const [messages, setMessages] = useState(() => {
         const base = [
             {
