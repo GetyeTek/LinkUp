@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePlatform } from '@linkup-platform/sdk-core';
 import { fetchLiveNewsFeed } from './api.js';
 import './Discover.css';
@@ -76,23 +76,66 @@ const Discover = () => {
     
     const [liveNews, setLiveNews] = useState([]);
     const [newsLoading, setNewsLoading] = useState(true);
+    
+    // Pagination Engine States
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
 
     // Ref for the indicator animation
     const navRef = useRef(null);
     const [indicatorStyle, setIndicatorStyle] = useState({});
 
+    // Smooth Intersection Observer (Fires 600px BEFORE reaching the bottom)
+    const observer = useRef();
+    const lastElementRef = useCallback(node => {
+        if (newsLoading || isFetchingMore) return;
+        if (observer.current) observer.current.disconnect();
+        
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore) {
+                setPage(prevPage => prevPage + 1);
+            }
+        }, { rootMargin: '600px' }); 
+        
+        if (node) observer.current.observe(node);
+    }, [newsLoading, isFetchingMore, hasMore]);
+
     useEffect(() => {
-        // Fetch Live Telegram News
-        fetchLiveNewsFeed()
-            .then(data => {
-                if (data.news) setLiveNews(data.news);
-                setNewsLoading(false);
-            })
-            .catch(err => {
+        let isMounted = true;
+        const loadNews = async () => {
+            if (page === 0) setNewsLoading(true);
+            else setIsFetchingMore(true);
+
+            try {
+                const data = await fetchLiveNewsFeed(page, 15);
+                if (!isMounted) return;
+
+                if (data.news && data.news.length > 0) {
+                    setLiveNews(prev => {
+                        // Safe deduplication to prevent React key collision on rapid scrolling
+                        const existingIds = new Set(prev.map(p => p.id));
+                        const newItems = data.news.filter(p => !existingIds.has(p.id));
+                        return page === 0 ? data.news : [...prev, ...newItems];
+                    });
+                    // If we received fewer than 15 items, the database is exhausted
+                    if (data.news.length < 15) setHasMore(false);
+                } else {
+                    setHasMore(false);
+                }
+            } catch (err) {
                 console.error("Failed to load live feed:", err);
-                setNewsLoading(false);
-            });
-    }, []);
+            } finally {
+                if (isMounted) {
+                    setNewsLoading(false);
+                    setIsFetchingMore(false);
+                }
+            }
+        };
+        loadNews();
+        
+        return () => { isMounted = false; };
+    }, [page]);
 
     useEffect(() => {
         console.log("%c[GN_Feed] >> Initializing Discovery Feed...", "color: #ffab40; font-family: monospace;");
@@ -154,9 +197,32 @@ const Discover = () => {
                         </div>
                     ) : (
                         liveNews.length > 0 ? (
-                            liveNews.map(post => (
-                                <TelegramCard key={post.id} post={post} />
-                            ))
+                            <>
+                                {liveNews.map((post, index) => {
+                                    // Attach the invisible tripwire to the absolute last item in the array
+                                    if (liveNews.length === index + 1) {
+                                        return (
+                                            <div key={post.id} ref={lastElementRef}>
+                                                <TelegramCard post={post} />
+                                            </div>
+                                        );
+                                    }
+                                    return <TelegramCard key={post.id} post={post} />;
+                                })}
+                                
+                                {isFetchingMore && (
+                                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--accent-teal)' }}>
+                                        <i className="fas fa-circle-notch fa-spin fa-lg"></i>
+                                    </div>
+                                )}
+                                
+                                {!hasMore && (
+                                    <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#888', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                                        <i className="fas fa-check-circle" style={{marginBottom: '0.5rem', display: 'block', color: 'var(--accent-teal)'}}></i>
+                                        You're all caught up.
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#888' }}>
                                 <i className="fas fa-satellite-dish" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}></i>
