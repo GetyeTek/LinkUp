@@ -164,7 +164,9 @@ export class GeminiLiveAgent {
       const setupMessage = {
         setup: {
           model: "models/gemini-3.1-flash-live-preview",
-          generationConfig: { responseModalities: ["AUDIO"] }
+          generationConfig: { responseModalities: ["AUDIO"] },
+          inputAudioTranscription: {},
+          outputAudioTranscription: {}
         }
       };
       
