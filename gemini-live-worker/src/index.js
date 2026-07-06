@@ -9,13 +9,57 @@ export class GeminiLiveAgent {
     this.isInitializingGemini = false;
     this.isGeminiSetupComplete = false;
     this.messageQueue = [];
+    this.heartbeatTimer = null;
+    this.conversationId = null;
     console.log(`[Agent|DO|INIT] 🏗️ Native Constructor initialized.`);
+  }
+
+  async dbHeartbeat() {
+    if (!this.conversationId || this.ctx.getWebSockets().length === 0) return;
+    const supabaseUrl = this.env?.SUPABASE_URL;
+    const serviceKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceKey) return;
+
+    try {
+        const getRes = await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}&select=metadata`, {
+            headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
+        });
+        const rows = await getRes.json();
+        if (!rows || rows.length === 0) return;
+        
+        const meta = rows[0].metadata || {};
+        
+        // Only keep the heartbeat alive if Miron is actively designated as the host
+        if (meta.is_live && meta.ai_hosting) {
+            meta.live_heartbeat = new Date().toISOString();
+            await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}`, {
+                method: 'PATCH',
+                headers: { 
+                    'apikey': serviceKey, 
+                    'Authorization': `Bearer ${serviceKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({ metadata: meta })
+            });
+        }
+    } catch (e) {
+        console.error("[Agent|DO|Heartbeat] DB Update Failed", e.message);
+    }
   }
 
   async fetch(request) {
     console.log(`[Agent|DO|FETCH] 🚀 Intercepting WebSocket upgrade request...`);
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected Upgrade: websocket", { status: 426 });
+    }
+
+    const url = new URL(request.url);
+    this.conversationId = url.searchParams.get("agent");
+
+    // Initialize Miron's autonomous heartbeat engine
+    if (!this.heartbeatTimer) {
+        this.heartbeatTimer = setInterval(() => this.dbHeartbeat(), 15000);
     }
 
     const { 0: client, 1: server } = new WebSocketPair();
@@ -67,15 +111,22 @@ export class GeminiLiveAgent {
     
     // Auto-cleanup if all connected clients disconnect
     const sockets = this.ctx.getWebSockets();
-    if (sockets.length === 0 && this.geminiWs) {
-      console.log("[Agent|DO|CLEANUP] Stage empty. Closing upstream Gemini WS.");
-      try {
-        this.geminiWs.close(1000, "Stage empty");
-      } catch (e) {
-        console.error("[Agent|DO|CLEANUP] Error closing Gemini WS:", e.message);
+    if (sockets.length === 0) {
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = null;
       }
-      this.geminiWs = null;
-      this.isGeminiSetupComplete = false;
+
+      if (this.geminiWs) {
+        console.log("[Agent|DO|CLEANUP] Stage empty. Closing upstream Gemini WS.");
+        try {
+          this.geminiWs.close(1000, "Stage empty");
+        } catch (e) {
+          console.error("[Agent|DO|CLEANUP] Error closing Gemini WS:", e.message);
+        }
+        this.geminiWs = null;
+        this.isGeminiSetupComplete = false;
+      }
     }
   }
 
