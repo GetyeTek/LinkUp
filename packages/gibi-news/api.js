@@ -19,16 +19,17 @@ export const invokeNews = async (payload) => {
     return response.json();
 };
 
-export const fetchLiveNewsFeed = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const response = await fetch(`${NEWS_GATEWAY}/functions/v1/news-feed`, {
-        method: 'GET',
-        headers: { 
-            'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY,
-            'x-linkup-client': 'linkup-secure-client-2026',
-            ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
-        }
-    });
-    return response.json();
+export const fetchLiveNewsFeed = async (page = 0, limit = 15) => {
+    // Utilize native Supabase pagination via our secure gateway
+    const start = page * limit;
+    const end = start + limit - 1;
+    
+    const { data, error } = await supabase
+        .from('news_feed')
+        .select('*')
+        .order('telegram_timestamp', { ascending: false })
+        .range(start, end);
+        
+    if (error) throw error;
+    return { news: data || [] };
 };
