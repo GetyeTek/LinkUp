@@ -475,8 +475,25 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             className={`miron-header-toggle ${isAiHosting ? 'active' : ''}`} 
                             onClick={() => toggleMironState(!isAiHosting)}
                             title={isAiHosting ? "Disconnect Miron" : "Let Miron Host"}
+                            style={{ position: 'relative', width: '38px', height: '38px', borderRadius: '50%', padding: 0, overflow: 'visible', background: 'transparent', border: 'none' }}
                         >
-                            {isAiHosting ? <i className="fas fa-pause"></i> : <i className="fas fa-sparkles"></i>}
+                            <ConnectionRing isConnected={isAiHosting && aiConnected} />
+                            <div className="toggle-avatar-wrapper" style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative', border: isAiHosting ? 'none' : '1px solid rgba(255,255,255,0.2)' }}>
+                                <img 
+                                    src={mironAvatarUrl} 
+                                    alt="Miron Toggle" 
+                                    style={{ 
+                                        width: '100%', 
+                                        height: '100%', 
+                                        objectFit: 'cover', 
+                                        filter: isAiHosting ? 'none' : 'grayscale(100%) opacity(0.6)',
+                                        transition: 'filter 0.3s ease'
+                                    }} 
+                                />
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isAiHosting ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.1)', color: 'white', fontSize: '0.8rem' }}>
+                                    {isAiHosting ? <i className="fas fa-pause text-white"></i> : <i className="fas fa-sparkles text-zinc-300"></i>}
+                                </div>
+                            </div>
                         </button>
                     )}
                     <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}>
