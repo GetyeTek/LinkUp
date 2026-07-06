@@ -5,6 +5,7 @@ const Home = () => {
     const { shell, user: userProfile, unreadCount } = usePlatform();
     const onOpenActivity = shell.openActivity;
     const [greeting, setGreeting] = useState('Hello');
+    const [punctuation, setPunctuation] = useState('.');
     const firstName = userProfile?.full_name?.split(' ')[0] || 'Scholar';
     const avatarUrl = userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`;
     const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
@@ -17,11 +18,27 @@ const Home = () => {
     ];
 
     useEffect(() => {
-        // Greeting Logic
+        // Dynamic Time-Slipped Greeting Logic
         const currentHour = new Date().getHours();
-        if (currentHour < 12) setGreeting('Good Morning');
-        else if (currentHour < 18) setGreeting('Good Afternoon');
-        else setGreeting('Good Evening');
+        if (currentHour >= 0 && currentHour < 4) {
+            setGreeting('Burning the midnight oil');
+            setPunctuation('?');
+        } else if (currentHour >= 4 && currentHour < 7) {
+            setGreeting('Starting early');
+            setPunctuation('?');
+        } else if (currentHour >= 7 && currentHour < 12) {
+            setGreeting('Good morning');
+            setPunctuation('.');
+        } else if (currentHour >= 12 && currentHour < 17) {
+            setGreeting('Good afternoon');
+            setPunctuation('.');
+        } else if (currentHour >= 17 && currentHour < 21) {
+            setGreeting('Good evening');
+            setPunctuation('.');
+        } else {
+            setGreeting('Preparing for tomorrow');
+            setPunctuation('?');
+        }
 
         // Task Rotation Logic
         const interval = setInterval(() => {
@@ -50,7 +67,7 @@ const Home = () => {
             <div className="scrollable-content">
                 <div className="hero-wrapper">
 <header className="app-header">
-                        <div className="welcome-text"><h1>{greeting}, {firstName}</h1></div>
+                        <div className="welcome-text"><h1>{greeting}, {firstName}{punctuation}</h1></div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <button className="icon-button notification-btn" onClick={onOpenActivity}>
                                 <i className="fas fa-bell"></i>
