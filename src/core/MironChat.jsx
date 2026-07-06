@@ -56,6 +56,8 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
 };
 
 const MironChat = ({ onClose, initialContext }) => {
+    const [avatarError, setAvatarError] = useState(false);
+    const mironAvatarUrl = "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=110";
     const [messages, setMessages] = useState(() => {
         const base = [
             {
@@ -160,8 +162,17 @@ const MironChat = ({ onClose, initialContext }) => {
                     <i className="fas fa-chevron-left"></i>
                 </button>
                 <div className="athena-brand">
-                    <div className="athena-orb">
-                        <i className="fa-solid fa-sparkles" style={{fontSize: '0.8rem'}}></i>
+                    <div className="athena-orb" style={{ overflow: 'hidden' }}>
+                        {!avatarError ? (
+                            <img 
+                                src={mironAvatarUrl} 
+                                alt="Miron" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                                onError={() => setAvatarError(true)} 
+                            />
+                        ) : (
+                            <i className="fa-solid fa-sparkles" style={{fontSize: '0.8rem'}}></i>
+                        )}
                     </div>
                     <h1 className="athena-title">Miron</h1>
                 </div>
