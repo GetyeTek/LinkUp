@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-05T19:43:49.169Z
+-- Date: 2026-07-06T10:29:44.379Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -298,32 +298,6 @@ BEGIN
 
     GET DIAGNOSTICS v_inserted_rows = ROW_COUNT;
     RETURN v_inserted_rows;
-END;
-
-
--- Function: get_user_conversations
-
-BEGIN
-  RETURN QUERY
-  SELECT 
-    c.id as conversation_id,
-    c.type::text, -- Safely cast the custom enum to text
-    c.title,
-    c.avatar_url,
-    c.last_message_at,
-    (SELECT m.text FROM public.messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message_text,
-    (SELECT count(*) FROM public.messages m2 
-     WHERE m2.conversation_id = c.id 
-       AND m2.sender_id != req_user_id 
-       AND m2.created_at > cm.last_read_at) as unread_count,
-    (SELECT p.full_name FROM public.conversation_members cm2 JOIN public.profiles p ON p.id = cm2.user_id WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id LIMIT 1) as other_user_name,
-    (SELECT p.avatar_url FROM public.conversation_members cm2 JOIN public.profiles p ON p.id = cm2.user_id WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id LIMIT 1) as other_user_avatar,
-    (SELECT p.id FROM public.conversation_members cm2 JOIN public.profiles p ON p.id = cm2.user_id WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id LIMIT 1) as other_user_id,
-    (SELECT p.last_seen_at FROM public.conversation_members cm2 JOIN public.profiles p ON p.id = cm2.user_id WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id LIMIT 1) as other_user_last_seen
-  FROM public.conversations c
-  JOIN public.conversation_members cm ON c.id = cm.conversation_id
-  WHERE cm.user_id = req_user_id
-  ORDER BY c.last_message_at DESC;
 END;
 
 
@@ -1332,6 +1306,33 @@ BEGIN
 
     -- 5. CRITICAL NEW STEP: Purge the discovery engine record so it disappears from the global 'For You' feed
     DELETE FROM public.live_study_sessions WHERE conversation_id = conv_id;
+END;
+
+
+-- Function: get_user_conversations
+
+BEGIN
+  RETURN QUERY
+  SELECT 
+    c.id as conversation_id,
+    c.type::text, -- Safely cast the custom enum to text
+    c.title,
+    c.avatar_url,
+    c.last_message_at,
+    (SELECT m.text FROM public.messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message_text,
+    (SELECT count(*) FROM public.messages m2 
+     WHERE m2.conversation_id = c.id 
+       AND m2.sender_id != req_user_id 
+       AND m2.created_at > cm.last_read_at) as unread_count,
+    (SELECT p.full_name FROM public.conversation_members cm2 JOIN public.profiles p ON p.id = cm2.user_id WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id LIMIT 1) as other_user_name,
+    (SELECT p.avatar_url FROM public.conversation_members cm2 JOIN public.profiles p ON p.id = cm2.user_id WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id LIMIT 1) as other_user_avatar,
+    (SELECT p.id FROM public.conversation_members cm2 JOIN public.profiles p ON p.id = cm2.user_id WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id LIMIT 1) as other_user_id,
+    (SELECT p.last_seen_at FROM public.conversation_members cm2 JOIN public.profiles p ON p.id = cm2.user_id WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id LIMIT 1) as other_user_last_seen,
+    COALESCE(c.metadata, '{}'::jsonb) as metadata
+  FROM public.conversations c
+  JOIN public.conversation_members cm ON c.id = cm.conversation_id
+  WHERE cm.user_id = req_user_id
+  ORDER BY c.last_message_at DESC;
 END;
 
 
