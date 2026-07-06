@@ -23,13 +23,16 @@ const TelegramCard = ({ post }) => {
     // Threshold check (250 chars)
     const isLong = post.full_text && post.full_text.length > 250;
 
-    const imgUrl = post.image_url || post.media_url || post.photo_url || post.image || post.thumbnail_url;
+    const hasImage = post.image_url || post.media_url || post.photo_url || post.image || post.thumbnail_url;
+    const proxyImgUrl = hasImage 
+        ? `https://linkup-gateway.getyeteklu2.workers.dev/telegram-image-proxy?channel=${encodeURIComponent(post.channel)}&id=${encodeURIComponent(post.telegram_id)}` 
+        : null;
     
     return (
         <div className="telegram-card" ref={cardRef}>
-            {imgUrl && (
+            {proxyImgUrl && (
                 <img 
-                    src={imgUrl} 
+                    src={proxyImgUrl} 
                     alt="News Media" 
                     className="tc-image" 
                     referrerPolicy="no-referrer" 
