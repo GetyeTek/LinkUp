@@ -870,7 +870,18 @@ const Connect = () => {
                             <i className="fas fa-bell"></i>
                             {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                         </button>
-                        <img src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar" />
+                        <img 
+                            src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} 
+                            alt="Profile" 
+                            className="profile-avatar" 
+                            onClick={() => {
+                                window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }));
+                                setTimeout(() => {
+                                    window.dispatchEvent(new CustomEvent('open-profile-editor'));
+                                }, 100);
+                            }}
+                            style={{ cursor: 'pointer' }}
+                        />
                     </div>
                 </div>
                 <div className="main-nav-row">
