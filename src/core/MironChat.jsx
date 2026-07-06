@@ -110,34 +110,39 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             try {
                 const payload = JSON.parse(e.data);
                 
-                if (payload.serverContent?.modelTurn?.parts) {
-                    let textChunk = "";
-                    for (const part of payload.serverContent.modelTurn.parts) {
-                        if (part.text) textChunk += part.text;
-                        if (part.inlineData?.data) {
-                            playAudioChunk(part.inlineData.data);
-                            setIsMironSpeaking(true);
-                            clearTimeout(speakingTimeout.current);
-                            speakingTimeout.current = setTimeout(() => setIsMironSpeaking(false), 800);
+                // 1. Intercept User Speech Transcript natively from Gemini
+                if (payload.serverContent?.inputTranscription?.text) {
+                    const userText = payload.serverContent.inputTranscription.text;
+                    setTranscripts(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.role === 'user' && !last.isFinal) {
+                            const updated = [...prev];
+                            updated[updated.length - 1] = { ...last, text: userText, isFinal: true };
+                            return updated;
+                        } else {
+                            return [...prev, { id: Date.now(), role: 'user', text: userText, isFinal: true }];
                         }
-                    }
-
-                    // Dynamically append text chunks to the active Miron bubble
-                    if (textChunk) {
-                        setTranscripts(prev => {
-                            const last = prev[prev.length - 1];
-                            if (last && last.role === 'miron' && !last.isFinal) {
-                                const updated = [...prev];
-                                updated[updated.length - 1] = { ...last, text: last.text + textChunk };
-                                return updated;
-                            } else {
-                                return [...prev, { id: Date.now(), role: 'miron', text: textChunk, isFinal: false }];
-                            }
-                        });
-                    }
+                    });
+                    return;
                 }
 
-                // Lock the bubble when the turn is over
+                // 2. Intercept Gemini Speech Transcript natively
+                if (payload.serverContent?.outputTranscription?.text) {
+                    const mironText = payload.serverContent.outputTranscription.text;
+                    setTranscripts(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.role === 'miron' && !last.isFinal) {
+                            const updated = [...prev];
+                            updated[updated.length - 1] = { ...last, text: last.text + mironText };
+                            return updated;
+                        } else {
+                            return [...prev, { id: Date.now(), role: 'miron', text: mironText, isFinal: false }];
+                        }
+                    });
+                    return;
+                }
+
+                // 3. Lock the bubble when the turn is over
                 if (payload.serverContent?.turnComplete) {
                     setTranscripts(prev => {
                         const last = prev[prev.length - 1];
@@ -148,6 +153,18 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         }
                         return prev;
                     });
+                }
+
+                // 4. Play Voice Output Chunks
+                if (payload.serverContent?.modelTurn?.parts) {
+                    for (const part of payload.serverContent.modelTurn.parts) {
+                        if (part.inlineData?.data) {
+                            playAudioChunk(part.inlineData.data);
+                            setIsMironSpeaking(true);
+                            clearTimeout(speakingTimeout.current);
+                            speakingTimeout.current = setTimeout(() => setIsMironSpeaking(false), 800);
+                        }
+                    }
                 }
             } catch (err) {
                 console.error("WS Parse error", err);
@@ -247,56 +264,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [micActive]);
 
-    // 4. Web Speech API (Generates UI Transcript for User Audio)
-    useEffect(() => {
-        if (!micActive) {
-            if (recognitionRef.current) recognitionRef.current.stop();
-            return;
-        }
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognitionRef.current = recognition;
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            
-            recognition.onresult = (e) => {
-                let interim = '';
-                let final = '';
-                for (let i = e.resultIndex; i < e.results.length; ++i) {
-                    if (e.results[i].isFinal) final += e.results[i][0].transcript;
-                    else interim += e.results[i][0].transcript;
-                }
-                
-                setTranscripts(prev => {
-                    const last = prev[prev.length - 1];
-                    const newText = final + interim;
-                    
-                    if (last && last.role === 'user' && !last.isFinal) {
-                        const updated = [...prev];
-                        updated[updated.length - 1] = { ...last, text: newText, isFinal: !!final };
-                        return updated;
-                    } else {
-                        return [...prev, { id: Date.now(), role: 'user', text: newText, isFinal: !!final }];
-                    }
-                });
-            };
-            
-            recognition.onend = () => {
-                if (micActiveRef.current) recognition.start(); // Continuous listener revival
-            };
-
-            recognition.start();
-        }
-
-        return () => {
-            if (recognitionRef.current) {
-                recognitionRef.current.onend = null;
-                recognitionRef.current.stop();
-            }
-        };
-    }, [micActive]);
 
     // 5. Explicit Text Injection
     const handleSendText = () => {
