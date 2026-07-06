@@ -477,7 +477,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             title={isAiHosting ? "Disconnect Miron" : "Let Miron Host"}
                             style={{ position: 'relative', width: '38px', height: '38px', borderRadius: '50%', padding: 0, overflow: 'visible', background: 'transparent', border: 'none' }}
                         >
-                            <ConnectionRing isConnected={isAiHosting && aiConnected} />
+                            {isAiHosting && <ConnectionRing isConnected={aiConnected} />}
                             <div className="toggle-avatar-wrapper" style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative', border: isAiHosting ? 'none' : '1px solid rgba(255,255,255,0.2)' }}>
                                 <img 
                                     src={mironAvatarUrl} 
