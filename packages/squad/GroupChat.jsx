@@ -75,8 +75,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const [modLoading, setModLoading] = useState(null);
     const participants = useParticipants();
     const { localParticipant } = useLocalParticipant();
-    const [mironAvatarError, setMironAvatarError] = useState(false);
-    const mironAvatarUrl = "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=110";
+            const [mironAvatarError, setMironAvatarError] = useState(false);
+        const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
     
     const hostId = chatInfo.metadata?.live_host_id;
     const hostInfo = members[hostId] || { name: 'Host', avatar: 'https://via.placeholder.com/150' };
