@@ -1,0 +1,8 @@
+{
+  "name": "telegram-bot-worker",
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {
+    "wrangler": "^4.107.0"
+  }
+}
