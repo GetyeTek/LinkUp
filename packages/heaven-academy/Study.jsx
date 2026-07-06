@@ -101,12 +101,7 @@ const Study = () => {
                             alt="Profile" 
                             className="profile-avatar" 
                             style={{ width: '36px', height: '36px', cursor: 'pointer' }} 
-                            onClick={() => {
-                                window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }));
-                                setTimeout(() => {
-                                    window.dispatchEvent(new CustomEvent('open-profile-editor'));
-                                }, 100);
-                            }}
+                            onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }))}
                         />
                     </div>
                 </header>
