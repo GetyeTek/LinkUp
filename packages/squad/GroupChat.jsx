@@ -1538,12 +1538,12 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         
     const timeSinceBeat = Date.now() - heartBeatTime;
     
-    // Allow a generous 15-minute window, but enforce instant dismount if the human host is globally offline
+    // Allow a 5-minute window, but enforce instant dismount if the human host is globally offline
     const isHostOnline = localChatInfo.metadata?.ai_hosting || 
                          (currentUser.id === localChatInfo.metadata?.live_host_id) || 
                          (onlineUsers && onlineUsers.has(localChatInfo.metadata?.live_host_id));
                          
-    const isLiveDead = timeSinceBeat > 15 * 60 * 1000 || (presenceSynced && !localChatInfo.metadata?.ai_hosting && !isHostOnline);
+    const isLiveDead = timeSinceBeat > 5 * 60 * 1000 || (presenceSynced && !localChatInfo.metadata?.ai_hosting && !isHostOnline);
 
     const isLiveActive = localChatInfo.metadata?.is_live && !isLiveDead;
     const isMeHost = localChatInfo.metadata?.live_host_id === currentUser.id;
