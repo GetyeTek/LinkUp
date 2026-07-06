@@ -42,10 +42,11 @@ export default {
     const requestedHeaders = request.headers.get('Access-Control-Request-Headers');
     const clientSecret = request.headers.get('x-linkup-client');
 
-    // Detect browser direct media serving, file downloads, or native WebSockets
+    // Detect browser direct media serving, file downloads, auth redirects, or native WebSockets
     const isBypassed = url.pathname.startsWith('/storage/v1/object/public/') || 
                        url.pathname.startsWith('/storage/v1/object/sign/') ||
                        url.pathname.startsWith('/storage/v1/render/image/public/') ||
+                       url.pathname.startsWith('/auth/v1/') || 
                        url.pathname.startsWith('/realtime/');
 
     // Security: Require Custom Header (Gateway Handshake)
