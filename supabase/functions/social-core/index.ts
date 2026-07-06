@@ -126,6 +126,21 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true, metadata: meta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (action === 'pin_message') {
+        const { conversation_id, pinned_message } = body;
+        await verifyAdmin(conversation_id, true); // Admins CAN pin
+        
+        const { data: conv } = await supabase.from('conversations').select('metadata').eq('id', conversation_id).single();
+        let meta = conv?.metadata || {};
+        
+        if (pinned_message) meta.pinned_message = pinned_message;
+        else delete meta.pinned_message;
+        
+        const { error } = await supabase.from('conversations').update({ metadata: meta }).eq('id', conversation_id);
+        if (error) throw error;
+        return new Response(JSON.stringify({ success: true, metadata: meta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (action === 'toggle_miron') {
         const { conversation_id, ai_hosting } = body;
         await verifyAdmin(conversation_id, true); // Admins CAN toggle AI during their session
