@@ -75,6 +75,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const [modLoading, setModLoading] = useState(null);
     const participants = useParticipants();
     const { localParticipant } = useLocalParticipant();
+    const [mironAvatarError, setMironAvatarError] = useState(false);
+    const mironAvatarUrl = "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=110";
     
     const hostId = chatInfo.metadata?.live_host_id;
     const hostInfo = members[hostId] || { name: 'Host', avatar: 'https://via.placeholder.com/150' };
@@ -432,7 +434,18 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 <div className="header-left-cluster">
                     <div className="header-host-indicator">
                         {isAiHosting ? (
-                            <div className="header-miron-orb"><i className="fas fa-sparkles"></i></div>
+                            <div className="header-miron-orb" style={{ overflow: 'hidden' }}>
+                                {!mironAvatarError ? (
+                                    <img 
+                                        src={mironAvatarUrl} 
+                                        alt="Miron" 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                                        onError={() => setMironAvatarError(true)} 
+                                    />
+                                ) : (
+                                    <i className="fas fa-sparkles"></i>
+                                )}
+                            </div>
                         ) : (
                             <img src={hostInfo.avatar} className="header-host-avatar" alt="Host" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none' }} />
                         )}
@@ -478,8 +491,17 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                     <div className="voice-halo-ring miron-halo"></div>
                                 </>
                             )}
-                            <div className="miron-host-orb">
-                                <i className="fas fa-sparkles"></i>
+                            <div className="miron-host-orb" style={{ overflow: 'hidden' }}>
+                                {!mironAvatarError ? (
+                                    <img 
+                                        src={mironAvatarUrl} 
+                                        alt="Miron" 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                                        onError={() => setMironAvatarError(true)} 
+                                    />
+                                ) : (
+                                    <i className="fas fa-sparkles"></i>
+                                )}
                             </div>
                         </>
                     ) : (
