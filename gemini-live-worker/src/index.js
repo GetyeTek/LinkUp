@@ -109,16 +109,20 @@ export class GeminiLiveAgent {
   async webSocketClose(ws, code, reason, wasClean) {
     console.log(`[Agent|DO|DISCONNECT] Client left stage. Code: ${code}, Reason: ${reason}`);
     
-    // Auto-cleanup if all connected clients disconnect
-    const sockets = this.ctx.getWebSockets();
-    if (sockets.length === 0) {
+    // Auto-cleanup if all connected clients disconnect.
+    // Cloudflare includes the closing socket in getWebSockets() during this event, so we must filter it.
+    const activeSockets = this.ctx.getWebSockets().filter(s => s !== ws);
+    
+    if (activeSockets.length === 0) {
+      console.log("[Agent|DO|CLEANUP] Stage is completely empty. Initiating teardown sequence...");
+      
       if (this.heartbeatTimer) {
         clearInterval(this.heartbeatTimer);
         this.heartbeatTimer = null;
       }
 
       if (this.geminiWs) {
-        console.log("[Agent|DO|CLEANUP] Stage empty. Closing upstream Gemini WS.");
+        console.log("[Agent|DO|CLEANUP] Closing upstream Gemini WS.");
         try {
           this.geminiWs.close(1000, "Stage empty");
         } catch (e) {
@@ -126,6 +130,59 @@ export class GeminiLiveAgent {
         }
         this.geminiWs = null;
         this.isGeminiSetupComplete = false;
+      }
+
+      // Instantly kill the session in the database to stop the ghost pulsing
+      if (this.conversationId) {
+        const supabaseUrl = this.env?.SUPABASE_URL;
+        const serviceKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
+        
+        if (supabaseUrl && serviceKey) {
+          console.log(`[Agent|DO|CLEANUP] Nuking live session metadata for ${this.conversationId}`);
+          
+          try {
+            // Fetch current metadata to avoid clobbering other fields
+            const getRes = await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}&select=metadata`, {
+                headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
+            });
+            
+            const rows = await getRes.json();
+            if (rows && rows.length > 0) {
+                const meta = rows[0].metadata || {};
+                
+                // Scrub live properties
+                delete meta.is_live;
+                delete meta.ai_hosting;
+                delete meta.live_host_id;
+                delete meta.live_status;
+                delete meta.live_heartbeat;
+                delete meta.live_started_at;
+                delete meta.live_topic;
+
+                // Patch conversation metadata
+                await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'apikey': serviceKey, 
+                        'Authorization': `Bearer ${serviceKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({ metadata: meta })
+                });
+                
+                // Delete discovery record so it drops from the global feed
+                await fetch(`${supabaseUrl}/rest/v1/live_study_sessions?conversation_id=eq.${this.conversationId}`, {
+                    method: 'DELETE',
+                    headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
+                });
+                
+                console.log("[Agent|DO|CLEANUP] Database successfully scrubbed. The ghost is dead.");
+            }
+          } catch (e) {
+            console.error("[Agent|DO|CLEANUP] DB Teardown Failed", e.message);
+          }
+        }
       }
     }
   }
