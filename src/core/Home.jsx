@@ -60,12 +60,7 @@ const Home = () => {
                                 src={avatarUrl} 
                                 alt="Profile" 
                                 className="profile-avatar" 
-                                onClick={() => {
-                                    window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }));
-                                    setTimeout(() => {
-                                        window.dispatchEvent(new CustomEvent('open-profile-editor'));
-                                    }, 100);
-                                }}
+                                onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }))}
                                 style={{ cursor: 'pointer' }}
                             />
                         </div>
