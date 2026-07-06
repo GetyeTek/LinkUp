@@ -494,7 +494,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
             <main className={`stage-core ${shouldCompressStage ? 'compact-stage-mode' : ''}`}>
                 <div className="stage-host-node">
-                    <div style={{position: 'relative', width: '110px', height: '110px', borderRadius: '50%'}}>
+                    <div className="stage-host-avatar-wrapper">
                         <ConnectionRing isConnected={isConnected} />
                         {isConnected && (
                             <>
@@ -1546,9 +1546,16 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const isLiveDead = timeSinceBeat > 5 * 60 * 1000 || (presenceSynced && !localChatInfo.metadata?.ai_hosting && !isHostOnline);
 
     const isLiveActive = localChatInfo.metadata?.is_live && !isLiveDead;
-    const isMeHost = localChatInfo.metadata?.live_host_id === currentUser.id;
-    const hasRecoverableSession = isLiveActive && isMeHost && liveState === 'none';
-    
+
+    // Eject attendants instantly if the session is explicitly killed
+    useEffect(() => {
+        if (!isLiveActive && liveState !== 'none') {
+            setLiveState('none');
+            setLiveCredentials(null);
+            setShowRecoveryModal(false);
+        }
+    }, [isLiveActive, liveState]);
+
     // Show banner as long as the session is technically active in DB. 
     // (If the host is dropping packets, attendants can wait inside the room).
     const showLiveBanner = isLiveActive;
