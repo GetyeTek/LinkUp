@@ -875,17 +875,27 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         setCroppedAvatar({ blob, url });
         setSelectedFile(null);
 
-        // Auto-upload and save avatar immediately
         setIsSaving(true);
-        const arrayBuffer = await blob.arrayBuffer();
-        const filePath = `group_avatars/${conversationId}/avatar_${Date.now()}.png`;
-        await supabase.storage.from('chat_media').upload(filePath, arrayBuffer, { contentType: 'image/png', upsert: true });
-        const { data: { publicUrl } } = supabase.storage.from('chat_media').getPublicUrl(filePath);
-        
-        await supabase.from('conversations').update({ avatar_url: publicUrl }).eq('id', conversationId);
-        onUpdateInfo({ ...chatInfo, avatar_url: publicUrl });
-        setIsSaving(false);
-        setCroppedAvatar(null);
+        try {
+            const arrayBuffer = await blob.arrayBuffer();
+            const filePath = `group_avatars/${conversationId}/avatar_${Date.now()}.png`;
+            const { error: uploadError } = await supabase.storage.from('chat_media').upload(filePath, arrayBuffer, { contentType: 'image/png', upsert: true });
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage.from('chat_media').getPublicUrl(filePath);
+            
+            const { error: dbError } = await supabase.from('conversations').update({ avatar_url: publicUrl }).eq('id', conversationId);
+            if (dbError) throw dbError;
+
+            onUpdateInfo({ ...chatInfo, avatar_url: publicUrl });
+            setAlertNotice({ title: "Success", msg: "Group avatar updated successfully.", success: true });
+        } catch (err) {
+            console.error("Group avatar update error:", err);
+            setAlertNotice({ title: "Update Failed", msg: err.message || "Failed to update group avatar.", success: false });
+        } finally {
+            setIsSaving(false);
+            setCroppedAvatar(null);
+        }
     };
 
     const executeKick = async (uid) => {
