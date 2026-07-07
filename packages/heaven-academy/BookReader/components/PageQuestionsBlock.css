@@ -1,0 +1,92 @@
+/* --- BOOK PAGE QUESTIONS CARD --- */
+.bpq-container {
+    width: 794px; /* Match page width */
+    background: var(--ctx-bg);
+    border: 1px solid var(--ctx-border);
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif;
+}
+
+.bpq-header {
+    background: rgba(0,0,0,0.05);
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--ctx-border);
+}
+
+.bpq-title {
+    font-weight: 700; color: var(--accent);
+    display: flex; align-items: center; gap: 8px; font-size: 0.9rem;
+    text-transform: uppercase; letter-spacing: 1px;
+}
+
+.bpq-counter {
+    font-size: 0.8rem; font-weight: 600; color: var(--text-color); opacity: 0.6;
+}
+
+.bpq-body {
+    padding: 24px 30px;
+    display: flex; flex-direction: column; gap: 20px;
+}
+
+.bpq-text {
+    font-family: 'Newsreader', serif;
+    font-size: 1.25rem;
+    color: var(--text-color);
+    line-height: 1.5;
+}
+
+/* Answer Pads */
+.bpq-tf-pad { display: flex; gap: 16px; }
+.bpq-tf-btn {
+    flex: 1; padding: 20px; border-radius: 12px;
+    border: 2px solid var(--ctx-border);
+    background: var(--ctx-btn-bg); color: var(--text-color);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    cursor: pointer; transition: all 0.2s; font-weight: 700; font-size: 1.1rem;
+}
+.bpq-tf-btn i { font-size: 1.8rem; opacity: 0.6; transition: transform 0.2s; }
+.bpq-tf-btn.active-true { border-color: var(--accent); background: rgba(66, 215, 184, 0.1); color: var(--accent); }
+.bpq-tf-btn.active-true i { opacity: 1; transform: scale(1.1); }
+.bpq-tf-btn.active-false { border-color: #ff5f5f; background: rgba(255, 95, 95, 0.1); color: #ff5f5f; }
+.bpq-tf-btn.active-false i { opacity: 1; transform: scale(1.1); }
+
+.bpq-mc-pad { display: flex; flex-direction: column; gap: 12px; }
+.bpq-mc-btn {
+    padding: 14px 20px; border-radius: 12px; border: 1px solid var(--ctx-border);
+    background: var(--ctx-btn-bg); color: var(--text-color);
+    display: flex; align-items: center; gap: 16px; cursor: pointer; transition: all 0.2s;
+}
+.bpq-mc-indicator {
+    width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--text-color); opacity: 0.4;
+}
+.bpq-mc-btn.active { border-color: var(--accent); background: rgba(66, 215, 184, 0.05); }
+.bpq-mc-btn.active .bpq-mc-indicator { border-color: var(--accent); background: var(--accent); opacity: 1; box-shadow: 0 0 8px var(--accent); }
+
+.bpq-footer {
+    padding: 16px 20px; border-top: 1px solid var(--ctx-border);
+    display: flex; justify-content: space-between; align-items: center;
+}
+
+.bpq-nav { display: flex; gap: 8px; }
+.bpq-nav button {
+    width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--ctx-border);
+    background: var(--ctx-btn-bg); color: var(--text-color); cursor: pointer;
+}
+.bpq-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.bpq-actions { display: flex; gap: 12px; }
+.bpq-btn-explain, .bpq-btn-goto {
+    padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; border: none;
+    display: flex; align-items: center; gap: 8px; transition: transform 0.2s;
+}
+.bpq-btn-report { background: rgba(255, 95, 95, 0.05); color: #ff5f5f; border: 1px solid rgba(255, 95, 95, 0.2); padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
+.bpq-btn-explain { background: var(--ctx-btn-bg); color: var(--accent); border: 1px solid var(--accent); padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.2s; }
+.bpq-btn-goto { background: var(--text-color); color: var(--page-bg); padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px; transition: transform 0.2s; }
+.bpq-actions button:hover { transform: translateY(-2px); }
