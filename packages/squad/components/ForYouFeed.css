@@ -1,0 +1,9 @@
+/* --- FOR YOU FEED UI --- */
+.activity-list-container { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.activity-card { display: flex; flex-direction: column; background: var(--surface-dark); border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 8px 20px rgba(0,0,0,0.3); transition: transform 0.2s; cursor: pointer; }
+.activity-card:active { transform: scale(0.98); }
+.activity-image { width: 100%; height: 160px; object-fit: cover; }
+.activity-content { padding: 1.25rem; }
+.activity-tag { color: var(--accent-teal); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 1px; }
+.activity-headline { font-family: 'Newsreader', serif; font-size: 1.25rem; font-weight: 600; color: #fff; margin-bottom: 0.5rem; line-height: 1.3; }
+.activity-snippet { font-size: 0.85rem; color: #aaa; line-height: 1.5; margin: 0; }
