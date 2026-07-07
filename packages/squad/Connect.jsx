@@ -473,7 +473,7 @@ const Connect = () => {
     return (
         <div className={`tab-content active ${isHeaderCollapsed ? 'header-collapsed' : ''} ${activeView === 'for-you' ? 'for-you-active' : ''}`} id="connect-content">
             <header className="interactive-header">
-                {forwardTargetMsg && !activeChat && (
+                {forwardTargetMsg && !activeChatId && (
                     <div className="forward-mode-banner">
                         <span>Forward to...</span>
                         <button onClick={() => setForwardTargetMsg(null)}><i className="fas fa-times"></i></button>
