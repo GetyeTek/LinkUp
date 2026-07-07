@@ -1,0 +1,9 @@
+/* Full Screen Reply UI */
+.reply-fs-overlay { position: fixed; inset: 0; z-index: 7000; background: var(--bg-dark); display: flex; flex-direction: column; animation: slideUpScreen 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.reply-fs-header { padding: 1.2rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(12, 12, 12, 0.9); }
+.reply-fs-body { flex: 1; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; }
+.reply-ref-card { background: rgba(255,255,255,0.03); border-left: 3px solid var(--accent-teal); padding: 1rem; border-radius: 0 12px 12px 0; }
+.reply-ref-asker { font-size: 0.8rem; color: var(--accent-teal); font-weight: 600; margin-bottom: 4px; }
+.reply-ref-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 6px; }
+.reply-ref-body { font-size: 0.9rem; color: #aaa; }
+.reply-textarea { flex: 1; background: transparent; border: none; font-size: 1rem; color: #fff; font-family: 'Poppins', sans-serif; resize: none; outline: none; }
