@@ -1,0 +1,29 @@
+.notes-dock-wrap {
+    padding: 1rem 1.5rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 10px));
+    background: #121212; border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.notes-dock {
+    display: flex; align-items: flex-end; gap: 10px; background: #1e1e1e;
+    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 8px;
+}
+
+.notes-input {
+    flex: 1; background: transparent; border: none; outline: none; color: #fff;
+    font-family: 'Poppins', sans-serif; font-size: 0.95rem; padding: 8px 4px;
+    max-height: 100px; resize: none;
+}
+
+.notes-input::placeholder { color: #666; }
+
+.dock-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: none;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    flex-shrink: 0; transition: transform 0.2s;
+}
+
+.dock-btn:active { transform: scale(0.9); }
+.dock-btn.attach { background: rgba(255, 255, 255, 0.05); color: #aaa; }
+.dock-btn.send { background: #42d7b8; color: #000; }
+.dock-btn.send:disabled { background: rgba(66, 215, 184, 0.3); cursor: not-allowed; }
