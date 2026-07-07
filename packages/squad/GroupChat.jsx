@@ -41,6 +41,10 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     // Live Setup State
     const [showLiveSetup, setShowLiveSetup] = useState(false);
     const [liveSetupData, setLiveSetupData] = useState({ topic: '', description: '', course: '' });
+    const [liveState, setLiveState] = useState('none');
+    const [liveCredentials, setLiveCredentials] = useState(null);
+    const [isStartingLive, setIsStartingLive] = useState(false);
+    const [showRecoveryModal, setShowRecoveryModal] = useState(false);
     
     // Auto-hide success toasts on parent
     useEffect(() => {
