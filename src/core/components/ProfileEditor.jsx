@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from './AvatarCropperModal.jsx';
+import ProfileAvatarPicker from './ProfileAvatarPicker.jsx';
+import UsernameField from './UsernameField.jsx';
+import { useUsernameCheck } from '../hooks/useUsernameCheck.js';
 import './ProfileEditor.css';
 
 const DEPARTMENTS = ['Freshman', 'Computer Science', 'Software Engineering', 'Management', 'Economics', 'Electrical Engineering', 'Mechanical Engineering', 'Health', 'Other'];
@@ -51,14 +54,14 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
     
     const [selectedFile, setSelectedFile] = useState(null);
     const [croppedAvatar, setCroppedAvatar] = useState(null);
-    const [usernameStatus, setUsernameStatus] = useState('idle');
     const [expandedField, setExpandedField] = useState(null);
-    const fileInputRef = useRef(null);
 
     const [editForm, setEditForm] = useState({
         sureName: '', fatherName: '', username: '', bio: '', email: '', phone: '', university_id: '', 
         program: '', department: '', freshman_stream: '', target_department: '', year: ''
     });
+    
+    const usernameStatus = useUsernameCheck(editForm.username, userProfile?.username);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -95,35 +98,6 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
             onClose();
         }
     };
-
-    useEffect(() => {
-        if (!editForm.username) {
-            setUsernameStatus('idle');
-            return;
-        }
-
-        const cleanUsername = editForm.username.toLowerCase().trim();
-        
-        if (userProfile && cleanUsername === userProfile.username?.toLowerCase()) {
-            setUsernameStatus('available');
-            return;
-        }
-
-        if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
-            setUsernameStatus('invalid');
-            return;
-        }
-
-        const checkAvailability = async () => {
-            setUsernameStatus('checking');
-            const { data, error } = await supabase.rpc('check_username_available', { req_username: cleanUsername });
-            if (error) setUsernameStatus('error');
-            else setUsernameStatus(data ? 'available' : 'taken');
-        };
-
-        const timer = setTimeout(checkAvailability, 500);
-        return () => clearTimeout(timer);
-    }, [editForm.username, userProfile]);
 
     const handleSaveProfile = async () => {
         setSaving(true);
@@ -230,22 +204,13 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                 </header>
                 
                 <div className="pe-body">
-                    <div className="onboarding-preview">
-                        <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
-                            e.target.value = null;
-                        }} />
-                        <div className="onboarding-avatar-container" onClick={() => fileInputRef.current?.click()}>
-                            <div className="onboarding-avatar-wrapper">
-                                <img src={displayAvatar} alt="Profile Preview" />
-                            </div>
-                            <div className="avatar-edit-badge" title="Change Avatar"><i className="fas fa-pencil"></i></div>
-                        </div>
-                        <div className="preview-info">
-                            <h3>{editForm.sureName} {editForm.fatherName}</h3>
-                            <p>@{editForm.username}</p>
-                        </div>
-                    </div>
+                    <ProfileAvatarPicker 
+                        displayAvatar={displayAvatar}
+                        displayFullName={`${editForm.sureName} ${editForm.fatherName}`.trim()}
+                        username={editForm.username}
+                        onFileSelect={setSelectedFile}
+                        disabled={saving}
+                    />
                     
                     <div className="onboarding-form" style={{ marginTop: '2rem' }}>
                         <h3 className="section-title">Identity & Bio</h3>
@@ -260,25 +225,12 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                             </div>
                         </div>
 
-                        <div className="input-group-sm handle-group">
-                            <label>Username</label>
-                            <div className={`handle-input-wrapper status-${usernameStatus}`}>
-                                <span className="handle-prefix">@</span>
-                                <input type="text" value={editForm.username} onChange={e => setEditForm({...editForm, username: e.target.value})} disabled={saving} maxLength={20} />
-                                <div className="handle-status-icon">
-                                    {usernameStatus === 'checking' && <i className="fas fa-circle-notch fa-spin"></i>}
-                                    {usernameStatus === 'available' && <i className="fas fa-check"></i>}
-                                    {usernameStatus === 'taken' && <i className="fas fa-times"></i>}
-                                    {usernameStatus === 'invalid' && <i className="fas fa-exclamation"></i>}
-                                </div>
-                            </div>
-                            <div className="handle-hint">
-                                {usernameStatus === 'invalid' && "3-20 chars. Lowercase, numbers, underscores."}
-                                {usernameStatus === 'taken' && "This username is already taken."}
-                                {usernameStatus === 'error' && "Connection error. Try again."}
-                                {usernameStatus === 'available' && "Looks great! It's all yours."}
-                            </div>
-                        </div>
+                        <UsernameField 
+                            username={editForm.username}
+                            setUsername={(val) => setEditForm({...editForm, username: val})}
+                            status={usernameStatus}
+                            disabled={saving}
+                        />
                         
                         <div className="input-group-sm" style={{ marginTop: '0.5rem' }}>
                             <label>About Me</label>
