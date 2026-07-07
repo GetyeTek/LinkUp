@@ -5,6 +5,7 @@ import MessageContextMenu from './components/MessageContextMenu.jsx';
 import ChatInputDock from './components/ChatInputDock.jsx';
 import ChatBubble from './components/ChatBubble.jsx';
 import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
+import { uploadChatMedia } from './api.js';
 import './UserChat.css';
 
 const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onClose, onForward, onOriginClick, onOpenUser }) => {
@@ -282,49 +283,16 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
             const totalFiles = currentAttachments.length;
             let completedFiles = 0;
 
-            const { data: { session } } = await supabase.auth.getSession();
-            const GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
-            const DUMMY_KEY = 'sq_pub_2d66a1b8c9e08d9e0a2f8d73b';
-
             for (const att of currentAttachments) {
                 try {
                     const file = att.file;
                     const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
                     const filePath = `${currentConvId}/${currentUser.id}/${Date.now()}_${safeName}`;
-                    let publicUrl = '';
-
-                    for (let retry = 0; retry < 3; retry++) {
-                        try {
-                            await new Promise((resolve, reject) => {
-                                const xhr = new XMLHttpRequest();
-                                xhr.upload.addEventListener('progress', (e) => {
-                                    if (e.lengthComputable) {
-                                        const fileProg = e.loaded / e.total;
-                                        const globalProg = Math.round(((completedFiles + fileProg) / totalFiles) * 100);
-                                        setUploadProgress(globalProg);
-                                    }
-                                });
-                                xhr.addEventListener('load', () => {
-                                    if (xhr.status >= 200 && xhr.status < 300) resolve();
-                                    else reject(new Error(`HTTP ${xhr.status}`));
-                                });
-                                xhr.addEventListener('error', () => reject(new Error("Network Error")));
-                                xhr.addEventListener('abort', () => reject(new Error("Aborted")));
-                                xhr.open('POST', `${GATEWAY}/storage/v1/object/chat_media/${filePath}`);
-                                xhr.setRequestHeader('apikey', DUMMY_KEY);
-                                xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
-                                xhr.setRequestHeader('x-linkup-client', 'linkup-secure-client-2026');
-                                xhr.setRequestHeader('Content-Type', file.type);
-                                xhr.send(file);
-                            });
-                            const { data } = supabase.storage.from('chat_media').getPublicUrl(filePath);
-                            publicUrl = data.publicUrl;
-                            break;
-                        } catch (err) {
-                            if (retry === 2) throw err;
-                            await new Promise(r => setTimeout(r, 1500));
-                        }
-                    }
+                    
+                    const publicUrl = await uploadChatMedia(file, filePath, (fileProg) => {
+                        const globalProg = Math.round(((completedFiles + fileProg) / totalFiles) * 100);
+                        setUploadProgress(globalProg);
+                    });
                     
                     finalAttachments.push({ name: file.name, url: publicUrl, path: filePath, type: file.type, size: file.size, previewUrl: att.previewUrl });
                     completedFiles++;
