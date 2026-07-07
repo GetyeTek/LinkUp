@@ -6,6 +6,7 @@ import ChatInputDock from './components/ChatInputDock.jsx';
 import ChatBubble from './components/ChatBubble.jsx';
 import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
 import { uploadChatMedia } from './api.js';
+import { useChatInputState } from './hooks/useChatInputState.js';
 import './UserChat.css';
 
 const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onClose, onForward, onOriginClick, onOpenUser }) => {
@@ -17,10 +18,6 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
     const [activeMenu, setActiveMenu] = useState(null);
     const [editingMessage, setEditingMessage] = useState(null);
     const [replyingTo, setReplyingTo] = useState(null);
-    const [input, setInput] = useState('');
-    const [pendingAttachments, setPendingAttachments] = useState([]);
-    const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
     const [fullscreenGallery, setFullscreenGallery] = useState(null);
     const [alertNotice, setAlertNotice] = useState(null);
     
@@ -30,9 +27,13 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
     const fileInputRef = useRef(null);
     const flowRef = useRef(null);
     const isAutoScrollEnabled = useRef(true);
-    const typingTimeoutRef = useRef(null);
     const roomChannelRef = useRef(null);
-    const localTypingRef = useRef(false);
+
+    const {
+        input, setInput, pendingAttachments, setPendingAttachments,
+        isUploading, setIsUploading, uploadProgress, setUploadProgress,
+        handleInputChange, handleFileSelect, clearTypingPresence
+    } = useChatInputState(roomChannelRef, setAlertNotice);
 
     const isOtherUserDeleted = chat.type === 'dm' && !chat.other_user_id;
     const chatTitle = isOtherUserDeleted ? 'Deleted Account' : (chat.type === 'dm' ? chat.other_user_name : chat.title);
@@ -177,66 +178,10 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
             .eq('user_id', currentUser.id);
     };
 
-    const handleInputChange = (val) => {
-        setInput(val);
-        if (roomChannelRef.current) {
-            const isTypingNow = val.length > 0;
-            
-            if (isTypingNow && !localTypingRef.current) {
-                roomChannelRef.current.track({ isTyping: true, updatedAt: Date.now() }).catch(e => console.error("[UserChat] Track error:", e));
-                localTypingRef.current = true;
-            } else if (!isTypingNow && localTypingRef.current) {
-                roomChannelRef.current.track({ isTyping: false, updatedAt: Date.now() }).catch(e => console.error("[UserChat] Track error:", e));
-                localTypingRef.current = false;
-            }
-
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-            if (isTypingNow) {
-                typingTimeoutRef.current = setTimeout(() => {
-                    if (roomChannelRef.current) roomChannelRef.current.track({ isTyping: false, updatedAt: Date.now() });
-                    localTypingRef.current = false;
-                }, 2500);
-            }
-        }
-    };
-
-    const handleFileSelect = (e) => {
-        const files = Array.from(e.target.files);
-        if (!files.length) return;
-        
-        let validFiles = files;
-        if (pendingAttachments.length + files.length > 10) {
-            setAlertNotice({ title: "Limit Reached", msg: "You can only attach up to 10 files at once. The first available slots have been filled." });
-            const remainingSlots = 10 - pendingAttachments.length;
-            validFiles = files.slice(0, remainingSlots);
-        }
-        
-        const oversized = validFiles.find(f => f.size > 10 * 1024 * 1024);
-        if (oversized) {
-            setAlertNotice({ title: "File too large", msg: "One or more files exceed the 10MB limit." });
-            e.target.value = null;
-            return;
-        }
-        
-        const processed = validFiles.map(file => ({
-            file,
-            previewUrl: file.type.startsWith('image/') || file.type.startsWith('video/') ? URL.createObjectURL(file) : null
-        }));
-        
-        setPendingAttachments(prev => [...prev, ...processed]);
-        e.target.value = null;
-    };
-
-
-
     const handleSend = async () => {
         if ((!input.trim() && pendingAttachments.length === 0) || isUploading) return;
         
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        if (roomChannelRef.current && localTypingRef.current) {
-            roomChannelRef.current.track({ isTyping: false, updatedAt: Date.now() });
-            localTypingRef.current = false;
-        }
+        clearTypingPresence();
 
         const msgText = input;
         const currentAttachments = [...pendingAttachments];
