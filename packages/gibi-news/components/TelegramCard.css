@@ -1,0 +1,37 @@
+/* Telegram Style Cards */
+.telegram-card { background: var(--surface-dark); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.2); flex-shrink: 0; }
+.tc-image { 
+    width: 100%; 
+    min-height: 200px;
+    max-height: 280px; 
+    object-fit: cover; 
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    background: #121212;
+    display: block;
+}
+.tc-content { padding: 1.25rem; position: relative; }
+.tc-header { font-weight: 700; color: var(--accent-teal); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+.tc-text-wrapper { position: relative; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.tc-text-wrapper.collapsed { max-height: 140px; }
+.tc-text { font-size: 0.95rem; line-height: 1.6; color: #e0e0e0; white-space: pre-wrap; word-break: break-word; }
+.tc-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 60px; background: linear-gradient(transparent, var(--surface-dark)); pointer-events: none; }
+.tc-show-more { background: rgba(66, 215, 184, 0.1); color: var(--accent-teal); border: 1px solid rgba(66, 215, 184, 0.2); border-radius: 8px; font-weight: 600; cursor: pointer; padding: 0.5rem 0; width: 100%; text-align: center; margin-top: 0.5rem; transition: transform 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.tc-show-more:active { transform: scale(0.98); }
+.tc-footer { display: flex; flex-direction: column; gap: 8px; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; }
+.tc-footer-bottom { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #888; }
+.tc-reference { font-size: 0.7rem; color: #666; font-style: italic; display: flex; align-items: center; gap: 6px; }
+.tc-link { 
+    color: var(--text-secondary-dark); 
+    text-decoration: underline; 
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(255, 255, 255, 0.2);
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+    transition: all 0.2s; 
+}
+.tc-link:hover { 
+    color: var(--accent-teal); 
+    text-decoration-color: var(--accent-teal);
+}
