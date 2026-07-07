@@ -210,6 +210,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         />
                     )}
                 </div>
+            </div>
         </div>
     );
 };
