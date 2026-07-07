@@ -297,21 +297,6 @@
 
 
 
-/* --- GROUP INFO DASHBOARD (SQUAD HUB) FULL SCREEN --- */
-.si-overlay { 
-    position: fixed; inset: 0; z-index: 6000; 
-    background: var(--bg-dark); 
-    display: flex; flex-direction: column; 
-    animation: slideUpScreen 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-}
-.si-sheet { 
-    background: transparent; flex: 1; 
-    display: flex; flex-direction: column; 
-    min-height: 0;
-    overflow-y: auto;
-}
-@keyframes slideUpScreen { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
 /* Shared Custom Modals (Bans, Mutes, Confirms) */
 .custom-modal-overlay {
     position: fixed; inset: 0; z-index: 9000;
