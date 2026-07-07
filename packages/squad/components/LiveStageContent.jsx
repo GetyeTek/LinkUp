@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, useGeminiAudio } from '@linkup-platform/sdk-core';
-import { useParticipants, useLocalParticipant } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
+import { useParticipants, useLocalParticipant } from '@livekit/components-react';
+import GenericConfirmModal from './GenericConfirmModal.jsx';
 import FloatingLiveOrb from './FloatingLiveOrb.jsx';
 import ConnectionRing from './ConnectionRing.jsx';
 import LiveStageModPanel from './LiveStageModPanel.jsx';
@@ -238,16 +239,14 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             <div className="immersive-ambient"></div>
             
             {showEndConfirm && (
-                <div className="custom-modal-overlay" style={{ zIndex: 10001 }}>
-                    <div className="custom-modal-card">
-                        <h3>End Live Session</h3>
-                        <p>Are you sure you want to end the broadcast? This will disconnect all listeners and close the stage.</p>
-                        <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setShowEndConfirm(false)}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={() => { setShowEndConfirm(false); onLeave(true); }}>End Session</button>
-                        </div>
-                    </div>
-                </div>
+                <GenericConfirmModal
+                    title="End Live Session"
+                    description="Are you sure you want to end the broadcast? This will disconnect all listeners and close the stage."
+                    onConfirm={() => { setShowEndConfirm(false); onLeave(true); }}
+                    onCancel={() => setShowEndConfirm(false)}
+                    confirmText="End Session"
+                    isDanger={true}
+                />
             )}
 
             <header className="immersive-header">
