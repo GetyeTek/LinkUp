@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from './AvatarCropperModal.jsx';
+import ProfileAvatarPicker from './ProfileAvatarPicker.jsx';
+import UsernameField from './UsernameField.jsx';
+import { useUsernameCheck } from '../hooks/useUsernameCheck.js';
 import './OnboardingGate.css';
 
 const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
@@ -10,13 +13,12 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const [fatherName, setFatherName] = useState('');
     const [username, setUsername] = useState('');
     const [phone, setPhone] = useState('');
-    const [status, setStatus] = useState('idle');
+    const status = useUsernameCheck(username, '');
     const [loading, setLoading] = useState(false);
     const [claimError, setClaimError] = useState(null);
     const [initialized, setInitialized] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [croppedAvatar, setCroppedAvatar] = useState(null);
-    const fileInputRef = useRef(null);
   
     // Phase 2 State (Academic Wizard)
     const [stepIndex, setStepIndex] = useState(0);
@@ -71,39 +73,11 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     }, [userProfile, sessionUser, initialized]);
   
     useEffect(() => {
-      if (!username) {
-        setStatus('idle');
-        return;
+      if (username) {
+          const cleanUsername = username.toLowerCase().trim();
+          if (username !== cleanUsername) setUsername(cleanUsername);
       }
-  
-      const cleanUsername = username.toLowerCase().trim();
-      if (username !== cleanUsername) setUsername(cleanUsername);
-  
-      if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
-        setStatus('invalid');
-        return;
-      }
-  
-      const checkAvailability = async () => {
-        setStatus('checking');
-        const { data, error } = await supabase.rpc('check_username_available', { req_username: cleanUsername });
-        if (error) {
-          setStatus('error');
-        } else {
-          setStatus(data ? 'available' : 'taken');
-        }
-      };
-  
-      const timer = setTimeout(checkAvailability, 500);
-      return () => clearTimeout(timer);
     }, [username]);
-  
-    const handleFileChange = (e) => {
-      if (e.target.files && e.target.files[0]) {
-        setSelectedFile(e.target.files[0]);
-      }
-      e.target.value = null;
-    };
   
     const getWizardSteps = () => {
         const base = ['intro', 'university', 'program', 'department'];
@@ -212,19 +186,13 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
               <h2 className="onboarding-title">Set up your profile</h2>
               <p className="onboarding-subtitle">Review your details and secure your unique handle.</p>
   
-              <div className="onboarding-preview">
-                <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleFileChange} />
-                <div className="onboarding-avatar-container" onClick={() => fileInputRef.current?.click()}>
-                    <div className="onboarding-avatar-wrapper">
-                        <img src={displayAvatar} alt="Profile Preview" />
-                    </div>
-                    <div className="avatar-edit-badge" title="Change Avatar"><i className="fas fa-pencil"></i></div>
-                </div>
-                <div className="preview-info">
-                  <h3>{displayFullName}</h3>
-                  <p>@{username || 'username'}</p>
-                </div>
-              </div>
+              <ProfileAvatarPicker 
+                  displayAvatar={displayAvatar}
+                  displayFullName={displayFullName}
+                  username={username}
+                  onFileSelect={setSelectedFile}
+                  disabled={loading}
+              />
   
               <div className="onboarding-form">
                 <div className="input-row">
@@ -238,26 +206,12 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                   </div>
                 </div>
   
-                <div className="input-group-sm handle-group">
-                  <label>Username</label>
-                  <div className={`handle-input-wrapper status-${status}`}>
-                    <span className="handle-prefix">@</span>
-                    <input type="text" placeholder="scholar_joe" value={username} onChange={e => setUsername(e.target.value)} disabled={loading} maxLength={20} />
-                    <div className="handle-status-icon">
-                      {status === 'checking' && <i className="fas fa-circle-notch fa-spin"></i>}
-                      {status === 'available' && <i className="fas fa-check"></i>}
-                      {status === 'taken' && <i className="fas fa-times"></i>}
-                      {status === 'invalid' && <i className="fas fa-exclamation"></i>}
-                    </div>
-                  </div>
-                  <div className="handle-hint">
-                    {status === 'invalid' && "3-20 chars. Lowercase, numbers, underscores."}
-                    {status === 'taken' && "This username is already taken."}
-                    {status === 'error' && "Connection error. Try again."}
-                    {status === 'available' && "Looks great! It's all yours."}
-                    {status === 'idle' && "Choose your unique identity."}
-                  </div>
-                </div>
+                <UsernameField 
+                    username={username}
+                    setUsername={setUsername}
+                    status={status}
+                    disabled={loading}
+                />
   
                 <div className="input-group-sm">
                   <label>Phone Number</label>
