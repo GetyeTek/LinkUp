@@ -76,12 +76,7 @@
     box-shadow: 0 0 0 4px rgba(66, 215, 184, 0.1);
 }
 
-.profile-edit-overlay .handle-input-wrapper { display: flex; align-items: center; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 0 14px; transition: all 0.3s ease; }
-.profile-edit-overlay .handle-input-wrapper:focus-within { border-color: rgba(66, 215, 184, 0.5); background: rgba(66, 215, 184, 0.05); }
-.profile-edit-overlay .handle-input-wrapper.status-available { border-color: var(--accent-teal); }
-.profile-edit-overlay .handle-input-wrapper.status-taken, .profile-edit-overlay .handle-input-wrapper.status-invalid { border-color: #ff5f5f; }
-.profile-edit-overlay .handle-prefix { color: #888; font-weight: 700; font-size: 1.1rem; }
-.profile-edit-overlay .handle-input-wrapper input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: 'Roboto Mono', monospace; font-size: 1rem; font-weight: 600; padding: 12px 8px; }
+
 
 .ui-textarea { width: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 14px; color: #fff; font-family: 'Poppins', sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s; resize: vertical; min-height: 80px; }
 .ui-textarea:focus { border-color: var(--accent-teal); background: rgba(0,0,0,0.6); }
