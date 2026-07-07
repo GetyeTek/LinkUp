@@ -11,6 +11,9 @@ import FloatingLiveOrb from './components/FloatingLiveOrb.jsx';
 import ConnectionRing from './components/ConnectionRing.jsx';
 import GroupInfoPanel from './components/GroupInfoPanel.jsx';
 import LiveStageContent from './components/LiveStageContent.jsx';
+import MessageContextMenu from './components/MessageContextMenu.jsx';
+import ChatInputDock from './components/ChatInputDock.jsx';
+import ChatMediaGallery from './components/ChatMediaGallery.jsx';
 
 
 
@@ -485,20 +488,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         e.target.value = null;
     };
 
-    const getFileIconProps = (filename) => {
-        if (!filename) return { icon: 'fa-file', color: 'var(--accent-teal)' };
-        const ext = filename.split('.').pop().toLowerCase();
-        switch(ext) {
-            case 'pdf': return { icon: 'fa-file-pdf', color: '#ff4757' };
-            case 'doc': case 'docx': return { icon: 'fa-file-word', color: '#3498db' };
-            case 'xls': case 'xlsx': case 'csv': return { icon: 'fa-file-excel', color: '#2ecc71' };
-            case 'ppt': case 'pptx': return { icon: 'fa-file-powerpoint', color: '#e67e22' };
-            case 'txt': return { icon: 'fa-file-lines', color: '#95a5a6' };
-            case 'epub': return { icon: 'fa-book', color: '#9b59b6' };
-            case 'zip': case 'rar': case '7z': return { icon: 'fa-file-zipper', color: '#f1c40f' };
-            default: return { icon: 'fa-file', color: 'var(--accent-teal)' };
-        }
-    };
+
 
     const handleSend = async () => {
         if ((!input.trim() && pendingAttachments.length === 0) || isUploading) return;
@@ -1077,55 +1067,11 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                                         </div>
                                     ) : null}
                                     
-                                    {(() => {
-                                        if (!m.attachments || m.attachments.length === 0) return null;
-                                        
-                                        const mediaItems = m.attachments.filter(a => a.type.startsWith('image/') || a.type.startsWith('video/'));
-                                        const docItems = m.attachments.filter(a => !a.type.startsWith('image/') && !a.type.startsWith('video/'));
-                                        const hasMoreMedia = mediaItems.length > 5;
-                                        const displayMedia = mediaItems.slice(0, 5);
-
-                                        return (
-                                            <>
-                                                {displayMedia.length > 0 && (
-                                                    <div className="media-gallery-grid" data-count={displayMedia.length} data-more={hasMoreMedia.toString()}>
-                                                        {displayMedia.map((att, i) => {
-                                                            const isLast = i === 4;
-                                                            return (
-                                                                <div key={i} className="gallery-item" onClick={(e) => { 
-                                                                    e.stopPropagation(); 
-                                                                    setFullscreenGallery({ items: mediaItems, index: i });
-                                                                }}>
-                                                                    {att.type.startsWith('video/') ? (
-                                                                        <video src={att.url} />
-                                                                    ) : (
-                                                                        <img src={att.url} alt="Shared Image" />
-                                                                    )}
-                                                                    {isLast && hasMoreMedia && (
-                                                                        <div className="gallery-more-overlay" data-more-count={(mediaItems.length - 5).toString()}></div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                                
-                                                {docItems.map((att, i) => {
-                                                    const iconData = getFileIconProps(att.name);
-                                                    return (
-                                                    <div key={i} className="bubble-attachment" style={{marginTop: i === 0 && displayMedia.length === 0 ? '0' : '4px'}}>
-                                                        <div className="bubble-file-box" onClick={(e) => { e.stopPropagation(); handleDownload(att.url, att.name); }}>
-                                                            <div className="bubble-file-icon" style={{color: iconData.color}}><i className={`fas ${iconData.icon}`}></i></div>
-                                                            <div className="bubble-file-info">
-                                                                <span className="bubble-file-name">{att.name}</span>
-                                                                <span style={{fontSize: '0.65rem', color: '#888'}}>{(att.size / 1024 / 1024).toFixed(2)} MB</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )})}
-                                            </>
-                                        );
-                                    })()}
+                                    <ChatMediaGallery
+                                        attachments={m.attachments}
+                                        setFullscreenGallery={setFullscreenGallery}
+                                        handleDownload={handleDownload}
+                                    />
 
                                     {m.text && <div className="bubble-text-content">{m.text}</div>}
                                     
@@ -1148,124 +1094,55 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 )}
             </main>
 
-            {activeMenu && (
-                <div className="squad-ctx-menu" style={{ left: activeMenu.x, top: activeMenu.y }}>
-                    {!activeMenu.isMine && (
-                        <button className="squad-ctx-btn" onClick={() => startReply(activeMenu.msg)}>
-                            <i className="fa-solid fa-reply"></i> Reply
-                        </button>
-                    )}
-                    {activeMenu.msg.text && (
-                        <button className="squad-ctx-btn" onClick={() => handleCopy(activeMenu.msg.text)}>
-                            <i className="fa-solid fa-copy"></i> Copy Text
-                        </button>
-                    )}
-                    {chat.metadata?.privacy !== 'private' && activeMenu.msg.attachments && activeMenu.msg.attachments.length > 0 && (
-                        <button className="squad-ctx-btn" onClick={() => {
-                            if (activeMenu.msg.attachments.length > 1) {
-                                if(window.confirm(`Download all ${activeMenu.msg.attachments.length} files?`)) {
-                                    handleDownloadAll(activeMenu.msg.attachments);
-                                }
-                            } else {
-                                handleDownload(activeMenu.msg.attachments[0].url, activeMenu.msg.attachments[0].name);
-                            }
-                        }}>
-                            <i className="fa-solid fa-download"></i> {activeMenu.msg.attachments.length > 1 ? 'Download All Files' : 'Download File'}
-                        </button>
-                    )}
-                    {(!chat.metadata || chat.metadata.privacy !== 'private') && (
-                        <button className="squad-ctx-btn" onClick={() => { 
-                            onForward({
-                                ...activeMenu.msg, 
-                                resolved_sender_name: activeMenu.isMine ? userProfile?.full_name : members[activeMenu.msg.sender_id]?.name || 'Unknown',
-                                resolved_sender_avatar: activeMenu.isMine ? userProfile?.avatar_url : members[activeMenu.msg.sender_id]?.avatar || ''
-                            }); 
-                            setActiveMenu(null); 
-                        }}>
-                            <i className="fa-solid fa-share"></i> Forward
-                        </button>
-                    )}
-                    {activeMenu.isMine && (
-                        <button className="squad-ctx-btn" onClick={() => startEditing(activeMenu.msg)}>
-                            <i className="fa-solid fa-pen"></i> Edit
-                        </button>
-                    )}
-                    {(myRole === 'owner' || myRole === 'admin') && (
-                        <button className="squad-ctx-btn" onClick={() => handlePinMessage(activeMenu.msg)}>
-                            <i className="fa-solid fa-thumbtack"></i> Pin
-                        </button>
-                    )}
-                    {(activeMenu.isMine || myRole === 'owner' || myRole === 'admin') && (
-                        <button className="squad-ctx-btn delete" onClick={() => { setDeleteConfirm(activeMenu.msg.id); setActiveMenu(null); }}>
-                            <i className="fa-solid fa-trash"></i> {activeMenu.isMine ? 'Delete' : 'Admin Delete'}
-                        </button>
-                    )}
-                </div>
-            )}
+            <MessageContextMenu 
+                activeMenu={activeMenu}
+                onClose={() => setActiveMenu(null)}
+                onReply={startReply}
+                onCopy={handleCopy}
+                onDownload={handleDownload}
+                onDownloadAll={handleDownloadAll}
+                onForward={(msg) => {
+                    onForward({
+                        ...msg, 
+                        resolved_sender_name: msg.sender_id === currentUser.id ? userProfile?.full_name : members[msg.sender_id]?.name || 'Unknown',
+                        resolved_sender_avatar: msg.sender_id === currentUser.id ? userProfile?.avatar_url : members[msg.sender_id]?.avatar || ''
+                    });
+                }}
+                onEdit={startEditing}
+                onPin={handlePinMessage}
+                onDelete={(id) => setDeleteConfirm(id)}
+                canDownload={!chat.metadata || chat.metadata.privacy !== 'private'}
+                canForward={!chat.metadata || chat.metadata.privacy !== 'private'}
+                canPin={myRole === 'owner' || myRole === 'admin'}
+                canDeleteAny={myRole === 'owner' || myRole === 'admin'}
+            />
 
-            <footer className="squad-input-area" style={{ padding: '0 1.5rem calc(1rem + env(safe-area-inset-bottom))', background: 'linear-gradient(to top, #08080c 80%, transparent)' }}>
-                {chat.is_preview && !isMember ? (
+            {chat.is_preview && !isMember ? (
+                <div style={{ padding: '0 1.5rem calc(1rem + env(safe-area-inset-bottom))', background: 'linear-gradient(to top, #08080c 80%, transparent)' }}>
                     <button className="squad-join-full-btn" onClick={() => onJoin(chat.conversation_id)} disabled={isJoining}>
                         {isJoining ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Squad'}
                     </button>
-                ) : (
-                    <>
-                        {editingMessage && (
-                            <div className="squad-input-mode-header edit-mode">
-                                <div className="mode-border"></div>
-                                <div className="squad-mode-icon"><i className="fa-solid fa-pen"></i></div>
-                                <div className="mode-info">
-                                    <span className="mode-user">Editing message</span>
-                                    <span className="mode-text">{editingMessage.text}</span>
-                                </div>
-                                <button className="icon-button" onClick={() => { setEditingMessage(null); setInput(''); }}>
-                                    <i className="fa-solid fa-times"></i>
-                                </button>
-                            </div>
-                        )}
-                        {replyingTo && (
-                            <div className="squad-input-mode-header">
-                                <div className="mode-border"></div>
-                                <div className="mode-info" onClick={() => scrollToMessage(replyingTo.id)}>
-                                    <span className="mode-user">
-            Replying to {!replyingTo.sender_id ? 'Deleted Account' : (members[replyingTo.sender_id]?.name || 'Unknown User')}
-        </span>
-                                    <span className="mode-text">{replyingTo.text}</span>
-                                </div>
-                                <button className="icon-button" onClick={() => setReplyingTo(null)}>
-                                    <i className="fa-solid fa-times"></i>
-                                </button>
-                            </div>
-                        )}
-                        {pendingAttachments.length > 0 && (
-                            <div className="squad-input-mode-header staging-mode">
-                                <div className="mode-border staging-preview-border"></div>
-                                <div className="staging-preview-content" style={{ overflowX: 'auto', display: 'flex', gap: '8px' }}>
-                                    {pendingAttachments.map((pa, idx) => {
-                                        const iconData = getFileIconProps(pa.file.name);
-                                        return (
-                                        <div key={idx} style={{ position: 'relative', flexShrink: 0 }}>
-                                            {pa.previewUrl ? (
-                                                <img src={pa.previewUrl} alt="Preview" className="staging-thumb" />
-                                            ) : (
-                                                <div className="staging-file-icon" style={{color: iconData.color}}><i className={`fas ${iconData.icon}`}></i></div>
-                                            )}
-                                            <button 
-                                                className="icon-button" 
-                                                style={{ position: 'absolute', top: '-6px', right: '-6px', background: 'rgba(0,0,0,0.8)', width: '20px', height: '20px', fontSize: '0.6rem', border: '1px solid rgba(255,255,255,0.2)' }} 
-                                                onClick={() => setPendingAttachments(p => p.filter((_, i) => i !== idx))}
-                                            >
-                                                <i className="fa-solid fa-times"></i>
-                                            </button>
-                                        </div>
-                                    )})}
-                                </div>
-                                <button className="icon-button" onClick={() => setPendingAttachments([])} style={{color: '#ff5f5f', background: 'rgba(255,95,95,0.1)', width: '30px', height: '30px', flexShrink: 0}}>
-                                    <i className="fa-solid fa-trash"></i>
-                                </button>
-                            </div>
-                        )}
-                        {myMutedUntil && new Date(myMutedUntil) > new Date() ? (
+                </div>
+            ) : (
+                <ChatInputDock
+                    editingMessage={editingMessage}
+                    setEditingMessage={setEditingMessage}
+                    replyingTo={replyingTo}
+                    setReplyingTo={setReplyingTo}
+                    scrollToMessage={scrollToMessage}
+                    resolveReplyUser={(id) => !id ? 'Deleted Account' : (members[id]?.name || 'Unknown User')}
+                    pendingAttachments={pendingAttachments}
+                    setPendingAttachments={setPendingAttachments}
+                    isUploading={isUploading}
+                    uploadProgress={uploadProgress}
+                    fileInputRef={fileInputRef}
+                    input={input}
+                    setInput={setInput}
+                    handleInputChange={handleInputChange}
+                    handleSend={handleSend}
+                    handleFileSelect={handleFileSelect}
+                    restrictedNotice={
+                        myMutedUntil && new Date(myMutedUntil) > new Date() ? (
                             <div className="squad-muted-notice">
                                 <i className="fas fa-microphone-slash"></i>
                                 {new Date(myMutedUntil).getFullYear() > 2100 ? "You have been permanently restricted from posting." : `You are restricted from posting until ${new Date(myMutedUntil).toLocaleString()}.`}
@@ -1274,43 +1151,10 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                             <div className="squad-muted-notice" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: '#aaa', justifyContent: 'center' }}>
                                 <i className="fas fa-lock"></i> Only admins can send messages right now.
                             </div>
-                        ) : (
-                            <div className="squad-dock">
-                                <input 
-                                    type="file" 
-                                    ref={fileInputRef} 
-                                    style={{display: 'none'}} 
-                                    onChange={handleFileSelect} 
-                                />
-                                <button className="add-btn" onClick={() => fileInputRef.current.click()} disabled={isUploading}>
-                                    <i className="fa-solid fa-paperclip"></i>
-                                </button>
-                                <input 
-                                    type="text" 
-                                    placeholder="Squad message..." 
-                                    disabled={isUploading}
-                                    value={input}
-                                    onChange={(e) => handleInputChange(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                                />
-                                {isUploading ? (
-                                    <div className="circular-progress-btn">
-                                        <svg viewBox="0 0 36 36">
-                                            <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                            <path className="circle-fill" strokeDasharray={`${uploadProgress}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                        </svg>
-                                        <span className="prog-text">{uploadProgress}%</span>
-                                    </div>
-                                ) : (
-                                    <button className="squad-send-btn" onClick={handleSend} disabled={!input.trim() && pendingAttachments.length === 0}>
-                                        <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </>
-                )}
-            </footer>
+                        ) : null
+                    }
+                />
+            )}
 
             {/* Admin Quick Settings Modal */}
             {showAdminSettings && (
