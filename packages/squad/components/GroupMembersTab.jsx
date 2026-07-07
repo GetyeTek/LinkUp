@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@linkup-platform/sdk-core';
 import { invokeSocial } from '../api.js';
+import GenericConfirmModal from './GenericConfirmModal.jsx';
+import PunishMemberModal from './PunishMemberModal.jsx';
 
 const GroupMembersTab = ({ 
     conversationId, currentUser, members, setMembers, myRole, 
@@ -166,83 +168,37 @@ const GroupMembersTab = ({
                 </div>
             )}
 
-            {/* Confirm Add Member Modal */}
             {confirmAddUser && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3>Add to Squad</h3>
-                        <p>Add <strong>{confirmAddUser.other_user_name}</strong> to the squad?</p>
-                        <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setConfirmAddUser(null)} disabled={isProcessing}>Cancel</button>
-                            <button className="cm-btn-primary" onClick={executeAddMember} disabled={isProcessing}>
-                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Confirm Add'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <GenericConfirmModal
+                    title="Add to Squad"
+                    description={<>Add <strong>{confirmAddUser.other_user_name}</strong> to the squad?</>}
+                    onConfirm={executeAddMember}
+                    onCancel={() => setConfirmAddUser(null)}
+                    confirmText="Confirm Add"
+                    isProcessing={isProcessing}
+                    isDanger={false}
+                />
             )}
 
-            {/* Custom Kick Confirmation Modal */}
             {confirmModal && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3>Kick Member</h3>
-                        <p>Are you sure you want to remove <strong>{confirmModal.name}</strong> from the squad? They can rejoin if the group is public.</p>
-                        <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setConfirmModal(null)} disabled={isProcessing}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={() => executeKick(confirmModal.uid)} disabled={isProcessing}>
-                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Kick User'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <GenericConfirmModal
+                    title="Kick Member"
+                    description={<>Are you sure you want to remove <strong>{confirmModal.name}</strong> from the squad? They can rejoin if the group is public.</>}
+                    onConfirm={() => executeKick(confirmModal.uid)}
+                    onCancel={() => setConfirmModal(null)}
+                    confirmText="Kick User"
+                    isProcessing={isProcessing}
+                    isDanger={true}
+                />
             )}
 
-            {/* Custom Ban/Mute Configuration Modal */}
-            {punishConfig && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3>{punishConfig.type === 'ban' ? 'Ban Member' : 'Restrict Writing'}</h3>
-                        <p>Configure restriction for <strong>{members[punishConfig.uid]?.name}</strong>:</p>
-                        
-                        <div className="cm-radio-group">
-                            <label className="cm-radio-label">
-                                <input type="radio" checked={punishConfig.isTemp} onChange={() => setPunishConfig({...punishConfig, isTemp: true})} />
-                                Temporary
-                            </label>
-                            <label className="cm-radio-label">
-                                <input type="radio" checked={!punishConfig.isTemp} onChange={() => setPunishConfig({...punishConfig, isTemp: false})} />
-                                Permanent
-                            </label>
-                        </div>
-
-                        {punishConfig.isTemp && (
-                            <div className="cm-duration-inputs">
-                                <input 
-                                    type="number" 
-                                    min="1" 
-                                    value={punishConfig.duration} 
-                                    onChange={e => setPunishConfig({...punishConfig, duration: e.target.value === '' ? '' : parseInt(e.target.value)})} 
-                                />
-                                <select value={punishConfig.unit} onChange={e => setPunishConfig({...punishConfig, unit: e.target.value})}>
-                                    <option value="minutes">Minutes</option>
-                                    <option value="hours">Hours</option>
-                                    <option value="days">Days</option>
-                                    <option value="weeks">Weeks</option>
-                                    <option value="months">Months</option>
-                                </select>
-                            </div>
-                        )}
-
-                        <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setPunishConfig(null)} disabled={isProcessing}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={executePunishment} disabled={isProcessing}>
-                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : `Apply ${punishConfig.type === 'ban' ? 'Restriction' : 'Restriction'}`}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <PunishMemberModal 
+                punishConfig={punishConfig} 
+                setPunishConfig={setPunishConfig} 
+                executePunishment={executePunishment} 
+                isProcessing={isProcessing} 
+                members={members} 
+            />
         </>
     );
 };
