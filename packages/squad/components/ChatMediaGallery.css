@@ -35,3 +35,33 @@
 }
 .bubble-file-info { display: flex; flex-direction: column; overflow: hidden; }
 .bubble-file-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ==============================================================================
+   UNIVERSAL NAKED & CAPTIONED BUBBLE STYLES (DMs and Groups)
+   ============================================================================== */
+
+.media-bubble.naked {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.media-bubble.naked .media-gallery-grid {
+    margin-top: 0 !important;
+    border-radius: 16px;
+}
+
+.media-bubble.captioned {
+    padding: 12px 6px 6px 6px !important;
+}
+
+.media-bubble.captioned .media-gallery-grid {
+    margin-top: 0 !important;
+    border-radius: 12px;
+}
+
+.media-bubble.captioned .bubble-text-content {
+    padding: 6px 8px 4px 8px !important;
+    color: inherit;
+}
