@@ -47,6 +47,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const [showRecoveryModal, setShowRecoveryModal] = useState(false);
     
     // Auto-hide success toasts on parent
+    // Auto-hide success toasts on parent
     useEffect(() => {
         if (alertNotice?.success) {
             const timer = setTimeout(() => setAlertNotice(null), 3000);
