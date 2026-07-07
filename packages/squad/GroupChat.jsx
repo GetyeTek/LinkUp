@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import { createPortal } from 'react-dom';
-import { LiveKitRoom, useParticipants, useLocalParticipant, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
+import LiveStageSetupModal from './components/LiveStageSetupModal.jsx';
+import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
+import { useParticipants, useLocalParticipant, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
 import { invokeLiveToken, invokeSocial } from './api.js';
 import './GroupChat.css';
@@ -2868,39 +2870,10 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     onOpenUser={onOpenUser}
                 />
             )}
-            {fullscreenGallery && (
-                <div className="fullscreen-gallery-overlay" onClick={() => setFullscreenGallery(null)}>
-                    <button className="fg-close" onClick={() => setFullscreenGallery(null)}>
-                        <i className="fas fa-times"></i>
-                    </button>
-                    
-                    {fullscreenGallery.items.length > 1 && (
-                        <button className="fg-nav prev" onClick={(e) => { e.stopPropagation(); setFullscreenGallery(p => ({ ...p, index: (p.index - 1 + p.items.length) % p.items.length })); }}>
-                            <i className="fas fa-chevron-left"></i>
-                        </button>
-                    )}
-                    
-                    <div className="fg-content" onClick={e => e.stopPropagation()}>
-                        {fullscreenGallery.items[fullscreenGallery.index].type.startsWith('video/') ? (
-                            <video src={fullscreenGallery.items[fullscreenGallery.index].url} controls autoPlay className="fg-item" />
-                        ) : (
-                            <img src={fullscreenGallery.items[fullscreenGallery.index].url} alt="Fullscreen Media" className="fg-item" />
-                        )}
-                    </div>
-
-                    {fullscreenGallery.items.length > 1 && (
-                        <button className="fg-nav next" onClick={(e) => { e.stopPropagation(); setFullscreenGallery(p => ({ ...p, index: (p.index + 1) % p.items.length })); }}>
-                            <i className="fas fa-chevron-right"></i>
-                        </button>
-                    )}
-                    
-                    {fullscreenGallery.items.length > 1 && (
-                        <div className="fg-counter">
-                            {fullscreenGallery.index + 1} / {fullscreenGallery.items.length}
-                        </div>
-                    )}
-                </div>
-            )}
+            <FullscreenMediaGallery 
+                fullscreenGallery={fullscreenGallery} 
+                setFullscreenGallery={setFullscreenGallery} 
+            />
 
         </div>
         
