@@ -182,7 +182,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
             )}
             
             {showDiscardConfirm && (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 6000, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justify-content: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 6000, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
                     <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
                         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#ff5f5f' }}>Discard Changes?</h3>
                         <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>You have unsaved changes. Are you sure you want to leave?</p>
@@ -195,7 +195,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
             )}
             
             <div className="profile-edit-card">
-                <header className="pe-header" style={{ justify-content: 'flex-start', gap: '1.5rem' }}>
+                <header className="pe-header" style={{ justifyContent: 'flex-start', gap: '1.5rem' }}>
                     <button className="icon-button" onClick={handleCloseEditor} disabled={saving}>
                         <i className="fas fa-chevron-left"></i>
                     </button>
@@ -282,14 +282,14 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                 </div>
                 
                 {alertNotice && (
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justify-content: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
-                        <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', box-shadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+                        <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
                             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: alertNotice.success ? '#42d7b8' : '#ffab40', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {alertNotice.success ? <i className="fas fa-check-circle"></i> : <i className="fas fa-exclamation-circle"></i>} {alertNotice.title}
                             </h3>
                             <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>{alertNotice.msg}</p>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <button style={{ padding: '10px 18px', border-radius: '10px', font-weight: 600, font-family: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', font-size: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setAlertNotice(null)}>Okay</button>
+                                <button style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, fontFamily: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', fontSize: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setAlertNotice(null)}>Okay</button>
                             </div>
                         </div>
                     </div>
