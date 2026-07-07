@@ -1,0 +1,15 @@
+.handle-group { display: flex; flex-direction: column; gap: 6px; }
+.handle-group label { font-size: 0.8rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+.handle-input-wrapper { display: flex; align-items: center; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 0 14px; transition: all 0.3s ease; }
+.handle-input-wrapper:focus-within { border-color: rgba(66, 215, 184, 0.5); background: rgba(66, 215, 184, 0.05); }
+.handle-input-wrapper.status-available { border-color: var(--accent-teal); }
+.handle-input-wrapper.status-taken, .handle-input-wrapper.status-invalid { border-color: #ff5f5f; }
+.handle-prefix { color: #888; font-weight: 700; font-size: 1.1rem; }
+.handle-input-wrapper input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: 'Roboto Mono', monospace; font-size: 1rem; font-weight: 600; padding: 12px 8px; min-width: 0; }
+.handle-status-icon { width: 24px; display: flex; justify-content: flex-end; color: #888; }
+.status-checking .handle-status-icon { color: var(--accent-teal); }
+.status-available .handle-status-icon { color: var(--accent-teal); }
+.status-taken .handle-status-icon, .status-invalid .handle-status-icon { color: #ff5f5f; }
+.handle-hint { font-size: 0.75rem; font-weight: 500; margin-top: 2px; color: #888; }
+.status-taken + .handle-hint, .status-invalid + .handle-hint { color: #ff5f5f; }
+.status-available + .handle-hint { color: var(--accent-teal); }
