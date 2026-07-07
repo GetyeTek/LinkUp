@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invokeBookReader } from '../api.js';
+import { usePinchToZoom } from './hooks/usePinchToZoom.js';
 import './BookReader.css';
 import { renderBookBlock } from './subjects/Registry.jsx';
 import { compileAIContext } from './subjects/utils.jsx';
@@ -52,17 +53,8 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     
     // Gestural Engine Refs
     const swipeRef = useRef({ startX: 0, startY: 0 });
-
-    const pinchState = useRef({
-        isPinching: false,
-        initialDist: 0,
-        initialScale: 1,
-        viewportLeft: 0,
-        viewportTop: 0,
-        docHeight: 0,
-        docX: 0,
-        docY: 0
-    });
+    
+    const pinchState = usePinchToZoom(viewportRef, scrollContainerRef, layerRef, currentScale, minScale, cachedDocHeight, baseCanvasWidth, setContextMenu);
 
     // 1. Fetch Pages
     useEffect(() => {
@@ -267,105 +259,6 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
         e.target.style.setProperty('--scrubber-fill', `${percent}%`);
         if (pageCountRef.current) pageCountRef.current.innerText = val;
     };
-
-    // 5. DOM-Readless Pinch Physics
-    useEffect(() => {
-        const viewport = viewportRef.current;
-        const container = scrollContainerRef.current;
-        const layer = layerRef.current;
-        if (!viewport || !container || !layer) return;
-
-        let ticking = false;
-
-        const onTouchStart = (e) => {
-            if (e.target.closest('#ui-layer') || e.target.closest('.fab-container') || e.target.closest('.reader-ctx-menu')) return;
-
-            if (e.touches.length > 1) {
-                window.getSelection()?.removeAllRanges();
-                setContextMenu(null);
-            }
-
-            if (e.touches.length === 2) {
-                e.preventDefault(); 
-                const t1 = e.touches[0];
-                const t2 = e.touches[1];
-                
-                const cx = (t1.clientX + t2.clientX) / 2;
-                const cy = (t1.clientY + t2.clientY) / 2;
-                
-                // Read the DOM exactly ONCE before the pinch starts
-                const rect = viewport.getBoundingClientRect();
-                const pinchX = cx - rect.left;
-                const pinchY = cy - rect.top;
-
-                pinchState.current = {
-                    isPinching: true,
-                    initialDist: Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY),
-                    initialScale: currentScale.current,
-                    viewportLeft: rect.left,
-                    viewportTop: rect.top,
-                    docHeight: cachedDocHeight.current,
-                    // The exact unscaled document pixel resting beneath their fingers
-                    docX: (pinchX + viewport.scrollLeft) / currentScale.current,
-                    docY: (pinchY + viewport.scrollTop) / currentScale.current
-                };
-            }
-        };
-
-        const onTouchMove = (e) => {
-            if (e.touches.length === 2 && pinchState.current.isPinching) {
-                e.preventDefault(); 
-                
-                if (!ticking) {
-                    // Extract coordinates synchronously
-                    const t1 = e.touches[0];
-                    const t2 = e.touches[1];
-                    const cx = (t1.clientX + t2.clientX) / 2;
-                    const cy = (t1.clientY + t2.clientY) / 2;
-                    const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-
-                    // Offload pure math to animation frame
-                    requestAnimationFrame(() => {
-                        const state = pinchState.current;
-                        const ratio = dist / state.initialDist;
-                        let newScale = state.initialScale * ratio;
-                        newScale = Math.max(minScale.current, Math.min(newScale, 4.0));
-
-                        // Find where the pinch center moved to (pan tracking)
-                        const pinchX = cx - state.viewportLeft;
-                        const pinchY = cy - state.viewportTop;
-
-                        // Apply new scale mathematically
-                        container.style.width = `${baseCanvasWidth * newScale}px`;
-                        container.style.height = `${state.docHeight * newScale}px`;
-                        layer.style.transform = `scale(${newScale})`;
-                        currentScale.current = newScale;
-
-                        // Instantly shift scrollbars so the original document pixel stays glued under their fingers
-                        viewport.scrollLeft = (state.docX * newScale) - pinchX;
-                        viewport.scrollTop = (state.docY * newScale) - pinchY;
-
-                        ticking = false;
-                    });
-                    ticking = true;
-                }
-            }
-        };
-
-        const onTouchEnd = (e) => {
-            if (e.touches.length < 2) pinchState.current.isPinching = false;
-        };
-
-        viewport.addEventListener('touchstart', onTouchStart, { passive: false });
-        viewport.addEventListener('touchmove', onTouchMove, { passive: false });
-        viewport.addEventListener('touchend', onTouchEnd);
-        
-        return () => {
-            viewport.removeEventListener('touchstart', onTouchStart);
-            viewport.removeEventListener('touchmove', onTouchMove);
-            viewport.removeEventListener('touchend', onTouchEnd);
-        };
-    }, []);
 
     // 6. Context Menu Logic (Zero-Latency Tracking)
     // 7. Context Menu Logic (500ms Solid Debounce Tracking)
