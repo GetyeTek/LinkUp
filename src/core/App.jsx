@@ -9,6 +9,7 @@ import { lazy, Suspense } from 'react';
 import OnboardingGate from './components/OnboardingGate.jsx';
 import UpdatePasswordGate from './components/UpdatePasswordGate.jsx';
 import MironChat from './MironChat.jsx';
+import BottomNavigation from './components/BottomNavigation.jsx';
 
 const Discover = lazy(() => import('@linkup/gibi-news'));
 const Study = lazy(() => import('@linkup/heaven-academy'));
@@ -248,15 +249,6 @@ const App = () => {
     return () => window.removeEventListener('open-full-miron-chat', handleGlobalMironRequest);
   }, []);
   
-  // Maps tab IDs to their index for the mobile indicator animation
-  const tabIndex = {
-    'home': 0,
-    'discover': 1,
-    'study': 2,
-    'connect': 3,
-    'profile': 4
-  };
-
   const Fallback = () => (
     <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#42d7b8', flexDirection: 'column', gap: '1rem' }}>
       <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '2rem' }}></i>
@@ -349,78 +341,17 @@ const App = () => {
         {renderContent()}
       </main>
       {isActivityOpen && <ActivityHub onClose={() => setIsActivityOpen(false)} />}
-      {mironContext && (
-        <MironChat 
-          initialContext={mironContext.text} 
-          onClose={() => setMironContext(null)} 
-        />
-      )}
+                {mironContext && (
+            <MironChat 
+              initialContext={mironContext.text} 
+              onClose={() => setMironContext(null)} 
+            />
+          )}
 
-      <footer className="navigation-magic">
-        <nav>
-          {/* Mobile Indicator - Moves based on active index (20% width per item) */}
-          <div 
-            className="indicator" 
-            style={{ 
-              transform: `translateX(${tabIndex[activeTab] * 100}%)`, 
-              left: '0' 
-            }}
-          ></div>
-
-          <li 
-            className={`list ${activeTab === 'home' ? 'active' : ''}`} 
-            onClick={() => setActiveTab('home')}
-          >
-            <a>
-              <span className="icon"><i className="fas fa-home"></i></span>
-              <span className="text">Home</span>
-            </a>
-          </li>
-          
-          <li 
-            className={`list ${activeTab === 'discover' ? 'active' : ''}`} 
-            onClick={() => setActiveTab('discover')}
-          >
-            <a>
-              <span className="icon"><i className="fas fa-compass"></i></span>
-              <span className="text">Discover</span>
-            </a>
-          </li>
-
-          <li 
-            className={`list ${activeTab === 'study' ? 'active' : ''}`} 
-            onClick={() => setActiveTab('study')}
-          >
-            <a>
-              <span className="icon"><i className="fas fa-book-open"></i></span>
-              <span className="text">Study</span>
-            </a>
-          </li>
-
-          <li 
-            className={`list ${activeTab === 'connect' ? 'active' : ''}`} 
-            onClick={() => setActiveTab('connect')}
-          >
-            <a>
-              <span className="icon"><i className="fas fa-users"></i></span>
-              <span className="text">Connect</span>
-            </a>
-          </li>
-
-          <li 
-            className={`list ${activeTab === 'profile' ? 'active' : ''}`} 
-            onClick={() => setActiveTab('profile')}
-          >
-            <a>
-              <span className="icon"><i className="fas fa-user"></i></span>
-              <span className="text">Profile</span>
-            </a>
-          </li>
-        </nav>
-      </footer>
-      </PlatformProvider>
-    </div>
-  );
+          <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+          </PlatformProvider>
+        </div>
+      );
 };
 
 export default App;
