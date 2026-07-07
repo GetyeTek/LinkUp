@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@linkup-platform/sdk-core": "^2.4.1",
-    "livekit-client": "^2.0.4",
-    "@livekit/components-react": "^2.0.2"
+    "livekit-client": "^2.6.0",
+    "@livekit/components-react": "^2.6.2"
   }
 }
