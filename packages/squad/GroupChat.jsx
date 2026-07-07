@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import { createPortal } from 'react-dom';
 import LiveStageSetupModal from './components/LiveStageSetupModal.jsx';
+import ChatSearchOverlay from './components/ChatSearchOverlay.jsx';
 import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
 import { useParticipants, useLocalParticipant, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx';
@@ -1420,16 +1421,6 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    
-    // LiveKit Immersive State
-    const [liveState, setLiveState] = useState('none'); // 'none', 'full', 'minimized'
-    const [liveCredentials, setLiveCredentials] = useState(null); // { token, url }
-    const [isStartingLive, setIsStartingLive] = useState(false);
-    const [showRecoveryModal, setShowRecoveryModal] = useState(false);
-    const [searchResults, setSearchResults] = useState([]);
-    const [currentSearchIndex, setCurrentSearchIndex] = useState(-1);
-    const [showSearchList, setShowSearchList] = useState(false);
 
     const flowRef = useRef(null);
     const channelRef = useRef(null);
@@ -1774,52 +1765,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         }
     }, [messages, isSearchActive]);
     
-    const executeSearch = (query) => {
-        setSearchQuery(query);
-        if (!query.trim()) {
-            setSearchResults([]);
-            setCurrentSearchIndex(-1);
-            return;
-        }
-        const term = query.toLowerCase();
-        // Reverse array so newest messages (bottom) are index 0
-        const results = messages.filter(m => m.text && m.text.toLowerCase().includes(term)).reverse();
-        setSearchResults(results);
-        if (results.length > 0) {
-            setCurrentSearchIndex(0);
-            scrollToMessage(results[0].id);
-        } else {
-            setCurrentSearchIndex(-1);
-        }
-    };
 
-    const searchOlder = () => {
-        if (searchResults.length === 0) return;
-        let newIdx = currentSearchIndex + 1;
-        if (newIdx >= searchResults.length) newIdx = 0; // Wrap around
-        setCurrentSearchIndex(newIdx);
-        scrollToMessage(searchResults[newIdx].id);
-    };
-
-    const searchNewer = () => {
-        if (searchResults.length === 0) return;
-        let newIdx = currentSearchIndex - 1;
-        if (newIdx < 0) newIdx = searchResults.length - 1; // Wrap around
-        setCurrentSearchIndex(newIdx);
-        scrollToMessage(searchResults[newIdx].id);
-    };
-
-    const getSnippet = (text, query) => {
-        if (!query) return text;
-        const idx = text.toLowerCase().indexOf(query.toLowerCase());
-        if (idx === -1) return text;
-        const start = Math.max(0, idx - 40);
-        const end = Math.min(text.length, idx + query.length + 60);
-        let snippet = text.substring(start, end);
-        if (start > 0) snippet = '...' + snippet;
-        if (end < text.length) snippet = snippet + '...';
-        return snippet;
-    };
 
     const handleInputChange = (val) => {
         setInput(val);
@@ -2193,29 +2139,16 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 </div>
             )}
 
-            {isSearchActive ? (
-                <header className="chat-search-header">
-                    <button className="icon-button back-btn" onClick={() => { setIsSearchActive(false); setSearchQuery(''); }}><i className="fas fa-arrow-left"></i></button>
-                    <div className="chat-search-input-wrapper">
-                        <input 
-                            type="text" 
-                            className="chat-search-input" 
-                            value={searchQuery} 
-                            onChange={(e) => executeSearch(e.target.value)} 
-                            placeholder="Search..." 
-                            autoFocus 
-                        />
-                        <span className="search-count">
-                            {searchResults.length > 0 ? `${currentSearchIndex + 1}/${searchResults.length}` : '0/0'}
-                        </span>
-                    </div>
-                    <div className="chat-search-nav">
-                        <button onClick={searchOlder} disabled={searchResults.length === 0}><i className="fas fa-chevron-up"></i></button>
-                        <button onClick={searchNewer} disabled={searchResults.length === 0}><i className="fas fa-chevron-down"></i></button>
-                        <button className="snippet-btn" onClick={() => setShowSearchList(true)} disabled={searchResults.length === 0}><i className="fas fa-list"></i></button>
-                    </div>
-                </header>
-            ) : (
+            <ChatSearchOverlay 
+                isSearchActive={isSearchActive}
+                setIsSearchActive={setIsSearchActive}
+                messages={messages}
+                scrollToMessage={scrollToMessage}
+                formatTime={formatTime}
+                resolveSenderName={(senderId) => senderId === currentUser.id ? 'You' : (members[senderId]?.name || 'User')}
+            />
+            
+            {!isSearchActive && (
                 <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '1.2rem' }}>
                     <button className="icon-button back-btn" onClick={handleBack}><i className="fas fa-chevron-left"></i></button>
                     <div className="squad-contact-profile" onClick={() => setIsInfoOpen(true)} style={{cursor: 'pointer'}}>
@@ -2769,38 +2702,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     </div>
                 </div>
             )}
-            {showSearchList && (
-                <div className="chat-search-modal-overlay" onClick={() => setShowSearchList(false)}>
-                    <div className="chat-search-modal" onClick={e => e.stopPropagation()}>
-                        <div className="csm-header">
-                            <h3>Search Results</h3>
-                            <button className="icon-button" onClick={() => setShowSearchList(false)}><i className="fas fa-times"></i></button>
-                        </div>
-                        <div className="csm-body">
-                            {searchResults.length === 0 ? (
-                                <div className="csm-empty">No matching records found.</div>
-                            ) : searchResults.map((m, idx) => (
-                                <div key={m.id} className="csm-snippet-card" onClick={() => {
-                                    setCurrentSearchIndex(idx);
-                                    setShowSearchList(false);
-                                    scrollToMessage(m.id);
-                                }}>
-                                    <div className="csm-meta">
-                                        <span>{m.sender_id === currentUser.id ? 'You' : (members[m.sender_id]?.name || 'User')}</span>
-                                        <span>{formatTime(m.created_at)}</span>
-                                    </div>
-                                                                <div className="csm-text">
-                                {getSnippet(m.text, searchQuery).split(new RegExp(`(${searchQuery})`, 'gi')).map((part, i) => 
-                                    part.toLowerCase() === searchQuery.toLowerCase() ? 
-                                    <span key={i} className="csm-highlight">{part}</span> : part
-                                )}
-                            </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
+
             
             {isInfoOpen && (
                 <GroupInfoPanel 
