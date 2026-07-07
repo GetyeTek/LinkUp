@@ -67,6 +67,8 @@ const Profile = () => {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
         };
     }, []);
+
+    return (
         <div className="tab-content active" id="profile-content">
             <div className="scrollable-content">
                 <div className="profile-hero">
@@ -131,6 +133,7 @@ const Profile = () => {
             />
 
             <MissionControlOverlay isActive={overlays.mission} onClose={() => toggleOverlay('mission', false)} />
+        </div>
     );
 };
 
