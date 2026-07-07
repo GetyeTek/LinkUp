@@ -10,6 +10,9 @@ import GlobalSearchOverlay from './components/GlobalSearchOverlay.jsx';
 import DiscoveryScreen from './components/DiscoveryScreen.jsx';
 import QAComposerModal from './components/QAComposerModal.jsx';
 import ReplyFullScreen from './components/ReplyFullScreen.jsx';
+import ForYouFeed from './components/ForYouFeed.jsx';
+import SquadsFeed from './components/SquadsFeed.jsx';
+import MessagesFeed from './components/MessagesFeed.jsx';
 
 const Connect = () => {
     const { shell, user: userProfile, sessionUser: currentUser, unreadCount, routePayload, clearRoutePayload } = usePlatform();
@@ -526,246 +529,50 @@ const Connect = () => {
             </header>
 
             <div className="content-panel">
+                <ForYouFeed 
+                    activeView={activeView}
+                    handleScroll={handleScroll}
+                    peerQuestions={peerQuestions}
+                    currentUser={currentUser}
+                    timeAgo={timeAgo}
+                    setReplyTarget={setReplyTarget}
+                    liveSessions={liveSessions}
+                    handleJoinSquad={handleJoinSquad}
+                    joiningSquadId={joiningSquadId}
+                />
                 
-                {/* --- FOR YOU: THE ACADEMIC ACTIVITY FEED (Tweet-style List) --- */}
-                <div id="for-you-view" className={`hub-view ${activeView === 'for-you' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
-                    <div className="activity-list-container">
-                        
-                        {/* Dynamic Peer Questions Stream */}
-                        {peerQuestions.map(q => (
-                            <div className="activity-card" key={q.id}>
-                                <div className="activity-content" style={{ borderLeft: `4px solid ${q.asker_id === currentUser.id ? '#9b59b6' : 'var(--accent-teal)'}` }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                        <div className="activity-tag" style={{ color: q.asker_id === currentUser.id ? '#9b59b6' : 'var(--accent-teal)', marginBottom: 0 }}>
-                                            {q.course_tag}
-                                        </div>
-                                    </div>
-                                    <h2 className="activity-headline">{q.title}</h2>
-                                    <div style={{display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0'}}>
-                                        <img src={q.asker_avatar || 'https://via.placeholder.com/150'} style={{width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover'}} alt="Asker" />
-                                        <span style={{fontSize: '0.8rem', color: '#888'}}>
-                                            {q.asker_id === currentUser.id ? 'Asked by You' : `Asked by ${q.asker_name}`} • {timeAgo(q.created_at)}
-                                        </span>
-                                    </div>
-                                    {q.body && <p className="activity-snippet">{q.body}</p>}
-                                    {q.asker_id !== currentUser.id && (
-                                        <button className="claim-btn claimable" style={{marginTop: '1rem'}} onClick={() => setReplyTarget(q)}>
-                                            Reply <i className="fas fa-reply" style={{marginLeft: '6px'}}></i>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                <SquadsFeed 
+                    activeView={activeView}
+                    handleScroll={handleScroll}
+                    setIsGroupCreatorOpen={setIsGroupCreatorOpen}
+                    conversations={conversations}
+                    suggestedSquads={suggestedSquads}
+                    handleChatClick={handleChatClick}
+                    isSessionLive={isSessionLive}
+                    formatTime={formatTime}
+                    forwardTargetMsg={forwardTargetMsg}
+                    setToastNotice={setToastNotice}
+                    setGlobalNotice={setGlobalNotice}
+                    setMountedChats={setMountedChats}
+                    setActiveChatId={setActiveChatId}
+                    handleJoinSquad={handleJoinSquad}
+                    joiningSquadId={joiningSquadId}
+                />
 
-                        <div className="squads-delimiter"><span>Campus Highlights</span></div>
-
-                        {/* Dynamic Live Study Sessions computed via Miron & Proximity RPC */}
-                        {liveSessions.map(session => (
-                            <div className="activity-card" key={session.session_id}>
-                                <div className="activity-content" style={{borderLeft: '4px solid var(--accent-teal)'}}>
-                                    <div className="activity-tag">Live Study Group</div>
-                                    <h2 className="activity-headline">{session.course_name}: {session.lesson_topic}</h2>
-                                    <p className="activity-snippet">{session.dynamic_message}</p>
-                                    <button 
-                                        className="claim-btn claimable" 
-                                        style={{marginTop: '1rem', width: '100%'}}
-                                        onClick={(e) => handleJoinSquad(session.conversation_id, e)}
-                                        disabled={joiningSquadId === session.conversation_id}
-                                    >
-                                        {joiningSquadId === session.conversation_id ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Session'}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-
-                    </div>
-                </div>
-                {/* --- SQUADS: STUDY GROUPS TAB --- */}
-                <div id="squads-view" className={`hub-view ${activeView === 'squads' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%', padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>Your Groups</h3>
-                        <button style={{ background: 'var(--accent-teal)', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen(true)}>
-                            <i className="fas fa-plus"></i> New Group
-                        </button>
-                    </div>
-                    <div className="messages-list" style={{ padding: 0 }}>
-                        {conversations.filter(c => c.type === 'group').length === 0 && suggestedSquads.length === 0 ? (
-                            <div style={{ textAlign: 'center', color: '#666', padding: '3rem 1rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                                <i className="fas fa-users-slash" style={{fontSize: '2.5rem', opacity: 0.5}}></i>
-                                <p style={{margin: 0, fontSize: '0.95rem'}}>You don't have any active groups and there are no suggestions available right now.</p>
-                                <p style={{margin: 0, fontSize: '0.85rem', fontStyle: 'italic'}}>Be the first to create a group and invite your peers!</p>
-                            </div>
-                        ) : (
-                            <>
-                                {conversations.filter(c => c.type === 'group').length === 0 ? (
-                                    <div style={{ textAlign: 'center', color: '#666', padding: '2rem 1rem', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                                        You haven't joined any groups yet.
-                                    </div>
-                                ) : (
-                                    conversations.filter(c => c.type === 'group').map(chat => (
-                                        <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
-                                            <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
-                                                {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
-                                                <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
-                                                    {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-users"></i>}
-                                                </div>
-                                            </div>
-                                            <div className="message-info">
-                                                <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    {chat.title} 
-                                                    {chat.metadata?.focus && <span style={{ fontSize: '0.65rem', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', padding: '2px 6px', borderRadius: '4px' }}>{chat.metadata.focus}</span>}
-                                                </div>
-                                                <div className="last-message">{chat.last_message_text || 'Group established'}</div>
-                                            </div>
-                                            <div className="message-meta">
-                                                <span>{formatTime(chat.last_message_at)}</span>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-
-                                <div className="squads-delimiter"><span>Suggested Groups</span></div>
-                                
-                                {suggestedSquads.length > 0 ? (
-                                    suggestedSquads.map(chat => (
-                                        <div className="messages-list-item suggested" key={chat.conversation_id} onClick={() => {
-                                            if (forwardTargetMsg) {
-                                                setToastNotice("You must join this group first to forward messages.");
-                                                return;
-                                            }
-                                            if (chat.metadata?.privacy === 'private') {
-                                                setGlobalNotice("This group is private. You need an invite link to join.");
-                                                return;
-                                            }
-                                            const previewChat = {
-                                                conversation_id: chat.conversation_id,
-                                                type: 'group',
-                                                title: chat.title,
-                                                metadata: chat.metadata,
-                                                is_preview: true
-                                            };
-                                            setMountedChats(prev => ({ ...prev, [chat.conversation_id]: previewChat }));
-                                            setActiveChatId(chat.conversation_id);
-                                        }}>
-                                            <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
-                                                {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
-                                                <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
-                                                    {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-globe"></i>}
-                                                </div>
-                                            </div>
-                                            <div className="message-info">
-                                                <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff' }}>
-                                                    {chat.title} 
-                                                    {chat.metadata?.focus && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 255, 255, 0.1)', color: '#ccc', padding: '2px 6px', borderRadius: '4px' }}>{chat.metadata.focus}</span>}
-                                                </div>
-                                                <div className="last-message" style={{color: '#888'}}>
-                                                    <i className="fas fa-user" style={{marginRight: '4px'}}></i> {chat.member_count} Members
-                                                </div>
-                                            </div>
-                                            <button className="squad-join-btn" style={{ minWidth: '70px', textAlign: 'center' }} onClick={(e) => handleJoinSquad(chat.conversation_id, e)} disabled={joiningSquadId === chat.conversation_id}>
-                                                {joiningSquadId === chat.conversation_id ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join'}
-                                            </button>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div style={{ textAlign: 'center', color: '#666', padding: '1rem', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                                        No public groups available right now. Be the first to create one!
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                <div id="messages-view" className={`hub-view ${activeView === 'messages' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
-                    <div className="messages-list">
-                        
-                        {/* Static Miron Entry (Bot) */}
-                        <div className="messages-list-item miron-chat-card" onClick={() => {
-                            if (forwardTargetMsg) handleExecuteForward('miron');
-                            else shell.openMiron(null);
-                        }}>
-                            <div className="miron-avatar-orb">
-                                <span className="material-symbols-outlined">auto_awesome</span>
-                            </div>
-                            <div className="message-info">
-                                <div className="name">Miron</div>
-                                <div className="typewriter-wrapper">
-                                    <span className="typewriter-text">Ask me anything about your courses...</span>
-                                    <span className="blinking-cursor"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* My Notes Entry */}
-                        <div className="messages-list-item" style={{ background: 'rgba(66, 215, 184, 0.05)', border: '1px solid rgba(66, 215, 184, 0.2)' }} onClick={() => {
-                            if (forwardTargetMsg) {
-                                setToastNotice("Feature unavailable: Forwarding directly to Notes pending vault sync.");
-                            } else {
-                                setIsNotesOpen(true);
-                            }
-                        }}>
-                            <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#42d7b8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
-                                <i className="fas fa-bookmark"></i>
-                            </div>
-                            <div className="message-info">
-                                <div className="name" style={{ color: '#42d7b8' }}>My Notes</div>
-                                <div className="last-message">
-                                    {(() => {
-                                        const note = conversations.find(c => c.type === 'notes');
-                                        if (!note) return 'Save thoughts, files, or links here...';
-                                        if (note.last_message_text) return note.last_message_text;
-                                        // This is the fallback if text is empty but a file was sent
-                                        return '📎 File Attachment';
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        {conversations
-                            .filter(c => c.type === 'dm' || c.type === 'group')
-                            .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at))
-                            .map(chat => {
-                                const isDm = chat.type === 'dm';
-                                const title = isDm ? chat.other_user_name : chat.title;
-                                const avatar = isDm ? chat.other_user_avatar : chat.avatar_url;
-                                return (
-                                    <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
-                                        <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
-                                            {isDm ? (
-                                                <img src={avatar || 'https://via.placeholder.com/150'} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                                            ) : (
-                                                <>
-                                                    {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring"></div>}
-                                                    <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', position: 'relative', zIndex: 2 }}>
-                                                        {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-users"></i>}
-                                                    </div>
-                                                </>
-                                            )}
-                                            {isDm && onlineUsers.has(chat.other_user_id) && (
-                                                <div style={{ position: 'absolute', bottom: '0', right: '0', width: '12px', height: '12px', background: '#42d7b8', borderRadius: '50%', border: '2px solid #1e1e1e', zIndex: 3 }}></div>
-                                            )}
-                                        </div>
-                                        <div className="message-info">
-                                            <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                {title}
-                                                {!isDm && chat.metadata?.focus && (
-                                                    <span style={{ fontSize: '0.6rem', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', padding: '1px 5px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                                                        {chat.metadata.focus}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="last-message">{chat.last_message_text || (isDm ? 'No messages yet' : 'Squad established')}</div>
-                                        </div>
-                                        <div className="message-meta">
-                                            <span>{formatTime(chat.last_message_at)}</span>
-                                            {chat.unread_count > 0 && <div className="unread-badge">{chat.unread_count}</div>}
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                    </div>
-                </div>
+                <MessagesFeed 
+                    activeView={activeView}
+                    handleScroll={handleScroll}
+                    forwardTargetMsg={forwardTargetMsg}
+                    handleExecuteForward={handleExecuteForward}
+                    shell={shell}
+                    setIsNotesOpen={setIsNotesOpen}
+                    setToastNotice={setToastNotice}
+                    conversations={conversations}
+                    handleChatClick={handleChatClick}
+                    isSessionLive={isSessionLive}
+                    onlineUsers={onlineUsers}
+                    formatTime={formatTime}
+                />
             </div>
             
             {/* The Shape-Shifting FAB */}
