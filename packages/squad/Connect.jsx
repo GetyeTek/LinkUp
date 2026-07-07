@@ -8,6 +8,8 @@ import Notes from './Notes.jsx';
 import UserInfoPanel from './components/UserInfoPanel.jsx';
 import GlobalSearchOverlay from './components/GlobalSearchOverlay.jsx';
 import DiscoveryScreen from './components/DiscoveryScreen.jsx';
+import QAComposerModal from './components/QAComposerModal.jsx';
+import ReplyFullScreen from './components/ReplyFullScreen.jsx';
 
 const Connect = () => {
     const { shell, user: userProfile, sessionUser: currentUser, unreadCount, routePayload, clearRoutePayload } = usePlatform();
@@ -42,10 +44,7 @@ const Connect = () => {
     // Q&A State
     const [peerQuestions, setPeerQuestions] = useState([]);
     const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
-    const [qForm, setQForm] = useState({ title: '', body: '', course: '' });
     const [replyTarget, setReplyTarget] = useState(null); // holds question object for full-screen reply
-    const [replyText, setReplyText] = useState('');
-    const [isSubmittingQA, setIsSubmittingQA] = useState(false);
     const [targetMessageId, setTargetMessageId] = useState(null); // Deep link scroller
     
     // Featured Events State
@@ -281,45 +280,7 @@ const Connect = () => {
         }
     };
 
-    const handlePostQuestion = async () => {
-        if (!qForm.title.trim() || !qForm.course) return;
-        setIsSubmittingQA(true);
-        const { error } = await supabase.from('peer_questions').insert({
-            user_id: currentUser.id,
-            title: qForm.title.trim(),
-            body: qForm.body.trim(),
-            course_tag: qForm.course
-        });
-        setIsSubmittingQA(false);
-        if (error) {
-            setGlobalNotice("Failed to post question: " + error.message);
-        } else {
-            setToastNotice("Question posted securely.");
-            setIsQuestionModalOpen(false);
-            setQForm({ title: '', body: '', course: '' });
-            fetchPeerQuestions();
-        }
-    };
 
-    const handleSendReply = async () => {
-        if (!replyText.trim() || !replyTarget) return;
-        setIsSubmittingQA(true);
-        const { error } = await supabase.rpc('reply_to_peer_question', {
-            req_question_id: replyTarget.id,
-            req_reply_text: replyText.trim()
-        });
-        setIsSubmittingQA(false);
-        if (error) {
-            setGlobalNotice("Failed to route reply: " + error.message);
-        } else {
-            setToastNotice("Reply sent to their DMs!");
-            setReplyTarget(null);
-            setReplyText('');
-            // Optional: redirect to messages so they see the DM thread created
-            setActiveView('messages');
-            fetchConversations();
-        }
-    };
 
     const timeAgo = (isoString) => {
         const diff = Math.floor((new Date() - new Date(isoString)) / 60000);
@@ -821,76 +782,29 @@ const Connect = () => {
 
             {/* Q&A Composer Modal */}
             {isQuestionModalOpen && (
-                <div className="qa-composer-overlay" onClick={() => setIsQuestionModalOpen(false)}>
-                    <div className="qa-composer-card" onClick={e => e.stopPropagation()}>
-                        <header className="qa-composer-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
-                            <button className="icon-button" onClick={() => setIsQuestionModalOpen(false)} style={{ color: 'white', opacity: 0.7 }}><i className="fas fa-chevron-left"></i></button>
-                            <h2 style={{ fontSize: '1.1rem' }}>Ask a Question</h2>
-                        </header>
-                        <div className="qa-composer-body">
-                            <input 
-                                type="text" 
-                                className="qa-input-main" 
-                                placeholder="What's your main question?" 
-                                value={qForm.title}
-                                onChange={e => setQForm({...qForm, title: e.target.value})}
-                                maxLength={100}
-                                autoFocus
-                            />
-                            <textarea 
-                                className="qa-input-details" 
-                                placeholder="Add context, formulas, or what you're struggling with (optional)..."
-                                value={qForm.body}
-                                onChange={e => setQForm({...qForm, body: e.target.value})}
-                            ></textarea>
-                            <div>
-                                <span style={{fontSize: '0.8rem', color: '#888', fontWeight: 600, textTransform: 'uppercase'}}>Select Course Tag</span>
-                                <div className="qa-pills-wrap">
-                                    {['Physics', 'Chemistry', 'Mathematics', 'Biology', 'CS', 'General'].map(c => (
-                                        <div key={c} className={`qa-pill ${qForm.course === c ? 'active' : ''}`} onClick={() => setQForm({...qForm, course: c})}>
-                                            {c}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <button 
-                                className="ui-save-btn" 
-                                disabled={isSubmittingQA || !qForm.title.trim() || !qForm.course}
-                                onClick={handlePostQuestion}
-                                style={{marginTop: '0.5rem'}}
-                            >
-                                {isSubmittingQA ? <i className="fas fa-circle-notch fa-spin"></i> : 'Post Question'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <QAComposerModal 
+                    currentUser={currentUser}
+                    onClose={() => setIsQuestionModalOpen(false)}
+                    onSuccess={(msg) => {
+                        setToastNotice(msg);
+                        fetchPeerQuestions();
+                    }}
+                    onError={setGlobalNotice}
+                />
             )}
 
             {/* Full Screen Reply UI */}
             {replyTarget && (
-                <div className="reply-fs-overlay">
-                    <header className="reply-fs-header">
-                        <button className="icon-button" onClick={() => setReplyTarget(null)}><i className="fas fa-times"></i></button>
-                        <h2 style={{color: '#fff', fontSize: '1.1rem', margin: 0}}>Reply to {replyTarget.asker_name}</h2>
-                        <button className="icon-button" style={{color: 'var(--accent-teal)'}} onClick={handleSendReply} disabled={isSubmittingQA || !replyText.trim()}>
-                            {isSubmittingQA ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-paper-plane"></i>}
-                        </button>
-                    </header>
-                    <div className="reply-fs-body">
-                        <div className="reply-ref-card">
-                            <div className="reply-ref-asker">{replyTarget.course_tag} • Asked by {replyTarget.asker_name}</div>
-                            <div className="reply-ref-title">{replyTarget.title}</div>
-                            {replyTarget.body && <div className="reply-ref-body">{replyTarget.body}</div>}
-                        </div>
-                        <textarea 
-                            className="reply-textarea" 
-                            placeholder="Write your explanation or answer here..."
-                            value={replyText}
-                            onChange={e => setReplyText(e.target.value)}
-                            autoFocus
-                        ></textarea>
-                    </div>
-                </div>
+                <ReplyFullScreen 
+                    replyTarget={replyTarget}
+                    onClose={() => setReplyTarget(null)}
+                    onSuccess={(msg) => {
+                        setToastNotice(msg);
+                        setActiveView('messages');
+                        fetchConversations();
+                    }}
+                    onError={setGlobalNotice}
+                />
             )}
 
             {showDiscovery && (
