@@ -4,7 +4,7 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import LiveStageSetupModal from './components/LiveStageSetupModal.jsx';
 import ChatSearchOverlay from './components/ChatSearchOverlay.jsx';
 import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
-import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import AdminSettingsModal from './components/AdminSettingsModal.jsx';
 import GenericConfirmModal from './components/GenericConfirmModal.jsx';
 import LiveRecoveryModal from './components/LiveRecoveryModal.jsx';
