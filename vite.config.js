@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   base: '/LinkUp/',
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@linkup-platform/sdk-core': '/packages/core-sdk/src',
       '@linkup/gibi-news': '/packages/gibi-news',
