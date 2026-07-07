@@ -1,0 +1,13 @@
+.qa-composer-overlay { position: fixed; inset: 0; z-index: 7000; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; padding: 1rem; animation: fadeInModal 0.2s ease-out; }
+.qa-composer-card { background: #121212; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; width: 100%; max-width: 450px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; animation: popModal 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.qa-composer-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.qa-composer-header h2 { font-size: 1.2rem; margin: 0; font-weight: 600; color: var(--accent-teal); }
+.qa-composer-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+.qa-input-main { background: transparent; border: none; font-size: 1.2rem; font-weight: 700; color: #fff; outline: none; font-family: 'Poppins', sans-serif; padding: 0; }
+.qa-input-main::placeholder { color: #666; font-weight: 600; }
+.qa-input-details { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; font-size: 0.95rem; color: #e0e0e0; min-height: 100px; resize: vertical; outline: none; font-family: 'Poppins', sans-serif; }
+.qa-input-details:focus { border-color: var(--accent-teal); }
+.qa-pills-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem; }
+.qa-pill { padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #888; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+.qa-pill:hover { background: rgba(255,255,255,0.1); }
+.qa-pill.active { background: rgba(66, 215, 184, 0.15); color: var(--accent-teal); border-color: rgba(66, 215, 184, 0.3); }
