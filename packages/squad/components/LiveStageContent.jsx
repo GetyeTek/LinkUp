@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, useGeminiAudio } from '@linkup-platform/sdk-core';
-import { useParticipants, useLocalParticipant } from '@livekit/components-react';
+import { useParticipants, useLocalParticipant } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import GenericConfirmModal from './GenericConfirmModal.jsx';
 import FloatingLiveOrb from './FloatingLiveOrb.jsx';
 import ConnectionRing from './ConnectionRing.jsx';
