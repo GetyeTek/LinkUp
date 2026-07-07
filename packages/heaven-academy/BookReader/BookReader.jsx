@@ -4,48 +4,9 @@ import './BookReader.css';
 import { renderBookBlock } from './subjects/Registry.jsx';
 import BookLoader from '../components/BookLoader.jsx';
 import ReportModal from '../components/ReportModal.jsx';
+import TableOfContents from './components/TableOfContents.jsx';
+import PageQuestionsBlock from './components/PageQuestionsBlock.jsx';
 import { usePlatform } from '@linkup-platform/sdk-core';
-
-// --- RECURSIVE TOC NODE COMPONENT ---
-const TOCNode = ({ node, depth = 0, onNavigate, closeToc }) => {
-    const [expanded, setExpanded] = useState(false);
-    const hasChildren = node.children && node.children.length > 0;
-    
-    const handleItemClick = (e) => {
-        e.stopPropagation();
-        if (node.page) {
-            onNavigate(node.page);
-            closeToc();
-        } else if (hasChildren) {
-            setExpanded(!expanded);
-        }
-    };
-    
-    return (
-        <div className="toc-node-wrapper">
-            <div 
-                className={`toc-item depth-${depth} ${hasChildren ? 'has-children' : ''}`} 
-                onClick={handleItemClick}
-                style={{ paddingLeft: `${depth * 15 + 20}px` }}
-            >
-                <span className="toc-node-title">{node.title}</span>
-                {node.page && <span className="toc-page-num">{node.page}</span>}
-                {hasChildren && (
-                    <button className="toc-expand-btn" onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-                        <i className={`fas fa-chevron-${expanded ? 'down' : 'right'}`}></i>
-                    </button>
-                )}
-            </div>
-            {hasChildren && expanded && (
-                <div className="toc-children-group">
-                    {node.children.map((child, i) => (
-                        <TOCNode key={i} node={child} depth={depth + 1} onNavigate={onNavigate} closeToc={closeToc} />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
 
 const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexOverride }) => {
     const [loading, setLoading] = useState(true);
@@ -791,32 +752,15 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
             </div>
 
             {/* --- TOC DRAWER --- */}
-            {isTocOpen && <div className="toc-backdrop" onClick={() => setIsTocOpen(false)}></div>}
-            <div className={`toc-drawer ${isTocOpen ? 'open' : ''}`} onTouchStart={e => e.stopPropagation()}>
-                <div className="toc-header">
-                    <h3><i className="fas fa-list"></i> Contents</h3>
-                    <button className="icon-btn" style={{color: 'inherit'}} onClick={() => setIsTocOpen(false)}>
-                        <i className="fas fa-times"></i>
-                    </button>
-                </div>
-                <div className="toc-content">
-                    {tocData && tocData.length > 0 ? (
-                        tocData.map((node, i) => (
-                            <TOCNode 
-                                key={i} 
-                                node={node} 
-                                onNavigate={(tocPage) => {
-                                    const targetIndex = Math.max(1, tocPage - pageOffset);
-                                    jumpToPage(targetIndex);
-                                }} 
-                                closeToc={() => setIsTocOpen(false)} 
-                            />
-                        ))
-                    ) : (
-                        <div className="toc-empty">No Table of Contents available.</div>
-                    )}
-                </div>
-            </div>
+            <TableOfContents 
+                isTocOpen={isTocOpen} 
+                setIsTocOpen={setIsTocOpen} 
+                tocData={tocData} 
+                onNavigate={(tocPage) => {
+                    const targetIndex = Math.max(1, tocPage - pageOffset);
+                    jumpToPage(targetIndex);
+                }} 
+            />
 
             {reportQuestionId && (
                 <ReportModal 
@@ -966,169 +910,6 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                         <div className="page-counter-btn" onClick={() => { setIsJumpMode(true); setJumpInput(lastDisplayPage.current); }}>
                             <span ref={pageCountRef}>{lastDisplayPage.current || 1}</span> <span className="counter-divider">/ {pages.length || '--'}</span>
                         </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- INLINE BOOK QUESTIONS COMPONENT ---
-const getNormalizedMatchingData = (q) => {
-    if (q.matching_data && q.matching_data.left_column && q.matching_data.left_column.length > 0) {
-        return q.matching_data;
-    }
-
-    let opts = q.options;
-    if (typeof opts === 'string') {
-        try { opts = JSON.parse(opts); } catch(e) {}
-    }
-
-    if (opts && Array.isArray(opts) && opts.length > 0) {
-        const getStr = (arr, prefix) => {
-            const found = arr.find(o => {
-                const text = typeof o === 'string' ? o : (o?.text || '');
-                return typeof text === 'string' && text.includes(prefix);
-            });
-            return typeof found === 'string' ? found : found?.text;
-        };
-        
-        const leftStr = getStr(opts, 'Column A');
-        const rightStr = getStr(opts, 'Column B');
-        
-        if (leftStr && rightStr) {
-            const parseStr = (str, prefix, splitRegex) => {
-                const prefixMatch = new RegExp(`.*${prefix}:?`, 'i');
-                const cleaned = str.replace(prefixMatch, '').trim();
-                const parts = cleaned.split(splitRegex);
-                
-                const items = [];
-                for (let i = 1; i < parts.length; i += 2) {
-                    let item = (parts[i+1] || '').trim();
-                    item = item.replace(/[,;]+$/, '').trim();
-                    if (item) items.push(item);
-                }
-                return items;
-            };
-            
-            return {
-                left_column: parseStr(leftStr, 'Column A', /(\b\d+\.\s*)/),
-                right_column: parseStr(rightStr, 'Column B', /(\b[A-Z]\.\s*)/)
-            };
-        }
-    }
-    return { left_column: [], right_column: [] };
-};
-
-const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onReport }) => {
-    const [qIndex, setQIndex] = useState(0);
-    const [answers, setAnswers] = useState({});
-    const [activeMatch, setActiveMatch] = useState({});
-    
-    if (!questions || questions.length === 0) return null;
-    const q = questions[qIndex];
-    const ans = answers[q.id];
-    
-    const isMatching = (q.question_type && q.question_type.toLowerCase() === 'matching') || 
-                       q.matching_data || 
-                       (Array.isArray(q.options) && q.options.some(o => typeof o === 'string' && o.includes('Column A')));
-    
-    const matchData = isMatching ? getNormalizedMatchingData(q) : null;
-
-    return (
-        <div className="bpq-container">
-            <div className="bpq-header">
-                <div className="bpq-title"><i className="fas fa-clipboard-check"></i> Knowledge Check</div>
-                <div className="bpq-counter">{qIndex + 1} of {questions.length}</div>
-            </div>
-            <div className="bpq-body">
-                <div className="bpq-text">{q.text}</div>
-                {(q.question_type && q.question_type.toLowerCase() === 'true_false') ? (
-                    <div className="bpq-tf-pad">
-                        <label className={`bpq-tf-btn ${ans === 'True' || ans?.text === 'True' ? 'active-true' : ''}`} style={{ pointerEvents: ans ? 'none' : 'auto', opacity: ans && ans !== 'True' && ans?.text !== 'True' ? 0.5 : 1 }}>
-                            <input type="radio" hidden disabled={!!ans} onChange={() => !ans && setAnswers({...answers, [q.id]: 'True'})} />
-                            <i className="fa-solid fa-check"></i> TRUE
-                        </label>
-                        <label className={`bpq-tf-btn ${ans === 'False' || ans?.text === 'False' ? 'active-false' : ''}`} style={{ pointerEvents: ans ? 'none' : 'auto', opacity: ans && ans !== 'False' && ans?.text !== 'False' ? 0.5 : 1 }}>
-                            <input type="radio" hidden disabled={!!ans} onChange={() => !ans && setAnswers({...answers, [q.id]: 'False'})} />
-                            <i className="fa-solid fa-xmark"></i> FALSE
-                        </label>
-                    </div>
-                ) : (matchData && matchData.left_column?.length > 0) ? (
-                    <div className={`interactive-match-container ${(matchData.right_column?.some(r => (r.text || r).length > 45) || matchData.left_column?.some(l => (l.text || l).length > 45)) ? 'vertical-match' : ''}`}>
-                        <div className="match-col match-left">
-                            {matchData.left_column?.map((item, idx) => {
-                                const qAnswers = ans || {};
-                                const currentActive = activeMatch[q.id];
-                                const isPaired = qAnswers[idx] !== undefined;
-                                const isActive = currentActive === idx;
-                                const isDisabled = currentActive !== undefined && currentActive !== idx;
-                                
-                                return (
-                                    <div key={idx} className={`match-item-left ${isActive ? 'is-active' : ''} ${isPaired ? 'is-paired' : ''} ${isDisabled ? 'is-disabled' : ''}`} onClick={() => setActiveMatch(prev => ({ ...prev, [q.id]: isActive ? undefined : idx }))}>
-                                        <span className="match-index">{idx + 1}.</span>
-                                        <span className="match-text">{item.text || item}</span>
-                                        {isPaired && <span className="match-badge">{String.fromCharCode(65 + qAnswers[idx])}</span>}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className={`match-col match-right ${activeMatch[q.id] !== undefined ? 'is-listening' : ''}`}>
-                            {matchData.right_column?.map((item, idx) => {
-                                const qAnswers = ans || {};
-                                const currentActive = activeMatch[q.id];
-                                const usedByLeftIdx = Object.keys(qAnswers).find(k => qAnswers[k] === idx);
-                                const isUsed = usedByLeftIdx !== undefined;
-
-                                return (
-                                    <div key={idx} className={`match-item-right ${isUsed ? 'is-used' : ''}`} onClick={() => {
-                                        if (currentActive !== undefined) {
-                                            const newAnswers = { ...qAnswers };
-                                            if (isUsed) delete newAnswers[usedByLeftIdx];
-                                            newAnswers[currentActive] = idx;
-                                            setAnswers({...answers, [q.id]: newAnswers});
-                                            setActiveMatch(prev => ({ ...prev, [q.id]: undefined }));
-                                        }
-                                    }}>
-                                        <span className="match-letter">{String.fromCharCode(65 + idx)}.</span>
-                                        <span className="match-text">{item.text || item}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bpq-mc-pad">
-                        {q.options?.map((opt, i) => {
-                            const optText = opt.text || opt;
-                            const ansText = ans?.text || ans;
-                            const isSelected = ansText !== undefined && ansText === optText;
-                            return (
-                                <label key={i} className={`bpq-mc-btn ${isSelected ? 'active' : ''}`} style={{ pointerEvents: ans ? 'none' : 'auto', opacity: ans && !isSelected ? 0.5 : 1 }}>
-                                    <input type="radio" hidden disabled={!!ans} onChange={() => !ans && setAnswers({...answers, [q.id]: opt})} />
-                                    <div className="bpq-mc-indicator"></div> <span>{optText}</span>
-                                </label>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-            <div className="bpq-footer">
-                <div className="bpq-nav">
-                    <button disabled={qIndex === 0} onClick={() => setQIndex(qIndex - 1)}><i className="fas fa-chevron-left"></i></button>
-                    <button disabled={qIndex === questions.length - 1} onClick={() => setQIndex(qIndex + 1)}><i className="fas fa-chevron-right"></i></button>
-                </div>
-                <div className="bpq-actions">
-                    <button className="bpq-btn-report" onClick={() => onReport(q.id)} title="Report an issue">
-                        <i className="fas fa-triangle-exclamation"></i>
-                    </button>
-                    <button className="bpq-btn-explain" onClick={() => onExplain(q.content_index)}>
-                        <i className="fas fa-sparkles"></i> Explain
-                    </button>
-                    {q.exam_meta && (
-                        <button className="bpq-btn-goto" onClick={() => window.dispatchEvent(new CustomEvent('heaven-academy:open-exam', { detail: { exam: q.exam_meta } }))}>
-                            Go To Exam <i className="fas fa-arrow-right"></i>
-                        </button>
                     )}
                 </div>
             </div>
