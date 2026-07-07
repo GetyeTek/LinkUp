@@ -13,9 +13,12 @@ export default defineConfig({
       '@linkup/heaven-academy': '/packages/heaven-academy',
       '@linkup/squad': '/packages/squad'
     }
-  },
-  build: {
-    sourcemap: false,
+        },
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'livekit-client', '@livekit/components-react']
+      },
+      build: {
+        sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
