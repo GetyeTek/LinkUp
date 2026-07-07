@@ -9,6 +9,7 @@ import { lazy, Suspense } from 'react';
 import OnboardingGate from './components/OnboardingGate.jsx';
 import UpdatePasswordGate from './components/UpdatePasswordGate.jsx';
 import MironChat from './MironChat.jsx';
+import MironLiveSession from './components/MironLiveSession.jsx';
 import BottomNavigation from './components/BottomNavigation.jsx';
 import { useGlobalSwipe } from '@linkup-platform/sdk-core';
 
@@ -26,11 +27,19 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showOfflineBanner, setShowOfflineBanner] = useState(!navigator.onLine);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [routePayload, setRoutePayload] = useState(null);
+      const [unreadCount, setUnreadCount] = useState(0);
+      const [routePayload, setRoutePayload] = useState(null);
+      const [isMironLive, setIsMironLive] = useState(false);
+      const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
-  useEffect(() => {
-    const handleOnline = () => { 
+      useEffect(() => {
+        const handleOpenLive = () => setIsMironLive(true);
+        window.addEventListener('miron:open-live-session', handleOpenLive);
+        return () => window.removeEventListener('miron:open-live-session', handleOpenLive);
+      }, []);
+
+      useEffect(() => {
+        const handleOnline = () => { 
         setIsOffline(false); 
         setTimeout(() => setShowOfflineBanner(false), 3000); 
     };
@@ -298,14 +307,21 @@ const App = () => {
         {renderContent()}
       </main>
       {isActivityOpen && <ActivityHub onClose={() => setIsActivityOpen(false)} />}
-                {mironContext && (
-            <MironChat 
-              initialContext={mironContext.text} 
-              onClose={() => setMironContext(null)} 
-            />
-          )}
+                                  {mironContext && (
+                      <MironChat 
+                        initialContext={mironContext.text} 
+                        onClose={() => setMironContext(null)} 
+                      />
+                  )}
 
-          <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+                  {isMironLive && (
+                      <MironLiveSession 
+                        onClose={() => setIsMironLive(false)} 
+                        mironAvatarUrl={mironAvatarUrl} 
+                      />
+                  )}
+
+                  <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
           </PlatformProvider>
         </div>
       );
