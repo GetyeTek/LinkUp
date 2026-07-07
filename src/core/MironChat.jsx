@@ -5,19 +5,11 @@ import { getComponent, usePlatform } from '@linkup-platform/sdk-core';
 import DOMPurify from 'dompurify';
 import './MironChat.css';
 
-import MironLiveSession from './components/MironLiveSession.jsx';
 import InlineChatQuiz from './components/InlineChatQuiz.jsx';
 
 const MironChat = ({ onClose, initialContext }) => {
     const [avatarError, setAvatarError] = useState(false);
-    const [isLiveMode, setIsLiveMode] = useState(false);
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
-    
-    useEffect(() => {
-        const handleOpenLive = () => setIsLiveMode(true);
-        window.addEventListener('miron:open-live-session', handleOpenLive);
-        return () => window.removeEventListener('miron:open-live-session', handleOpenLive);
-    }, []);
 
     const [messages, setMessages] = useState(() => {
         const base = [
@@ -278,8 +270,6 @@ const MironChat = ({ onClose, initialContext }) => {
                     </button>
                 </div>
             </footer>
-            
-            {isLiveMode && <MironLiveSession onClose={() => setIsLiveMode(false)} mironAvatarUrl={mironAvatarUrl} />}
         </div>
     );
 };
