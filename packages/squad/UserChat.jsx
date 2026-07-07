@@ -3,7 +3,7 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import ChatSearchOverlay from './components/ChatSearchOverlay.jsx';
 import MessageContextMenu from './components/MessageContextMenu.jsx';
 import ChatInputDock from './components/ChatInputDock.jsx';
-import ChatMediaGallery from './components/ChatMediaGallery.jsx';
+import ChatBubble from './components/ChatBubble.jsx';
 import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
 import './UserChat.css';
 
@@ -518,102 +518,31 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                 const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
                 isAutoScrollEnabled.current = scrollHeight - scrollTop - clientHeight < 250;
             }}>
-                {messages.map((m, idx) => {
+                {messages.map((m) => {
                     const isMine = m.sender_id === currentUser.id;
-                    const isMenuOpen = activeMenu?.msg?.id === m.id;
-                    
                     const repliedMsg = m.reply_to_id ? messages.find(msg => msg.id === m.reply_to_id) : null;
                     const isMissingReply = m.reply_to_id && !repliedMsg;
+                    const resolvedReplyName = !repliedMsg?.sender_id ? 'Deleted Account' : chatTitle;
 
                     return (
-                        <div 
-                            key={m.id} 
-                            id={`msg-${m.id}`} 
-                            className={`msg-prism-group ${isMine ? 'sent' : 'received'}`} 
-                            onClick={(e) => { 
-                                e.stopPropagation(); 
-                                if (isMenuOpen) {
-                                    setActiveMenu(null);
-                                    return;
-                                }
-                                
-                                // Capture exact touch/click coordinates
-                                let x = e.clientX || (e.touches && e.touches[0].clientX);
-                                let y = e.clientY || (e.touches && e.touches[0].clientY);
-                                
-                                // Fallback to element center if coordinates fail
-                                if (!x || !y) {
-                                    const rect = e.currentTarget.getBoundingClientRect();
-                                    x = rect.left + rect.width / 2;
-                                    y = rect.top + rect.height / 2;
-                                }
-                                
-                                const menuW = 160;
-                                const menuH = 200;
-                                
-                                // Push the menu inwards if the user tapped too close to the screen edge
-                                if (x + menuW > window.innerWidth - 20) x = window.innerWidth - menuW - 20;
-                                if (y + menuH > window.innerHeight - 80) y = window.innerHeight - menuH - 80;
-                                if (y < 80) y = 80; // Don't let it overlap the header
-                                
-                                setActiveMenu({ msg: m, isMine, x, y });
-                            }}
-                            style={{ zIndex: isMenuOpen ? 100 : 1 }}
-                        >
-                            {(() => {
-                                const hasMedia = m.attachments && m.attachments.length > 0;
-                                const isNaked = hasMedia && (!m.text || m.text.trim() === '');
-                                const bubbleClass = `prism-bubble ${hasMedia ? (isNaked ? 'media-bubble naked' : 'media-bubble captioned') : ''}`;
-                                return (
-                            <div className={bubbleClass}>
-                                {m.forward_meta && (
-                                    <div className="forward-indicator" onClick={(e) => { e.stopPropagation(); onOriginClick(m.forward_meta); }}>
-                                        <div className="forward-bar"></div>
-                                        <div className="forward-info">
-                                            <span className="forward-label">Forwarded message</span>
-                                            <span className="forward-from">
-                                                {m.forward_meta.original_sender_avatar && <img src={m.forward_meta.original_sender_avatar} className="forward-avatar" alt="Avatar"/>}
-                                                {m.forward_meta.original_sender_name}
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-                                {repliedMsg ? (
-                                    <div className="reply-quote" onClick={(e) => { e.stopPropagation(); scrollToMessage(m.reply_to_id); }}>
-                                        <div className="reply-quote-bar"></div>
-                                                                                <div className="reply-quote-content">
-                                            <div className="reply-quote-user">
-    {!repliedMsg.sender_id ? 'Deleted Account' : chatTitle}
-</div>
-                                            <div className="reply-quote-text">{repliedMsg.text}</div>
-                                        </div>
-                                    </div>
-                                ) : isMissingReply ? (
-                                    <div className="reply-quote is-deleted">
-                                        <div className="reply-quote-bar"></div>
-                                        <div className="reply-quote-content">
-                                            <div className="reply-quote-user">System</div>
-                                            <div className="reply-quote-text"><i>Original message deleted</i></div>
-                                        </div>
-                                    </div>
-                                ) : null}
-                                
-                                <ChatMediaGallery
-                                    attachments={m.attachments}
-                                    setFullscreenGallery={setFullscreenGallery}
-                                    handleDownload={handleDownload}
-                                />
-
-                                {m.text && <div className="bubble-text-content">{m.text}</div>}
-                            </div>
-                            );
-                            })()}
-                            <div className="prism-time">
-                                {m.is_edited && <span className="edited-label">edited</span>}
-                                {formatTime(m.created_at)}
-                                {isMine && <span style={{ marginLeft: '6px' }}>{getMessageStatusIcon(m)}</span>}
-                            </div>
-                        </div>
+                        <ChatBubble 
+                            key={m.id}
+                            msg={m}
+                            isMine={isMine}
+                            isGroup={false}
+                            isPreview={false}
+                            activeMenu={activeMenu}
+                            setActiveMenu={setActiveMenu}
+                            onOriginClick={onOriginClick}
+                            scrollToMessage={scrollToMessage}
+                            formatTime={formatTime}
+                            setFullscreenGallery={setFullscreenGallery}
+                            handleDownload={handleDownload}
+                            repliedMsg={repliedMsg}
+                            isMissingReply={isMissingReply}
+                            resolvedReplyName={resolvedReplyName}
+                            getMessageStatusIcon={getMessageStatusIcon}
+                        />
                     );
                 })}
             </main>
