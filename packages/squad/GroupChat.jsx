@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 
 import LiveStageSetupModal from './components/LiveStageSetupModal.jsx';
@@ -914,8 +915,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
         </div>
         
-        {liveState !== 'none' && liveCredentials && (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 99999, pointerEvents: 'auto' }}>
+        {liveState !== 'none' && liveCredentials && createPortal(
+            <div style={{ position: 'fixed', inset: 0, zIndex: 99999, pointerEvents: liveState === 'minimized' ? 'none' : 'auto' }}>
                 <LiveKitRoom
                     serverUrl={liveCredentials.url}
                     token={liveCredentials.token}
@@ -941,7 +942,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     />
                     <RoomAudioRenderer />
                 </LiveKitRoom>
-            </div>
+            </div>,
+            document.body
         )}
         </>
     );
