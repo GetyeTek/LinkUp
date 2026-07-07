@@ -8,7 +8,12 @@ import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import AdminSettingsModal from './components/AdminSettingsModal.jsx';
 import GenericConfirmModal from './components/GenericConfirmModal.jsx';
 import LiveRecoveryModal from './components/LiveRecoveryModal.jsx';
-import { invokeLiveToken, invokeSocial } from './api.js';
+import AdminSettingsModal from './components/AdminSettingsModal.jsx';
+import GenericConfirmModal from './components/GenericConfirmModal.jsx';
+import LiveRecoveryModal from './components/LiveRecoveryModal.jsx';
+import { invokeSocial, uploadChatMedia } from './api.js';
+import { useChatInputState } from './hooks/useChatInputState.js';
+import { useLiveStageSession } from './hooks/useLiveStageSession.js';
 import './GroupChat.css';
 import FloatingLiveOrb from './components/FloatingLiveOrb.jsx';
 import ConnectionRing from './components/ConnectionRing.jsx';
@@ -32,25 +37,15 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const [isLoading, setIsLoading] = useState(true);
     const [editingMessage, setEditingMessage] = useState(null);
     const [replyingTo, setReplyingTo] = useState(null);
-    const [pendingAttachments, setPendingAttachments] = useState([]);
-    const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
     const [fullscreenGallery, setFullscreenGallery] = useState(null);
     const fileInputRef = useRef(null);
 
     const [alertNotice, setAlertNotice] = useState(null); // Parent Error Trapper
     const [typingUsers, setTypingUsers] = useState([]);
+    
     // Group Hub State
     const [localChatInfo, setLocalChatInfo] = useState({ title: chat.title, avatar_url: chat.avatar_url, metadata: chat.metadata });
     const [isInfoOpen, setIsInfoOpen] = useState(false);
-    
-    // Live Setup State
-    const [showLiveSetup, setShowLiveSetup] = useState(false);
-    const [liveSetupData, setLiveSetupData] = useState({ topic: '', description: '', course: '' });
-    const [liveState, setLiveState] = useState('none');
-    const [liveCredentials, setLiveCredentials] = useState(null);
-    const [isStartingLive, setIsStartingLive] = useState(false);
-    const [showRecoveryModal, setShowRecoveryModal] = useState(false);
     
     // Auto-hide success toasts on parent
     // Auto-hide success toasts on parent
@@ -99,128 +94,26 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const flowRef = useRef(null);
     const channelRef = useRef(null);
     const isAutoScrollEnabled = useRef(true);
-    const typingTimeoutRef = useRef(null);
-    const localTypingRef = useRef(false);
 
-    // Session Recovery & Heartbeat Diagnostics
-    const heartBeatTime = localChatInfo.metadata?.live_heartbeat 
-        ? new Date(localChatInfo.metadata.live_heartbeat).getTime() 
-        : Date.now(); // Default to now to prevent instant death for fresh sessions
-        
-    const timeSinceBeat = Date.now() - heartBeatTime;
-    
-    // Allow a 5-minute window, but enforce instant dismount if the human host is globally offline
-    const isHostOnline = localChatInfo.metadata?.ai_hosting || 
-                         (currentUser.id === localChatInfo.metadata?.live_host_id) || 
-                         (onlineUsers && onlineUsers.has(localChatInfo.metadata?.live_host_id));
-                         
-    const isLiveDead = timeSinceBeat > 5 * 60 * 1000 || (presenceSynced && !localChatInfo.metadata?.ai_hosting && !isHostOnline);
+    const {
+        input, setInput, pendingAttachments, setPendingAttachments,
+        isUploading, setIsUploading, uploadProgress, setUploadProgress,
+        handleInputChange, handleFileSelect, clearTypingPresence
+    } = useChatInputState(channelRef, setAlertNotice);
 
+    const heartBeatTime = localChatInfo.metadata?.live_heartbeat ? new Date(localChatInfo.metadata.live_heartbeat).getTime() : Date.now(); 
+    const isHostOnline = localChatInfo.metadata?.ai_hosting || (currentUser.id === localChatInfo.metadata?.live_host_id) || (onlineUsers && onlineUsers.has(localChatInfo.metadata?.live_host_id));
+    const isLiveDead = (Date.now() - heartBeatTime) > 5 * 60 * 1000 || (presenceSynced && !localChatInfo.metadata?.ai_hosting && !isHostOnline);
     const isLiveActive = localChatInfo.metadata?.is_live && !isLiveDead;
     const isMeHost = localChatInfo.metadata?.live_host_id === currentUser.id;
-
-    // Eject attendants instantly if the session is explicitly killed
-    useEffect(() => {
-        if (!isLiveActive && liveState !== 'none') {
-            setLiveState('none');
-            setLiveCredentials(null);
-            setShowRecoveryModal(false);
-        }
-    }, [isLiveActive, liveState]);
-
-    // Show banner as long as the session is technically active in DB. 
-    // (If the host is dropping packets, attendants can wait inside the room).
     const showLiveBanner = isLiveActive;
 
-    useEffect(() => {
-        if (localChatInfo.metadata?.is_live && isMeHost && liveState === 'none') {
-            if (isStartingLive) return; // Short-circuit: Prevent recovery popups while we are actively launching a session
-            if (isLiveDead) {
-                // Auto-cleanup dead sessions
-                supabase.rpc('kill_live_session', { conv_id: chat.conversation_id });
-            } else {
-                setShowRecoveryModal(true);
-            }
-        }
-    }, [localChatInfo.metadata?.is_live, isMeHost, liveState, isLiveDead, chat.conversation_id, isStartingLive]);
-
-    const startLiveSession = async (setupData = null) => {
-        setIsStartingLive(true);
-        try {
-            const resToken = await invokeLiveToken({ conversation_id: chat.conversation_id });
-            if (resToken.error) throw new Error(resToken.error);
-            setLiveCredentials({ token: resToken.token, url: resToken.ws_url });
-            
-            const resMeta = await invokeSocial({ action: 'start_live_session', conversation_id: chat.conversation_id, setupData });
-            if (resMeta.error) throw new Error(resMeta.error);
-            
-            setLocalChatInfo(prev => ({ ...prev, metadata: resMeta.metadata }));
-            setLiveState('full');
-            setShowRecoveryModal(false);
-        } catch (err) {
-            setAlertNotice({ title: "Stage Error", msg: err.message, success: false });
-        }
-        setIsStartingLive(false);
-    };
-
-    const joinLiveSession = async () => {
-        setIsStartingLive(true);
-        try {
-            const res = await invokeLiveToken({ conversation_id: chat.conversation_id });
-            if (res.error) throw new Error(res.error);
-            setLiveCredentials({ token: res.token, url: res.ws_url });
-            setLiveState('full');
-        } catch (err) {
-            setAlertNotice({ title: "Connection Error", msg: err.message, success: false });
-        }
-        setIsStartingLive(false);
-    };
-
-    const endLiveSession = async (forceKill = false) => {
-        // ROBUST OPTIMISTIC UPDATE:
-        // Clear metadata immediately so the Recovery Modal Effect doesn't see a "crashed" state
-        if (isMeHost || forceKill) {
-            setLocalChatInfo(prev => {
-                const nextMeta = { ...prev.metadata };
-                delete nextMeta.is_live;
-                delete nextMeta.live_host_id;
-                delete nextMeta.live_status;
-                delete nextMeta.live_heartbeat;
-                return { ...prev, metadata: nextMeta };
-            });
-        }
-
-        setLiveState('none');
-        setLiveCredentials(null);
-        setShowRecoveryModal(false);
-        
-        if (isMeHost || forceKill) {
-            // Background cleanup in DB
-            await supabase.from('live_study_sessions').delete().eq('conversation_id', chat.conversation_id);
-            await supabase.rpc('kill_live_session', { conv_id: chat.conversation_id });
-        }
-    };
-
-    // Auto-Join Interceptor for Live Links
-    useEffect(() => {
-        if (chat.auto_join_live) {
-            chat.auto_join_live = false; // Consume flag to prevent loops
-            if (liveState === 'none') {
-                const isLive = localChatInfo.metadata?.is_live || chat.metadata?.is_live;
-                if (isLive) {
-                    const currentHostId = localChatInfo.metadata?.live_host_id || chat.metadata?.live_host_id;
-                    if (currentHostId === currentUser.id) {
-                        // If they are the host, this acts as a resume
-                        startLiveSession();
-                    } else {
-                        joinLiveSession();
-                    }
-                }
-            } else if (liveState === 'minimized') {
-                setLiveState('full');
-            }
-        }
-    }, [chat.auto_join_live, liveState, localChatInfo.metadata, chat.metadata]);
+    const {
+        liveState, setLiveState, liveCredentials,
+        showLiveSetup, setShowLiveSetup, liveSetupData, setLiveSetupData,
+        isStartingLive, showRecoveryModal,
+        startLiveSession, joinLiveSession, endLiveSession
+    } = useLiveStageSession({ chat, localChatInfo, setLocalChatInfo, currentUser, isMeHost, isLiveActive, isLiveDead, setAlertNotice });
 
     const markAsRead = async () => {
         if (!chat.conversation_id) return;
@@ -441,66 +334,10 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     
 
 
-    const handleInputChange = (val) => {
-        setInput(val);
-        if (channelRef.current && !chat.is_preview) {
-            const isTypingNow = val.length > 0;
-            
-            if (isTypingNow && !localTypingRef.current) {
-                channelRef.current.track({ isTyping: true, updatedAt: Date.now() }).catch(e => console.error("[GroupChat] Track error:", e));
-                localTypingRef.current = true;
-            } else if (!isTypingNow && localTypingRef.current) {
-                channelRef.current.track({ isTyping: false, updatedAt: Date.now() }).catch(e => console.error("[GroupChat] Track error:", e));
-                localTypingRef.current = false;
-            }
-            
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-            if (isTypingNow) {
-                typingTimeoutRef.current = setTimeout(() => {
-                    if (channelRef.current) channelRef.current.track({ isTyping: false, updatedAt: Date.now() });
-                    localTypingRef.current = false;
-                }, 2500);
-            }
-        }
-    };
-
-    const handleFileSelect = (e) => {
-        const files = Array.from(e.target.files);
-        if (!files.length) return;
-        
-        let validFiles = files;
-        if (pendingAttachments.length + files.length > 10) {
-            setAlertNotice({ title: "Limit Reached", msg: "You can only attach up to 10 files at once." });
-            const remainingSlots = 10 - pendingAttachments.length;
-            validFiles = files.slice(0, remainingSlots);
-        }
-        
-        const oversized = validFiles.find(f => f.size > 10 * 1024 * 1024);
-        if (oversized) {
-            setAlertNotice({ title: "File too large", msg: "One or more files exceed the 10MB limit." });
-            e.target.value = null;
-            return;
-        }
-        
-        const processed = validFiles.map(file => ({
-            file,
-            previewUrl: file.type.startsWith('image/') || file.type.startsWith('video/') ? URL.createObjectURL(file) : null
-        }));
-        
-        setPendingAttachments(prev => [...prev, ...processed]);
-        e.target.value = null;
-    };
-
-
-
     const handleSend = async () => {
         if ((!input.trim() && pendingAttachments.length === 0) || isUploading) return;
         
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        if (channelRef.current && localTypingRef.current) {
-            channelRef.current.track({ isTyping: false, updatedAt: Date.now() });
-            localTypingRef.current = false;
-        }
+        clearTypingPresence();
 
         const msgText = input;
         const currentAttachments = [...pendingAttachments];
