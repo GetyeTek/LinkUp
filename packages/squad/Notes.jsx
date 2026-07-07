@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@linkup-platform/sdk-core';
+import NoteCard from './components/NoteCard.jsx';
+import NoteContextMenu from './components/NoteContextMenu.jsx';
+import NoteInputDock from './components/NoteInputDock.jsx';
 import './Notes.css';
 
 const Notes = ({ currentUser, onClose }) => {
@@ -224,60 +227,16 @@ const Notes = ({ currentUser, onClose }) => {
                         <p>Your secure space for links, files, and thoughts.</p>
                     </div>
                 ) : (
-                    messages.map(m => {
-                        const isMenuOpen = activeMenu?.msg?.id === m.id;
-                        return (
-                            <div 
-                                key={m.id} 
-                                className="note-card"
-                                style={{ zIndex: isMenuOpen ? 100 : 1 }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (isMenuOpen) {
-                                        setActiveMenu(null);
-                                        return;
-                                    }
-                                    
-                                    let x = e.clientX || (e.touches && e.touches[0].clientX);
-                                    let y = e.clientY || (e.touches && e.touches[0].clientY);
-                                    
-                                    if (!x || !y) {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        x = rect.left + rect.width / 2;
-                                        y = rect.top + rect.height / 2;
-                                    }
-                                    
-                                    const menuW = 140;
-                                    const menuH = 100;
-                                    
-                                    if (x + menuW > window.innerWidth - 20) x = window.innerWidth - menuW - 20;
-                                    if (y + menuH > window.innerHeight - 80) y = window.innerHeight - menuH - 80;
-                                    if (y < 80) y = 80;
-                                    
-                                    setActiveMenu({ msg: m, x, y });
-                                }}
-                            >
-                                {m.text && <div className="note-text">{m.text}</div>}
-                        
-                        {m.attachments?.map((att, i) => (
-                            <div key={i} className="note-attachment">
-                                {att.type.startsWith('image/') ? (
-                                    <img src={att.url} alt="Note Attachment" className="note-image" />
-                                ) : (
-                                    <div className="note-file-box" onClick={(e) => { e.stopPropagation(); handleDownload(att.url, att.name); }}>
-                                        <div className="note-file-icon"><i className="fas fa-file"></i></div>
-                                        <div className="note-file-info">
-                                            <span className="note-file-name">{att.name}</span>
-                                            <span className="note-file-size">{(att.size / 1024 / 1024).toFixed(2)} MB</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                            <span className="note-time">{formatTime(m.created_at)}</span>
-                        </div>
-                        );
-                    })
+                    messages.map(m => (
+                        <NoteCard 
+                            key={m.id} 
+                            m={m} 
+                            activeMenu={activeMenu} 
+                            setActiveMenu={setActiveMenu} 
+                            handleDownload={handleDownload} 
+                            formatTime={formatTime} 
+                        />
+                    ))
                 )}
                 
                 {isUploading && (
@@ -290,7 +249,6 @@ const Notes = ({ currentUser, onClose }) => {
                 )}
             </main>
 
-            {/* Custom Alert Notice for Notes */}
             {alertNotice && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
                     <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
@@ -305,53 +263,21 @@ const Notes = ({ currentUser, onClose }) => {
                 </div>
             )}
 
-            {activeMenu && (
-                <div className="notes-ctx-menu" style={{ left: activeMenu.x, top: activeMenu.y }}>
-                    {activeMenu.msg.text && (
-                        <button className="notes-ctx-btn" onClick={() => handleCopy(activeMenu.msg.text)}>
-                            <i className="fa-solid fa-copy"></i> Copy Text
-                        </button>
-                    )}
-                    {activeMenu.msg.attachments?.[0] && (
-                        <button className="notes-ctx-btn" onClick={() => handleDownload(activeMenu.msg.attachments[0].url, activeMenu.msg.attachments[0].name)}>
-                            <i className="fa-solid fa-download"></i> Download File
-                        </button>
-                    )}
-                    <button className="notes-ctx-btn delete" onClick={() => deleteNote(activeMenu.msg.id)}>
-                        <i className="fa-solid fa-trash"></i> Delete Note
-                    </button>
-                </div>
-            )}
+            <NoteContextMenu 
+                activeMenu={activeMenu} 
+                handleCopy={handleCopy} 
+                handleDownload={handleDownload} 
+                deleteNote={deleteNote} 
+            />
 
-            <footer className="notes-dock-wrap">
-                <div className="notes-dock">
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        style={{display: 'none'}} 
-                        onChange={handleFileUpload} 
-                    />
-                    <button className="dock-btn attach" onClick={() => fileInputRef.current.click()} disabled={isUploading}>
-                        <i className="fas fa-paperclip"></i>
-                    </button>
-                    <textarea 
-                        className="notes-input" 
-                        placeholder="Save a note or link..." 
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSend();
-                            }
-                        }}
-                        rows="1"
-                    />
-                    <button className="dock-btn send" onClick={handleSend} disabled={!input.trim() || isUploading}>
-                        <i className="fas fa-arrow-up"></i>
-                    </button>
-                </div>
-            </footer>
+            <NoteInputDock 
+                fileInputRef={fileInputRef} 
+                handleFileUpload={handleFileUpload} 
+                isUploading={isUploading} 
+                input={input} 
+                setInput={setInput} 
+                handleSend={handleSend} 
+            />
         </div>
     );
 };
