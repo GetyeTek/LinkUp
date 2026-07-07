@@ -609,6 +609,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                 fullscreenGallery={fullscreenGallery} 
                 setFullscreenGallery={setFullscreenGallery} 
             />
+        </div>
     );
 };
 
