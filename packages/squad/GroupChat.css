@@ -961,17 +961,7 @@
 .immersive-dock input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.95rem; font-family: 'Poppins', sans-serif; }
 .question-send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-teal); border: none; color: #050505; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; }
 
-.floating-live-orb {
-    display: none; position: absolute; width: 76px; height: 76px; border-radius: 50%;
-    background: var(--surface-dark); border: 2px solid var(--accent-teal);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 10000; cursor: grab;
-    justify-content: center; align-items: center; touch-action: none;
-}
-.floating-live-orb:active { cursor: grabbing; }
-.floating-orb-host { width: 62px; height: 62px; border-radius: 50%; object-fit: cover; border: 2px solid #000; }
-.orb-pulse-ring { position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--accent-teal); animation: orbPulse 1.5s infinite ease-out; pointer-events: none; }
-@keyframes orbPulse { 0% { transform: scale(0.9); opacity: 1; } 100% { transform: scale(1.2); opacity: 0; } }
-.orb-expand-badge { position: absolute; bottom: -2px; right: -2px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-teal); color: #000; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 2px solid var(--surface-dark); }
+
 
 /* --- CONNECTION RING --- */
 .connection-ring-svg {
