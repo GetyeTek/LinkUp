@@ -7,6 +7,7 @@ import ReportModal from '../components/ReportModal.jsx';
 import TableOfContents from './components/TableOfContents.jsx';
 import PageQuestionsBlock from './components/PageQuestionsBlock.jsx';
 import MiniMironOverlay from './components/MiniMironOverlay.jsx';
+import BookReaderUI from './components/BookReaderUI.jsx';
 import { usePlatform } from '@linkup-platform/sdk-core';
 
 const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexOverride }) => {
@@ -771,61 +772,26 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 </div>
             )}
 
-            <div id="main-fab" className={`fab-container ${isUiVisible ? 'active' : ''}`}>
-                <div className="fab-options">
-                    <div className="fab-mini" onClick={toggleTheme}>
-                        <i className="fa-solid fa-palette"></i>
-                    </div>
-                </div>
-                <div className="fab-main" onClick={() => setIsUiVisible(!isUiVisible)}>
-                    <i className="fa-solid fa-layer-group"></i>
-                </div>
-            </div>
-
-            <div id="ui-layer" className={isUiVisible ? '' : 'hidden'}>
-                <div className="ui-bar reader-header">
-                    <div className="header-left">
-                        <div className="icon-btn" onClick={onClose}><i className="fa-solid fa-chevron-left"></i></div>
-                        <div className="header-title">{book?.title || 'Loading Document'}</div>
-                    </div>
-                </div>
-
-                <div className="ui-bar reader-footer">
-                    <div className="icon-btn" title="Table of Contents" onClick={() => setIsTocOpen(!isTocOpen)}>
-                        <i className="fa-solid fa-list"></i>
-                    </div>
-                    
-                    <div className="scrubber-wrapper">
-                        <input 
-                            type="range" 
-                            min="1" 
-                            max={pages.length || 1} 
-                            defaultValue="1" 
-                            ref={scrubberRef}
-                            className="page-scrubber"
-                            onChange={handleScrubberChange}
-                            onInput={handleScrubberInput}
-                        />
-                    </div>
-
-                    {isJumpMode ? (
-                        <form className="jump-form" onSubmit={(e) => { e.preventDefault(); jumpToPage(jumpInput); }}>
-                            <input 
-                                type="number" 
-                                autoFocus 
-                                min="1" max={pages.length || 1} 
-                                value={jumpInput} 
-                                onChange={e => setJumpInput(e.target.value)} 
-                                onBlur={() => setIsJumpMode(false)}
-                            />
-                        </form>
-                    ) : (
-                        <div className="page-counter-btn" onClick={() => { setIsJumpMode(true); setJumpInput(lastDisplayPage.current); }}>
-                            <span ref={pageCountRef}>{lastDisplayPage.current || 1}</span> <span className="counter-divider">/ {pages.length || '--'}</span>
-                        </div>
-                    )}
-                </div>
-            </div>
+            <BookReaderUI 
+                book={book}
+                isUiVisible={isUiVisible}
+                setIsUiVisible={setIsUiVisible}
+                toggleTheme={toggleTheme}
+                onClose={onClose}
+                isTocOpen={isTocOpen}
+                setIsTocOpen={setIsTocOpen}
+                pages={pages}
+                scrubberRef={scrubberRef}
+                handleScrubberChange={handleScrubberChange}
+                handleScrubberInput={handleScrubberInput}
+                isJumpMode={isJumpMode}
+                setIsJumpMode={setIsJumpMode}
+                jumpInput={jumpInput}
+                setJumpInput={setJumpInput}
+                jumpToPage={jumpToPage}
+                lastDisplayPage={lastDisplayPage}
+                pageCountRef={pageCountRef}
+            />
         </div>
     );
 };
