@@ -5,14 +5,6 @@
 
 .onboarding-title { font-size: 1.6rem; font-weight: 700; color: #fff; margin: 0; text-align: center; }
 .onboarding-subtitle { font-size: 0.85rem; color: #aaa; margin: 0; text-align: center; line-height: 1.4; }
-.onboarding-preview { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; margin-bottom: 1rem; }
-.onboarding-avatar-container { position: relative; width: 110px; height: 110px; margin: 0 auto; cursor: pointer; }
-.onboarding-avatar-wrapper { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 3px solid var(--accent-teal); box-shadow: 0 0 20px rgba(66, 215, 184, 0.3); background: #1a1a1a; }
-.onboarding-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-.avatar-edit-badge { position: absolute; bottom: 0; right: 0; background: var(--accent-teal); color: #000; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 3px solid #121212; transition: transform 0.2s; z-index: 5; }
-.onboarding-avatar-container:hover .avatar-edit-badge { transform: scale(1.1); }
-.preview-info h3 { font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;}
-.preview-info p { font-family: 'Roboto Mono', monospace; font-size: 0.9rem; color: var(--accent-teal); margin: 0; }
 .onboarding-error-alert { background: rgba(255, 95, 95, 0.1); border: 1px solid rgba(255, 95, 95, 0.3); color: #ff5f5f; padding: 12px; border-radius: 12px; font-size: 0.85rem; text-align: center; margin-top: 10px; font-weight: 500; }
 
 .cropper-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; padding: 1rem; }
@@ -38,19 +30,7 @@
 .input-group-sm input { width: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 14px; color: #fff; font-family: 'Poppins', sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
 .input-group-sm input:focus { border-color: rgba(66, 215, 184, 0.5); background: rgba(0,0,0,0.6); }
 
-.handle-input-wrapper { display: flex; align-items: center; background: rgba(0, 0, 0, 0.4); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 0 14px; transition: all 0.3s ease; }
-.handle-input-wrapper:focus-within { border-color: rgba(66, 215, 184, 0.5); background: rgba(0, 0, 0, 0.6); }
-.handle-input-wrapper.status-available { border-color: var(--accent-teal); }
-.handle-input-wrapper.status-taken, .handle-input-wrapper.status-invalid { border-color: #ff5f5f; }
-.handle-prefix { color: #888; font-weight: 700; font-size: 1.1rem; }
-.handle-input-wrapper input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: 'Roboto Mono', monospace; font-size: 1rem; font-weight: 600; padding: 12px 8px; }
-.handle-status-icon { width: 24px; display: flex; justify-content: flex-end; color: #888; }
-.status-checking .handle-status-icon { color: var(--accent-teal); }
-.status-available .handle-status-icon { color: var(--accent-teal); }
-.status-taken .handle-status-icon, .status-invalid .handle-status-icon { color: #ff5f5f; }
-.handle-hint { font-size: 0.75rem; font-weight: 500; margin-top: 6px; color: #888; }
-.status-taken + .handle-hint, .status-invalid + .handle-hint { color: #ff5f5f; }
-.status-available + .handle-hint { color: var(--accent-teal); }
+
 
 .onboarding-submit-btn { width: 100%; background: var(--accent-teal); color: #000; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1rem; border: none; border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 5px 15px rgba(66, 215, 184, 0.2); margin-top: 0.5rem; }
 .onboarding-submit-btn:disabled { background: rgba(255, 255, 255, 0.1); color: #888; cursor: not-allowed; box-shadow: none; }
