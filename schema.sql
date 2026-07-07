@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-06T10:29:44.379Z
+-- Date: 2026-07-07T05:12:14.800Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -602,6 +602,28 @@ BEGIN
 END;
 
 
+-- Function: force_peer_question_defaults_fn
+
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        -- Force identity alignment
+        NEW.user_id := auth.uid();
+    END IF;
+    RETURN NEW;
+END;
+
+
+-- Function: unpin_on_message_delete_fn
+
+BEGIN
+    UPDATE public.conversations
+    SET metadata = metadata - 'pinned_message'
+    WHERE id = OLD.conversation_id
+      AND metadata->'pinned_message'->>'id' = OLD.id::text;
+    RETURN OLD;
+END;
+
+
 -- Function: get_suggested_squads
 
 BEGIN
@@ -1059,28 +1081,6 @@ BEGIN
 END;
 
 
--- Function: prevent_msg_tampering_fn
-
-BEGIN
-    IF auth.role() = 'authenticated' THEN
-        -- Prevent teleportation & impersonation (from previous patch)
-        IF NEW.conversation_id != OLD.conversation_id THEN RAISE EXCEPTION 'Security Violation: Cannot move messages.'; END IF;
-        IF NEW.sender_id != OLD.sender_id THEN RAISE EXCEPTION 'Security Violation: Cannot change sender.'; END IF;
-        IF NEW.forward_meta IS DISTINCT FROM OLD.forward_meta THEN RAISE EXCEPTION 'Security Violation: Cannot tamper with forward metadata.'; END IF;
-        IF NEW.attachments IS DISTINCT FROM OLD.attachments THEN RAISE EXCEPTION 'Security Violation: Cannot alter message attachments.'; END IF;
-        IF NEW.reply_to_id IS DISTINCT FROM OLD.reply_to_id THEN RAISE EXCEPTION 'Security Violation: Cannot alter reply target.'; END IF;
-        
-        -- NEW: Prevent editing messages older than 24 hours
-        IF NEW.text IS DISTINCT FROM OLD.text THEN
-            IF OLD.created_at < (now() - interval '24 hours') THEN
-                RAISE EXCEPTION 'Time Limit Exceeded: Messages cannot be edited after 24 hours.';
-            END IF;
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-
-
 -- Function: rate_limit_messages_fn
 
 DECLARE
@@ -1279,6 +1279,21 @@ BEGIN
 END;
 
 
+-- Function: force_live_question_defaults_fn
+
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        -- Strip any malicious auto-approval or pin attempts
+        NEW.status := 'pending';
+        NEW.is_pinned := false;
+        
+        -- Strictly force the real sender identity (No identity spoofing!)
+        NEW.sender_id := auth.uid();
+    END IF;
+    RETURN NEW;
+END;
+
+
 -- Function: kill_live_session
 
 DECLARE
@@ -1333,6 +1348,29 @@ BEGIN
   JOIN public.conversation_members cm ON c.id = cm.conversation_id
   WHERE cm.user_id = req_user_id
   ORDER BY c.last_message_at DESC;
+END;
+
+
+-- Function: prevent_msg_tampering_fn
+
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        -- Prevent teleportation & impersonation
+        IF NEW.conversation_id != OLD.conversation_id THEN RAISE EXCEPTION 'Security Violation: Cannot move messages.'; END IF;
+        IF NEW.sender_id != OLD.sender_id THEN RAISE EXCEPTION 'Security Violation: Cannot change sender.'; END IF;
+        IF NEW.forward_meta IS DISTINCT FROM OLD.forward_meta THEN RAISE EXCEPTION 'Security Violation: Cannot tamper with forward metadata.'; END IF;
+        IF NEW.attachments IS DISTINCT FROM OLD.attachments THEN RAISE EXCEPTION 'Security Violation: Cannot alter message attachments.'; END IF;
+        IF NEW.reply_to_id IS DISTINCT FROM OLD.reply_to_id THEN RAISE EXCEPTION 'Security Violation: Cannot alter reply target.'; END IF;
+        
+        -- Prevent editing messages older than 24 hours & FORCE the is_edited flag
+        IF NEW.text IS DISTINCT FROM OLD.text THEN
+            IF OLD.created_at < (now() - interval '24 hours') THEN
+                RAISE EXCEPTION 'Time Limit Exceeded: Messages cannot be edited after 24 hours.';
+            END IF;
+            NEW.is_edited := true; -- OVERWRITE CLIENT PAYLOAD
+        END IF;
+    END IF;
+    RETURN NEW;
 END;
 
 
