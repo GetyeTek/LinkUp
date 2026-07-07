@@ -146,18 +146,25 @@ export class GeminiLiveAgent {
                 headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
             });
             
-            const rows = await getRes.json();
-            if (rows && rows.length > 0) {
-                const meta = rows[0].metadata || {};
-                
-                // Scrub live properties
-                delete meta.is_live;
-                delete meta.ai_hosting;
-                delete meta.live_host_id;
-                delete meta.live_status;
-                delete meta.live_heartbeat;
-                delete meta.live_started_at;
-                delete meta.live_topic;
+                          const rows = await getRes.json();
+              if (rows && rows.length > 0) {
+                  const meta = rows[0].metadata || {};
+                  
+                  // If the stage is still live but Miron has simply been toggled off,
+                  // do not scrub the database properties. Let the human stay on stage!
+                  if (meta.is_live && !meta.ai_hosting) {
+                      console.log("[Agent|DO|CLEANUP] Miron toggled off. Human is still hosting. Preserving DB metadata.");
+                      return;
+                  }
+
+                  // Scrub live properties
+                  delete meta.is_live;
+                  delete meta.ai_hosting;
+                  delete meta.live_host_id;
+                  delete meta.live_status;
+                  delete meta.live_heartbeat;
+                  delete meta.live_started_at;
+                  delete meta.live_topic;
 
                 // Patch conversation metadata
                 await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}`, {
