@@ -1,0 +1,17 @@
+.tasks-nav { display: flex; position: relative; border-bottom: 1px solid var(--border-color); }
+.nav-tab { flex: 1; padding: 0.75rem; text-align: center; font-weight: 500; color: var(--text-secondary-dark); cursor: pointer; }
+.nav-tab.active { color: var(--text-primary-dark); }
+.nav-indicator { position: absolute; bottom: -1px; left: 0; height: 2px; background-color: var(--linkoin-gold); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+.tasks-list-container { flex-grow: 1; position: relative; min-height: 300px; }
+.tasks-list { position: absolute; inset: 0; overflow-y: auto; padding-top: 1.5rem; list-style: none; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+.tasks-list.active { opacity: 1; pointer-events: auto; }
+.task-card { display: flex; align-items: center; gap: 1rem; background-color: var(--surface-dark); padding: 1rem; border-radius: 16px; margin-bottom: 1rem; }
+#mission-overlay .task-icon { width: 48px; height: 48px; flex-shrink: 0; border-radius: 12px; background-color: rgba(255, 215, 0, 0.1); color: var(--linkoin-gold); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+#mission-overlay .task-details { flex-grow: 1; }
+#mission-overlay .task-title { font-weight: 600; }
+.task-action { text-align: center; }
+.reward-amount { display: flex; align-items: center; justify-content: center; gap: 0.25rem; font-family: 'Roboto Mono', monospace; font-weight: 700; font-size: 1rem; color: var(--linkoin-gold); margin-bottom: 0.5rem; }
+.claim-btn { border: none; border-radius: 10px; padding: 0.5rem 1rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s ease; }
+.claim-btn.disabled { background-color: #333; color: #777; cursor: not-allowed; }
+.claim-btn.claimable { background-color: var(--linkoin-gold); color: var(--bg-dark); }
+.claim-btn.claimed { background-color: var(--accent-teal); color: var(--bg-dark); }
