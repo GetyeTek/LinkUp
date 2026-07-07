@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, useGeminiAudio } from '@linkup-platform/sdk-core';
 import { useParticipants, useLocalParticipant } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import FloatingLiveOrb from './FloatingLiveOrb.jsx';
 import ConnectionRing from './ConnectionRing.jsx';
@@ -36,8 +36,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const stageMicEnabledRef = useRef(stageMicEnabled);
     const [isMironSpeaking, setIsMironSpeaking] = useState(false);
     const aiSocketRef = useRef(null);
-    const audioContextRef = useRef(null);
-    const nextStartTimeRef = useRef(0);
+
+    const { playAudioChunk } = useGeminiAudio(aiSocketRef, isAiHosting && isMeHost && stageMicEnabled);
 
     useEffect(() => { stageMicEnabledRef.current = stageMicEnabled; }, [stageMicEnabled]);
 
@@ -59,34 +59,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         return () => clearInterval(int);
     }, [liveState, isMeHost, conversationId, currentUser.id]);
 
-    // Web Audio Player for Gemini
-    const playAudioChunk = (base64Data) => {
-        if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-        }
-        const ctx = audioContextRef.current;
-        if (ctx.state === 'suspended') ctx.resume();
-        
-        const rawString = atob(base64Data);
-        const array = new Uint8Array(new ArrayBuffer(rawString.length));
-        for (let i = 0; i < rawString.length; i++) array[i] = rawString.charCodeAt(i);
-        const pcm16 = new Int16Array(array.buffer);
-        const float32 = new Float32Array(pcm16.length);
-        for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768.0;
 
-        const buffer = ctx.createBuffer(1, float32.length, 24000);
-        buffer.getChannelData(0).set(float32);
-        
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-        
-        const currTime = ctx.currentTime;
-        if (nextStartTimeRef.current < currTime) nextStartTimeRef.current = currTime;
-        
-        source.start(nextStartTimeRef.current);
-        nextStartTimeRef.current += buffer.duration;
-    };
 
     // AI Stage WebSocket Bridge
     useEffect(() => {
@@ -150,90 +123,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         }
     }, [liveState, isAiHosting, conversationId, isMeHost]);
 
-    // Hostess Audio Input to Gemini Processor
-    const hasLoggedAudioRef = useRef(false);
-    useEffect(() => {
-        let stream, ctx, processor;
-        let isCancelled = false; // Guard prevents hardware leaks from async race conditions
-        
-        // ONLY request hardware access if the hostess explicitly activates the mic
-        if (isAiHosting && isMeHost && stageMicEnabled) {
-            console.log("[Client|Stage] Requesting microphone access for Host...");
-            navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                } 
-            }).then(s => {
-                if (isCancelled) {
-                    console.log("[Client|Stage] Component unmounted before mic acquired. Terminating tracks...");
-                    s.getTracks().forEach(t => t.stop());
-                    return;
-                }
-                console.log("[Client|Stage] Microphone acquired. Creating processor...");
-                stream = s;
-                ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-                const source = ctx.createMediaStreamSource(stream);
-                processor = ctx.createScriptProcessor(2048, 1, 1);
-                
-                processor.onaudioprocess = (e) => {
-                    if (!stageMicEnabledRef.current) {
-                        if (hasLoggedAudioRef.current) {
-                            console.log("[Client|Stage] 🎙️ MIC PAUSED: Stopped sending audio to Gemini.");
-                        }
-                        hasLoggedAudioRef.current = false;
-                        return;
-                    }
 
-                    // Software Acoustic Echo Cancellation (Half-Duplex)
-                    if (audioContextRef.current && audioContextRef.current.currentTime < nextStartTimeRef.current + 0.4) {
-                        return;
-                    }
-                    
-                    try {
-                        const inputData = e.inputBuffer.getChannelData(0);
-                        const pcmData = new Int16Array(inputData.length);
-                        for (let i = 0; i < inputData.length; i++) {
-                            pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
-                        }
-                        
-                        // Ultra-Fast ArrayBuffer to Base64 (Zero String-Concat Loop)
-                        let binary = '';
-                        const bytes = new Uint8Array(pcmData.buffer);
-                        const chunkSize = 0x8000; // 32768 bytes
-                        for (let i = 0; i < bytes.length; i += chunkSize) {
-                            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-                        }
-                        const base64Audio = btoa(binary);
-                        
-                        if (aiSocketRef.current?.readyState === WebSocket.OPEN) {
-                            if (!hasLoggedAudioRef.current) {
-                                console.log(`[Client|Stage] 🎙️ MIC OPEN: Streaming PCM audio to Gemini... Chunk size: ${bytes.length} bytes`);
-                                hasLoggedAudioRef.current = true;
-                            }
-                            aiSocketRef.current.send(JSON.stringify({
-                                realtimeInput: { audio: { mimeType: "audio/pcm;rate=16000", data: base64Audio } }
-                            }));
-                        } else {
-                            console.warn(`[Client|Stage] ⚠️ Audio processor skipping: WebSocket not open (State: ${aiSocketRef.current?.readyState})`);
-                        }
-                    } catch (err) {
-                        console.error("[Client|Stage] ❌ Audio processor crashed:", err);
-                    }
-                };
-                
-                source.connect(processor);
-                processor.connect(ctx.destination);
-            }).catch(e => console.error("Mic access denied:", e));
-        }
-        return () => {
-            isCancelled = true;
-            if (processor) processor.disconnect();
-            if (ctx && ctx.state !== 'closed') ctx.close();
-            if (stream) stream.getTracks().forEach(t => t.stop());
-        };
-    }, [isAiHosting, isMeHost, stageMicEnabled]);
 
     // Independent Live Questions Subscription (Robust CRUD support)
     useEffect(() => {
