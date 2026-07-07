@@ -1,0 +1,8 @@
+.onboarding-preview { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; margin-bottom: 1rem; }
+.onboarding-avatar-container { position: relative; width: 110px; height: 110px; margin: 0 auto; cursor: pointer; }
+.onboarding-avatar-wrapper { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 3px solid var(--accent-teal); box-shadow: 0 0 20px rgba(66, 215, 184, 0.3); background: #1a1a1a; }
+.onboarding-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-edit-badge { position: absolute; bottom: 0; right: 0; background: var(--accent-teal); color: #000; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 3px solid #121212; transition: transform 0.2s; z-index: 5; }
+.onboarding-avatar-container:hover .avatar-edit-badge { transform: scale(1.1); }
+.preview-info h3 { font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;}
+.preview-info p { font-family: 'Roboto Mono', monospace; font-size: 0.9rem; color: var(--accent-teal); margin: 0; }
