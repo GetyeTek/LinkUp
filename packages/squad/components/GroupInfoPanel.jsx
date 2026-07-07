@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from '../../../src/core/components/AvatarCropperModal.jsx';
+import GroupMembersTab from './GroupMembersTab.jsx';
+import GroupMediaTab from './GroupMediaTab.jsx';
+import GroupSettingsTab from './GroupSettingsTab.jsx';
 import { invokeSocial } from '../api.js';
 import './GroupInfoPanel.css';
 
@@ -8,7 +11,6 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const canSeeMembers = myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.hide_members !== true;
     
     const [activeTab, setActiveTab] = useState(canSeeMembers ? 'members' : 'media');
-    const [mediaSubTab, setMediaSubTab] = useState('media'); // files, media, links
     
     useEffect(() => {
         if (!canSeeMembers && activeTab === 'members') {
@@ -20,21 +22,11 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [croppedAvatar, setCroppedAvatar] = useState(null);
     const fileInputRef = useRef(null);
     
-    const [editTitle, setEditTitle] = useState(chatInfo.title || '');
-    const [nameStatus, setNameStatus] = useState('idle'); // idle, saving, success, error
-    const [nameError, setNameError] = useState('');
-    const [editSlug, setEditSlug] = useState(chatInfo.metadata?.slug || '');
-    const [slugStatus, setSlugStatus] = useState('idle'); // idle, saving, success, error
-    const [slugError, setSlugError] = useState('');
-    const [editBio, setEditBio] = useState(chatInfo.metadata?.bio || '');
-    const [bioStatus, setBioStatus] = useState('idle');
-    const [editPrivacy, setEditPrivacy] = useState(chatInfo.metadata?.privacy || 'public');
     const [isSaving, setIsSaving] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [alertNotice, setAlertNotice] = useState(null); // Unified Toast/Notice
+    const [alertNotice, setAlertNotice] = useState(null);
     const [avatarError, setAvatarError] = useState(false);
 
-    // Auto-hide success toasts after 3 seconds for premium UX
     useEffect(() => {
         if (alertNotice?.success) {
             const timer = setTimeout(() => setAlertNotice(null), 3000);
@@ -42,40 +34,12 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         }
     }, [alertNotice]);
 
-    // Sync state if chatInfo metadata updates after initial mount
-    useEffect(() => {
-        setEditTitle(chatInfo.title || '');
-        setEditSlug(chatInfo.metadata?.slug || '');
-        setEditPrivacy(chatInfo.metadata?.privacy || 'public');
-        setEditBio(chatInfo.metadata?.bio || '');
-    }, [chatInfo.title, chatInfo.metadata]);
-
-    // Reset avatar error state if the avatar URL actually changes
     useEffect(() => setAvatarError(false), [croppedAvatar, chatInfo.avatar_url]);
 
-    // Menus & Modals
     const [showOptions, setShowOptions] = useState(false);
     const [showAddMember, setShowAddMember] = useState(false);
-    const [inviteContacts, setInviteContacts] = useState([]);
-    const [confirmAddUser, setConfirmAddUser] = useState(null);
-    const [privacyModal, setPrivacyModal] = useState(false);
-    const [tempPrivacy, setTempPrivacy] = useState(editPrivacy);
-    const [inviteCopied, setInviteCopied] = useState(false);
-
     const [activeMemberMenu, setActiveMemberMenu] = useState(null);
-    const [confirmModal, setConfirmModal] = useState(null);
-    const [disbandModal, setDisbandModal] = useState(false);
-    const [disbandInput, setDisbandInput] = useState('');
-    const [punishConfig, setPunishConfig] = useState(null);
-
-    // Auto-scrape Media Assets from Messages
-    const mediaAssets = messages.flatMap(m => m.attachments ? m.attachments.filter(a => a.type.startsWith('image/') || a.type.startsWith('video/')) : []);
-    const docFiles = messages.flatMap(m => m.attachments ? m.attachments.filter(a => !a.type.startsWith('image/') && !a.type.startsWith('video/')) : []);
-    const sharedLinks = messages.flatMap(m => {
-        if (!m.text) return [];
-        const urls = m.text.match(/(https?:\/\/[^\s]+)/g) || [];
-        return urls.map(url => ({ url, sender: members[m.sender_id]?.name || 'Unknown', time: m.created_at }));
-    });
+    const [inviteCopied, setInviteCopied] = useState(false);
 
     // Strict DB truth. No front-end guessing.
     const squadHandle = chatInfo.metadata?.slug;
@@ -101,104 +65,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         setTimeout(() => setInviteCopied(false), 2000);
     };
 
-    // Fetch DM contacts for "Add Member" screen
-    useEffect(() => {
-        if (showAddMember) {
-            supabase.rpc('get_user_conversations', { req_user_id: currentUser.id }).then(({data}) => {
-                if (data) {
-                    const contacts = data.filter(c => c.type === 'dm' && !members[c.other_user_id]);
-                    setInviteContacts(contacts);
-                }
-            });
-        }
-    }, [showAddMember, currentUser.id, members]);
 
-    const executeAddMember = async () => {
-        if (!confirmAddUser) return;
-        setIsProcessing(true);
-        try {
-            const res = await invokeSocial({ action: 'admin_add_member', conversation_id: conversationId, target_user_id: confirmAddUser.other_user_id });
-            if (res.error) throw new Error(res.error);
-            
-            setMembers(prev => ({
-                ...prev,
-                [confirmAddUser.other_user_id]: { role: 'member', name: confirmAddUser.other_user_name, avatar: confirmAddUser.other_user_avatar }
-            }));
-            setAlertNotice({ title: "Member Added", msg: `${confirmAddUser.other_user_name} has joined the squad!`, success: true });
-        } catch(e) {
-            setAlertNotice({ title: "Permission Denied", msg: e.message || "You are not allowed to add members.", success: false });
-        }
-        setIsProcessing(false);
-        setConfirmAddUser(null);
-        setShowAddMember(false);
-    };
-
-    const updateSquadPrivacy = async (val) => {
-        setIsProcessing(true);
-        try {
-            const res = await invokeSocial({ action: 'update_group_meta', conversation_id: conversationId, updates: { privacy: val } });
-            if (res.error) throw new Error(res.error);
-            onUpdateInfo({ ...chatInfo, metadata: res.metadata });
-            setEditPrivacy(val);
-            setPrivacyModal(false);
-            setAlertNotice({ title: "Privacy Updated", msg: `The group is now ${val}.`, success: true });
-        } catch(e) {
-            setAlertNotice({ title: "Permission Denied", msg: e.message, success: false });
-            setPrivacyModal(false);
-        }
-        setIsProcessing(false);
-    };
-
-    const updateSquadName = async () => {
-        if (!editTitle.trim() || editTitle === chatInfo.title) return;
-        setNameStatus('saving');
-        try {
-            const res = await invokeSocial({ action: 'update_group_meta', conversation_id: conversationId, updates: { title: editTitle } });
-            if (res.error) throw new Error(res.error);
-            onUpdateInfo({ ...chatInfo, title: res.title, metadata: res.metadata });
-            setNameStatus('success');
-            setTimeout(() => setNameStatus('idle'), 3000);
-        } catch(e) {
-            setNameStatus('error');
-            setNameError(e.message);
-            setEditTitle(chatInfo.title);
-        }
-    };
-
-    const updateSquadBio = async () => {
-        const cleanBio = editBio.trim();
-        if (cleanBio === (chatInfo.metadata?.bio || '')) return;
-        setBioStatus('saving');
-        try {
-            const res = await invokeSocial({ action: 'update_group_meta', conversation_id: conversationId, updates: { bio: cleanBio } });
-            if (res.error) throw new Error(res.error);
-            onUpdateInfo({ ...chatInfo, metadata: res.metadata });
-            setBioStatus('success');
-            setTimeout(() => setBioStatus('idle'), 3000);
-        } catch(e) {
-            setBioStatus('error');
-            setAlertNotice({ title: "Permission Denied", msg: e.message, success: false });
-            setEditBio(chatInfo.metadata?.bio || '');
-        }
-    };
-
-    const updateSquadSlug = async () => {
-        const cleanSlug = editSlug.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!cleanSlug || cleanSlug === chatInfo.metadata?.slug) return;
-        setSlugStatus('saving');
-        try {
-            const res = await invokeSocial({ action: 'update_group_meta', conversation_id: conversationId, updates: { slug: cleanSlug } });
-            if (res.error) throw new Error(res.error);
-            onUpdateInfo({ ...chatInfo, metadata: res.metadata });
-            setEditSlug(cleanSlug);
-            setSlugStatus('success');
-            setTimeout(() => setSlugStatus('idle'), 3000);
-        } catch(e) {
-            setSlugStatus('error');
-            setSlugError(e.message);
-            setEditSlug(chatInfo.metadata?.slug || '');
-        }
-    };
 
     const handleAvatarUpdate = async (blob) => {
         const url = URL.createObjectURL(blob);
@@ -228,74 +95,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         }
     };
 
-    const executeKick = async (uid) => {
-        setIsProcessing(true);
-        const { error } = await supabase.rpc('squad_kick_member', { req_conv_id: conversationId, req_target_id: uid });
-        setIsProcessing(false);
-        if (error) {
-            setAlertNotice({ title: "Action Failed", msg: error.message, success: false });
-        } else {
-            setMembers(prev => {
-                const next = { ...prev };
-                delete next[uid];
-                return next;
-            });
-            setAlertNotice({ title: "Member Removed", msg: "The user has been kicked.", success: true });
-        }
-        setConfirmModal(null);
-    };
 
-    const executePunishment = async () => {
-        setIsProcessing(true);
-        const { uid, type, isTemp, duration, unit } = punishConfig;
-        
-        let until = null;
-        if (isTemp) {
-            const safeDuration = duration === '' || isNaN(duration) ? 1 : duration;
-            const multipliers = { minutes: 60000, hours: 3600000, days: 86400000, weeks: 604800000, months: 2592000000 };
-            const ms = safeDuration * multipliers[unit];
-            until = new Date(Date.now() + ms).toISOString();
-        } else {
-            until = type === 'mute' ? new Date(Date.now() + 3153600000000).toISOString() : null;
-        }
-
-        let error = null;
-        if (type === 'ban') {
-            const res = await supabase.rpc('squad_ban_member', { req_conv_id: conversationId, req_target_id: uid, req_banned_until: until });
-            error = res.error;
-            if (!error) {
-                setMembers(prev => {
-                    const next = { ...prev };
-                    delete next[uid];
-                    return next;
-                });
-            }
-        } else {
-            const res = await supabase.rpc('squad_mute_member', { req_conv_id: conversationId, req_target_id: uid, req_muted_until: until });
-            error = res.error;
-        }
-        
-        setIsProcessing(false);
-        if (error) {
-            setAlertNotice({ title: "Action Failed", msg: error.message, success: false });
-        } else {
-            setAlertNotice({ title: "Restriction Applied", msg: `The user has been successfully ${type === 'ban' ? 'banned' : 'restricted'}.`, success: true });
-        }
-        setPunishConfig(null);
-    };
-
-    const executeDisband = async () => {
-        if (disbandInput !== chatInfo.title) return;
-        setIsProcessing(true);
-        const { error } = await supabase.from('conversations').delete().eq('id', conversationId);
-        setIsProcessing(false);
-        if (error) {
-            setAlertNotice({ title: "Action Failed", msg: error.message, success: false });
-            setDisbandModal(false);
-        } else {
-            onDisband();
-        }
-    };
 
     const displayAvatar = croppedAvatar?.url || chatInfo.avatar_url;
 
@@ -376,375 +176,40 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
                 <div className="si-body">
                     {activeTab === 'members' && canSeeMembers && (
-                        <div className="si-directory">
-                            {Object.entries(members).filter(([_, m]) => m.is_current_member).map(([uid, m]) => (
-                                <div className="si-member-row" key={uid} onClick={() => onOpenUser(uid)} style={{cursor: 'pointer'}}>
-                                    <img src={m.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="si-member-avatar" />
-                                    <div className="si-member-info">
-                                        <div className="si-member-name">
-                                            {m.name} {uid === currentUser.id && <span style={{fontSize:'0.7rem', color:'#888'}}>(You)</span>}
-                                        </div>
-                                        <span className={`si-member-role ${m.role === 'owner' ? 'si-role-owner' : 'si-role-member'}`}>{m.role}</span>
-                                    </div>
-                                    {myRole === 'owner' && uid !== currentUser.id && (
-                                        <div className="si-member-actions" style={{ position: 'relative' }}>
-                                            <button className="si-action-btn" onClick={(e) => { e.stopPropagation(); setActiveMemberMenu(activeMemberMenu === uid ? null : uid); }}>
-                                                <i className="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            {activeMemberMenu === uid && (
-                                                <div className="si-dropdown-menu" onClick={e => e.stopPropagation()}>
-                                                    <button onClick={() => { setActiveMemberMenu(null); setConfirmModal({ uid, name: m.name }); }}>
-                                                        <i className="fas fa-user-minus"></i> Kick User
-                                                    </button>
-                                                    <button onClick={() => { setActiveMemberMenu(null); setPunishConfig({ uid, type: 'mute', isTemp: true, duration: 1, unit: 'days' }); }}>
-                                                        <i className="fas fa-comment-slash"></i> Restrict Writing
-                                                    </button>
-                                                    <button className="danger" onClick={() => { setActiveMemberMenu(null); setPunishConfig({ uid, type: 'ban', isTemp: true, duration: 1, unit: 'days' }); }}>
-                                                        <i className="fas fa-ban"></i> Ban User
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+                        <GroupMembersTab 
+                            conversationId={conversationId}
+                            currentUser={currentUser}
+                            members={members}
+                            setMembers={setMembers}
+                            myRole={myRole}
+                            onOpenUser={onOpenUser}
+                            isProcessing={isProcessing}
+                            setIsProcessing={setIsProcessing}
+                            setAlertNotice={setAlertNotice}
+                            showAddMember={showAddMember}
+                            setShowAddMember={setShowAddMember}
+                            activeMemberMenu={activeMemberMenu}
+                            setActiveMemberMenu={setActiveMemberMenu}
+                        />
                     )}
 
                     {activeTab === 'media' && (
-                        <div className="si-vault">
-                            <div className="si-media-pills">
-                                <div className={`si-media-pill ${mediaSubTab === 'media' ? 'active' : ''}`} onClick={() => setMediaSubTab('media')}>Media</div>
-                                <div className={`si-media-pill ${mediaSubTab === 'files' ? 'active' : ''}`} onClick={() => setMediaSubTab('files')}>Files</div>
-                                <div className={`si-media-pill ${mediaSubTab === 'links' ? 'active' : ''}`} onClick={() => setMediaSubTab('links')}>Links</div>
-                            </div>
-
-                            <div className="si-media-content">
-                                {mediaSubTab === 'media' && (
-                                    mediaAssets.length > 0 ? (
-                                        <div className="si-media-grid">
-                                            {mediaAssets.map((m, i) => (
-                                                <a href={m.url} target="_blank" rel="noopener noreferrer" className="si-media-thumb" key={i}>
-                                                    <img src={m.url} alt="Media" />
-                                                </a>
-                                            ))}
-                                        </div>
-                                    ) : <div className="si-vault-empty"><i className="fas fa-image"></i><p>No photos or videos yet.</p></div>
-                                )}
-
-                                {mediaSubTab === 'files' && (
-                                    docFiles.length > 0 ? (
-                                        <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
-                                            {docFiles.map((f, i) => (
-                                                <a href={f.url} target="_blank" rel="noopener noreferrer" className="si-vault-item" key={i}>
-                                                    <div className="si-vault-icon"><i className="fas fa-file-pdf"></i></div>
-                                                    <div className="si-vault-info">
-                                                        <div className="si-vault-name">{f.name}</div>
-                                                        <div className="si-vault-meta">{(f.size / 1024 / 1024).toFixed(2)} MB</div>
-                                                    </div>
-                                                </a>
-                                            ))}
-                                        </div>
-                                    ) : <div className="si-vault-empty"><i className="fas fa-file-alt"></i><p>No documents shared yet.</p></div>
-                                )}
-
-                                {mediaSubTab === 'links' && (
-                                    sharedLinks.length > 0 ? (
-                                        <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
-                                            {sharedLinks.map((l, i) => (
-                                                <a href={l.url} target="_blank" rel="noopener noreferrer" className="si-vault-item" key={i}>
-                                                    <div className="si-vault-icon link"><i className="fas fa-link"></i></div>
-                                                    <div className="si-vault-info">
-                                                        <div className="si-vault-name link">{l.url}</div>
-                                                        <div className="si-vault-meta">From {l.sender}</div>
-                                                    </div>
-                                                </a>
-                                            ))}
-                                        </div>
-                                    ) : <div className="si-vault-empty"><i className="fas fa-link"></i><p>No links shared yet.</p></div>
-                                )}
-                            </div>
-                        </div>
+                        <GroupMediaTab messages={messages} members={members} />
                     )}
 
                     {activeTab === 'settings' && myRole === 'owner' && (
-                        <div className="si-settings">
-                            <div className="si-settings-group">
-                                <label className="si-label">Group Name</label>
-                                <div className="si-input-wrapper">
-                                    <input 
-                                        type="text" 
-                                        className="si-input" 
-                                        value={editTitle} 
-                                        onChange={e => { setEditTitle(e.target.value); setNameStatus('idle'); }} 
-                                        onKeyPress={e => e.key === 'Enter' && updateSquadName()}
-                                    />
-                                </div>
-                                {(editTitle !== chatInfo.title || nameStatus !== 'idle') && (
-                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', minHeight: '30px' }}>
-                                        {editTitle !== chatInfo.title && (
-                                            <button className="si-save-slug-btn" onClick={updateSquadName} disabled={nameStatus === 'saving' || !editTitle.trim()}>
-                                                {nameStatus === 'saving' ? 'Saving...' : 'Save Name'}
-                                            </button>
-                                        )}
-                                        {nameStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> {nameError}</span>}
-                                        {nameStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Name updated!</span>}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="si-settings-group">
-                                <label className="si-label">Group Description / Rules</label>
-                                <div className="si-input-wrapper">
-                                    <textarea 
-                                        className="si-textarea" 
-                                        value={editBio} 
-                                        onChange={e => { setEditBio(e.target.value); setBioStatus('idle'); }} 
-                                        placeholder="What is this group about?"
-                                        maxLength={500}
-                                        rows={3}
-                                    />
-                                </div>
-                                {(editBio !== (chatInfo.metadata?.bio || '') || bioStatus !== 'idle') && (
-                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', minHeight: '30px' }}>
-                                        {editBio !== (chatInfo.metadata?.bio || '') && (
-                                            <button className="si-save-slug-btn" onClick={updateSquadBio} disabled={bioStatus === 'saving' || editBio.trim() === (chatInfo.metadata?.bio || '')}>
-                                                {bioStatus === 'saving' ? 'Saving...' : 'Save Description'}
-                                            </button>
-                                        )}
-                                        {bioStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> Failed</span>}
-                                        {bioStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Saved!</span>}
-                                    </div>
-                                )}
-                            </div>
-
-                            {chatInfo.metadata?.privacy !== 'private' && (
-                            <div className="si-settings-group">
-                                <label className="si-label">Group Link Handle</label>
-                                <div className="si-slug-container">
-                                    <span className="si-slug-prefix">{cleanBase}?sq=</span>
-                                    <input 
-                                        type="text" 
-                                        className="si-slug-input" 
-                                        value={editSlug} 
-                                        onChange={e => { setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '')); setSlugStatus('idle'); }} 
-                                        onKeyPress={e => e.key === 'Enter' && updateSquadSlug()}
-                                    />
-                                </div>
-                                {(editSlug !== (chatInfo.metadata?.slug || '') || slugStatus !== 'idle') && (
-                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', minHeight: '30px' }}>
-                                        {editSlug !== (chatInfo.metadata?.slug || '') && (
-                                            <button className="si-save-slug-btn" onClick={updateSquadSlug} disabled={slugStatus === 'saving' || !editSlug.trim()}>
-                                                {slugStatus === 'saving' ? 'Saving...' : 'Save Handle'}
-                                            </button>
-                                        )}
-                                        {slugStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> {slugError}</span>}
-                                        {slugStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Handle updated!</span>}
-                                    </div>
-                                )}
-                            </div>
-                            )}
-
-                            <div className="si-settings-row" onClick={() => setPrivacyModal(true)}>
-                                <div className="sr-info">
-                                    <h4>Privacy Status</h4>
-                                    <p>{chatInfo.metadata?.privacy === 'public' ? 'Anyone can find and join' : 'Invite only'}</p>
-                                </div>
-                                <div className="sr-val">{chatInfo.metadata?.privacy} <i className="fas fa-chevron-right"></i></div>
-                            </div>
-
-                            <hr style={{border:'none', borderTop:'1px solid rgba(255,255,255,0.05)', margin:'2rem 0'}}/>
-
-                            <div className="si-settings-group">
-                                <label className="si-label" style={{color:'#ff5f5f'}}>Danger Zone</label>
-                                <p style={{fontSize:'0.8rem', color:'#888', marginBottom:'1rem'}}>Deleting this group will permanently remove all associated messages, files, and links. This action is irreversible.</p>
-                                <button className="si-disband-btn" onClick={() => setDisbandModal(true)}>
-                                    <i className="fas fa-triangle-exclamation"></i> Delete Group
-                                </button>
-                            </div>
-                        </div>
+                        <GroupSettingsTab 
+                            chatInfo={chatInfo}
+                            conversationId={conversationId}
+                            onUpdateInfo={onUpdateInfo}
+                            onDisband={onDisband}
+                            isProcessing={isProcessing}
+                            setIsProcessing={setIsProcessing}
+                            setAlertNotice={setAlertNotice}
+                            cleanBase={cleanBase}
+                        />
                     )}
                 </div>
-            </div>
-
-            {/* Privacy Configuration Modal */}
-            {privacyModal && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3>Squad Privacy</h3>
-                        <p>Configure how others discover and join this group.</p>
-                        <div className="cm-privacy-options">
-                            <div className={`cm-privacy-card ${tempPrivacy === 'public' ? 'active' : ''}`} onClick={() => setTempPrivacy('public')}>
-                                <i className="fas fa-globe"></i>
-                                <div>
-                                    <h4>Public</h4>
-                                    <p>Searchable and accessible via Invite Link.</p>
-                                </div>
-                            </div>
-                            <div className={`cm-privacy-card ${tempPrivacy === 'private' ? 'active' : ''}`} onClick={() => setTempPrivacy('private')}>
-                                <i className="fas fa-lock"></i>
-                                <div>
-                                    <h4>Private</h4>
-                                    <p>Hidden. Members must be added by Admin.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="cm-footer" style={{marginTop: '1rem'}}>
-                            <button className="cm-btn-cancel" onClick={() => { setTempPrivacy(chatInfo.metadata?.privacy); setPrivacyModal(false); }} disabled={isProcessing}>Cancel</button>
-                            <button className="cm-btn-primary" onClick={() => updateSquadPrivacy(tempPrivacy)} disabled={isProcessing}>
-                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Confirm Status'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Full Screen Add Member Overlay */}
-            {showAddMember && (
-                <div className="si-fullscreen-overlay">
-                    <header className="si-fs-header">
-                        <button className="icon-button" onClick={() => setShowAddMember(false)}><i className="fas fa-chevron-left"></i></button>
-                        <h2>Add Member</h2>
-                        <div style={{width:'36px'}}></div>
-                    </header>
-                    <div className="si-fs-body">
-                        {inviteContacts.length === 0 ? (
-                            <div className="si-vault-empty">
-                                <i className="fas fa-user-slash"></i>
-                                <p>No eligible contacts found in your DMs.</p>
-                            </div>
-                        ) : (
-                            inviteContacts.map(c => (
-                                <div className="si-member-row" key={c.other_user_id} style={{cursor:'pointer'}} onClick={() => setConfirmAddUser(c)}>
-                                    <img src={c.other_user_avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="si-member-avatar" />
-                                    <div className="si-member-info">
-                                        <div className="si-member-name">{c.other_user_name}</div>
-                                        <span className="si-member-role si-role-member">Contact</span>
-                                    </div>
-                                    <i className="fas fa-plus" style={{color:'var(--accent-teal)'}}></i>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Confirm Add Member Modal */}
-            {confirmAddUser && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3>Add to Squad</h3>
-                        <p>Add <strong>{confirmAddUser.other_user_name}</strong> to the squad?</p>
-                        <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setConfirmAddUser(null)} disabled={isProcessing}>Cancel</button>
-                            <button className="cm-btn-primary" onClick={executeAddMember} disabled={isProcessing}>
-                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Confirm Add'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Custom Kick Confirmation Modal */}
-            {confirmModal && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3>Kick Member</h3>
-                        <p>Are you sure you want to remove <strong>{confirmModal.name}</strong> from the squad? They can rejoin if the group is public.</p>
-                        <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setConfirmModal(null)} disabled={isProcessing}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={() => executeKick(confirmModal.uid)} disabled={isProcessing}>
-                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Kick User'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Custom Ban/Mute Configuration Modal */}
-            {punishConfig && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3>{punishConfig.type === 'ban' ? 'Ban Member' : 'Restrict Writing'}</h3>
-                        <p>Configure restriction for <strong>{members[punishConfig.uid]?.name}</strong>:</p>
-                        
-                        <div className="cm-radio-group">
-                            <label className="cm-radio-label">
-                                <input type="radio" checked={punishConfig.isTemp} onChange={() => setPunishConfig({...punishConfig, isTemp: true})} />
-                                Temporary
-                            </label>
-                            <label className="cm-radio-label">
-                                <input type="radio" checked={!punishConfig.isTemp} onChange={() => setPunishConfig({...punishConfig, isTemp: false})} />
-                                Permanent
-                            </label>
-                        </div>
-
-                        {punishConfig.isTemp && (
-                            <div className="cm-duration-inputs">
-                                <input 
-                                    type="number" 
-                                    min="1" 
-                                    value={punishConfig.duration} 
-                                    onChange={e => setPunishConfig({...punishConfig, duration: e.target.value === '' ? '' : parseInt(e.target.value)})} 
-                                />
-                                <select value={punishConfig.unit} onChange={e => setPunishConfig({...punishConfig, unit: e.target.value})}>
-                                    <option value="minutes">Minutes</option>
-                                    <option value="hours">Hours</option>
-                                    <option value="days">Days</option>
-                                    <option value="weeks">Weeks</option>
-                                    <option value="months">Months</option>
-                                </select>
-                            </div>
-                        )}
-
-                        <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setPunishConfig(null)} disabled={isProcessing}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={executePunishment} disabled={isProcessing}>
-                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : `Apply ${punishConfig.type === 'ban' ? 'Restriction' : 'Restriction'}`}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Elegant Status Toast / Notice */}
-            {alertNotice && (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
-                    <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
-                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: alertNotice.success ? '#42d7b8' : '#ffab40', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {alertNotice.success ? <i className="fas fa-check-circle"></i> : <i className="fas fa-exclamation-circle"></i>} {alertNotice.title || 'Notice'}
-                        </h3>
-                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>{alertNotice.msg || alertNotice}</p>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <button style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, fontFamily: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', fontSize: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setAlertNotice(null)}>Okay</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Custom Disband Modal */}
-            {disbandModal && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3 style={{color: '#ff5f5f'}}>Delete Group</h3>
-                        <p>This action is irreversible. All messages, files, and links will be permanently deleted.</p>
-                        <p style={{fontSize: '0.8rem', color: '#aaa', marginTop: '10px'}}>Type <strong>{chatInfo.title}</strong> to confirm:</p>
-                        <input 
-                            type="text" 
-                            className="cm-text-input" 
-                            placeholder={chatInfo.title}
-                            value={disbandInput}
-                            onChange={e => setDisbandInput(e.target.value)}
-                        />
-                        <div className="cm-footer" style={{marginTop: '1rem'}}>
-                            <button className="cm-btn-cancel" onClick={() => { setDisbandModal(false); setDisbandInput(''); }} disabled={isProcessing}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={executeDisband} disabled={disbandInput !== chatInfo.title || isProcessing}>
-                                {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : 'Delete Group'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
