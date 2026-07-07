@@ -504,4 +504,90 @@
 }
 .toggle-switch.on { background: var(--accent-teal); }
 .toggle-switch.on::after { transform: translateX(16px); background: #000; }
-.toggle-switch.on::after { transform: translateX(16px); background: #000; }
+
+/* ==============================================================================
+   LIVE STAGE HIGH-FIDELITY COMPRESSION & TRANSITIONS
+   ============================================================================== */
+
+/* Base Stage Transition Setup */
+.stage-core {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stage-host-node {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stage-host-avatar-wrapper {
+    position: relative; 
+    width: 110px; 
+    height: 110px; 
+    border-radius: 50%;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.host-image-clip, 
+.miron-host-orb {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stage-host-label {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stage-host-label h2, 
+.stage-host-label p {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.immersive-listeners-panel {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Compact Stage Mode Transitions & Scaling */
+.stage-core.compact-stage-mode { 
+    gap: 0.5rem; 
+    padding-top: 0.5rem; 
+}
+
+.stage-core.compact-stage-mode .stage-host-node { 
+    width: 48px; 
+    height: 48px; 
+}
+
+.stage-core.compact-stage-mode .stage-host-avatar-wrapper { 
+    width: 48px; 
+    height: 48px; 
+}
+
+.stage-core.compact-stage-mode .host-image-clip, 
+.stage-core.compact-stage-mode .miron-host-orb { 
+    width: 48px; 
+    height: 48px; 
+    font-size: 1.2rem; 
+    border-width: 2px; 
+}
+
+.stage-core.compact-stage-mode .stage-host-label { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    margin-top: 0; 
+}
+
+.stage-core.compact-stage-mode .stage-host-label h2 { 
+    font-size: 0.9rem; 
+    margin: 0; 
+}
+
+.stage-core.compact-stage-mode .stage-host-label p { 
+    font-size: 0.65rem; 
+    margin: 0; 
+}
+
+.stage-core.compact-stage-mode .immersive-listeners-panel { 
+    padding: 6px 12px; 
+}
