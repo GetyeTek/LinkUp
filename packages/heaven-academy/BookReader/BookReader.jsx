@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { invokeBookReader } from '../api.js';
 import './BookReader.css';
 import { renderBookBlock } from './subjects/Registry.jsx';
+import { compileAIContext } from './subjects/utils.jsx';
 import BookLoader from '../components/BookLoader.jsx';
 import ReportModal from '../components/ReportModal.jsx';
 import TableOfContents from './components/TableOfContents.jsx';
@@ -522,93 +523,8 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
         }
     };
 
-    const extractTextFromBlock = (b) => {
-        if (!b) return '';
-        let text = [];
-        if (b.main) text.push(b.main);
-        if (b.sub) text.push(b.sub);
-        if (b.title) text.push(b.title);
-        if (b.body) text.push(b.body);
-        if (b.text) text.push(b.text);
-        if (b.items && Array.isArray(b.items)) text.push(b.items.join(' '));
-        if (b.premises) text.push(b.premises.join(' '));
-        if (b.conclusion) text.push(b.conclusion);
-        if (b.question) text.push(b.question);
-        
-        // Combine and strip any basic HTML tags (like <sup>) for pure text context
-        return text.join(' ').replace(/<[^>]+>/g, '').trim(); 
-    };
-
     const handleAIExplore = (pageIdx, targetIdx) => {
-        console.group(`%c[Academy-RAG]%c Context Sync: Page ${pageIdx + 1} | Block ${targetIdx}`, 'color: #42d7b8', 'color: inherit');
-        
-        const pageContent = pages[pageIdx].content_json || [];
-        const collectedBlocks = [];
-        let topReached = targetIdx;
-        
-        // 1. Anchor: Include the block that was actually tapped
-        collectedBlocks.push(pageContent[targetIdx]);
-        
-        // 2. Climb UP: Grab related content until we hit another AI tag or page top
-        for (let i = targetIdx - 1; i >= 0; i--) {
-            if (pageContent[i].ai_ready) break;
-            collectedBlocks.unshift(pageContent[i]);
-            topReached = i;
-        }
-        console.log(`[Climb UP] Reached block index: ${topReached}`);
-        
-        // 3. Climb DOWN: Grab related content until we hit another AI tag or page bottom
-        let bottomReached = targetIdx;
-        for (let i = targetIdx + 1; i < pageContent.length; i++) {
-            if (pageContent[i].ai_ready) break;
-            collectedBlocks.push(pageContent[i]);
-            bottomReached = i;
-        }
-        console.log(`[Climb DOWN] Reached block index: ${bottomReached}`);
-        
-        // 4. Synthesize the context
-        let combinedText = collectedBlocks
-            .map(extractTextFromBlock)
-            .filter(t => t.length > 0)
-            .join('\n\n');
-
-        // 5. Cross-page Tail Check
-        if (topReached === 0 && pageIdx > 0) {
-            console.log(`[Boundary Event] Hit top of Page ${pageIdx + 1}. Analyzing Page ${pageIdx}...`);
-            const prevPageContent = pages[pageIdx - 1].content_json || [];
-            
-            // Loop backwards on the previous page to skip empty footers/spacers
-            let lastRealText = '';
-            for (let j = prevPageContent.length - 1; j >= 0; j--) {
-                const tempText = extractTextFromBlock(prevPageContent[j]).trim();
-                if (tempText) {
-                    lastRealText = tempText;
-                    console.log(`[Boundary Data] Found actual text at block ${j} of previous page.`);
-                    break;
-                }
-            }
-
-            if (lastRealText) {
-                // Heuristic check: does it end without a terminal punctuation mark?
-                const hasTerminalPunctuation = /[.!?]['"]?$/.test(lastRealText);
-                console.log(`[Punctuation Check] String: "...${lastRealText.slice(-15)}"`);
-                console.log(`[Punctuation Check] Has terminal punctuation? ${hasTerminalPunctuation}`);
-                
-                if (!hasTerminalPunctuation) {
-                    console.log(`[Action] Sentence is fractured! Stitching previous paragraph to current context.`);
-                    combinedText = lastRealText + ' ' + combinedText;
-                } else {
-                    console.log(`[Action] Sentence is whole. No cross-page stitching required.`);
-                }
-            } else {
-                console.log(`[Boundary Data] Previous page contained no viable text blocks.`);
-            }
-        }
-        
-        console.log(`[Final Output] ${combinedText.substring(0, 100)}...`);
-        console.groupEnd();
-            
-        // 6. Open Mini Miron with the unified context
+        const combinedText = compileAIContext(pages, pageIdx, targetIdx);
         setMiniMironText(combinedText);
     };
 
