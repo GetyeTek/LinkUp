@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
-import { createPortal } from 'react-dom';
+
 import LiveStageSetupModal from './components/LiveStageSetupModal.jsx';
 import ChatSearchOverlay from './components/ChatSearchOverlay.jsx';
 import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
@@ -914,34 +914,34 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
         </div>
         
-        {/* React Portal escapes the Hidden Window boundary to float across the entire app */}
-        {liveState !== 'none' && liveCredentials && createPortal(
-            <LiveKitRoom
-                serverUrl={liveCredentials.url}
-                token={liveCredentials.token}
-                connect={true}
-                audio={false}
-                video={false}
-                options={{
-                    webAudioMix: true,
-                    publishDefaults: {
-                        audioBitrate: 48000,
-                        dtx: true
-                    }
-                }}
-            >
-                <LiveStageContent 
-                    conversationId={chat.conversation_id}
-                    chatInfo={localChatInfo}
-                    members={members}
-                    liveState={liveState}
-                    setLiveState={setLiveState}
-                    onLeave={endLiveSession}
-                    currentUser={currentUser}
-                />
-                <RoomAudioRenderer />
-            </LiveKitRoom>,
-            document.body
+        {liveState !== 'none' && liveCredentials && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 99999, pointerEvents: 'auto' }}>
+                <LiveKitRoom
+                    serverUrl={liveCredentials.url}
+                    token={liveCredentials.token}
+                    connect={true}
+                    audio={false}
+                    video={false}
+                    options={{
+                        webAudioMix: true,
+                        publishDefaults: {
+                            audioBitrate: 48000,
+                            dtx: true
+                        }
+                    }}
+                >
+                    <LiveStageContent 
+                        conversationId={chat.conversation_id}
+                        chatInfo={localChatInfo}
+                        members={members}
+                        liveState={liveState}
+                        setLiveState={setLiveState}
+                        onLeave={endLiveSession}
+                        currentUser={currentUser}
+                    />
+                    <RoomAudioRenderer />
+                </LiveKitRoom>
+            </div>
         )}
         </>
     );
