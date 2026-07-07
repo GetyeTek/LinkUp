@@ -6,12 +6,7 @@ import AvatarCropperModal from '../../src/core/components/AvatarCropperModal.jsx
 import { invokeLiveToken, invokeSocial } from './api.js';
 import './GroupChat.css';
 import FloatingLiveOrb from './components/FloatingLiveOrb.jsx';
-
-const ConnectionRing = ({ isConnected }) => (
-    <svg className="connection-ring-svg" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="48" className={`ring-path ${isConnected ? 'connected' : 'connecting'}`} />
-    </svg>
-);
+import ConnectionRing from './components/ConnectionRing.jsx';
 
 const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser }) => {
     const [qInput, setQInput] = useState('');
