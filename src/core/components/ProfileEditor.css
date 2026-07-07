@@ -1,0 +1,103 @@
+/* --- FULL SCREEN ACCOUNT SETTINGS --- */
+.profile-edit-overlay { 
+    position: fixed; 
+    inset: 0; 
+    background-color: var(--bg-dark); 
+    z-index: 5000; 
+    display: flex; 
+    flex-direction: column; 
+    animation: slideInPage 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+    font-family: 'Poppins', sans-serif;
+}
+
+@keyframes slideInPage { 
+    from { transform: translateX(100%); } 
+    to { transform: translateX(0); } 
+}
+
+.profile-edit-card { 
+    width: 100%; 
+    height: 100%; 
+    display: flex; 
+    flex-direction: column; 
+    background: transparent;
+}
+
+.pe-header { 
+    padding: 1.25rem 1.5rem; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    background: rgba(12, 12, 12, 0.85); 
+    backdrop-filter: blur(20px); 
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    position: sticky; 
+    top: 0; 
+    z-index: 10; 
+}
+
+.pe-header h2 { 
+    font-size: 1.3rem; 
+    font-weight: 600; 
+    margin: 0; 
+    color: #fff;
+    letter-spacing: -0.3px;
+}
+
+.pe-body { 
+    flex: 1; 
+    overflow-y: auto; 
+    padding: 2rem 1.5rem; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 2.5rem; 
+    max-width: 800px; 
+    margin: 0 auto; 
+    width: 100%; 
+}
+.pe-body::-webkit-scrollbar { display: none; }
+
+/* --- HIGH-FIDELITY ACCOUNT EDITOR FIXES --- */
+.profile-edit-overlay .input-group-sm input,
+.profile-edit-overlay .wizard-select {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 14px 16px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.profile-edit-overlay .input-group-sm input:focus,
+.profile-edit-overlay .wizard-select:focus {
+    border-color: var(--accent-teal);
+    background: rgba(66, 215, 184, 0.05);
+    box-shadow: 0 0 0 4px rgba(66, 215, 184, 0.1);
+}
+
+.profile-edit-overlay .handle-input-wrapper { display: flex; align-items: center; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 0 14px; transition: all 0.3s ease; }
+.profile-edit-overlay .handle-input-wrapper:focus-within { border-color: rgba(66, 215, 184, 0.5); background: rgba(66, 215, 184, 0.05); }
+.profile-edit-overlay .handle-input-wrapper.status-available { border-color: var(--accent-teal); }
+.profile-edit-overlay .handle-input-wrapper.status-taken, .profile-edit-overlay .handle-input-wrapper.status-invalid { border-color: #ff5f5f; }
+.profile-edit-overlay .handle-prefix { color: #888; font-weight: 700; font-size: 1.1rem; }
+.profile-edit-overlay .handle-input-wrapper input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: 'Roboto Mono', monospace; font-size: 1rem; font-weight: 600; padding: 12px 8px; }
+
+.ui-textarea { width: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 14px; color: #fff; font-family: 'Poppins', sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s; resize: vertical; min-height: 80px; }
+.ui-textarea:focus { border-color: var(--accent-teal); background: rgba(0,0,0,0.6); }
+
+/* Custom Chip Dropdown */
+.pe-dropdown-summary {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s;
+}
+.pe-dropdown-summary:hover { background: rgba(255, 255, 255, 0.1); }
+.pe-dropdown-summary.expanded { border-color: var(--accent-teal); }
+.pe-dropdown-summary .is-empty { color: #888; }
+.pe-dropdown-summary .has-value { color: #fff; font-weight: 500; }
+
+.pe-btn { flex: 1; padding: 14px; border-radius: 12px; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; border: none; transition: transform 0.2s; }
+.pe-btn:active:not(:disabled) { transform: scale(0.98); }
+.pe-btn.save { width: 100%; background: var(--accent-teal); color: #000; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1rem; margin-top: 1rem; box-shadow: 0 4px 15px rgba(66, 215, 184, 0.2); }
+.pe-btn.save:disabled { background: rgba(255,255,255,0.1); color: #666; cursor: not-allowed; box-shadow: none; }
