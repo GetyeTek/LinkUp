@@ -7,6 +7,7 @@ import { invokeLiveToken, invokeSocial } from './api.js';
 import './GroupChat.css';
 import FloatingLiveOrb from './components/FloatingLiveOrb.jsx';
 import ConnectionRing from './components/ConnectionRing.jsx';
+import GroupInfoPanel from './components/GroupInfoPanel.jsx';
 
 const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser }) => {
     const [qInput, setQInput] = useState('');
