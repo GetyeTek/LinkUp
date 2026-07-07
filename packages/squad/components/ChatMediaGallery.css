@@ -1,0 +1,37 @@
+.media-gallery-grid {
+    display: grid; gap: 4px; border-radius: 12px; overflow: hidden; width: 100%; max-width: 340px; margin-top: 4px;
+}
+.media-gallery-grid[data-count="1"] { grid-template-columns: 1fr; }
+.media-gallery-grid[data-count="2"] { grid-template-columns: 1fr 1fr; }
+.media-gallery-grid[data-count="3"] { grid-template-columns: 1fr 1fr; }
+.media-gallery-grid[data-count="3"] .gallery-item:first-child { grid-column: span 2; aspect-ratio: 2/1; }
+.media-gallery-grid[data-count="4"] { grid-template-columns: 1fr 1fr; }
+.media-gallery-grid[data-count="5"], .media-gallery-grid[data-more="true"] { grid-template-columns: 1fr 1fr 1fr; }
+.media-gallery-grid[data-count="5"] .gallery-item:nth-child(1), .media-gallery-grid[data-more="true"] .gallery-item:nth-child(1),
+.media-gallery-grid[data-count="5"] .gallery-item:nth-child(2), .media-gallery-grid[data-more="true"] .gallery-item:nth-child(2) { grid-column: span 1.5; }
+
+.gallery-item { position: relative; aspect-ratio: 1; cursor: pointer; overflow: hidden; }
+.media-gallery-grid[data-count="1"] .gallery-item { aspect-ratio: auto; max-height: 300px; }
+.gallery-item img, .gallery-item video { width: 100%; height: 100%; object-fit: cover; }
+.media-gallery-grid[data-count="1"] .gallery-item img, .media-gallery-grid[data-count="1"] .gallery-item video { object-fit: contain; background: rgba(0,0,0,0.2); }
+
+.gallery-more-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.6); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; font-weight: 700; backdrop-filter: blur(4px);
+}
+.gallery-more-overlay::after { content: "+" attr(data-more-count); }
+
+.bubble-attachment { margin-top: 4px; }
+.bubble-file-box {
+    display: flex; align-items: center; gap: 12px; background: rgba(0, 0, 0, 0.25);
+    padding: 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05); color: inherit;
+    cursor: pointer; transition: background 0.2s;
+}
+.bubble-file-box:hover { background: rgba(0, 0, 0, 0.4); }
+.bubble-file-icon {
+    width: 32px; height: 32px; border-radius: 8px; background: rgba(255, 255, 255, 0.1);
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;
+}
+.bubble-file-info { display: flex; flex-direction: column; overflow: hidden; }
+.bubble-file-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
