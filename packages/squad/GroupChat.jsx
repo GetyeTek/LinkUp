@@ -109,7 +109,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         showLiveSetup, setShowLiveSetup, liveSetupData, setLiveSetupData,
         isStartingLive, showRecoveryModal,
         startLiveSession, joinLiveSession, endLiveSession
-    } = useLiveStageSession({ chat, localChatInfo, setLocalChatInfo, currentUser, isMeHost, isLiveActive, isLiveDead, setAlertNotice });
+    } = useLiveStageSession({ chat, localChatInfo, setLocalChatInfo, currentUser, isMeHost, isLiveDead, setAlertNotice });
 
     const markAsRead = async () => {
         if (!chat.conversation_id) return;
