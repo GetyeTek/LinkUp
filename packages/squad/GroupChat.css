@@ -591,3 +591,64 @@
 .stage-core.compact-stage-mode .immersive-listeners-panel { 
     padding: 6px 12px; 
 }
+
+/* ==============================================================================
+   IMMERSIVE LISTENERS OVERLAPPING AVATAR STACK
+   ============================================================================== */
+
+/* The container holding the "X Listening" title and the avatar row */
+.immersive-listeners-panel {
+    width: 100%; 
+    max-width: 320px; 
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--glass-border); 
+    border-radius: 20px; 
+    padding: 12px 16px;
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+}
+
+/* Left-hand count title styling */
+.listeners-title { 
+    font-size: 0.8rem; 
+    font-weight: 600; 
+    color: var(--text-secondary-dark); 
+}
+
+/* The flex row wrapper lining up the avatars */
+.listeners-row { 
+    display: flex; 
+    align-items: center; 
+}
+
+/* Overlapping individual avatar sizing and negative pull-back */
+.listeners-row img { 
+    width: 28px; 
+    height: 28px; 
+    border-radius: 50%; 
+    border: 2px solid #030303; /* Matches stage dark background for cutout illusion */
+    margin-left: -8px; /* Key rule: forces the images to overlap */
+    object-fit: cover; 
+}
+
+/* Ensure the first element in the stack starts cleanly at the edge */
+.listeners-row img:first-child {
+    margin-left: 0;
+}
+
+/* The terminal "+X" count ring when there are more than 4 participants */
+.listeners-row .listeners-overflow {
+    width: 28px; 
+    height: 28px; 
+    border-radius: 50%; 
+    background: #1a1a24;
+    border: 2px solid #030303; /* Continuous cutout masking */
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    font-size: 0.65rem; 
+    font-weight: 700; 
+    margin-left: -8px; /* Aligns with the overlapping pattern */
+    color: var(--accent-teal);
+}
