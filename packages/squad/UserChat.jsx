@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import ChatSearchOverlay from './components/ChatSearchOverlay.jsx';
+import MessageContextMenu from './components/MessageContextMenu.jsx';
+import ChatInputDock from './components/ChatInputDock.jsx';
+import ChatMediaGallery from './components/ChatMediaGallery.jsx';
+import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
 import './UserChat.css';
 
 const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onClose, onForward, onOriginClick, onOpenUser }) => {
@@ -16,7 +20,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
     const [pendingAttachments, setPendingAttachments] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
-    const [fullscreenMedia, setFullscreenMedia] = useState(null);
+    const [fullscreenGallery, setFullscreenGallery] = useState(null);
     const [alertNotice, setAlertNotice] = useState(null);
     
     // Search State
@@ -222,20 +226,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
         e.target.value = null;
     };
 
-    const getFileIconProps = (filename) => {
-        if (!filename) return { icon: 'fa-file', color: 'var(--accent-teal)' };
-        const ext = filename.split('.').pop().toLowerCase();
-        switch(ext) {
-            case 'pdf': return { icon: 'fa-file-pdf', color: '#ff4757' };
-            case 'doc': case 'docx': return { icon: 'fa-file-word', color: '#3498db' };
-            case 'xls': case 'xlsx': case 'csv': return { icon: 'fa-file-excel', color: '#2ecc71' };
-            case 'ppt': case 'pptx': return { icon: 'fa-file-powerpoint', color: '#e67e22' };
-            case 'txt': return { icon: 'fa-file-lines', color: '#95a5a6' };
-            case 'epub': return { icon: 'fa-book', color: '#9b59b6' };
-            case 'zip': case 'rar': case '7z': return { icon: 'fa-file-zipper', color: '#f1c40f' };
-            default: return { icon: 'fa-file', color: 'var(--accent-teal)' };
-        }
-    };
+
 
     const handleSend = async () => {
         if ((!input.trim() && pendingAttachments.length === 0) || isUploading) return;
@@ -607,56 +598,11 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                                     </div>
                                 ) : null}
                                 
-                                {/* ATTACHMENTS RENDER */}
-                                                                    {(() => {
-                                        if (!m.attachments || m.attachments.length === 0) return null;
-                                        
-                                        const mediaItems = m.attachments.filter(a => a.type.startsWith('image/') || a.type.startsWith('video/'));
-                                        const docItems = m.attachments.filter(a => !a.type.startsWith('image/') && !a.type.startsWith('video/'));
-                                        const hasMoreMedia = mediaItems.length > 5;
-                                        const displayMedia = mediaItems.slice(0, 5);
-
-                                        return (
-                                            <>
-                                                {displayMedia.length > 0 && (
-                                                    <div className="media-gallery-grid" data-count={displayMedia.length} data-more={hasMoreMedia.toString()}>
-                                                        {displayMedia.map((att, i) => {
-                                                            const isLast = i === 4;
-                                                            return (
-                                                                <div key={i} className="gallery-item" onClick={(e) => { 
-                                                                    e.stopPropagation(); 
-                                                                    setFullscreenMedia(att); // Temporary placeholder before FullscreenGallery
-                                                                }}>
-                                                                    {att.type.startsWith('video/') ? (
-                                                                        <video src={att.url} />
-                                                                    ) : (
-                                                                        <img src={att.url} alt="Shared Image" />
-                                                                    )}
-                                                                    {isLast && hasMoreMedia && (
-                                                                        <div className="gallery-more-overlay" data-more-count={(mediaItems.length - 5).toString()}></div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                                
-                                                {docItems.map((att, i) => {
-                                                    const iconData = getFileIconProps(att.name);
-                                                    return (
-                                                    <div key={i} className="bubble-attachment" style={{marginTop: i === 0 && displayMedia.length === 0 ? '0' : '4px'}}>
-                                                        <div className="bubble-file-box" onClick={(e) => { e.stopPropagation(); handleDownload(att.url, att.name); }}>
-                                                            <div className="bubble-file-icon" style={{color: iconData.color}}><i className={`fas ${iconData.icon}`}></i></div>
-                                                            <div className="bubble-file-info">
-                                                                <span className="bubble-file-name">{att.name}</span>
-                                                                <span style={{fontSize: '0.65rem', color: '#888'}}>{(att.size / 1024 / 1024).toFixed(2)} MB</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )})}
-                                            </>
-                                        );
-                                    })()}
+                                <ChatMediaGallery
+                                    attachments={m.attachments}
+                                    setFullscreenGallery={setFullscreenGallery}
+                                    handleDownload={handleDownload}
+                                />
 
                                 {m.text && <div className="bubble-text-content">{m.text}</div>}
                             </div>
@@ -765,51 +711,43 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                 </div>
             </footer>
 
-            {activeMenu && (
-                <div className="msg-actions-menu-fixed" style={{ left: activeMenu.x, top: activeMenu.y }}>
-                    {!activeMenu.isMine && (
-                        <button className="msg-action-btn" onClick={() => startReply(activeMenu.msg)}>
-                            <i className="fa-solid fa-reply"></i> Reply
-                        </button>
-                    )}
-                    {activeMenu.msg.text && (
-                        <button className="msg-action-btn" onClick={() => handleCopy(activeMenu.msg.text)}>
-                            <i className="fa-solid fa-copy"></i> Copy Text
-                        </button>
-                    )}
-                    {activeMenu.msg.attachments && activeMenu.msg.attachments.length > 0 && (
-                        <button className="msg-action-btn" onClick={() => {
-                            if (activeMenu.msg.attachments.length > 1) {
-                                handleDownloadAll(activeMenu.msg.attachments);
-                            } else {
-                                handleDownload(activeMenu.msg.attachments[0].url, activeMenu.msg.attachments[0].name);
-                            }
-                        }}>
-                            <i className="fa-solid fa-download"></i> {activeMenu.msg.attachments.length > 1 ? 'Download All Files' : 'Download File'}
-                        </button>
-                    )}
-                    <button className="msg-action-btn" onClick={() => { 
-                        onForward({
-                            ...activeMenu.msg, 
-                            resolved_sender_name: activeMenu.isMine ? userProfile?.full_name : chatTitle,
-                            resolved_sender_avatar: activeMenu.isMine ? userProfile?.avatar_url : chatAvatar
-                        }); 
-                        setActiveMenu(null); 
-                    }}>
-                        <i className="fa-solid fa-share"></i> Forward
-                    </button>
-                    {activeMenu.isMine && (
-                        <button className="msg-action-btn" onClick={() => startEditing(activeMenu.msg)}>
-                            <i className="fa-solid fa-pen"></i> Edit
-                        </button>
-                    )}
-                    {activeMenu.isMine && (
-                        <button className="msg-action-btn delete" onClick={() => deleteMessage(activeMenu.msg.id)}>
-                            <i className="fa-solid fa-trash"></i> Delete
-                        </button>
-                    )}
-                </div>
-            )}
+            <MessageContextMenu 
+                activeMenu={activeMenu}
+                onClose={() => setActiveMenu(null)}
+                onReply={startReply}
+                onCopy={handleCopy}
+                onDownload={handleDownload}
+                onDownloadAll={handleDownloadAll}
+                onForward={(msg) => {
+                    onForward({
+                        ...msg, 
+                        resolved_sender_name: msg.sender_id === currentUser.id ? userProfile?.full_name : chatTitle,
+                        resolved_sender_avatar: msg.sender_id === currentUser.id ? userProfile?.avatar_url : chatAvatar
+                    });
+                }}
+                onEdit={startEditing}
+                onDelete={deleteMessage}
+            />
+
+            <ChatInputDock
+                editingMessage={editingMessage}
+                setEditingMessage={setEditingMessage}
+                replyingTo={replyingTo}
+                setReplyingTo={setReplyingTo}
+                scrollToMessage={scrollToMessage}
+                resolveReplyUser={(id) => !id ? 'Deleted Account' : chatTitle}
+                pendingAttachments={pendingAttachments}
+                setPendingAttachments={setPendingAttachments}
+                isUploading={isUploading}
+                uploadProgress={uploadProgress}
+                fileInputRef={fileInputRef}
+                input={input}
+                setInput={setInput}
+                handleInputChange={handleInputChange}
+                handleSend={handleSend}
+                handleFileSelect={handleFileSelect}
+            />
+
             {/* Custom Alert Notice for UserChat */}
             {alertNotice && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
@@ -825,20 +763,10 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                 </div>
             )}
 
-
-            {fullscreenMedia && (
-                <div className="fullscreen-media-overlay" onClick={() => setFullscreenMedia(null)}>
-                    <button className="icon-button close-media" onClick={() => setFullscreenMedia(null)}>
-                        <i className="fas fa-times"></i>
-                    </button>
-                    {fullscreenMedia.type.startsWith('video/') ? (
-                        <video src={fullscreenMedia.url} controls autoPlay onClick={e => e.stopPropagation()} style={{maxWidth: '100%', maxHeight: '100%'}} />
-                    ) : (
-                        <img src={fullscreenMedia.url} alt="Fullscreen Media" onClick={e => e.stopPropagation()} />
-                    )}
-                </div>
-            )}
-        </div>
+            <FullscreenMediaGallery 
+                fullscreenGallery={fullscreenGallery} 
+                setFullscreenGallery={setFullscreenGallery} 
+            />
     );
 };
 
