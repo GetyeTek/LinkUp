@@ -13,7 +13,7 @@ import GroupInfoPanel from './components/GroupInfoPanel.jsx';
 import LiveStageContent from './components/LiveStageContent.jsx';
 import MessageContextMenu from './components/MessageContextMenu.jsx';
 import ChatInputDock from './components/ChatInputDock.jsx';
-import ChatMediaGallery from './components/ChatMediaGallery.jsx';
+import ChatBubble from './components/ChatBubble.jsx';
 
 
 
@@ -983,112 +983,31 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         const sender = isDeletedAccount 
                             ? { name: 'Deleted Account', role: 'member' } 
                             : (members[m.sender_id] || { name: 'Unknown User', role: 'member' });
-                        const isMenuOpen = activeMenu?.msg?.id === m.id;
                         
                         const repliedMsg = m.reply_to_id ? messages.find(msg => msg.id === m.reply_to_id) : null;
                         const isMissingReply = m.reply_to_id && !repliedMsg;
+                        const resolvedReplyName = !repliedMsg?.sender_id ? 'Deleted Account' : (members[repliedMsg.sender_id]?.name || 'Unknown User');
 
                         return (
-                            <div 
-                                key={m.id} 
-                                id={`sq-msg-${m.id}`}
-                                className={`squad-msg-group ${isMine ? 'mine' : 'theirs'}`} 
-                                style={{ zIndex: isMenuOpen ? 100 : 1 }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (chat.is_preview) return; // Read-only context for preview
-                                    if (isMenuOpen) {
-                                        setActiveMenu(null);
-                                        return;
-                                    }
-                                    
-                                    let x = e.clientX || (e.touches && e.touches[0].clientX);
-                                    let y = e.clientY || (e.touches && e.touches[0].clientY);
-                                    
-                                    if (!x || !y) {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        x = rect.left + rect.width / 2;
-                                        y = rect.top + rect.height / 2;
-                                    }
-                                    
-                                    const menuW = 160;
-                                    const menuH = 200;
-                                    
-                                    if (x + menuW > window.innerWidth - 20) x = window.innerWidth - menuW - 20;
-                                    if (y + menuH > window.innerHeight - 80) y = window.innerHeight - menuH - 80;
-                                    if (y < 80) y = 80;
-                                    
-                                    setActiveMenu({ msg: m, isMine, x, y });
-                                }}
-                            >
-                                {!isMine && (
-                                    <img src={sender.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="squad-msg-avatar" onClick={(e) => { e.stopPropagation(); if(m.sender_id) onOpenUser(m.sender_id); }} style={{cursor: m.sender_id ? 'pointer' : 'default'}} />
-                                )}
-                                <div className="squad-bubble-wrapper">
-                                    {!isMine && (
-                                        <div className="squad-sender-name">
-                                            {sender.name}
-                                            {sender.role === 'owner' && <i className="fas fa-crown admin-crown"></i>}
-                                        </div>
-                                    )}
-                                    {(() => {
-                                        const hasMedia = m.attachments && m.attachments.length > 0;
-                                        const isNaked = hasMedia && (!m.text || m.text.trim() === '');
-                                        const bubbleClass = `squad-bubble ${hasMedia ? (isNaked ? 'media-bubble naked' : 'media-bubble captioned') : ''}`;
-                                        return (
-                                    <div className={bubbleClass}>
-                                    {m.forward_meta && (
-                                        <div className="forward-indicator" onClick={(e) => { e.stopPropagation(); onOriginClick(m.forward_meta); }}>
-                                            <div className="forward-bar"></div>
-                                            <div className="forward-info">
-                                                <span className="forward-label">Forwarded message</span>
-                                                <span className="forward-from">
-                                                    {m.forward_meta.original_sender_avatar && <img src={m.forward_meta.original_sender_avatar} className="forward-avatar" alt="Avatar"/>}
-                                                    {m.forward_meta.original_sender_name}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {repliedMsg ? (
-                                        <div className="squad-reply-quote" onClick={(e) => { e.stopPropagation(); scrollToMessage(m.reply_to_id); }}>
-                                            <div className="sq-quote-content">
-                                                <div className="sq-quote-user">
-    {!repliedMsg.sender_id ? 'Deleted Account' : (members[repliedMsg.sender_id]?.name || 'Unknown User')}
-</div>
-                                                <div className="sq-quote-text">{repliedMsg.text}</div>
-                                            </div>
-                                        </div>
-                                    ) : isMissingReply ? (
-                                        <div className="squad-reply-quote is-deleted">
-                                            <div className="sq-quote-content">
-                                                <div className="sq-quote-user">System</div>
-                                                <div className="sq-quote-text"><i>Original message deleted</i></div>
-                                            </div>
-                                        </div>
-                                    ) : null}
-                                    
-                                    <ChatMediaGallery
-                                        attachments={m.attachments}
-                                        setFullscreenGallery={setFullscreenGallery}
-                                        handleDownload={handleDownload}
-                                    />
-
-                                    {m.text && <div className="bubble-text-content">{m.text}</div>}
-                                    
-                                    <div className={`squad-time-meta ${isMine ? 'mine-meta' : ''}`}>
-                                        {m.is_edited && <span>edited</span>}
-                                        {formatTime(m.created_at)}
-                                        {isMine && (
-                                            m.status === 'pending' ? <i className="fa-solid fa-clock" style={{fontSize: '0.6rem'}}></i> : 
-                                            m.status === 'failed' ? <i className="fa-solid fa-circle-exclamation" style={{color: '#ff5f5f', fontSize: '0.7rem'}} title="Message Failed"></i> : 
-                                            <i className="fa-solid fa-check"></i>
-                                        )}
-                                    </div>
-                                </div>
-                                    );
-                                })()}
-                                </div>
-                            </div>
+                            <ChatBubble 
+                                key={m.id}
+                                msg={m}
+                                isMine={isMine}
+                                isGroup={true}
+                                sender={sender}
+                                isPreview={chat.is_preview}
+                                activeMenu={activeMenu}
+                                setActiveMenu={setActiveMenu}
+                                onOriginClick={onOriginClick}
+                                onOpenUser={onOpenUser}
+                                scrollToMessage={scrollToMessage}
+                                formatTime={formatTime}
+                                setFullscreenGallery={setFullscreenGallery}
+                                handleDownload={handleDownload}
+                                repliedMsg={repliedMsg}
+                                isMissingReply={isMissingReply}
+                                resolvedReplyName={resolvedReplyName}
+                            />
                         );
                     })
                 )}
