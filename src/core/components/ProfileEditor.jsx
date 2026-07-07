@@ -186,7 +186,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                     <div style={{ background: '#121212', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
                         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#ff5f5f' }}>Discard Changes?</h3>
                         <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>You have unsaved changes. Are you sure you want to leave?</p>
-                        <div style={{ display: 'flex', justify-content: 'flex-end', gap: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                             <button style={{ padding: '10px 18px', borderRadius: '10px', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }} onClick={() => setShowDiscardConfirm(false)}>Stay</button>
                             <button style={{ padding: '10px 18px', borderRadius: '10px', background: '#ff5f5f', color: '#fff', border: 'none', cursor: 'pointer' }} onClick={() => { setShowDiscardConfirm(false); setCroppedAvatar(null); onClose(); }}>Discard</button>
                         </div>
