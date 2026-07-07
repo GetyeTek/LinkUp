@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invokeBookReader } from '../api.js';
 import { usePinchToZoom } from './hooks/usePinchToZoom.js';
+import { useTextSelectionMenu } from './hooks/useTextSelectionMenu.js';
+import { useDraggable } from './hooks/useDraggable.js';
 import './BookReader.css';
 import { renderBookBlock } from './subjects/Registry.jsx';
 import { compileAIContext } from './subjects/utils.jsx';
@@ -260,142 +262,11 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
         if (pageCountRef.current) pageCountRef.current.innerText = val;
     };
 
-    // 6. Context Menu Logic (Zero-Latency Tracking)
-    // 7. Context Menu Logic (500ms Solid Debounce Tracking)
-    useEffect(() => {
-        let debounceTimer;
+    // 6. Context Menu Logic (Zero-Latency Tracking & Boundary Mathematics)
+    useTextSelectionMenu(viewportRef, pinchState, setContextMenu);
 
-        const checkSelection = () => {
-            if (pinchState.current.isPinching) return;
-            
-            const selection = window.getSelection();
-            if (selection && selection.toString().trim().length > 0) {
-                try {
-                    const range = selection.getRangeAt(0);
-                    const rect = range.getBoundingClientRect();
-                    if (rect.width === 0 && rect.height === 0) return;
-                    
-                    const menuWidth = 280; 
-                    const menuHeight = 140; // Updated to account for the taller, overhauled UI
-                    const verticalGap = 65; // High clearance to prevent overlapping OS teardrops/selection handles
-                    
-                    // Center the menu horizontally over the selection box
-                    let x = rect.left + (rect.width / 2) - (menuWidth / 2);
-                    let y = rect.top - menuHeight - verticalGap; 
-                    
-                    // Constrain horizontally to viewport boundaries
-                    x = Math.max(10, Math.min(x, window.innerWidth - menuWidth - 10));
-                    
-                    // SMART VERTICAL COLLISION DETECTOR
-                    if (rect.height > window.innerHeight - 150) {
-                        // Case A: Page-spanning selection. Center the menu vertically on screen
-                        // so it is always reachable and doesn't get pushed into off-screen voids.
-                        y = (window.innerHeight - menuHeight) / 2;
-                    } else if (y < 60) {
-                        // Case B: Selection is too close to the top. Flip menu to render BELOW selection.
-                        y = rect.bottom + verticalGap;
-                        
-                        // Failsafe: If flipping below also pushes it off the bottom of the screen, center it
-                        if (y + menuHeight > window.innerHeight - 20) {
-                            y = (window.innerHeight - menuHeight) / 2;
-                        }
-                    }
-                    
-                    setContextMenu({ x, y, text: selection.toString() });
-                } catch(e) {}
-            }
-        };
-
-        const handleSelectionChange = () => {
-            // Instantly hide the menu while dragging.
-            // Using a callback ensures we don't trigger unnecessary React re-renders if it's already null.
-            setContextMenu(prev => prev !== null ? null : prev);
-            
-            clearTimeout(debounceTimer);
-            
-            // 500ms is the sweet spot for mobile. Because OS teardrops swallow touch events, 
-            // we must wait exactly half a second of complete stillness to guarantee you stopped dragging.
-            debounceTimer = setTimeout(checkSelection, 500);
-        };
-
-        const handleScrollOrTouch = (e) => {
-            // Do not dismiss if the user is actually tapping the custom context menu itself
-            if (e && e.target && e.target.closest && e.target.closest('.reader-ctx-menu')) return;
-            setContextMenu(prev => prev !== null ? null : prev);
-        };
-
-        document.addEventListener('selectionchange', handleSelectionChange);
-        document.addEventListener('touchstart', handleScrollOrTouch, { passive: true });
-        
-        const viewport = viewportRef.current;
-        if (viewport) {
-            viewport.addEventListener('scroll', handleScrollOrTouch, { passive: true });
-        }
-
-        return () => { 
-            clearTimeout(debounceTimer); 
-            document.removeEventListener('selectionchange', handleSelectionChange); 
-            document.removeEventListener('touchstart', handleScrollOrTouch);
-            if (viewport) {
-                viewport.removeEventListener('scroll', handleScrollOrTouch);
-            }
-        };
-    }, []);
-
-    // 8. Zero-Latency Hardware Accelerated Dragging (With Tactile Feedback)
-    const handleDragStart = (e) => {
-        const isTouch = e.type === 'touchstart';
-        const clientX = isTouch ? e.touches[0].clientX : e.clientX;
-        const clientY = isTouch ? e.touches[0].clientY : e.clientY;
-        
-        if (!menuRef.current) return;
-
-        // Progressive Enhancement: Micro-haptic tick on touch devices
-        if (navigator.vibrate) {
-            try {
-                navigator.vibrate(12); // High-fidelity taptic "tick"
-            } catch (err) {}
-        }
-        
-        const rect = menuRef.current.getBoundingClientRect();
-        
-        const startX = clientX;
-        const startY = clientY;
-        const startLeft = rect.left;
-        const startTop = rect.top;
-
-        const onDragMove = (moveEvt) => {
-            const moveTouch = moveEvt.type === 'touchmove';
-            const moveX = moveTouch ? moveEvt.touches[0].clientX : moveEvt.clientX;
-            const moveY = moveTouch ? moveEvt.touches[0].clientY : moveEvt.clientY;
-            
-            const dx = moveX - startX;
-            const dy = moveY - startY;
-            
-            if (menuRef.current) {
-                // Instantly update layout positions directly in the DOM for maximum speed
-                menuRef.current.style.left = `${startLeft + dx}px`;
-                menuRef.current.style.top = `${startTop + dy}px`;
-            }
-            
-            if (moveEvt.cancelable) moveEvt.preventDefault();
-            moveEvt.stopPropagation();
-        };
-
-        const onDragEnd = () => {
-            document.removeEventListener('mousemove', onDragMove);
-            document.removeEventListener('mouseup', onDragEnd);
-            document.removeEventListener('touchmove', onDragMove);
-            document.removeEventListener('touchend', onDragEnd);
-        };
-
-        document.addEventListener('mousemove', onDragMove);
-        document.addEventListener('mouseup', onDragEnd);
-        document.addEventListener('touchmove', onDragMove, { passive: false });
-        document.addEventListener('touchend', onDragEnd);
-        
-        e.stopPropagation();
-    };
+    // 7. Zero-Latency Hardware Accelerated Dragging
+    const handleDragStart = useDraggable(menuRef);
 
     const toggleTheme = () => {
         const themes = ['dark', 'sepia', 'light'];
