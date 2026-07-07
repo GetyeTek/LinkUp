@@ -3,6 +3,8 @@ import { supabase } from '@linkup-platform/sdk-core';
 import { useParticipants, useLocalParticipant } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
 import FloatingLiveOrb from './FloatingLiveOrb.jsx';
 import ConnectionRing from './ConnectionRing.jsx';
+import LiveStageModPanel from './LiveStageModPanel.jsx';
+import LiveStageAttendantQs from './LiveStageAttendantQs.jsx';
 import { invokeSocial } from '../api.js';
 
 const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser }) => {
@@ -505,67 +507,22 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 </div>
 
                 {isMeHost ? (
-                    <div className="host-mod-panel">
-                        <div className="mod-tabs">
-                            <button className={hostTab === 'pending' ? 'active' : ''} onClick={() => setHostTab('pending')}>
-                                Inbox {pendingQs.length > 0 && <span className="tab-counter-badge">{pendingQs.length}</span>}
-                            </button>
-                            <button className={hostTab === 'approved' ? 'active' : ''} onClick={() => setHostTab('approved')}>
-                                Approved {approvedQs.length > 0 && <span className="tab-counter-badge">{approvedQs.length}</span>}
-                            </button>
-                        </div>
-                        <div className="mod-q-list">
-                            {(hostTab === 'pending' ? pendingQs : approvedQs).map(q => (
-                                <div key={q.id} className="mod-q-card">
-                                    <div className="mqc-header">{members[q.sender_id]?.name || 'Student'}</div>
-                                    <div className="mqc-text">{q.text}</div>
-                                    <div className="mqc-actions">
-                                        <button className="mod-btn pin" onClick={() => handleModAction(q.id, 'pin', { is_pinned: true, status: 'approved' })} disabled={modLoading?.id === q.id}>
-                                            {modLoading?.id === q.id && modLoading?.action === 'pin' ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fas fa-thumbtack"></i> Pin</>}
-                                        </button>
-                                        {hostTab === 'pending' && (
-                                            <button className="mod-btn approve" onClick={() => handleModAction(q.id, 'approve', { status: 'approved' })} disabled={modLoading?.id === q.id}>
-                                                {modLoading?.id === q.id && modLoading?.action === 'approve' ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fas fa-check"></i> Approve</>}
-                                            </button>
-                                        )}
-                                        <button className="mod-btn dismiss" onClick={() => handleModAction(q.id, 'drop', { status: 'dropped', is_pinned: false })} disabled={modLoading?.id === q.id}>
-                                            {modLoading?.id === q.id && modLoading?.action === 'drop' ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fas fa-trash"></i> Drop</>}
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                            {(hostTab === 'pending' ? pendingQs : approvedQs).length === 0 && (
-                                <div className="mod-empty">No questions in this queue.</div>
-                            )}
-                        </div>
-                    </div>
+                    <LiveStageModPanel 
+                        hostTab={hostTab}
+                        setHostTab={setHostTab}
+                        pendingQs={pendingQs}
+                        approvedQs={approvedQs}
+                        members={members}
+                        handleModAction={handleModAction}
+                        modLoading={modLoading}
+                    />
                 ) : (
-                    <div className="stage-questions-box">
-                        {attendantViewQs.map(q => {
-                            const isMe = q.sender_id === currentUser.id;
-                            
-                            return (
-                                <div key={q.id} className="stage-question-card" style={{ opacity: isMe && (q.status === 'pending' || q.status === 'dropped') ? 0.6 : 1 }}>
-                                    <div className="sq-meta">
-                                        <span>{members[q.sender_id]?.name || 'Student'}</span>
-                                        {isMe ? (
-                                            q.status === 'pending' ? (
-                                                <span className="q-status-badge">Pending Review <i className="fas fa-clock"></i></span>
-                                            ) : q.status === 'dropped' ? (
-                                                <span className="q-status-badge" style={{background: 'rgba(255, 95, 95, 0.15)', color: '#ff5f5f', border: '1px solid rgba(255, 95, 95, 0.3)'}}>Dropped <i className="fas fa-times"></i></span>
-                                            ) : (
-                                                <span className="q-status-badge" style={{background: 'rgba(66, 215, 184, 0.15)', color: 'var(--accent-teal)', border: '1px solid rgba(66, 215, 184, 0.3)'}}>Asked <i className="fas fa-check"></i></span>
-                                            )
-                                        ) : (
-                                            <span style={{ opacity: 0.8 }}>Question</span>
-                                        )}
-                                    </div>
-                                    <p className="sq-body-text" style={{ textDecoration: (isMe && q.status === 'dropped') ? 'line-through' : 'none' }}>{q.text}</p>
-                                </div>
-                            );
-                        })}
-                        <div ref={questionsEndRef} />
-                    </div>
+                    <LiveStageAttendantQs 
+                        attendantViewQs={attendantViewQs}
+                        members={members}
+                        currentUser={currentUser}
+                        questionsEndRef={questionsEndRef}
+                    />
                 )}
             </main>
 
