@@ -42,29 +42,7 @@
 .admin-crown { color: #ffab40; font-size: 0.7rem; filter: drop-shadow(0 0 5px rgba(255, 171, 64, 0.5)); }
 .squad-bubble { padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.4; word-break: break-word; min-width: 0; max-width: 100%; display: flex; flex-direction: column; gap: 8px; }
 
-/* --- MULTI-MEDIA GALLERY GRID --- */
-.media-gallery-grid {
-    display: grid; gap: 4px; border-radius: 12px; overflow: hidden; width: 100%; max-width: 340px; margin-top: 4px;
-}
-.media-gallery-grid[data-count="1"] { grid-template-columns: 1fr; }
-.media-gallery-grid[data-count="2"] { grid-template-columns: 1fr 1fr; }
-.media-gallery-grid[data-count="3"] { grid-template-columns: 1fr 1fr; }
-.media-gallery-grid[data-count="3"] .gallery-item:first-child { grid-column: span 2; aspect-ratio: 2/1; }
-.media-gallery-grid[data-count="4"] { grid-template-columns: 1fr 1fr; }
-.media-gallery-grid[data-count="5"], .media-gallery-grid[data-more="true"] { grid-template-columns: 1fr 1fr 1fr; }
-.media-gallery-grid[data-count="5"] .gallery-item:nth-child(1), .media-gallery-grid[data-more="true"] .gallery-item:nth-child(1),
-.media-gallery-grid[data-count="5"] .gallery-item:nth-child(2), .media-gallery-grid[data-more="true"] .gallery-item:nth-child(2) { grid-column: span 1.5; }
 
-.gallery-item { position: relative; aspect-ratio: 1; cursor: pointer; overflow: hidden; }
-.media-gallery-grid[data-count="1"] .gallery-item { aspect-ratio: auto; max-height: 300px; }
-.gallery-item img, .gallery-item video { width: 100%; height: 100%; object-fit: cover; }
-.media-gallery-grid[data-count="1"] .gallery-item img, .media-gallery-grid[data-count="1"] .gallery-item video { object-fit: contain; background: rgba(0,0,0,0.2); }
-
-.gallery-more-overlay {
-    position: absolute; inset: 0; background: rgba(0,0,0,0.6); color: white;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem; font-weight: 700; backdrop-filter: blur(4px);
-}
 
 /* Naked Media Bubbles */
 .squad-bubble.media-bubble.naked {
@@ -88,74 +66,11 @@
     padding: 0 6px;
 }
 
-/* Base Bubble Attachments (Ported from UserChat) */
-.bubble-file-box {
-    display: flex; align-items: center; gap: 12px; background: rgba(0, 0, 0, 0.25);
-    padding: 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05); color: inherit;
-}
-.mine .bubble-file-box { background: rgba(255, 255, 255, 0.15); border-color: rgba(0, 0, 0, 0.1); }
-.bubble-file-icon {
-    width: 32px; height: 32px; border-radius: 8px; background: rgba(255, 255, 255, 0.1);
-    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;
-}
-.mine .bubble-file-icon { background: rgba(0, 0, 0, 0.1); }
-.bubble-file-info { display: flex; flex-direction: column; overflow: hidden; }
-.bubble-file-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mine .squad-bubble { background: var(--accent-teal); color: #000; border-bottom-right-radius: 4px; font-weight: 500; }
 .theirs .squad-bubble { background: #1a1a24; border: 1px solid rgba(255,255,255,0.05); color: #e0e0e0; border-bottom-left-radius: 4px; }
-.squad-input-area { padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom)); background: #08080c; border-top: 1px solid rgba(255,255,255,0.05); z-index: 10; }
-.squad-dock { display: flex; align-items: center; background: #12121a; border: 1px solid rgba(255,255,255,0.1); border-radius: 99px; padding: 6px; }
-.squad-dock input { flex: 1; background: transparent; border: none; outline: none; color: #fff; padding: 10px 14px; font-family: 'Poppins', sans-serif; }
-.squad-send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-teal); border: none; color: #000; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: transform 0.2s; }
-.squad-send-btn:active:not(:disabled) { transform: scale(0.9); }
-.squad-send-btn:disabled { background: rgba(255,255,255,0.1); color: #666; cursor: not-allowed; }
-.squad-join-full-btn { width: 100%; background: var(--accent-teal); color: #000; font-weight: 700; font-size: 1rem; border: none; border-radius: 12px; padding: 14px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(66, 215, 184, 0.2); }
+.squad-join-full-btn { width: 100%; background: var(--accent-teal); color: #000; font-weight: 700; font-size: 1rem; border: none; border-radius: 12px; padding: 14px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(66, 215, 184, 0.2); margin-top: 1rem; }
 .squad-join-full-btn:active:not(:disabled) { transform: scale(0.98); }
 .squad-join-full-btn:disabled { background: rgba(66, 215, 184, 0.4); color: rgba(0,0,0,0.5); cursor: not-allowed; box-shadow: none; }
-/* --- SMART CONTEXT MENU --- */
-.squad-ctx-menu { 
-    position: fixed; 
-    background: rgba(18, 18, 24, 0.95); 
-    backdrop-filter: blur(25px); 
-    -webkit-backdrop-filter: blur(25px);
-    border: 1px solid rgba(255, 255, 255, 0.1); 
-    border-radius: 14px; 
-    padding: 6px; 
-    z-index: 5000; 
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 150px;
-    animation: menuPopFixed 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    transform-origin: top left;
-}
-
-@keyframes menuPopFixed {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-.squad-ctx-btn { 
-    background: transparent; 
-    border: none; 
-    padding: 10px 14px; 
-    color: #e0e0e0; 
-    font-family: 'Poppins', sans-serif; 
-    font-size: 0.85rem; 
-    font-weight: 500;
-    display: flex; 
-    align-items: center; 
-    gap: 10px; 
-    cursor: pointer; 
-    width: 100%; 
-    border-radius: 10px; 
-    transition: all 0.2s ease;
-    text-align: left;
-}
-.squad-ctx-btn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
-.squad-ctx-btn.delete { color: #ff5f5f; }
-.squad-ctx-btn.delete:hover { background: rgba(255, 95, 95, 0.1); color: #ff7675; }
 
 /* --- REPLY QUOTES --- */
 .squad-reply-quote {
@@ -182,50 +97,9 @@
 .sq-quote-text { font-size: 0.8rem; color: #a0a0a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.8; display: block; width: 100%; }
 .mine .sq-quote-text { color: #000; opacity: 0.7; }
 
-/* --- EDIT / REPLY DOCK HEADERS --- */
-.squad-input-mode-header {
-    display: flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.04);
-    padding: 8px 15px;
-    border-radius: 12px 12px 0 0;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-bottom: none;
-    gap: 12px;
-    animation: slideUpMode 0.3s ease;
-    margin-bottom: -10px;
-    padding-bottom: 18px;
-}
-
-@keyframes slideUpMode {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.squad-input-mode-header .mode-border { width: 3px; align-self: stretch; background: var(--accent-teal); border-radius: 3px; }
-.squad-input-mode-header .mode-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; cursor: pointer; min-width: 0; }
-.squad-input-mode-header .mode-user { font-weight: 700; color: var(--accent-teal); font-size: 0.75rem; }
-.squad-input-mode-header .mode-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8rem; color: #888; }
-
-.squad-input-mode-header.edit-mode { background: rgba(255, 171, 64, 0.05); }
-.squad-input-mode-header.edit-mode .mode-border { background: #ffab40; }
-.squad-input-mode-header.edit-mode .mode-user { color: #ffab40; }
-.squad-mode-icon { display: flex; align-items: center; justify-content: center; color: #ffab40; font-size: 0.9rem; padding: 0 4px; filter: drop-shadow(0 0 5px rgba(255, 171, 64, 0.3)); }
-
-/* Staging Mode for GroupChat */
-.squad-input-mode-header.staging-mode { background: rgba(66, 215, 184, 0.05); }
-.squad-input-mode-header.staging-mode .mode-border { background: var(--accent-teal); }
-.staging-preview-content { display: flex; align-items: center; gap: 12px; flex: 1; overflow: hidden; }
-.staging-thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; }
-.staging-file-icon { width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-teal); }
-.staging-file-details { display: flex; flex-direction: column; overflow: hidden; }
-.staging-title { font-weight: 700; color: var(--accent-teal); font-size: 0.75rem; }
-.staging-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8rem; color: #aaa; }
-
-.add-btn {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: rgba(255,255,255,0.05); border: none; color: #a0a0a0;
-    display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+.squad-muted-notice {
+    background: rgba(255, 95, 95, 0.1); border: 1px solid rgba(255, 95, 95, 0.2); color: #ff5f5f;
+    padding: 12px; border-radius: 12px; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; font-weight: 500;
 }
 
 /* --- TELEGRAM STYLE PINNED BANNER --- */
