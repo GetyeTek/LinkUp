@@ -34,13 +34,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     // AI Stage State
     const isAiHosting = chatInfo.metadata?.ai_hosting === true;
     const [stageMicEnabled, setStageMicEnabled] = useState(false);
-    const stageMicEnabledRef = useRef(stageMicEnabled);
     const [isMironSpeaking, setIsMironSpeaking] = useState(false);
     const aiSocketRef = useRef(null);
 
     const { playAudioChunk } = useGeminiAudio(aiSocketRef, isAiHosting && isMeHost && stageMicEnabled);
-
-    useEffect(() => { stageMicEnabledRef.current = stageMicEnabled; }, [stageMicEnabled]);
 
     // LiveKit Mic Control override
     useEffect(() => {
