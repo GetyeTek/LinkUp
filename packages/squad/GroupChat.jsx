@@ -4,8 +4,11 @@ import { createPortal } from 'react-dom';
 import LiveStageSetupModal from './components/LiveStageSetupModal.jsx';
 import ChatSearchOverlay from './components/ChatSearchOverlay.jsx';
 import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
-import { LiveKitRoom, useParticipants, useLocalParticipant, RoomAudioRenderer } from 'https://esm.sh/@livekit/components-react@2.6.2?external=react,react-dom';
-import { invokeLiveToken, invokeSocial, uploadChatMedia } from './api.js';
+import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
+import AdminSettingsModal from './components/AdminSettingsModal.jsx';
+import GenericConfirmModal from './components/GenericConfirmModal.jsx';
+import LiveRecoveryModal from './components/LiveRecoveryModal.jsx';
+import { invokeLiveToken, invokeSocial } from './api.js';
 import './GroupChat.css';
 import FloatingLiveOrb from './components/FloatingLiveOrb.jsx';
 import ConnectionRing from './components/ConnectionRing.jsx';
@@ -905,18 +908,11 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             )}
             
             {showRecoveryModal && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3>Active Session Detected</h3>
-                        <p>You previously started a live broadcast. Would you like to resume your session or end it?</p>
-                        <div className="cm-footer">
-                            <button className="cm-btn-danger" onClick={() => endLiveSession(true)} disabled={isStartingLive}>End Session</button>
-                            <button className="cm-btn-primary" onClick={() => startLiveSession()} disabled={isStartingLive}>
-                                {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Resume'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <LiveRecoveryModal
+                    onEnd={() => endLiveSession(true)}
+                    onResume={() => startLiveSession()}
+                    isStartingLive={isStartingLive}
+                />
             )}
 
             <LiveStageSetupModal 
@@ -1042,63 +1038,23 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 />
             )}
 
-            {/* Admin Quick Settings Modal */}
             {showAdminSettings && (
-                <div className="custom-modal-overlay" onClick={() => setShowAdminSettings(false)}>
-                    <div className="custom-modal-card" onClick={e => e.stopPropagation()}>
-                        <h3 style={{marginBottom: '1.5rem'}}><i className="fas fa-key" style={{color: 'var(--accent-teal)', marginRight: '8px'}}></i> Admin Controls</h3>
-                        
-                        <div className="cm-privacy-options">
-                            <div className="si-settings-row" style={{marginBottom: '10px'}} onClick={() => toggleAdminSetting('members_can_add', localChatInfo.metadata?.members_can_add)}>
-                                <div className="sr-info">
-                                    <h4 style={{fontSize: '0.95rem'}}>Members can add members</h4>
-                                    <p style={{fontSize: '0.8rem'}}>Allow everyone to invite others</p>
-                                </div>
-                                <div className="sr-val">
-                                    <div className={`toggle-switch ${(localChatInfo.metadata?.members_can_add !== false) ? 'on' : 'off'}`}></div>
-                                </div>
-                            </div>
-
-                            <div className="si-settings-row" style={{marginBottom: '10px'}} onClick={() => toggleAdminSetting('members_can_post', localChatInfo.metadata?.members_can_post)}>
-                                <div className="sr-info">
-                                    <h4 style={{fontSize: '0.95rem'}}>Members can post</h4>
-                                    <p style={{fontSize: '0.8rem'}}>Allow everyone to send messages</p>
-                                </div>
-                                <div className="sr-val">
-                                    <div className={`toggle-switch ${(localChatInfo.metadata?.members_can_post !== false) ? 'on' : 'off'}`}></div>
-                                </div>
-                            </div>
-                            
-                            <div className="si-settings-row" style={{marginBottom: '0'}} onClick={() => toggleAdminSetting('hide_members', localChatInfo.metadata?.hide_members)}>
-                                <div className="sr-info">
-                                    <h4 style={{fontSize: '0.95rem'}}>Hide member list</h4>
-                                    <p style={{fontSize: '0.8rem'}}>Only owners can view the directory</p>
-                                </div>
-                                <div className="sr-val">
-                                    <div className={`toggle-switch ${(localChatInfo.metadata?.hide_members === true) ? 'on' : 'off'}`}></div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="cm-footer" style={{marginTop: '2rem'}}>
-                            <button className="cm-btn-primary" style={{width: '100%'}} onClick={() => setShowAdminSettings(false)}>Done</button>
-                        </div>
-                    </div>
-                </div>
+                <AdminSettingsModal 
+                    localChatInfo={localChatInfo} 
+                    toggleAdminSetting={toggleAdminSetting} 
+                    onClose={() => setShowAdminSettings(false)} 
+                />
             )}
 
-            {/* Generic Message Delete Confirm Modal */}
             {deleteConfirm && (
-                <div className="custom-modal-overlay">
-                    <div className="custom-modal-card">
-                        <h3>Delete Message</h3>
-                        <p>Are you sure you want to permanently delete this message for everyone?</p>
-                        <div className="cm-footer">
-                            <button className="cm-btn-cancel" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                            <button className="cm-btn-danger" onClick={confirmAndDelete}>Purge Message</button>
-                        </div>
-                    </div>
-                </div>
+                <GenericConfirmModal
+                    title="Delete Message"
+                    description="Are you sure you want to permanently delete this message for everyone?"
+                    onConfirm={confirmAndDelete}
+                    onCancel={() => setDeleteConfirm(null)}
+                    confirmText="Purge Message"
+                    isDanger={true}
+                />
             )}
 
             
