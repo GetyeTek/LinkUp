@@ -15,6 +15,14 @@ const ChatInputDock = ({
     const [showAttachMenu, setShowAttachMenu] = useState(false);
     const [showPollComposer, setShowPollComposer] = useState(false);
 
+    const pollAttachment = editingMessage?.attachments?.find(a => a.type === 'poll');
+
+    React.useEffect(() => {
+        if (pollAttachment) {
+            setShowPollComposer(true);
+        }
+    }, [editingMessage]);
+
     // Click-away listener for popover
     React.useEffect(() => {
         const hide = () => setShowAttachMenu(false);
@@ -135,8 +143,12 @@ const ChatInputDock = ({
             )}
             {showPollComposer && (
                 <PollComposerModal 
-                    onClose={() => setShowPollComposer(false)} 
+                    onClose={() => { 
+                        setShowPollComposer(false); 
+                        if (pollAttachment) setEditingMessage(null); 
+                    }} 
                     onSendPoll={handleSendPoll} 
+                    initialPollData={pollAttachment?.poll_data}
                 />
             )}
         </footer>
