@@ -66,7 +66,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
     const toggleAdminSetting = async (key, currentVal) => {
         let defaultVal = false;
-        if (key === 'members_can_post' || key === 'members_can_add') defaultVal = true;
+        if (key === 'members_can_post' || key === 'members_can_add' || key === 'members_can_poll') defaultVal = true;
         const actualVal = currentVal ?? defaultVal;
         const newValue = !actualVal;
         
@@ -332,13 +332,13 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     
 
 
-    const handleSend = async () => {
-        if ((!input.trim() && pendingAttachments.length === 0) || isUploading) return;
+    const handleSend = async (overrideData = null) => {
+        if (!overrideData && (!input.trim() && pendingAttachments.length === 0) && !isUploading) return;
         
         clearTypingPresence();
 
-        const msgText = input;
-        const currentAttachments = [...pendingAttachments];
+        const msgText = overrideData ? overrideData.text : input;
+        const currentAttachments = overrideData ? overrideData.attachments : [...pendingAttachments];
         
         setInput('');
         setPendingAttachments([]);
@@ -805,6 +805,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         return (
                             <ChatBubble 
                                 key={m.id}
+                                currentUser={currentUser}
                                 msg={m}
                                 isMine={isMine}
                                 isGroup={true}
@@ -857,8 +858,9 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     </button>
                 </div>
             ) : (
-                <ChatInputDock
-                    editingMessage={editingMessage}
+                            <ChatInputDock
+                canPoll={myRole === 'owner' || myRole === 'admin' || localChatInfo.metadata?.members_can_poll !== false}
+                editingMessage={editingMessage}
                     setEditingMessage={setEditingMessage}
                     replyingTo={replyingTo}
                     setReplyingTo={setReplyingTo}
