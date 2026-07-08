@@ -38,15 +38,16 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
     const hasVoted = myVotes.length > 0;
     const totalVotes = votes.length;
 
-    // A poll reveals answers if: it's expired OR the user has voted OR it's a quiz that allows multiple tries (actually quizzes usually reveal after voting)
-    const showResults = hasVoted || isExpired || !pollData.allow_revote;
+    // A poll reveals answers if: it's expired OR the user has voted
+    const showResults = hasVoted || isExpired;
 
     const handleVote = async (index) => {
         if (String(msgId).startsWith('temp-')) return;
         if (isExpired) return;
         // In Quiz Mode, we lock the poll after the first interaction
         if (pollData.quiz_mode && hasVoted) return;
-        if (hasVoted && !pollData.allow_revote && !myVotes.includes(index)) return;
+        // If standard poll and revoting is not allowed, lock entirely
+        if (!pollData.quiz_mode && hasVoted && !pollData.allow_revote) return;
 
         // Optimistic UI updates
         const isSelected = myVotes.includes(index);
@@ -88,9 +89,8 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
         <div className="poll-bubble-container">
             <div className="poll-header">
                 <div className="poll-meta-tag">
-                    <i className={`fas fa-${pollData.quiz_mode ? 'lightbulb' : 'chart-bar'}`}></i>
-                    {pollData.quiz_mode ? 'Quiz' : 'Poll'}
-                    {pollData.multiple_answers && ' • Multiple Choice'}
+                    <i className="fas fa-chart-bar"></i>
+                    Poll
                 </div>
                 <div className="poll-question">{pollData.question}</div>
                 {pollData.description && <div className="poll-description">{pollData.description}</div>}
@@ -114,7 +114,7 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
                     return (
                         <div 
                             key={idx} 
-                            className={`poll-option-btn ${isSelected ? 'selected' : ''} ${isExpired || (hasVoted && !pollData.allow_revote) ? 'disabled' : ''}`}
+                            className={`poll-option-btn ${isSelected ? 'selected' : ''} ${isExpired || (hasVoted && (!pollData.allow_revote || pollData.quiz_mode)) ? 'disabled' : ''}`}
                             onClick={() => handleVote(idx)}
                         >
                             {showResults && (
