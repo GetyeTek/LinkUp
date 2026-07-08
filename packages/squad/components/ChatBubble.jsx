@@ -2,8 +2,6 @@ import React from 'react';
 import ChatMediaGallery from './ChatMediaGallery.jsx';
 import InteractivePoll from './InteractivePoll.jsx';
 
-import InteractivePoll from './InteractivePoll.jsx';
-
 const ChatBubble = ({
     msg,
     currentUser,
