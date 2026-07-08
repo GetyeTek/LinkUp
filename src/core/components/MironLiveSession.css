@@ -76,7 +76,7 @@
     border-radius: 99px; padding: 6px 6px 6px 18px; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 .ml-dock input {
-    flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.95rem; font-family: 'Poppins', sans-serif;
+    flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.95rem; font-family: 'Poppins', sans-serif; min-width: 0;
 }
 .ml-dock input::placeholder { color: #666; }
 .ml-action-btn {
