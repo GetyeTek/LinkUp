@@ -86,15 +86,21 @@ const Discover = () => {
             }
         };
 
-        updateIndicator(); // Initial sync
-        
-        // Failsafe: Re-sync after DOM paints to capture precise layout widths
-        const paintTimer = setTimeout(updateIndicator, 50);
+        updateIndicator();
         window.addEventListener('resize', updateIndicator);
 
+        // Robust layout observer for when display:none switches to flex (prefetching fix)
+        const observer = new ResizeObserver(() => {
+            updateIndicator();
+        });
+        
+        if (navRef.current) {
+            observer.observe(navRef.current);
+        }
+
         return () => {
-            clearTimeout(paintTimer);
             window.removeEventListener('resize', updateIndicator);
+            observer.disconnect();
         };
     }, [activeSubTab]);
 
