@@ -4,8 +4,8 @@
     position: fixed;
     inset: 0;
     z-index: 3000;
-    background-color: #050505;
-    color: #e0e0e0;
+    background-color: var(--bg-dark);
+    color: var(--text-primary-dark);
     display: flex;
     flex-direction: column;
     font-family: 'Poppins', sans-serif;
@@ -20,9 +20,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(5, 5, 5, 0.8);
+    background: var(--glass-bg);
     backdrop-filter: blur(20px); 
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .session-title-box h1 {
@@ -41,8 +41,8 @@
 }
 
 .timer-pill {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
     padding: 4px 12px;
     border-radius: 8px;
     font-family: 'Roboto Mono', monospace;
@@ -59,7 +59,7 @@
 }
 
 .exit-session-btn {
-    color: #fff;
+    color: var(--text-primary-dark);
     opacity: 0.5;
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
@@ -72,8 +72,8 @@
 /* --- QUICK NAV STRIP --- */
 .question-nav-strip {
     height: 50px;
-    background: #0f0f0f;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--surface-dark);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -86,8 +86,8 @@
 .nav-dot {
     min-width: 34px; height: 34px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
     display: flex; align-items: center; justify-content: center;
     font-size: 0.8rem; font-weight: 600; color: #606060;
     cursor: pointer;
@@ -98,8 +98,8 @@
 .nav-dot:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); transform: translateY(-2px); }
 
 .nav-dot.active-focus {
-    border-color: #fff;
-    color: #fff;
+    border-color: var(--text-primary-dark);
+    color: var(--text-primary-dark);
     transform: scale(1.1);
 }
 
@@ -132,8 +132,8 @@
 /* --- FOOTER --- */
 .session-footer {
     padding: 1.25rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
-    background: #050505;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-dark);
+    border-top: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -141,7 +141,7 @@
 
 .session-progress-block { flex: 1; margin-right: 2rem; }
 .p-text { display: flex; justify-content: space-between; font-size: 0.7rem; color: #707070; margin-bottom: 6px; }
-.p-track { height: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 3px; position: relative; overflow: hidden; }
+.p-track { height: 6px; background: var(--border-color); border-radius: 3px; position: relative; overflow: hidden; }
 .p-bar-fill { height: 100%; background: var(--accent-teal); border-radius: 3px; box-shadow: 0 0 15px rgba(66, 215, 184, 0.4); transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); position: absolute; left: 0; top: 0; z-index: 2; }
 .p-bar-flagged { height: 100%; background: #ffab40; opacity: 0.4; transition: width 0.6s ease, left 0.6s ease; position: absolute; top: 0; z-index: 1; }
 
