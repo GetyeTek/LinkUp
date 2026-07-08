@@ -33,7 +33,7 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
         };
     }, [msgId]);
 
-    const isExpired = pollData.deadline && new Date(pollData.deadline).getTime() < currentTime;
+    const isExpired = pollData.is_stopped || (pollData.deadline && new Date(pollData.deadline).getTime() < currentTime);
     const myVotes = votes.filter(v => v.user_id === currentUser.id).map(v => v.option_index);
     const hasVoted = myVotes.length > 0;
     const totalVotes = votes.length;
@@ -74,7 +74,8 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
         }
     };
 
-    const formatDeadline = (iso) => {
+    const formatDeadline = (iso, isStopped) => {
+        if (isStopped) return 'Poll Ended';
         if (!iso) return null;
         const ms = new Date(iso).getTime() - currentTime;
         if (ms <= 0) return 'Poll Ended';
@@ -132,7 +133,7 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
 
             <div className="poll-footer-meta">
                 <span>{totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}</span>
-                {pollData.deadline && <span>{formatDeadline(pollData.deadline)}</span>}
+                {(pollData.deadline || pollData.is_stopped) && <span>{formatDeadline(pollData.deadline, pollData.is_stopped)}</span>}
             </div>
         </div>
     );
