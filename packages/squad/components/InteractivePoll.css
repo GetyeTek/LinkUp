@@ -172,11 +172,30 @@
     font-size: 0.75rem;
 }
 
-.poll-indicator.quiz-correct::after {
-    content: '\f00c'; /* FontAwesome Check */
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    font-size: 0.75rem;
+.poll-option-btn.selected .poll-indicator.quiz-correct {
+    background: #42d7b8;
+    color: #000;
+    box-shadow: none;
+}
+
+.poll-option-btn.selected .poll-indicator.quiz-wrong {
+    background: #ff5f5f;
+    color: #fff;
+    box-shadow: none;
+}
+
+.poll-option-btn.selected .poll-indicator.quiz-correct::after {
+    content: '\f00c';
+    width: auto;
+    height: auto;
+    background: transparent;
+}
+
+.poll-option-btn.selected .poll-indicator.quiz-wrong::after {
+    content: '\f00d';
+    width: auto;
+    height: auto;
+    background: transparent;
 }
 
 .poll-footer-meta {
