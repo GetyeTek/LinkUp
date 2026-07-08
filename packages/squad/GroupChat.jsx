@@ -561,7 +561,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
     const formatTime = (isoString) => {
         if (!isoString) return '';
-        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
     };
 
     const isMember = !!members[currentUser.id];
