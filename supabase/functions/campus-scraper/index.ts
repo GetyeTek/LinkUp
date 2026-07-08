@@ -18,11 +18,12 @@ serve(async (req) => {
     try {
         console.log("[Campus Scraper] Initializing concurrent multi-channel extraction...");
 
-        // 1. Fetch active targets
+        // 1. Fetch active PUBLIC targets only
         const { data: channels, error: fetchErr } = await supabase
             .from('campus_channels')
             .select('*')
-            .eq('is_active', true);
+            .eq('is_active', true)
+            .eq('is_private', false);
 
         if (fetchErr) throw fetchErr;
         if (!channels || channels.length === 0) {
@@ -87,7 +88,8 @@ serve(async (req) => {
                                 channel_handle: channel.channel_handle,
                                 full_text: cleanText,
                                 image_url: imageUrl,
-                                telegram_timestamp: timeStr
+                                telegram_timestamp: timeStr,
+                                metadata: { source: "edge_scraper", is_private: false }
                             });
                         }
                     }
