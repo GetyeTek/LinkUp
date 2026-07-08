@@ -52,9 +52,9 @@ const MessagesFeed = ({
                             {(() => {
                                 const note = conversations.find(c => c.type === 'notes');
                                 if (!note) return 'Save thoughts, files, or links here...';
-                                if (note.last_message_text) return note.last_message_text;
-                                // This is the fallback if text is empty but a file was sent
-                                return '📎 File Attachment';
+                                if (note.last_message_text?.trim()) return note.last_message_text;
+                                if (note.last_message_at) return '📎 Note Attachment';
+                                return 'Save thoughts, files, or links here...';
                             })()}
                         </div>
                     </div>
@@ -93,7 +93,14 @@ const MessagesFeed = ({
                                             </span>
                                         )}
                                     </div>
-                                    <div className="last-message">{chat.last_message_text || (isDm ? 'No messages yet' : 'Squad established')}</div>
+                                    <div className="last-message">
+                                        {chat.last_message_text?.trim() 
+                                            ? chat.last_message_text 
+                                            : (chat.last_message_at 
+                                                ? '📎 Photo or File' 
+                                                : (isDm ? 'No messages yet' : 'Group established'))
+                                        }
+                                    </div>
                                 </div>
                                 <div className="message-meta">
                                     <span>{formatTime(chat.last_message_at)}</span>
