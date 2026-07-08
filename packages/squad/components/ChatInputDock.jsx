@@ -1,15 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ChatInputDock.css';
 import { getFileIconProps } from './ChatMediaGallery.jsx';
+import PollComposerModal from './PollComposerModal.jsx';
 
 const ChatInputDock = ({
+    canPoll = true,
     editingMessage, setEditingMessage, setInput,
     replyingTo, setReplyingTo, scrollToMessage, resolveReplyUser,
     pendingAttachments, setPendingAttachments,
     isUploading, uploadProgress, fileInputRef,
-    input, handleInputChange, handleSend, handleFileSelect,
+    input,     handleInputChange, handleSend, handleFileSelect,
     restrictedNotice
 }) => {
+    const [showAttachMenu, setShowAttachMenu] = useState(false);
+    const [showPollComposer, setShowPollComposer] = useState(false);
+
+    // Click-away listener for popover
+    React.useEffect(() => {
+        const hide = () => setShowAttachMenu(false);
+        if (showAttachMenu) document.addEventListener('click', hide);
+        return () => document.removeEventListener('click', hide);
+    }, [showAttachMenu]);
+
+    const handleSendPoll = (pollData) => {
+        const attachment = { type: 'poll', poll_data: pollData };
+        handleSend({ text: '', attachments: [attachment] });
+    };
+
     return (
         <footer className="unified-input-wrapper">
             {restrictedNotice ? (
@@ -77,8 +94,20 @@ const ChatInputDock = ({
                             style={{display: 'none'}} 
                             onChange={handleFileSelect} 
                         />
-                        <button className="unified-add-btn" onClick={() => fileInputRef.current.click()} disabled={isUploading}>
+                        <button className="unified-add-btn" onClick={(e) => { e.stopPropagation(); setShowAttachMenu(!showAttachMenu); }} disabled={isUploading}>
                             <i className="fa-solid fa-paperclip"></i>
+                            {showAttachMenu && (
+                                <div className="attach-popover-menu" onClick={e => e.stopPropagation()}>
+                                    <button onClick={() => { setShowAttachMenu(false); fileInputRef.current.click(); }}>
+                                        <i className="fas fa-file-alt"></i> Files & Media
+                                    </button>
+                                    {canPoll && (
+                                        <button onClick={() => { setShowAttachMenu(false); setShowPollComposer(true); }}>
+                                            <i className="fas fa-chart-bar"></i> Create Poll
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </button>
                         <input 
                             type="text" 
@@ -103,6 +132,12 @@ const ChatInputDock = ({
                         )}
                     </div>
                 </>
+            )}
+            {showPollComposer && (
+                <PollComposerModal 
+                    onClose={() => setShowPollComposer(false)} 
+                    onSendPoll={handleSendPoll} 
+                />
             )}
         </footer>
     );
