@@ -53,8 +53,17 @@ async def run_scraper():
                 new_posts = []
                 current_highest_id = last_id
 
-                # 2. MTProto Fetch with offset logic (Backfill/Incremental)
-                async for message in client.iter_messages(target, min_id=last_id, limit=100):
+                # 2. MTProto Fetch with dynamic offset logic
+                # If last_id is 0, we just grab the 100 most RECENT messages for the test.
+                # If last_id > 0, we only grab messages NEWER than that ID.
+                fetch_args = {"limit": 100}
+                if last_id > 0:
+                    fetch_args["min_id"] = last_id
+                    logger.info(f"Incremental mode: Fetching messages newer than {last_id}")
+                else:
+                    logger.info("First run/Test mode: Fetching the 100 most recent messages.")
+
+                async for message in client.iter_messages(target, **fetch_args):
                     if not message.text and not message.photo:
                         continue
 
