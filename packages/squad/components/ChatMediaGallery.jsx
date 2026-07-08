@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ChatMediaGallery.css';
 
 export const getFileIconProps = (filename) => {
@@ -16,6 +16,30 @@ export const getFileIconProps = (filename) => {
     }
 };
 
+const ProgressiveMedia = ({ att }) => {
+    const [loaded, setLoaded] = useState(false);
+    const isVideo = att.type.startsWith('video/');
+    return (
+        <div className={`img-loading-wrapper ${loaded ? 'loaded' : ''}`}>
+            <div className="img-shimmer"></div>
+            {isVideo ? (
+                <video 
+                    src={att.url} 
+                    onLoadedData={() => setLoaded(true)} 
+                    className={loaded ? 'is-loaded' : 'is-loading'}
+                />
+            ) : (
+                <img 
+                    src={att.url} 
+                    alt="Shared Media" 
+                    onLoad={() => setLoaded(true)} 
+                    className={loaded ? 'is-loaded' : 'is-loading'}
+                />
+            )}
+        </div>
+    );
+};
+
 const ChatMediaGallery = ({ attachments, setFullscreenGallery, handleDownload }) => {
     if (!attachments || attachments.length === 0) return null;
     
@@ -29,17 +53,14 @@ const ChatMediaGallery = ({ attachments, setFullscreenGallery, handleDownload })
             {displayMedia.length > 0 && (
                 <div className="media-gallery-grid" data-count={displayMedia.length} data-more={hasMoreMedia.toString()}>
                     {displayMedia.map((att, i) => {
-                        const isLast = i === 4;
+                        const isLast = i === displayMedia.length - 1;
                         return (
                             <div key={i} className="gallery-item" onClick={(e) => { 
                                 e.stopPropagation(); 
                                 setFullscreenGallery({ items: mediaItems, index: i });
                             }}>
-                                {att.type.startsWith('video/') ? (
-                                    <video src={att.url} />
-                                ) : (
-                                    <img src={att.url} alt="Shared Image" />
-                                )}
+                                <ProgressiveMedia att={att} />
+                                
                                 {isLast && hasMoreMedia && (
                                     <div className="gallery-more-overlay" data-more-count={(mediaItems.length - 4).toString()}></div>
                                 )}
