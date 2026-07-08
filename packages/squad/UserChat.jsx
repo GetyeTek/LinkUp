@@ -22,6 +22,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
     const [fullscreenGallery, setFullscreenGallery] = useState(null);
     const [alertNotice, setAlertNotice] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [stopPollConfirm, setStopPollConfirm] = useState(null);
     const [downloadConfirm, setDownloadConfirm] = useState(null);
     
     // Search State
@@ -288,6 +289,26 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
         }
     };
 
+    const executeStopPoll = async () => {
+        if (!stopPollConfirm) return;
+        const msgId = stopPollConfirm;
+        setStopPollConfirm(null);
+
+        const targetMsg = messages.find(m => m.id === msgId);
+        if (!targetMsg) return;
+
+        const updatedAttachments = targetMsg.attachments.map(a => {
+            if (a.type === 'poll') {
+                return { ...a, poll_data: { ...a.poll_data, is_stopped: true } };
+            }
+            return a;
+        });
+
+        // Optimistic UI
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, attachments: updatedAttachments } : m));
+        await supabase.from('messages').update({ attachments: updatedAttachments }).eq('id', msgId);
+    };
+
     const confirmAndDelete = async () => {
         if (!deleteConfirm) return;
         const msgId = deleteConfirm;
@@ -495,8 +516,22 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                     });
                 }}
                 onEdit={startEditing}
-                onDeleteRequest={(id) => setDeleteConfirm(id)}
+                onDeleteRequest={(id, isStopPoll) => {
+                    if (isStopPoll) setStopPollConfirm(id);
+                    else setDeleteConfirm(id);
+                }}
             />
+
+            {stopPollConfirm && (
+                <GenericConfirmModal
+                    title="Stop Poll"
+                    description="Are you sure you want to stop this poll? This action is irreversible and the poll will no longer accept votes."
+                    onConfirm={executeStopPoll}
+                    onCancel={() => setStopPollConfirm(null)}
+                    confirmText="Stop Poll"
+                    isDanger={true}
+                />
+            )}
 
             {deleteConfirm && (
                 <GenericConfirmModal
