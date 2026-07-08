@@ -41,6 +41,8 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
 
     const handleVote = async (index) => {
         if (isExpired) return;
+        // In Quiz Mode, we lock the poll after the first interaction
+        if (pollData.quiz_mode && hasVoted) return;
         if (hasVoted && !pollData.allow_revote && !myVotes.includes(index)) return;
 
         // Optimistic UI updates
@@ -59,9 +61,9 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
             return next;
         });
 
-        // Fire RPC securely
+        // Fire RPC securely - Parameters matched to short SQL names
         try {
-            await supabase.rpc('cast_poll_vote', { req_message_id: msgId, req_option_index: index });
+            await supabase.rpc('cast_poll_vote', { message_id: msgId, option_index: index });
         } catch (err) {
             console.error("Vote failed:", err);
             // In a production app, we would rollback the optimistic update here on failure
