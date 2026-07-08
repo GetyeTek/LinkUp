@@ -30,7 +30,12 @@ const App = () => {
       const [unreadCount, setUnreadCount] = useState(0);
       const [routePayload, setRoutePayload] = useState(null);
       const [isMironLive, setIsMironLive] = useState(false);
+      const [theme, setTheme] = useState(localStorage.getItem('linkup_theme') || 'dark');
       const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
+
+      useEffect(() => {
+          document.documentElement.className = `theme-${theme}`;
+      }, [theme]);
 
       useEffect(() => {
         const handleOpenLive = () => setIsMironLive(true);
@@ -117,8 +122,23 @@ const App = () => {
 
     const fetchProfile = async (userId) => {
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (data) setUserProfile(data);
+      if (data) {
+          setUserProfile(data);
+          if (data.theme && data.theme !== theme) {
+              setTheme(data.theme);
+              localStorage.setItem('linkup_theme', data.theme);
+          }
+      }
       setIsProfileLoaded(true);
+    };
+
+    const toggleTheme = async () => {
+        const newTheme = theme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+        localStorage.setItem('linkup_theme', newTheme);
+        if (session?.user?.id) {
+            await supabase.from('profiles').update({ theme: newTheme }).eq('id', session.user.id);
+        }
     };
 
     const updateLastSeen = async () => {
@@ -247,7 +267,7 @@ const App = () => {
   // The Minimalist Auth Gate Loader
   if (isCheckingAuth || (session && !isProfileLoaded)) {
     return (
-      <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0c0c0c', color: '#42d7b8', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)', color: 'var(--accent-teal)', flexDirection: 'column', gap: '1rem' }}>
         <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '2rem' }}></i>
         <div style={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.9rem', letterSpacing: '2px' }}>INITIALIZING LINKUP</div>
       </div>
@@ -288,6 +308,8 @@ const App = () => {
           sessionUser: session?.user, 
           unreadCount,
           routePayload,
+          theme,
+          toggleTheme,
           clearRoutePayload: () => setRoutePayload(null),
           shell: { 
               openActivity: () => setIsActivityOpen(true), 
