@@ -1,8 +1,27 @@
 .poll-composer-overlay {
-    position: fixed; inset: 0; z-index: 6000;
+    position: fixed; inset: 0; z-index: 8000;
     background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
     display: flex; flex-direction: column; justify-content: flex-end;
     animation: fadeInModal 0.3s ease;
+}
+
+.pc-error-banner {
+    background: rgba(255, 95, 95, 0.1);
+    border: 1px solid rgba(255, 95, 95, 0.3);
+    color: #ff5f5f;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeInModal 0.3s ease;
+}
+
+.toggle-switch.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .poll-composer-sheet {
