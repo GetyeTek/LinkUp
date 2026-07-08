@@ -7,11 +7,11 @@ const MessageContextMenu = ({
     onReply,
     onCopy,
     onDownload,
-    onDownloadAll,
+    onDownloadAllRequest,
     onForward,
     onEdit,
     onPin,
-    onDelete,
+    onDeleteRequest,
     canDownload = true,
     canForward = true,
     canPin = false,
@@ -35,9 +35,7 @@ const MessageContextMenu = ({
             {canDownload && msg.attachments && msg.attachments.length > 0 && (
                 <button className="unified-ctx-btn" onClick={() => {
                     if (msg.attachments.length > 1) {
-                        if (window.confirm(`Download all ${msg.attachments.length} files?`)) {
-                            onDownloadAll(msg.attachments);
-                        }
+                        onDownloadAllRequest(msg.attachments);
                     } else {
                         onDownload(msg.attachments[0].url, msg.attachments[0].name);
                     }
@@ -62,7 +60,7 @@ const MessageContextMenu = ({
                 </button>
             )}
             {(isMine || canDeleteAny) && (
-                <button className="unified-ctx-btn delete" onClick={() => { onDelete(msg.id); onClose(); }}>
+                <button className="unified-ctx-btn delete" onClick={() => { onDeleteRequest(msg.id); onClose(); }}>
                     <i className="fa-solid fa-trash"></i> {isMine ? 'Delete' : 'Admin Delete'}
                 </button>
             )}
