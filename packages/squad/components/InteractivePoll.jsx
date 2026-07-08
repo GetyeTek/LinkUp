@@ -116,7 +116,10 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
                         <div 
                             key={idx} 
                             className={`poll-option-btn ${isSelected ? 'selected' : ''} ${isExpired || (hasVoted && (!pollData.allow_revote || pollData.quiz_mode)) ? 'disabled' : ''}`}
-                            onClick={() => handleVote(idx)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleVote(idx);
+                            }}
                         >
                             {showResults && (
                                 <div className="poll-progress-fill" style={{ transform: `scaleX(${percentage / 100})` }}></div>
