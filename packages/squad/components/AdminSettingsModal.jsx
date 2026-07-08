@@ -26,6 +26,16 @@ const AdminSettingsModal = ({ localChatInfo, toggleAdminSetting, onClose }) => {
                             <div className={`toggle-switch ${(localChatInfo.metadata?.members_can_post !== false) ? 'on' : 'off'}`}></div>
                         </div>
                     </div>
+
+                    <div className="si-settings-row" style={{marginBottom: '10px'}} onClick={() => toggleAdminSetting('members_can_poll', localChatInfo.metadata?.members_can_poll)}>
+                        <div className="sr-info">
+                            <h4 style={{fontSize: '0.95rem'}}>Members can attach polls</h4>
+                            <p style={{fontSize: '0.8rem'}}>Allow everyone to create polls</p>
+                        </div>
+                        <div className="sr-val">
+                            <div className={`toggle-switch ${(localChatInfo.metadata?.members_can_poll !== false) ? 'on' : 'off'}`}></div>
+                        </div>
+                    </div>
                     
                     <div className="si-settings-row" style={{marginBottom: '0'}} onClick={() => toggleAdminSetting('hide_members', localChatInfo.metadata?.hide_members)}>
                         <div className="sr-info">
