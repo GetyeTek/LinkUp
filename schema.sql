@@ -1375,7 +1375,7 @@ BEGIN
     c.title,
     c.avatar_url,
     c.last_message_at,
-    (SELECT m.text FROM public.messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message_text,
+    (SELECT CASE WHEN m.text != '' THEN m.text WHEN m.attachments IS NOT NULL AND jsonb_typeof(m.attachments) = 'array' AND jsonb_array_length(m.attachments) > 0 AND m.attachments->0->>'type' = 'poll' THEN '📊 Poll' ELSE '' END FROM public.messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message_text,
     (SELECT count(*) FROM public.messages m2 
      WHERE m2.conversation_id = c.id 
        AND m2.sender_id != req_user_id 
