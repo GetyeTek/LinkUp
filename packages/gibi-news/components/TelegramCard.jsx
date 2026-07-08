@@ -56,7 +56,7 @@ const TelegramCard = ({ post }) => {
                         <a href={post.post_url} target="_blank" rel="noreferrer" className="tc-link">
                             <i className="fab fa-telegram"></i> Full Post
                         </a>
-                        <span className="tc-time">{new Date(post.telegram_timestamp).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
+                        <span className="tc-time">{new Date(post.telegram_timestamp).toLocaleString([], {month: 'short', day: 'numeric', hour: 'numeric', minute:'2-digit', hour12: true})}</span>
                     </div>
                 </div>
             </div>
