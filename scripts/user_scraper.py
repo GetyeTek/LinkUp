@@ -46,16 +46,19 @@ async def run_scraper():
             last_id = chan.get("last_scraped_id") or 0
             
             # Use Peer ID primarily, fallback to handle
-            target = peer_id if peer_id else handle
+            target_peer = peer_id if peer_id else handle
             logger.info(f"Processing: {handle or peer_id} (Last Scraped ID: {last_id})")
 
             try:
+                # CRITICAL: Resolve the entity first. 
+                # Fresh sessions don't know if an ID is a User, a Chat, or a Channel.
+                # get_entity() forces the client to fetch the metadata and peer type.
+                entity = await client.get_entity(target_peer)
+
                 new_posts = []
                 current_highest_id = last_id
 
                 # 2. MTProto Fetch with dynamic offset logic
-                # If last_id is 0, we just grab the 100 most RECENT messages for the test.
-                # If last_id > 0, we only grab messages NEWER than that ID.
                 fetch_args = {"limit": 100}
                 if last_id > 0:
                     fetch_args["min_id"] = last_id
@@ -63,7 +66,7 @@ async def run_scraper():
                 else:
                     logger.info("First run/Test mode: Fetching the 100 most recent messages.")
 
-                async for message in client.iter_messages(target, **fetch_args):
+                async for message in client.iter_messages(entity, **fetch_args):
                     if not message.text and not message.photo:
                         continue
 
