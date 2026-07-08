@@ -146,7 +146,7 @@ const Notes = ({ currentUser, onClose }) => {
 
     const formatTime = (isoString) => {
         if (!isoString) return '';
-        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
     };
 
     const confirmAndDeleteNote = async () => {
