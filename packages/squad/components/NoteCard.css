@@ -1,6 +1,6 @@
 .note-card {
-    background: #1e1e2e;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
     border-radius: 20px 20px 20px 4px;
     padding: 0.9rem 1.2rem;
     align-self: flex-start;
@@ -13,7 +13,7 @@
 
 .note-card:active {
     transform: scale(0.97);
-    background: #252538;
+    background: var(--bg-dark);
 }
 
 .note-text {
@@ -41,8 +41,8 @@
 
 .note-file-box {
     display: flex; align-items: center; gap: 12px;
-    background: rgba(0, 0, 0, 0.2); padding: 10px;
-    border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--bg-dark); padding: 10px;
+    border-radius: 8px; border: 1px solid var(--border-color);
     text-decoration: none; color: inherit; transition: background 0.2s;
 }
 
