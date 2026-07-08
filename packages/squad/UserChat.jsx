@@ -205,8 +205,8 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
         }
 
         if (editingMessage) {
-            setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, text: msgText, is_edited: true } : m));
-            await supabase.from('messages').update({ text: msgText, is_edited: true }).eq('id', editingMessage.id);
+            setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, text: msgText, attachments: currentAttachments, is_edited: true } : m));
+            await supabase.from('messages').update({ text: msgText, attachments: currentAttachments, is_edited: true }).eq('id', editingMessage.id);
             setEditingMessage(null);
             return;
         }
