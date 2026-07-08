@@ -344,8 +344,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         setPendingAttachments([]);
 
         if (editingMessage) {
-            setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, text: msgText, is_edited: true } : m));
-            await supabase.from('messages').update({ text: msgText, is_edited: true }).eq('id', editingMessage.id);
+            setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, text: msgText, attachments: currentAttachments, is_edited: true } : m));
+            await supabase.from('messages').update({ text: msgText, attachments: currentAttachments, is_edited: true }).eq('id', editingMessage.id);
             setEditingMessage(null);
             return;
         }
@@ -518,7 +518,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
     const handlePinMessage = async (msg) => {
         setActiveMenu(null);
-        const pinText = msg.text || (msg.attachments?.length > 0 ? '📎 Attachment' : 'Message');
+        const isPoll = msg.attachments?.some(a => a.type === 'poll');
+        const pinText = msg.text || (isPoll ? '📊 Poll' : (msg.attachments?.length > 0 ? '📎 Attachment' : 'Message'));
         const senderName = msg.sender_id === currentUser.id ? 'You' : (members[msg.sender_id]?.name || 'Unknown');
         const payload = { id: msg.id, text: pinText, sender_name: senderName };
         
