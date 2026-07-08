@@ -30,20 +30,20 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: rgba(12, 12, 12, 0.95);
+    background: var(--glass-bg);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--border-color);
     z-index: 100;
     width: 100%;
 }
 .chat-search-input {
     flex: 1;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 10px 14px;
-    color: #fff;
+    color: var(--text-primary-dark);
     font-family: 'Poppins', sans-serif;
     font-size: 0.95rem;
     outline: none;
@@ -53,7 +53,7 @@
 .chat-search-nav { display: flex; align-items: center; gap: 6px; }
 .chat-search-nav button {
     width: 36px; height: 36px; border-radius: 10px;
-    background: rgba(255,255,255,0.08); color: #fff;
+    background: var(--surface-dark); color: var(--text-primary-dark);
     border: none; cursor: pointer; display: flex;
     align-items: center; justify-content: center;
     transition: transform 0.2s, background 0.2s;
@@ -64,25 +64,25 @@
 
 .chat-search-modal-overlay {
     position: fixed; inset: 0; z-index: 6000;
-    background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+    background: var(--glass-bg); backdrop-filter: blur(10px);
     display: flex; flex-direction: column; justify-content: flex-end;
 }
 .chat-search-modal {
-    background: #121212; border-top-left-radius: 24px; border-top-right-radius: 24px;
+    background: var(--bg-dark); border-top-left-radius: 24px; border-top-right-radius: 24px;
     height: 80vh; display: flex; flex-direction: column;
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    border-top: 1px solid rgba(255,255,255,0.1);
+    border-top: 1px solid var(--border-color);
 }
-.csm-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.csm-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
 .csm-header h3 { margin: 0; font-size: 1.2rem; font-weight: 600; color: var(--accent-teal); }
 .csm-body { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 12px; }
 .csm-snippet-card {
-    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+    background: var(--surface-dark); border: 1px solid var(--border-color);
     border-radius: 14px; padding: 16px; cursor: pointer; transition: all 0.2s;
 }
 .csm-snippet-card:active { transform: scale(0.98); background: rgba(255,255,255,0.08); }
 .csm-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-bottom: 8px; font-weight: 600; }
-.csm-text { font-size: 0.95rem; line-height: 1.5; color: #e0e0e0; }
+.csm-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-primary-dark); }
 .csm-highlight { background: rgba(66, 215, 184, 0.3); color: var(--accent-teal); font-weight: bold; padding: 2px 4px; border-radius: 4px; }
 .csm-empty { text-align: center; padding: 3rem 1rem; color: #666; font-style: italic; }
 
@@ -118,12 +118,12 @@
 .squads-delimiter span { padding: 0 12px; }
 .squad-join-btn { background: rgba(66, 215, 184, 0.1); color: var(--accent-teal); border: 1px solid rgba(66, 215, 184, 0.3); padding: 8px 16px; border-radius: 10px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
 .squad-join-btn:active { transform: scale(0.95); }
-.messages-list-item.suggested { border: 1px dashed rgba(66, 215, 184, 0.3); background: rgba(0,0,0,0.2); }
+.messages-list-item.suggested { border: 1px dashed rgba(66, 215, 184, 0.3); background: var(--bg-dark); }
 
-#connect-content.header-collapsed .interactive-header { background: rgba(12, 12, 12, 0.95); backdrop-filter: blur(15px); }
+#connect-content.header-collapsed .interactive-header { background: var(--glass-bg); backdrop-filter: blur(15px); }
 #connect-content.header-collapsed .large-title-row { height: 0; opacity: 0; padding: 0 1rem; }
 #connect-content.header-collapsed .large-title { transform: translateY(-20px); }
-#connect-content.header-collapsed .main-nav-row { border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+#connect-content.header-collapsed .main-nav-row { border-bottom: 1px solid var(--border-color); }
 #connect-content.for-you-active .filter-pills-container { max-height: 60px; opacity: 1; padding: 0.5rem 1rem 1rem; }
 #connect-content.for-you-active.header-collapsed .filter-pills-container { max-height: 0; opacity: 0; padding: 0 1rem; pointer-events: none; }
 
