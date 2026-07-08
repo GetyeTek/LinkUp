@@ -62,8 +62,17 @@ const MessageContextMenu = ({
                     <i className="fa-solid fa-thumbtack"></i> Pin
                 </button>
             )}
+            {(() => {
+                const isPoll = msg.attachments && msg.attachments.length > 0 && msg.attachments[0].type === 'poll';
+                const pollData = isPoll ? msg.attachments[0].poll_data : null;
+                return isPoll && (isMine || canDeleteAny) && !pollData?.is_stopped && (
+                    <button className="unified-ctx-btn" onClick={() => { onDeleteRequest(msg.id, true); onClose(); }}>
+                        <i className="fa-solid fa-stop-circle"></i> Stop Poll
+                    </button>
+                );
+            })()}
             {(isMine || canDeleteAny) && (
-                <button className="unified-ctx-btn delete" onClick={() => { onDeleteRequest(msg.id); onClose(); }}>
+                <button className="unified-ctx-btn delete" onClick={() => { onDeleteRequest(msg.id, false); onClose(); }}>
                     <i className="fa-solid fa-trash"></i> {isMine ? 'Delete' : 'Admin Delete'}
                 </button>
             )}
