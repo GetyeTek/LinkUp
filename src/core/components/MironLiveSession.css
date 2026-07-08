@@ -1,7 +1,7 @@
 /* --- MIRON LIVE SESSION UI --- */
 .ml-overlay {
     position: absolute; inset: 0; z-index: 3000;
-    background: #050505; display: flex; flex-direction: column;
+    background: var(--bg-dark); display: flex; flex-direction: column;
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .ml-ambient {
@@ -11,10 +11,10 @@
 }
 .ml-header {
     padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;
-    z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(5,5,5,0.8); backdrop-filter: blur(10px);
+    z-index: 10; border-bottom: 1px solid var(--border-color); background: var(--glass-bg); backdrop-filter: blur(10px);
 }
 .ml-status {
-    display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: #fff;
+    display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: var(--text-primary-dark);
 }
 .live-dot {
     width: 8px; height: 8px; border-radius: 50%; background: #ff5f5f;
@@ -62,21 +62,21 @@
     background: var(--accent-teal); color: #000; border-bottom-right-radius: 4px; font-weight: 500;
 }
 .ml-bubble-wrap.miron .ml-bubble {
-    background: rgba(255,255,255,0.1); color: #fff; border-bottom-left-radius: 4px;
-    backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05);
+    background: var(--surface-dark); color: var(--text-primary-dark); border-bottom-left-radius: 4px;
+    backdrop-filter: blur(10px); border: 1px solid var(--border-color);
 }
 .ml-typing-dots { font-size: 1.2rem; line-height: 1; letter-spacing: 2px; opacity: 0.7; }
 
 .ml-dock-container {
     padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
-    background: rgba(5, 5, 5, 0.9); z-index: 10; border-top: 1px solid rgba(255,255,255,0.05);
+    background: var(--glass-bg); z-index: 10; border-top: 1px solid var(--border-color);
 }
 .ml-dock {
-    display: flex; align-items: center; background: #14141c; border: 1px solid var(--glass-border);
+    display: flex; align-items: center; background: var(--surface-dark); border: 1px solid var(--border-color);
     border-radius: 99px; padding: 6px 6px 6px 18px; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 .ml-dock input {
-    flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.95rem; font-family: 'Poppins', sans-serif; min-width: 0;
+    flex: 1; background: transparent; border: none; outline: none; color: var(--text-primary-dark); font-size: 0.95rem; font-family: 'Poppins', sans-serif; min-width: 0;
 }
 .ml-dock input::placeholder { color: #666; }
 .ml-action-btn {
@@ -84,6 +84,6 @@
 }
 .ml-action-btn:active { transform: scale(0.9); }
 .ml-send-btn { background: var(--accent-teal); color: #000; }
-.ml-mic-btn { background: rgba(255,255,255,0.05); color: #fff; }
+.ml-mic-btn { background: var(--surface-dark); color: var(--text-primary-dark); }
 .ml-mic-btn.active { background: #ff5f5f; color: #fff; animation: pulseRed 2s infinite; }
 @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255,95,95,0.4); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
