@@ -32,18 +32,21 @@ const MessageContextMenu = ({
                     <i className="fa-solid fa-copy"></i> Copy Text
                 </button>
             )}
-            {canDownload && msg.attachments && msg.attachments.length > 0 && (
-                <button className="unified-ctx-btn" onClick={() => {
-                    if (msg.attachments.length > 1) {
-                        onDownloadAllRequest(msg.attachments);
-                    } else {
-                        onDownload(msg.attachments[0].url, msg.attachments[0].name);
-                    }
-                    onClose();
-                }}>
-                    <i className="fa-solid fa-download"></i> {msg.attachments.length > 1 ? 'Download All Files' : 'Download File'}
-                </button>
-            )}
+            {(() => {
+                const downloadableAttachments = msg.attachments?.filter(a => a.type !== 'poll') || [];
+                return canDownload && downloadableAttachments.length > 0 && (
+                    <button className="unified-ctx-btn" onClick={() => {
+                        if (downloadableAttachments.length > 1) {
+                            onDownloadAllRequest(downloadableAttachments);
+                        } else {
+                            onDownload(downloadableAttachments[0].url, downloadableAttachments[0].name);
+                        }
+                        onClose();
+                    }}>
+                        <i className="fa-solid fa-download"></i> {downloadableAttachments.length > 1 ? 'Download All Files' : 'Download File'}
+                    </button>
+                );
+            })()}
             {canForward && (
                 <button className="unified-ctx-btn" onClick={() => { onForward(msg); onClose(); }}>
                     <i className="fa-solid fa-share"></i> Forward
