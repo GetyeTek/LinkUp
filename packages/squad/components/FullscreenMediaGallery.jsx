@@ -7,7 +7,7 @@ const FullscreenMediaGallery = ({ fullscreenGallery, setFullscreenGallery }) => 
     return (
         <div className="fullscreen-gallery-overlay" onClick={() => setFullscreenGallery(null)}>
             <button className="fg-close" onClick={() => setFullscreenGallery(null)}>
-                <i className="fas fa-times"></i>
+                <i className="fas fa-chevron-down"></i>
             </button>
             
             {fullscreenGallery.items.length > 1 && (
