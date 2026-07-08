@@ -5,6 +5,7 @@ import MessageContextMenu from './components/MessageContextMenu.jsx';
 import ChatInputDock from './components/ChatInputDock.jsx';
 import ChatBubble from './components/ChatBubble.jsx';
 import FullscreenMediaGallery from './components/FullscreenMediaGallery.jsx';
+import GenericConfirmModal from './components/GenericConfirmModal.jsx';
 import { uploadChatMedia } from './api.js';
 import { useChatInputState } from './hooks/useChatInputState.js';
 import './UserChat.css';
@@ -20,6 +21,8 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
     const [replyingTo, setReplyingTo] = useState(null);
     const [fullscreenGallery, setFullscreenGallery] = useState(null);
     const [alertNotice, setAlertNotice] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [downloadConfirm, setDownloadConfirm] = useState(null);
     
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -281,34 +284,31 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
         }
     };
 
-    const deleteMessage = async (msgId) => {
-        if (!window.confirm("Delete this message for everyone?")) return;
+    const confirmAndDelete = async () => {
+        if (!deleteConfirm) return;
+        const msgId = deleteConfirm;
+        setDeleteConfirm(null);
         console.group(`[Squad:Chat] Executing DELETE for node: ${msgId}`);
         
         const msgToDelete = messages.find(m => m.id === msgId);
-        
-        // 1. Optimistic UI removal
         setMessages(prev => prev.filter(m => m.id !== msgId));
         setActiveMenu(null);
         
         try {
-            // 2. Storage Cleanup
             if (msgToDelete?.attachments && msgToDelete.attachments.length > 0) {
                 const paths = msgToDelete.attachments.map(att => att.path).filter(Boolean);
                 if (paths.length > 0) {
-                    console.log("[Squad:Media] Purging orphaned assets:", paths);
                     await supabase.storage.from('chat_media').remove(paths);
                 }
             }
-            // 3. Database Deletion
             const { error } = await supabase.from('messages').delete().eq('id', msgId);
             if (error) {
                 setAlertNotice("Deletion failed. You do not have permission to delete this message.");
-                fetchMessages(); // Resync state
+                fetchMessages();
             }
         } catch (err) {
             console.error("[Squad:Chat] Deletion synchronization failed:", err);
-            fetchMessages(); // Resync state
+            fetchMessages();
         }
         console.groupEnd();
     };
@@ -318,24 +318,39 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
         setActiveMenu(null);
     };
 
-    const handleDownload = (url, filename) => {
+    const handleDownload = async (url, filename) => {
         setActiveMenu(null);
-        const downloadUrl = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`;
-        
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.target = '_self'; 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Network response was not ok');
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename || 'download';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        } catch (e) {
+            const link = document.createElement('a');
+            link.href = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     };
 
-    const handleDownloadAll = (attachments) => {
-        setActiveMenu(null);
+    const confirmAndDownloadAll = () => {
+        if (!downloadConfirm) return;
+        const attachments = downloadConfirm;
+        setDownloadConfirm(null);
         attachments.forEach((att, index) => {
             setTimeout(() => {
                 handleDownload(att.url, att.name);
-            }, index * 400); // Stagger to avoid browser popup blocks
+            }, index * 400);
         });
     };
 
@@ -460,13 +475,13 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                 })}
                 </main>
 
-    <MessageContextMenu 
+                <MessageContextMenu 
                 activeMenu={activeMenu}
                 onClose={() => setActiveMenu(null)}
                 onReply={startReply}
                 onCopy={handleCopy}
                 onDownload={handleDownload}
-                onDownloadAll={handleDownloadAll}
+                onDownloadAllRequest={(attachments) => setDownloadConfirm(attachments)}
                 onForward={(msg) => {
                     onForward({
                         ...msg, 
@@ -475,8 +490,30 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                     });
                 }}
                 onEdit={startEditing}
-                onDelete={deleteMessage}
+                onDeleteRequest={(id) => setDeleteConfirm(id)}
             />
+
+            {deleteConfirm && (
+                <GenericConfirmModal
+                    title="Delete Message"
+                    description="Are you sure you want to permanently delete this message for everyone?"
+                    onConfirm={confirmAndDelete}
+                    onCancel={() => setDeleteConfirm(null)}
+                    confirmText="Purge Message"
+                    isDanger={true}
+                />
+            )}
+
+            {downloadConfirm && (
+                <GenericConfirmModal
+                    title="Bulk Download"
+                    description={`You are about to securely download ${downloadConfirm.length} files to your device.`}
+                    onConfirm={confirmAndDownloadAll}
+                    onCancel={() => setDownloadConfirm(null)}
+                    confirmText="Download All"
+                    isDanger={false}
+                />
+            )}
 
             <ChatInputDock
                 editingMessage={editingMessage}
