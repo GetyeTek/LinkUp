@@ -49,8 +49,8 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const baseCanvasWidth = 794; 
     const currentScale = useRef(1.0);
     const minScale = useRef(1.0);
-    const lastDisplayPage = useRef(1);
-    const [currentDisplayPage, setCurrentDisplayPage] = useState(1);
+    const lastDisplayPage = useRef(targetPageNumber || 1);
+    const [currentDisplayPage, setCurrentDisplayPage] = useState(targetPageNumber || 1);
     const cachedDocHeight = useRef(0);
     
     // Gestural Engine Refs
@@ -115,7 +115,16 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 layerRef.current.style.transform = `scale(${currentScale.current})`;
 
                 if (viewportRef.current) {
-                    if (targetPageNumber === undefined) {
+                    if (targetPageNumber !== undefined) {
+                        // Instantly snap to the target page's raw physical layout offset
+                        const pageNode = viewportRef.current.querySelector(`.page-wrapper[data-page-number="${targetPageNumber}"]`);
+                        if (pageNode) {
+                            viewportRef.current.scrollTop = pageNode.offsetTop * currentScale.current;
+                        } else {
+                            // Failsafe virtual height projection
+                            viewportRef.current.scrollTop = (targetPageNumber - 1) * 1183 * currentScale.current;
+                        }
+                    } else {
                         const savedPos = localStorage.getItem(`linkup_read_pos_${book.id}`);
                         if (savedPos) {
                             viewportRef.current.scrollTop = parseFloat(savedPos) * currentScale.current;
