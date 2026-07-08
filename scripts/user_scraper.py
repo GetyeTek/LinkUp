@@ -45,15 +45,34 @@ async def run_scraper():
             peer_id = chan.get("telegram_peer_id")
             last_id = chan.get("last_scraped_id") or 0
             
-            # Use Peer ID primarily, fallback to handle
-            target_peer = peer_id if peer_id else handle
-            logger.info(f"Processing: {handle or peer_id} (Last Scraped ID: {last_id})")
+            # Resolve target peer safely (force int if numeric)
+            if peer_id is not None:
+                try:
+                    target_peer = int(peer_id)
+                except (ValueError, TypeError):
+                    target_peer = peer_id
+            else:
+                target_peer = handle
+
+            if not target_peer:
+                logger.warning(f"Row {chan.get('id')} has neither handle nor telegram_peer_id. Skipping.")
+                continue
+
+            logger.info(f"Processing: {handle or peer_id} (Resolved Target: {target_peer}, Last Scraped ID: {last_id})")
 
             try:
                 # CRITICAL: Resolve the entity first. 
                 # Fresh sessions don't know if an ID is a User, a Chat, or a Channel.
-                # get_entity() forces the client to fetch the metadata and peer type.
-                entity = await client.get_entity(target_peer)
+                try:
+                    entity = await client.get_entity(target_peer)
+                except Exception as e:
+                    # Self-healing fallback: If negative ID looks like a legacy group, try supergroup prefix
+                    if isinstance(target_peer, int) and target_peer < 0 and not str(target_peer).startswith("-100"):
+                        fallback_peer = int(f"-100{abs(target_peer)}")
+                        logger.info(f"Failed to resolve legacy ID {target_peer} ({str(e)}). Trying supergroup fallback ID: {fallback_peer}")
+                        entity = await client.get_entity(fallback_peer)
+                    else:
+                        raise e
 
                 new_posts = []
                 current_highest_id = last_id
