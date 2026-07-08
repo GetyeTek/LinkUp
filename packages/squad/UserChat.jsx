@@ -219,7 +219,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
             id: tempId, conversation_id: currentConvId,
             sender_id: currentUser.id, text: msgText,
             reply_to_id: currentReplyId,
-            attachments: currentAttachments.map(a => ({ name: a.file.name, type: a.file.type, url: a.previewUrl || '' })),
+            attachments: currentAttachments.map(a => a.file ? { name: a.file.name, type: a.file.type, url: a.previewUrl || '' } : a),
             created_at: new Date().toISOString(), status: 'pending'
         }]);
 
@@ -232,6 +232,10 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
             let completedFiles = 0;
 
             for (const att of currentAttachments) {
+                if (!att.file) {
+                    finalAttachments.push(att);
+                    continue;
+                }
                 try {
                     const file = att.file;
                     const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
