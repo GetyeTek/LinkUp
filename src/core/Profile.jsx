@@ -116,7 +116,7 @@ const Profile = () => {
                             </a>
                             <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleTheme(); }}>
                                 <i className="fas fa-palette list-item-icon"></i>
-                                <span className="list-item-text">Appearance ({theme === 'dark' ? 'Shadow' : 'Radiance'})</span>
+                                <span className="list-item-text">Appearance ({theme === 'dark' ? 'Dark Mode' : 'Light Mode'})</span>
                                 <i className="fas fa-sync-alt list-item-chevron"></i>
                             </a>
                             <a href="#" className="list-item"><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">Privacy & Security</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
