@@ -377,7 +377,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
 
     const formatTime = (isoString) => {
         if (!isoString) return '';
-        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
     };
     const scrollToMessage = (id) => {
         const el = document.getElementById(`msg-${id}`);
