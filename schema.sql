@@ -1,101 +1,110 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-07T05:12:14.800Z
+-- Date: 2026-07-08T19:02:59.608Z
 
 -- ========================
 -- TABLES & COLUMNS
 -- ========================
 Table: api_keys
-created_at (timestamp with time zone), id (bigint), service (text), api_key (text), name (text), cooldown_until (timestamp with time zone), last_used_at (timestamp with time zone), is_active (boolean)
+is_active (boolean), created_at (timestamp with time zone), id (bigint), name (text), service (text), api_key (text), cooldown_until (timestamp with time zone), last_used_at (timestamp with time zone)
 
 Table: book_pages
-manual_flag (text), created_at (timestamp with time zone), page_number (integer), book_id (uuid), id (uuid), page_key (text), content_json (jsonb)
+manual_flag (text), id (uuid), created_at (timestamp with time zone), book_id (uuid), page_number (integer), content_json (jsonb), page_key (text)
 
 Table: book_question_links
-question_id (uuid), id (uuid), chunk_id (uuid), similarity_score (double precision), created_at (timestamp with time zone)
+similarity_score (double precision), created_at (timestamp with time zone), id (uuid), chunk_id (uuid), question_id (uuid)
 
 Table: books
-cover_url (text), author (text), course_code (text), category (text), title (text), id (uuid), created_at (timestamp with time zone), toc (jsonb), page_offset (integer)
+page_offset (integer), toc (jsonb), created_at (timestamp with time zone), author (text), id (uuid), title (text), course_code (text), cover_url (text), category (text)
+
+Table: campus_channels
+id (uuid), channel_handle (text), is_private (boolean), telegram_peer_id (bigint), created_at (timestamp with time zone), is_active (boolean), last_scraped_id (bigint)
+
+Table: campus_feed
+image_url (text), telegram_id (bigint), id (uuid), metadata (jsonb), full_text (text), telegram_timestamp (timestamp with time zone), channel_handle (text), created_at (timestamp with time zone)
 
 Table: chunks
-chunk_index (integer), page_number (integer), document_id (uuid), chunk_text (text), id (uuid), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), prev_chunk_id (uuid), next_chunk_id (uuid)
+id (uuid), chunk_text (text), prev_chunk_id (uuid), toc_node_id (uuid), embedding (USER-DEFINED), created_at (timestamp with time zone), page_number (integer), chunk_index (integer), next_chunk_id (uuid), document_id (uuid)
 
 Table: conduit_favorites
-target_id (text), repo_name (text), category (text), created_at (timestamp with time zone), metadata (jsonb), id (uuid)
+created_at (timestamp with time zone), category (text), target_id (text), repo_name (text), id (uuid), metadata (jsonb)
 
 Table: conduit_history
-sha (text), note (text), meta (text), type (text), title (text), created_at (timestamp with time zone), ops (jsonb), conduit_id (integer), id (uuid), repo_name (text)
+title (text), sha (text), type (text), repo_name (text), created_at (timestamp with time zone), ops (jsonb), conduit_id (integer), id (uuid), note (text), meta (text)
 
 Table: conduit_logs
-created_at (timestamp with time zone), repo_name (text), id (uuid), data (jsonb), type (text)
+data (jsonb), type (text), repo_name (text), created_at (timestamp with time zone), id (uuid)
 
 Table: conversation_members
-user_id (uuid), role (USER-DEFINED), id (uuid), conversation_id (uuid), muted_until (timestamp with time zone), created_at (timestamp with time zone), last_read_at (timestamp with time zone)
+created_at (timestamp with time zone), role (USER-DEFINED), user_id (uuid), conversation_id (uuid), id (uuid), muted_until (timestamp with time zone), last_read_at (timestamp with time zone)
 
 Table: conversations
-created_at (timestamp with time zone), type (USER-DEFINED), id (uuid), last_message_at (timestamp with time zone), avatar_url (text), title (character varying), metadata (jsonb), owner_id (uuid)
+last_message_at (timestamp with time zone), title (character varying), owner_id (uuid), id (uuid), type (USER-DEFINED), created_at (timestamp with time zone), avatar_url (text), metadata (jsonb)
 
 Table: courses
-id (uuid), department_id (uuid), name (text), code (text), created_at (timestamp with time zone)
+code (text), name (text), department_id (uuid), created_at (timestamp with time zone), id (uuid)
 
 Table: departments
-name (text), created_at (timestamp with time zone), id (uuid)
+created_at (timestamp with time zone), id (uuid), name (text)
 
 Table: documents
-last_processed_at (timestamp with time zone), id (uuid), status (text), storage_path (text), file_name (text), user_id (uuid), chunk_count (integer), created_at (timestamp with time zone), page_count (integer)
+page_count (integer), id (uuid), file_name (text), storage_path (text), status (text), last_processed_at (timestamp with time zone), created_at (timestamp with time zone), chunk_count (integer), user_id (uuid)
 
 Table: embedding_progress
-error_message (text), id (uuid), book_id (uuid), page_number (integer), block_index (integer), status (text), locked_until (timestamp with time zone), updated_at (timestamp with time zone)
+block_index (integer), locked_until (timestamp with time zone), updated_at (timestamp with time zone), status (text), error_message (text), id (uuid), book_id (uuid), page_number (integer)
 
 Table: exams
-constants_provided (jsonb), exam_quality_notes (jsonb), media_summary (jsonb), course_id (uuid), date (text), exam_type (text), created_at (timestamp with time zone), university_id (uuid), id (uuid), program (text), general_instructions (text), total_marks (numeric), time_allowed_minutes (integer)
+time_allowed_minutes (integer), total_marks (numeric), constants_provided (jsonb), program (text), exam_quality_notes (jsonb), media_summary (jsonb), course_id (uuid), id (uuid), university_id (uuid), date (text), created_at (timestamp with time zone), exam_type (text), general_instructions (text)
 
 Table: featured_events
-tag_text (text), external_url (text), html_content (text), metadata (jsonb), created_at (timestamp with time zone), is_active (boolean), app_route (jsonb), id (uuid), title (text), body (text), image_url (text), tag_color (text), button_text (text), button_color (text), action_type (text)
+created_at (timestamp with time zone), id (uuid), app_route (jsonb), is_active (boolean), metadata (jsonb), title (text), body (text), image_url (text), tag_text (text), tag_color (text), button_text (text), button_color (text), action_type (text), html_content (text), external_url (text)
 
 Table: live_stage_questions
-is_pinned (boolean), created_at (timestamp with time zone), status (text), conversation_id (uuid), id (uuid), sender_id (uuid), text (text)
+conversation_id (uuid), id (uuid), status (text), text (text), is_pinned (boolean), created_at (timestamp with time zone), sender_id (uuid)
 
 Table: live_study_sessions
-active_user_ids (ARRAY), id (uuid), course_name (text), lesson_topic (text), conversation_id (uuid), last_updated_at (timestamp with time zone)
+lesson_topic (text), id (uuid), course_name (text), conversation_id (uuid), active_user_ids (ARRAY), last_updated_at (timestamp with time zone)
 
 Table: messages
-sender_id (uuid), id (uuid), conversation_id (uuid), attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean), reply_to_id (uuid), forward_meta (jsonb), text (text)
+created_at (timestamp with time zone), text (text), forward_meta (jsonb), reply_to_id (uuid), id (uuid), conversation_id (uuid), sender_id (uuid), attachments (jsonb), is_edited (boolean)
 
 Table: migration_progress
-error_message (text), page_index (text), pdf_name (text), id (uuid), processed_at (timestamp with time zone), remote_id (text), status (text)
+remote_id (text), processed_at (timestamp with time zone), error_message (text), id (uuid), status (text), page_index (text), pdf_name (text)
 
 Table: migration_sync_state
-current_offset (integer), last_run_at (timestamp with time zone), id (integer)
+last_run_at (timestamp with time zone), id (integer), current_offset (integer)
 
 Table: news_feed
-snippet (text), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), telegram_id (bigint), id (bigint), post_url (text), image_url (text), full_text (text), channel (text), title (text)
+title (text), channel (text), telegram_timestamp (timestamp with time zone), post_url (text), telegram_id (bigint), id (bigint), image_url (text), created_at (timestamp with time zone), full_text (text), snippet (text)
 
 Table: notifications
-is_read (boolean), user_id (uuid), title (text), insight (text), id (uuid), action_data (jsonb), created_at (timestamp with time zone), icon (text), type (text), description (text)
+user_id (uuid), is_read (boolean), action_data (jsonb), created_at (timestamp with time zone), icon (text), type (text), title (text), description (text), insight (text), id (uuid)
 
 Table: peer_questions
-title (text), created_at (timestamp with time zone), user_id (uuid), id (uuid), body (text), course_tag (text)
+title (text), id (uuid), user_id (uuid), course_tag (text), body (text), created_at (timestamp with time zone)
+
+Table: poll_votes
+message_id (uuid), id (uuid), option_index (integer), created_at (timestamp with time zone), user_id (uuid)
 
 Table: profiles
-last_seen_at (timestamp with time zone), year (text), freshman_stream (text), department (text), username (text), level (text), avatar_url (text), full_name (text), last_username_change_at (timestamp with time zone), updated_at (timestamp with time zone), linkoin_balance (integer), id (uuid), bio (text), target_department (text), phone (text), university_id (uuid), program (text)
+theme (text), updated_at (timestamp with time zone), linkoin_balance (integer), id (uuid), full_name (text), avatar_url (text), level (text), username (text), department (text), freshman_stream (text), year (text), target_department (text), program (text), phone (text), bio (text), last_seen_at (timestamp with time zone), university_id (uuid), last_username_change_at (timestamp with time zone)
 
 Table: question_book_mappings
-question_id (uuid), created_at (timestamp with time zone), processed_at (timestamp with time zone), error_message (text), content_index (integer), is_valid (boolean), book_id (uuid), snippet (text), id (uuid), page_key (text), status (text)
+error_message (text), snippet (text), processed_at (timestamp with time zone), book_id (uuid), created_at (timestamp with time zone), question_id (uuid), id (uuid), page_key (text), content_index (integer), status (text), is_valid (boolean)
 
 Table: question_reports
-id (uuid), source (text), report_text (text), question_id (uuid), status (text), created_at (timestamp with time zone)
+source (text), question_id (uuid), id (uuid), created_at (timestamp with time zone), status (text), report_text (text)
 
 Table: questions
-created_at (timestamp with time zone), embedding (USER-DEFINED), question_number (text), question_type (text), retry_count (integer), question_order (integer), transcription_quality (jsonb), media (jsonb), matching_data (jsonb), options (jsonb), points (numeric), embedding_status (text), section_id (uuid), id (uuid), text (text)
+created_at (timestamp with time zone), points (numeric), section_id (uuid), embedding_status (text), question_type (text), embedding (USER-DEFINED), text (text), retry_count (integer), options (jsonb), question_order (integer), transcription_quality (jsonb), media (jsonb), matching_data (jsonb), question_number (text), id (uuid)
 
 Table: sections
-shared_context (jsonb), exam_id (uuid), id (uuid), instructions (text), title (text), total_points (numeric), created_at (timestamp with time zone), section_order (integer)
+instructions (text), section_order (integer), shared_context (jsonb), title (text), id (uuid), total_points (numeric), exam_id (uuid), created_at (timestamp with time zone)
 
 Table: squad_bans
-id (uuid), user_id (uuid), banned_until (timestamp with time zone), conversation_id (uuid), created_at (timestamp with time zone)
+created_at (timestamp with time zone), conversation_id (uuid), user_id (uuid), banned_until (timestamp with time zone), id (uuid)
 
 Table: universities
-name (text), created_at (timestamp with time zone), short_name (text), id (uuid)
+name (text), id (uuid), created_at (timestamp with time zone), short_name (text)
 
 -- ========================
 -- RLS POLICIES
@@ -152,6 +161,7 @@ Table: live_study_sessions | Policy: Hosts can manage live sessions | Cmd: ALL |
    FROM conversation_members cm
   WHERE ((cm.conversation_id = live_study_sessions.conversation_id) AND (cm.user_id = auth.uid()) AND (cm.role = ANY (ARRAY['owner'::member_role, 'admin'::member_role])))))
 Table: live_stage_questions | Policy: Members can read live questions | Cmd: SELECT | Using: is_member_of(conversation_id)
+Table: poll_votes | Policy: Public read for poll votes | Cmd: SELECT | Using: true
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -624,6 +634,38 @@ BEGIN
 END;
 
 
+-- Function: get_next_api_key
+
+BEGIN
+  RETURN QUERY
+  SELECT ak.id, ak.api_key
+  FROM api_keys ak
+  WHERE ak.service = target_service
+    AND ak.is_active = true
+    AND (ak.cooldown_until IS NULL OR ak.cooldown_until <= NOW())
+  ORDER BY ak.last_used_at ASC NULLS FIRST
+  LIMIT 1;
+END;
+
+
+-- Function: mark_key_usage
+
+BEGIN
+  UPDATE api_keys 
+  SET last_used_at = NOW() 
+  WHERE id = key_id;
+END;
+
+
+-- Function: set_key_cooldown_rpc
+
+BEGIN
+  UPDATE api_keys 
+  SET cooldown_until = NOW() + interval '5 minutes' 
+  WHERE id = key_id;
+END;
+
+
 -- Function: get_suggested_squads
 
 BEGIN
@@ -762,46 +804,6 @@ BEGIN
 END;
 
 
--- Function: enforce_squad_message_rules
-
-DECLARE
-    v_role text;
-    v_muted_until timestamp with time zone;
-    v_members_can_post boolean;
-    v_type text;
-BEGIN
-    -- 1. Check if the conversation is a group
-    SELECT type, COALESCE((metadata->>'members_can_post')::boolean, true) 
-    INTO v_type, v_members_can_post 
-    FROM public.conversations 
-    WHERE id = NEW.conversation_id;
-
-    IF v_type = 'group' THEN
-        -- 2. Grab the sender's current rank and mute status
-        SELECT role, muted_until INTO v_role, v_muted_until
-        FROM public.conversation_members
-        WHERE conversation_id = NEW.conversation_id AND user_id = NEW.sender_id;
-
-        -- 3. Reject non-members outright
-        IF v_role IS NULL THEN
-            RAISE EXCEPTION 'Access Denied: You are not a member of this squad.';
-        END IF;
-
-        -- 4. Reject if the user is individually muted/restricted
-        IF v_muted_until IS NOT NULL AND v_muted_until > now() THEN
-            RAISE EXCEPTION 'Access Denied: You are currently restricted from posting in this group.';
-        END IF;
-
-        -- 5. Reject if global posting is turned off (and the user isn't an admin)
-        IF v_members_can_post = false AND v_role NOT IN ('owner', 'admin') THEN
-            RAISE EXCEPTION 'Access Denied: Administrators have temporarily disabled posting for members.';
-        END IF;
-    END IF;
-
-    RETURN NEW;
-END;
-
-
 -- Function: create_direct_message
 
 DECLARE
@@ -850,6 +852,45 @@ END;
 BEGIN
     DELETE FROM public.conversation_members
     WHERE conversation_id = req_conv_id AND user_id = auth.uid();
+END;
+
+
+-- Function: enforce_squad_message_rules
+
+DECLARE
+    v_role text;
+    v_muted_until timestamp with time zone;
+    v_members_can_post boolean;
+    v_members_can_poll boolean;
+    v_type text;
+BEGIN
+    SELECT type, 
+           COALESCE((metadata->>'members_can_post')::boolean, true),
+           COALESCE((metadata->>'members_can_poll')::boolean, true)
+    INTO v_type, v_members_can_post, v_members_can_poll 
+    FROM public.conversations 
+    WHERE id = NEW.conversation_id;
+
+    IF v_type = 'group' THEN
+        SELECT role, muted_until INTO v_role, v_muted_until
+        FROM public.conversation_members
+        WHERE conversation_id = NEW.conversation_id AND user_id = NEW.sender_id;
+
+        IF v_role IS NULL THEN RAISE EXCEPTION 'Access Denied: You are not a member of this squad.'; END IF;
+        IF v_muted_until IS NOT NULL AND v_muted_until > now() THEN RAISE EXCEPTION 'Access Denied: You are currently restricted from posting.'; END IF;
+        IF v_members_can_post = false AND v_role NOT IN ('owner', 'admin') THEN RAISE EXCEPTION 'Access Denied: Administrators have temporarily disabled posting.'; END IF;
+
+        -- Intercept Poll Attachments and check permissions
+        IF NEW.attachments IS NOT NULL AND jsonb_typeof(NEW.attachments) = 'array' THEN
+            IF EXISTS (SELECT 1 FROM jsonb_array_elements(NEW.attachments) AS elem WHERE elem->>'type' = 'poll') THEN
+                IF v_members_can_poll = false AND v_role NOT IN ('owner', 'admin') THEN
+                    RAISE EXCEPTION 'Access Denied: Administrators have disabled polling for members.';
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN NEW;
 END;
 
 
@@ -1371,6 +1412,54 @@ BEGIN
         END IF;
     END IF;
     RETURN NEW;
+END;
+
+
+-- Function: cast_poll_vote
+
+DECLARE
+    v_msg record;
+    v_poll jsonb;
+    v_deadline timestamptz;
+    v_allow_revote boolean;
+    v_allow_multiple boolean;
+    v_has_voted boolean;
+BEGIN
+    SELECT * INTO v_msg FROM public.messages WHERE id = req_message_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Message not found'; END IF;
+    
+    -- Extract the poll attachment
+    SELECT elem INTO v_poll FROM jsonb_array_elements(v_msg.attachments) AS elem WHERE elem->>'type' = 'poll' LIMIT 1;
+    IF v_poll IS NULL THEN RAISE EXCEPTION 'No poll found in this message'; END IF;
+    
+    -- Load physics settings
+    v_deadline := (v_poll->'poll_data'->>'deadline')::timestamptz;
+    v_allow_revote := COALESCE((v_poll->'poll_data'->>'allow_revote')::boolean, false);
+    v_allow_multiple := COALESCE((v_poll->'poll_data'->>'multiple_answers')::boolean, false);
+    
+    -- Check temporal boundaries
+    IF v_deadline IS NOT NULL AND v_deadline < now() THEN
+        RAISE EXCEPTION 'Poll has ended';
+    END IF;
+    
+    -- If single-choice, purge other selections
+    IF NOT v_allow_multiple THEN
+        DELETE FROM public.poll_votes 
+        WHERE message_id = req_message_id AND user_id = auth.uid() AND option_index != req_option_index;
+    END IF;
+    
+    -- Check specific vote existence for toggling
+    SELECT EXISTS(SELECT 1 FROM public.poll_votes WHERE message_id = req_message_id AND user_id = auth.uid() AND option_index = req_option_index) INTO v_has_voted;
+    
+    IF v_has_voted THEN
+        IF v_allow_revote THEN
+            DELETE FROM public.poll_votes WHERE message_id = req_message_id AND user_id = auth.uid() AND option_index = req_option_index;
+        ELSE
+            RAISE EXCEPTION 'Revoting is disabled for this poll';
+        END IF;
+    ELSE
+        INSERT INTO public.poll_votes (message_id, user_id, option_index) VALUES (req_message_id, auth.uid(), req_option_index);
+    END IF;
 END;
 
 
