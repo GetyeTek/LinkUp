@@ -166,10 +166,17 @@
 }
 
 .poll-indicator.quiz-wrong::after {
-    content: '✕';
+    content: '\f00d'; /* FontAwesome X */
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
+}
+
+.poll-indicator.quiz-correct::after {
+    content: '\f00c'; /* FontAwesome Check */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 0.75rem;
 }
 
 .poll-footer-meta {
