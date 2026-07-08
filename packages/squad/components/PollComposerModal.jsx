@@ -64,8 +64,9 @@ const PollComposerModal = ({ onClose, onSendPoll }) => {
         onClose();
     };
 
+    const validOptionCount = options.filter(o => o.text.trim()).length;
     const isValid = question.trim().length > 0 && 
-                    options.filter(o => o.text.trim()).length >= 2 && 
+                    validOptionCount >= 2 && 
                     (!quizMode || correctIndex !== null);
 
     return (
@@ -117,7 +118,14 @@ const PollComposerModal = ({ onClose, onSendPoll }) => {
                     <div className="pc-group">
                         <label className="pc-label">Settings</label>
                         <div className="pc-settings-panel">
-                            <div className="pc-setting-row" onClick={() => { setQuizMode(!quizMode); if(!quizMode) setMultipleAnswers(false); }}>
+                            <div className="pc-setting-row" onClick={() => { 
+                                const next = !quizMode;
+                                setQuizMode(next); 
+                                if(next) {
+                                    setMultipleAnswers(false);
+                                    setAllowRevote(false); // Quizzes are usually one-shot
+                                }
+                            }}>
                                 <div className="pc-setting-info">
                                     <span className="pc-setting-title">Quiz Mode</span>
                                     <span className="pc-setting-desc">Set a correct answer</span>
@@ -125,7 +133,11 @@ const PollComposerModal = ({ onClose, onSendPoll }) => {
                                 <div className={`toggle-switch ${quizMode ? 'on' : 'off'}`}></div>
                             </div>
 
-                            <div className="pc-setting-row" onClick={() => !quizMode && setMultipleAnswers(!multipleAnswers)} style={{opacity: quizMode ? 0.5 : 1}}>
+                            <div className="pc-setting-row" onClick={() => {
+                                const next = !multipleAnswers;
+                                setMultipleAnswers(next);
+                                if(next) setQuizMode(false);
+                            }}>
                                 <div className="pc-setting-info">
                                     <span className="pc-setting-title">Multiple Answers</span>
                                     <span className="pc-setting-desc">Allow checking multiple options</span>
