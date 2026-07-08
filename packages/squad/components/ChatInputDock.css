@@ -23,7 +23,29 @@
     width: 36px; height: 36px; border-radius: 50%;
     background: rgba(255,255,255,0.05); border: none; color: #a0a0a0;
     display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+    position: relative;
 }
+
+.attach-popover-menu {
+    position: absolute; bottom: 50px; left: 0;
+    background: rgba(18, 18, 24, 0.95); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;
+    padding: 6px; display: flex; flex-direction: column; gap: 4px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100;
+    min-width: 160px;
+    animation: menuPopFixed 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform-origin: bottom left;
+}
+
+.attach-popover-menu button {
+    background: transparent; border: none; color: #fff;
+    padding: 12px 14px; border-radius: 10px; font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; gap: 12px; transition: background 0.2s;
+}
+
+.attach-popover-menu button:hover { background: rgba(255,255,255,0.1); }
+.attach-popover-menu button i { color: var(--accent-teal); font-size: 1.1rem; width: 20px; text-align: center; }
 .unified-send-btn {
     width: 40px; height: 40px; border-radius: 50%; background: var(--accent-teal); border: none; color: #000; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: transform 0.2s; flex-shrink: 0;
 }
