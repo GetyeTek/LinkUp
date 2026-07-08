@@ -18,8 +18,8 @@
 }
 
 .report-modal-card {
-    background: #121212;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
     border-radius: 20px;
     width: 100%;
     max-width: 400px;
@@ -59,7 +59,7 @@
     cursor: pointer;
     transition: color 0.2s;
 }
-.report-close:hover { color: #fff; }
+.report-close:hover { color: var(--text-primary-dark); }
 
 .report-body {
     padding: 1.5rem;
@@ -75,11 +75,11 @@
 .report-textarea {
     width: 100%;
     height: 100px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1rem;
-    color: #fff;
+    color: var(--text-primary-dark);
     font-family: 'Poppins', sans-serif;
     font-size: 0.9rem;
     resize: none;
