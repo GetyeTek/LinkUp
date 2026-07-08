@@ -37,6 +37,15 @@ const App = () => {
           document.documentElement.className = `theme-${theme}`;
       }, [theme]);
 
+      const toggleTheme = async () => {
+          const newTheme = theme === 'dark' ? 'light' : 'dark';
+          setTheme(newTheme);
+          localStorage.setItem('linkup_theme', newTheme);
+          if (session?.user?.id) {
+              await supabase.from('profiles').update({ theme: newTheme }).eq('id', session.user.id);
+          }
+      };
+
       useEffect(() => {
         const handleOpenLive = () => setIsMironLive(true);
         window.addEventListener('miron:open-live-session', handleOpenLive);
@@ -120,26 +129,17 @@ const App = () => {
       }
     } catch (e) {}
 
-    const fetchProfile = async (userId) => {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (data) {
-          setUserProfile(data);
-          if (data.theme && data.theme !== theme) {
-              setTheme(data.theme);
-              localStorage.setItem('linkup_theme', data.theme);
+            const fetchProfile = async (userId) => {
+          const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+          if (data) {
+              setUserProfile(data);
+              if (data.theme && data.theme !== theme) {
+                  setTheme(data.theme);
+                  localStorage.setItem('linkup_theme', data.theme);
+              }
           }
-      }
-      setIsProfileLoaded(true);
-    };
-
-    const toggleTheme = async () => {
-        const newTheme = theme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
-        localStorage.setItem('linkup_theme', newTheme);
-        if (session?.user?.id) {
-            await supabase.from('profiles').update({ theme: newTheme }).eq('id', session.user.id);
-        }
-    };
+          setIsProfileLoaded(true);
+        };
 
     const updateLastSeen = async () => {
       const { data: { session } } = await supabase.auth.getSession();
