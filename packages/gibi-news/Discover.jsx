@@ -74,17 +74,49 @@ const Discover = () => {
     }, [page]);
 
     useEffect(() => {
-        console.log("%c[GN_Feed] >> Initializing Discovery Feed...", "color: #ffab40; font-family: monospace;");
-        // Calculate indicator position
-        if (navRef.current) {
-            const activeEl = navRef.current.querySelector('.nav-item.active');
-            if (activeEl) {
-                setIndicatorStyle({
-                    width: `${activeEl.offsetWidth}px`,
-                    transform: `translateX(${activeEl.offsetLeft}px)`
-                });
+        const updateIndicator = () => {
+            if (navRef.current) {
+                const activeEl = navRef.current.querySelector('.nav-item.active');
+                if (activeEl && activeEl.offsetWidth > 0) {
+                    setIndicatorStyle({
+                        width: `${activeEl.offsetWidth}px`,
+                        transform: `translateX(${activeEl.offsetLeft}px)`
+                    });
+                }
             }
-        }
+        };
+
+        updateIndicator(); // Initial sync
+        
+        // Failsafe: Re-sync after DOM paints to capture precise layout widths
+        const paintTimer = setTimeout(updateIndicator, 50);
+        window.addEventListener('resize', updateIndicator);
+
+        return () => {
+            clearTimeout(paintTimer);
+            window.removeEventListener('resize', updateIndicator);
+        };
+    }, [activeSubTab]);
+
+    // --- SWIPE INTERCEPTOR ---
+    useEffect(() => {
+        const handleSubSwipe = (e) => {
+            const { direction } = e.detail;
+            const views = ['feeds', 'explore'];
+            const currentIndex = views.indexOf(activeSubTab);
+            
+            // Intercept the global swipe if we can shift tabs internally
+            if (direction === 'left' && currentIndex < views.length - 1) {
+                e.preventDefault(); // Stop App.jsx from swiping
+                setActiveSubTab(views[currentIndex + 1]);
+            } else if (direction === 'right' && currentIndex > 0) {
+                e.preventDefault(); // Stop App.jsx from swiping
+                setActiveSubTab(views[currentIndex - 1]);
+            }
+        };
+        
+        window.addEventListener('app-swipe', handleSubSwipe);
+        return () => window.removeEventListener('app-swipe', handleSubSwipe);
     }, [activeSubTab]);
 
     return (
