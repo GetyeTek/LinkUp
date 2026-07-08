@@ -25,7 +25,7 @@
 }
 
 .poll-composer-sheet {
-    background: #121212; border-top: 1px solid rgba(255,255,255,0.1);
+    background: var(--surface-dark); border-top: 1px solid var(--border-color);
     border-radius: 24px 24px 0 0; padding: 1.5rem;
     display: flex; flex-direction: column; max-height: 85vh;
     animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -42,7 +42,7 @@
     margin-bottom: 1.5rem;
 }
 
-.poll-comp-header h2 { font-size: 1.25rem; font-weight: 600; margin: 0; color: #fff; }
+.poll-comp-header h2 { font-size: 1.25rem; font-weight: 600; margin: 0; color: var(--text-primary-dark); }
 
 .poll-comp-body {
     flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem;
@@ -55,8 +55,8 @@
 .pc-label { font-size: 0.8rem; font-weight: 600; color: var(--accent-teal); text-transform: uppercase; letter-spacing: 0.5px; }
 
 .pc-input {
-    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-    color: #fff; padding: 12px 14px; border-radius: 12px; font-family: 'Poppins', sans-serif;
+    background: var(--bg-dark); border: 1px solid var(--border-color);
+    color: var(--text-primary-dark); padding: 12px 14px; border-radius: 12px; font-family: 'Poppins', sans-serif;
     font-size: 0.95rem; outline: none; transition: border-color 0.2s;
 }
 .pc-input:focus { border-color: var(--accent-teal); background: rgba(0,0,0,0.3); }
@@ -76,30 +76,30 @@
 }
 
 .pc-add-btn {
-    background: transparent; border: 1px dashed rgba(255,255,255,0.2); color: var(--accent-teal);
+    background: transparent; border: 1px dashed var(--border-color); color: var(--accent-teal);
     padding: 12px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s;
 }
 .pc-add-btn:hover { background: rgba(66, 215, 184, 0.05); border-color: var(--accent-teal); }
 
 .pc-settings-panel {
-    background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);
+    background: var(--bg-dark); border: 1px solid var(--border-color);
     border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 4px;
 }
 
 .pc-setting-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+    padding: 10px 0; border-bottom: 1px solid var(--border-color);
 }
 .pc-setting-row:last-child { border-bottom: none; }
 .pc-setting-info { display: flex; flex-direction: column; }
-.pc-setting-title { font-size: 0.95rem; color: #fff; font-weight: 500; }
+.pc-setting-title { font-size: 0.95rem; color: var(--text-primary-dark); font-weight: 500; }
 .pc-setting-desc { font-size: 0.75rem; color: #888; }
 
 .pc-duration-pills {
     display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
 }
 .pc-duration-pill {
-    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    background: var(--surface-dark); border: 1px solid var(--border-color);
     color: #ccc; padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
     cursor: pointer; transition: all 0.2s;
 }
