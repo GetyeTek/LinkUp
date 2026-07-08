@@ -78,11 +78,15 @@ async def run_scraper():
 
                     new_posts.append({
                         "telegram_id": message.id,
-                        "channel_handle": handle or str(peer_id),
-                        "full_text": message.text,
+                        "channel_handle": handle if handle else str(peer_id),
+                        "full_text": message.text or "",
                         "image_url": "MEDIA_ATTACHED" if message.photo else None,
                         "telegram_timestamp": message.date.isoformat(),
-                        "metadata": {"source": "shadow_scraper", "is_private": True}
+                        "metadata": {
+                            "source": "shadow_scraper", 
+                            "is_private": True,
+                            "peer_id": peer_id
+                        }
                     })
 
                 # 3. Upsert into Data Warehouse
