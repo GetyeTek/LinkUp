@@ -7,6 +7,8 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
     const [currentTime, setCurrentTime] = useState(Date.now());
 
     useEffect(() => {
+        if (String(msgId).startsWith('temp-')) return;
+
         const fetchVotes = async () => {
             const { data } = await supabase.from('poll_votes').select('user_id, option_index').eq('message_id', msgId);
             if (data) setVotes(data);
@@ -40,6 +42,7 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
     const showResults = hasVoted || isExpired || !pollData.allow_revote;
 
     const handleVote = async (index) => {
+        if (String(msgId).startsWith('temp-')) return;
         if (isExpired) return;
         // In Quiz Mode, we lock the poll after the first interaction
         if (pollData.quiz_mode && hasVoted) return;
@@ -63,7 +66,7 @@ const InteractivePoll = ({ pollData, msgId, currentUser }) => {
 
         // Fire RPC securely - Parameters matched to short SQL names
         try {
-            await supabase.rpc('cast_poll_vote', { message_id: msgId, option_index: index });
+            await supabase.rpc('cast_poll_vote', { req_message_id: msgId, req_option_index: index });
         } catch (err) {
             console.error("Vote failed:", err);
             // In a production app, we would rollback the optimistic update here on failure
