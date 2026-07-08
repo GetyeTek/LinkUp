@@ -56,6 +56,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     // Moderation State
     const [myMutedUntil, setMyMutedUntil] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null); // ID of message to delete
+    const [downloadConfirm, setDownloadConfirm] = useState(null); // Attachments array
     const [kickedNotice, setKickedNotice] = useState(false);
     const [avatarError, setAvatarError] = useState(false);
     const [showAdminSettings, setShowAdminSettings] = useState(false);
@@ -463,24 +464,40 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         setActiveMenu(null);
     };
 
-    const handleDownload = (url, filename) => {
+    const handleDownload = async (url, filename) => {
         setActiveMenu(null);
-        const downloadUrl = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`;
-        
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.target = '_self'; 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Network response was not ok');
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename || 'download';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        } catch (e) {
+            // Failsafe strictly using target blank to prevent routing crash
+            const link = document.createElement('a');
+            link.href = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     };
 
-    const handleDownloadAll = (attachments) => {
-        setActiveMenu(null);
+    const confirmAndDownloadAll = () => {
+        if (!downloadConfirm) return;
+        const attachments = downloadConfirm;
+        setDownloadConfirm(null);
         attachments.forEach((att, index) => {
             setTimeout(() => {
                 handleDownload(att.url, att.name);
-            }, index * 400); // Stagger to avoid browser popup blocks
+            }, index * 400);
         });
     };
 
@@ -816,7 +833,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 onReply={startReply}
                 onCopy={handleCopy}
                 onDownload={handleDownload}
-                onDownloadAll={handleDownloadAll}
+                onDownloadAllRequest={(attachments) => setDownloadConfirm(attachments)}
                 onForward={(msg) => {
                     onForward({
                         ...msg, 
@@ -826,7 +843,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 }}
                 onEdit={startEditing}
                 onPin={handlePinMessage}
-                onDelete={(id) => setDeleteConfirm(id)}
+                onDeleteRequest={(id) => setDeleteConfirm(id)}
                 canDownload={!chat.metadata || chat.metadata.privacy !== 'private'}
                 canForward={!chat.metadata || chat.metadata.privacy !== 'private'}
                 canPin={myRole === 'owner' || myRole === 'admin'}
@@ -888,6 +905,17 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     onCancel={() => setDeleteConfirm(null)}
                     confirmText="Purge Message"
                     isDanger={true}
+                />
+            )}
+
+            {downloadConfirm && (
+                <GenericConfirmModal
+                    title="Bulk Download"
+                    description={`You are about to securely download ${downloadConfirm.length} files to your device.`}
+                    onConfirm={confirmAndDownloadAll}
+                    onCancel={() => setDownloadConfirm(null)}
+                    confirmText="Download All"
+                    isDanger={false}
                 />
             )}
 
