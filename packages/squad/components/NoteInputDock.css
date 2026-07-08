@@ -1,16 +1,16 @@
 .notes-dock-wrap {
     padding: 1rem 1.5rem;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 10px));
-    background: #121212; border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--bg-dark); border-top: 1px solid var(--border-color);
 }
 
 .notes-dock {
-    display: flex; align-items: flex-end; gap: 10px; background: #1e1e1e;
-    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 8px;
+    display: flex; align-items: flex-end; gap: 10px; background: var(--surface-dark);
+    border: 1px solid var(--border-color); border-radius: 20px; padding: 8px;
 }
 
 .notes-input {
-    flex: 1; background: transparent; border: none; outline: none; color: #fff;
+    flex: 1; background: transparent; border: none; outline: none; color: var(--text-primary-dark);
     font-family: 'Poppins', sans-serif; font-size: 0.95rem; padding: 8px 4px;
     max-height: 100px; resize: none;
 }
