@@ -5,10 +5,7 @@
 .media-gallery-grid[data-count="2"] { grid-template-columns: 1fr 1fr; }
 .media-gallery-grid[data-count="3"] { grid-template-columns: 1fr 1fr; }
 .media-gallery-grid[data-count="3"] .gallery-item:first-child { grid-column: span 2; aspect-ratio: 2/1; }
-.media-gallery-grid[data-count="4"] { grid-template-columns: 1fr 1fr; }
-.media-gallery-grid[data-count="5"], .media-gallery-grid[data-more="true"] { grid-template-columns: 1fr 1fr 1fr; }
-.media-gallery-grid[data-count="5"] .gallery-item:nth-child(1), .media-gallery-grid[data-more="true"] .gallery-item:nth-child(1),
-.media-gallery-grid[data-count="5"] .gallery-item:nth-child(2), .media-gallery-grid[data-more="true"] .gallery-item:nth-child(2) { grid-column: span 1.5; }
+.media-gallery-grid[data-count="4"], .media-gallery-grid[data-more="true"] { grid-template-columns: 1fr 1fr; }
 
 .gallery-item { position: relative; aspect-ratio: 1; cursor: pointer; overflow: hidden; }
 .media-gallery-grid[data-count="1"] .gallery-item { aspect-ratio: auto; max-height: 300px; }
@@ -53,15 +50,38 @@
 }
 
 .media-bubble.captioned {
-    padding: 12px 6px 6px 6px !important;
+    padding: 0 !important;
+    overflow: hidden;
 }
 
 .media-bubble.captioned .media-gallery-grid {
     margin-top: 0 !important;
-    border-radius: 12px;
+    border-radius: 16px 16px 0 0;
 }
 
 .media-bubble.captioned .bubble-text-content {
-    padding: 6px 8px 4px 8px !important;
-    color: inherit;
+    padding: 10px 14px 12px 14px !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+    background: rgba(0, 0, 0, 0.25);
+    font-weight: 400 !important;
+    font-size: 0.9rem !important;
+}
+
+.sent .media-bubble.captioned .bubble-text-content,
+.mine .media-bubble.captioned .bubble-text-content {
+    color: rgba(0, 0, 0, 0.8) !important;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.media-bubble.captioned .squad-time-meta,
+.media-bubble.captioned .prism-time {
+    padding: 0 14px 10px 14px;
+    margin-top: 0;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.sent .media-bubble.captioned .prism-time,
+.sent .media-bubble.captioned .squad-time-meta,
+.mine .media-bubble.captioned .squad-time-meta {
+    background: rgba(255, 255, 255, 0.25);
 }
