@@ -3,7 +3,7 @@
     position: fixed;
     inset: 0;
     z-index: 3000;
-    background: rgba(5, 5, 5, 0.8);
+    background: var(--glass-bg);
     backdrop-filter: blur(15px);
     display: flex;
     justify-content: flex-end;
@@ -16,11 +16,11 @@
     width: 100%;
     max-width: 500px;
     height: 100%;
-    background: #0c0c0c;
+    background: var(--bg-dark);
     display: flex;
     flex-direction: column;
     box-shadow: -10px 0 40px rgba(0,0,0,0.5);
-    border-left: 1px solid rgba(255,255,255,0.08);
+    border-left: 1px solid var(--border-color);
     animation: pulseSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -31,7 +31,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .pulse-header h1 {
@@ -52,7 +52,7 @@
 
 .pulse-item {
     position: relative; padding: 1.25rem 1.5rem; display: flex; gap: 1rem;
-    border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer;
+    border-bottom: 1px solid var(--border-color); cursor: pointer;
     transition: background 0.3s;
 }
 
@@ -66,7 +66,7 @@
 
 .p-icon-box {
     width: 44px; height: 44px; border-radius: 14px;
-    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    background: var(--surface-dark); border: 1px solid var(--border-color);
     display: flex; align-items: center; justify-content: center;
     font-size: 1.1rem; color: var(--cat-color); flex-shrink: 0;
 }
@@ -85,8 +85,8 @@
 
 .p-action-row { display: flex; gap: 8px; margin-top: 12px; }
 .p-btn { 
-    padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.03); color: white; font-size: 0.75rem; font-weight: 500; cursor: pointer;
+    padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border-color);
+    background: var(--surface-dark); color: var(--text-primary-dark); font-size: 0.75rem; font-weight: 500; cursor: pointer;
 }
 .p-btn.primary { background: var(--cat-color); border-color: transparent; color: #0c0c0c; }
 
