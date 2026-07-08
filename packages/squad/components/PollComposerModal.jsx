@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import './PollComposerModal.css';
 
-const PollComposerModal = ({ onClose, onSendPoll }) => {
-    const [question, setQuestion] = useState('');
-    const [description, setDescription] = useState('');
-    const [options, setOptions] = useState([{ id: 1, text: '' }, { id: 2, text: '' }]);
+const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
+    const [question, setQuestion] = useState(initialPollData?.question || '');
+    const [description, setDescription] = useState(initialPollData?.description || '');
+    const [options, setOptions] = useState(initialPollData?.options?.map((text, i) => ({id: i + 1, text})) || [{ id: 1, text: '' }, { id: 2, text: '' }]);
     
     // Settings
-    const [quizMode, setQuizMode] = useState(false);
-    const [correctIndex, setCorrectIndex] = useState(null);
-    const [multipleAnswers, setMultipleAnswers] = useState(false);
-    const [allowRevote, setAllowRevote] = useState(true);
+    const [quizMode, setQuizMode] = useState(initialPollData?.quiz_mode || false);
+    const [correctIndex, setCorrectIndex] = useState(initialPollData?.correct_option_index ?? null);
+    const [multipleAnswers, setMultipleAnswers] = useState(initialPollData?.multiple_answers || false);
+    const [allowRevote, setAllowRevote] = useState(initialPollData?.allow_revote ?? true);
     const [durationIdx, setDurationIdx] = useState(null); // null = infinite
     const [customDate, setCustomDate] = useState('');
 
@@ -73,7 +73,7 @@ const PollComposerModal = ({ onClose, onSendPoll }) => {
         <div className="poll-composer-overlay" onClick={onClose}>
             <div className="poll-composer-sheet" onClick={e => e.stopPropagation()}>
                 <header className="poll-comp-header">
-                    <h2>Create Poll</h2>
+                    <h2>{initialPollData ? 'Update Poll' : 'Create Poll'}</h2>
                     <button className="icon-button" style={{color: '#888'}} onClick={onClose}><i className="fas fa-times"></i></button>
                 </header>
 
@@ -179,7 +179,7 @@ const PollComposerModal = ({ onClose, onSendPoll }) => {
                     </div>
                 </div>
 
-                <button className="poll-submit-btn" disabled={!isValid} onClick={handleSubmit}>Create Poll</button>
+                <button className="poll-submit-btn" disabled={!isValid} onClick={handleSubmit}>{initialPollData ? 'Update Poll' : 'Create Poll'}</button>
             </div>
         </div>
     );
