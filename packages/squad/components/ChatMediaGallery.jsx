@@ -21,8 +21,8 @@ const ChatMediaGallery = ({ attachments, setFullscreenGallery, handleDownload })
     
     const mediaItems = attachments.filter(a => a.type.startsWith('image/') || a.type.startsWith('video/'));
     const docItems = attachments.filter(a => !a.type.startsWith('image/') && !a.type.startsWith('video/'));
-    const hasMoreMedia = mediaItems.length > 5;
-    const displayMedia = mediaItems.slice(0, 5);
+    const hasMoreMedia = mediaItems.length > 4;
+    const displayMedia = mediaItems.slice(0, 4);
 
     return (
         <>
@@ -41,7 +41,7 @@ const ChatMediaGallery = ({ attachments, setFullscreenGallery, handleDownload })
                                     <img src={att.url} alt="Shared Image" />
                                 )}
                                 {isLast && hasMoreMedia && (
-                                    <div className="gallery-more-overlay" data-more-count={(mediaItems.length - 5).toString()}></div>
+                                    <div className="gallery-more-overlay" data-more-count={(mediaItems.length - 4).toString()}></div>
                                 )}
                             </div>
                         );
