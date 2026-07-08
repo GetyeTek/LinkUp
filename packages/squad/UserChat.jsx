@@ -181,13 +181,13 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
             .eq('user_id', currentUser.id);
     };
 
-    const handleSend = async () => {
-        if ((!input.trim() && pendingAttachments.length === 0) || isUploading) return;
+    const handleSend = async (overrideData = null) => {
+        if (!overrideData && (!input.trim() && pendingAttachments.length === 0) && !isUploading) return;
         
         clearTypingPresence();
 
-        const msgText = input;
-        const currentAttachments = [...pendingAttachments];
+        const msgText = overrideData ? overrideData.text : input;
+        const currentAttachments = overrideData ? overrideData.attachments : [...pendingAttachments];
         let currentConvId = activeConvId;
         
         setInput('');
@@ -455,6 +455,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                     return (
                         <ChatBubble 
                             key={m.id}
+                            currentUser={currentUser}
                             msg={m}
                             isMine={isMine}
                             isGroup={false}
@@ -516,6 +517,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
             )}
 
             <ChatInputDock
+                canPoll={true}
                 editingMessage={editingMessage}
                 setEditingMessage={setEditingMessage}
                 replyingTo={replyingTo}
