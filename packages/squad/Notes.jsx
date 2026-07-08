@@ -3,6 +3,7 @@ import { supabase } from '@linkup-platform/sdk-core';
 import NoteCard from './components/NoteCard.jsx';
 import NoteContextMenu from './components/NoteContextMenu.jsx';
 import NoteInputDock from './components/NoteInputDock.jsx';
+import GenericConfirmModal from './components/GenericConfirmModal.jsx';
 import './Notes.css';
 
 const Notes = ({ currentUser, onClose }) => {
@@ -13,6 +14,7 @@ const Notes = ({ currentUser, onClose }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [activeMenu, setActiveMenu] = useState(null);
     const [alertNotice, setAlertNotice] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
     
     const fileInputRef = useRef(null);
     const flowRef = useRef(null);
@@ -147,8 +149,10 @@ const Notes = ({ currentUser, onClose }) => {
         return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    const deleteNote = async (id) => {
-        if(!window.confirm("Delete this note?")) return;
+    const confirmAndDeleteNote = async () => {
+        if (!deleteConfirm) return;
+        const id = deleteConfirm;
+        setDeleteConfirm(null);
 
         // 1. Find the message locally to check for attachments
         const noteToDelete = messages.find(m => m.id === id);
@@ -188,16 +192,29 @@ const Notes = ({ currentUser, onClose }) => {
         setActiveMenu(null);
     };
 
-    const handleDownload = (url, filename) => {
+    const handleDownload = async (url, filename) => {
         setActiveMenu(null);
-        const downloadUrl = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`;
-        
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.target = '_self'; 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Network response was not ok');
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename || 'download';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        } catch (e) {
+            const link = document.createElement('a');
+            link.href = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     };
 
     return (
@@ -267,8 +284,19 @@ const Notes = ({ currentUser, onClose }) => {
                 activeMenu={activeMenu} 
                 handleCopy={handleCopy} 
                 handleDownload={handleDownload} 
-                deleteNote={deleteNote} 
+                deleteNote={(id) => setDeleteConfirm(id)} 
             />
+
+            {deleteConfirm && (
+                <GenericConfirmModal
+                    title="Delete Note"
+                    description="Are you sure you want to permanently delete this note and its attachments?"
+                    onConfirm={confirmAndDeleteNote}
+                    onCancel={() => setDeleteConfirm(null)}
+                    confirmText="Delete Note"
+                    isDanger={true}
+                />
+            )}
 
             <NoteInputDock 
                 fileInputRef={fileInputRef} 
