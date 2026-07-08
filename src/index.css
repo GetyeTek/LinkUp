@@ -1,7 +1,7 @@
 /* --- LINKUP PLATFORM SHELL --- */
 /* Maintained by Platform Core Team */
 
-:root {
+:root, .theme-dark {
     --bg-dark: #0c0c0c;
     --surface-dark: #1e1e1e;
     --text-primary-dark: #e1e1e1;
@@ -21,6 +21,22 @@
     --glass-border: rgba(255, 255, 255, 0.1);
 }
 
+.theme-light {
+    --bg-dark: #f0f2f5;
+    --surface-dark: #ffffff;
+    --text-primary-dark: #111827;
+    --text-secondary-dark: #6b7280;
+    --accent-teal: #0d9488; /* Darker teal for contrast */
+    --purple-glow: #7e22ce;
+    --border-color: rgba(0, 0, 0, 0.08);
+    --bronze-dark: #b48a4d;
+    --bronze-light: #8c6020;
+    --linkoin-gold: #d97706;
+    --linkoin-gold-glow: rgba(217, 119, 6, 0.4);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.05);
+}
+
 * {
     margin: 0; padding: 0; box-sizing: border-box;
     font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
@@ -31,6 +47,7 @@ html, body, #root {
     overflow: hidden;
     background-color: var(--bg-dark);
     color: var(--text-primary-dark);
+    transition: background-color 0.4s ease, color 0.4s ease;
 }
 body.library-open { overflow: hidden; }
 
