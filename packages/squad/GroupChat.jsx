@@ -56,6 +56,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     // Moderation State
     const [myMutedUntil, setMyMutedUntil] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null); // ID of message to delete
+    const [stopPollConfirm, setStopPollConfirm] = useState(null); // ID of poll message to stop
     const [downloadConfirm, setDownloadConfirm] = useState(null); // Attachments array
     const [kickedNotice, setKickedNotice] = useState(false);
     const [avatarError, setAvatarError] = useState(false);
@@ -429,6 +430,26 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const deleteMessage = (msgId) => {
         setDeleteConfirm(msgId);
         setActiveMenu(null);
+    };
+
+    const executeStopPoll = async () => {
+        if (!stopPollConfirm) return;
+        const msgId = stopPollConfirm;
+        setStopPollConfirm(null);
+
+        const targetMsg = messages.find(m => m.id === msgId);
+        if (!targetMsg) return;
+
+        const updatedAttachments = targetMsg.attachments.map(a => {
+            if (a.type === 'poll') {
+                return { ...a, poll_data: { ...a.poll_data, is_stopped: true } };
+            }
+            return a;
+        });
+
+        // Optimistic UI
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, attachments: updatedAttachments } : m));
+        await supabase.from('messages').update({ attachments: updatedAttachments }).eq('id', msgId);
     };
 
     const confirmAndDelete = async () => {
@@ -833,7 +854,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 )}
             </main>
 
-            <MessageContextMenu 
+                            <MessageContextMenu 
                 activeMenu={activeMenu}
                 onClose={() => setActiveMenu(null)}
                 onReply={startReply}
@@ -849,7 +870,10 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 }}
                 onEdit={startEditing}
                 onPin={handlePinMessage}
-                onDeleteRequest={(id) => setDeleteConfirm(id)}
+                onDeleteRequest={(id, isStopPoll) => {
+                    if (isStopPoll) setStopPollConfirm(id);
+                    else setDeleteConfirm(id);
+                }}
                 canDownload={!chat.metadata || chat.metadata.privacy !== 'private'}
                 canForward={!chat.metadata || chat.metadata.privacy !== 'private'}
                 canPin={myRole === 'owner' || myRole === 'admin'}
@@ -901,6 +925,17 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     localChatInfo={localChatInfo} 
                     toggleAdminSetting={toggleAdminSetting} 
                     onClose={() => setShowAdminSettings(false)} 
+                />
+            )}
+
+            {stopPollConfirm && (
+                <GenericConfirmModal
+                    title="Stop Poll"
+                    description="Are you sure you want to stop this poll? This action is irreversible and the poll will no longer accept votes."
+                    onConfirm={executeStopPoll}
+                    onCancel={() => setStopPollConfirm(null)}
+                    confirmText="Stop Poll"
+                    isDanger={true}
                 />
             )}
 
