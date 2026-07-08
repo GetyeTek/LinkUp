@@ -1,8 +1,12 @@
 import React from 'react';
 import ChatMediaGallery from './ChatMediaGallery.jsx';
+import InteractivePoll from './InteractivePoll.jsx';
+
+import InteractivePoll from './InteractivePoll.jsx';
 
 const ChatBubble = ({
     msg,
+    currentUser,
     isMine,
     isGroup,
     sender,
@@ -93,6 +97,18 @@ const ChatBubble = ({
     };
 
     const renderBubbleContent = (baseClass) => {
+        const pollAttachment = msg.attachments?.find(a => a.type === 'poll');
+        
+        if (pollAttachment) {
+            return (
+                <div className={baseClass} style={{ padding: 0, overflow: 'hidden', background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                    {renderForward()}
+                    {renderReply()}
+                    <InteractivePoll pollData={pollAttachment.poll_data} msgId={msg.id} currentUser={currentUser} />
+                </div>
+            );
+        }
+
         const bubbleClass = `${baseClass} ${hasMedia ? (isNaked ? 'media-bubble naked' : 'media-bubble captioned') : ''}`;
         return (
             <div className={bubbleClass}>
