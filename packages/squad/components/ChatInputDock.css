@@ -1,7 +1,7 @@
 .unified-input-wrapper {
     padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
-    background: linear-gradient(to top, rgba(8, 8, 12, 0.95) 80%, transparent);
-    border-top: 1px solid rgba(255,255,255,0.05);
+    background: linear-gradient(to top, var(--glass-bg) 80%, transparent);
+    border-top: 1px solid var(--border-color);
     z-index: 10;
     position: relative;
     flex-shrink: 0;
@@ -10,26 +10,26 @@
 }
 
 .unified-dock {
-    display: flex; align-items: center; background: #12121a; 
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 99px; padding: 6px; gap: 8px;
+    display: flex; align-items: center; background: var(--surface-dark); 
+    border: 1px solid var(--border-color); border-radius: 99px; padding: 6px; gap: 8px;
     width: 100%;
     box-sizing: border-box;
 }
 .unified-dock input[type="text"] {
-    flex: 1; background: transparent; border: none; outline: none; color: #fff; padding: 10px 14px; font-family: 'Poppins', sans-serif; font-size: 0.95rem; min-width: 0;
+    flex: 1; background: transparent; border: none; outline: none; color: var(--text-primary-dark); padding: 10px 14px; font-family: 'Poppins', sans-serif; font-size: 0.95rem; min-width: 0;
 }
 .unified-dock input::placeholder { color: #888; }
 .unified-add-btn {
     width: 36px; height: 36px; border-radius: 50%;
-    background: rgba(255,255,255,0.05); border: none; color: #a0a0a0;
+    background: var(--bg-dark); border: none; color: var(--text-secondary-dark);
     display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
     position: relative;
 }
 
 .attach-popover-menu {
     position: absolute; bottom: 50px; left: 0;
-    background: rgba(18, 18, 24, 0.95); backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;
+    background: var(--glass-bg); backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color); border-radius: 16px;
     padding: 6px; display: flex; flex-direction: column; gap: 4px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100;
     min-width: 160px;
@@ -38,7 +38,7 @@
 }
 
 .attach-popover-menu button {
-    background: transparent; border: none; color: #fff;
+    background: transparent; border: none; color: var(--text-primary-dark);
     padding: 12px 14px; border-radius: 10px; font-family: 'Poppins', sans-serif;
     font-size: 0.9rem; font-weight: 500; cursor: pointer;
     display: flex; align-items: center; gap: 12px; transition: background 0.2s;
@@ -54,8 +54,8 @@
 
 /* Input Mode Headers */
 .unified-input-mode-header {
-    display: flex; align-items: center; background: rgba(255, 255, 255, 0.04);
-    padding: 8px 15px; border-radius: 12px 12px 0 0; border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex; align-items: center; background: var(--surface-dark);
+    padding: 8px 15px; border-radius: 12px 12px 0 0; border: 1px solid var(--border-color);
     border-bottom: none; gap: 12px; animation: slideUpMode 0.3s ease; margin-bottom: -10px; padding-bottom: 18px;
 }
 .unified-input-mode-header .mode-border { width: 3px; align-self: stretch; background: var(--accent-teal); border-radius: 3px; }
@@ -74,7 +74,7 @@
 .staging-preview-content { display: flex; align-items: center; gap: 12px; flex: 1; overflow-x: auto; scrollbar-width: none; }
 .staging-preview-content::-webkit-scrollbar { display: none; }
 .staging-thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1); }
-.staging-file-icon { width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-teal); border: 1px solid rgba(255,255,255,0.1); }
+.staging-file-icon { width: 36px; height: 36px; border-radius: 6px; background: var(--bg-dark); display: flex; align-items: center; justify-content: center; color: var(--accent-teal); border: 1px solid var(--border-color); }
 
 /* Progress btn */
 .circular-progress-btn {
