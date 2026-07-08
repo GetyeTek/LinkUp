@@ -13,6 +13,7 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
     const [allowRevote, setAllowRevote] = useState(initialPollData?.allow_revote ?? true);
     const [durationIdx, setDurationIdx] = useState(null); // null = infinite
     const [customDate, setCustomDate] = useState('');
+    const [validationError, setValidationError] = useState('');
 
     const durations = [
         { label: '3h', hours: 3 },
@@ -40,7 +41,24 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
 
     const handleSubmit = () => {
         const validOptions = options.map(o => o.text.trim()).filter(Boolean);
-        if (!question.trim() || validOptions.length < 2) return;
+        
+        if (!question.trim()) {
+            setValidationError('Please enter a question to start the poll.');
+            document.querySelector('.poll-comp-body').scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+        if (validOptions.length < 2) {
+            setValidationError('Please provide at least two valid options.');
+            document.querySelector('.poll-comp-body').scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+        if (quizMode && correctIndex === null) {
+            setValidationError('Quiz mode requires a correct answer. Tap the circle next to an option to select it.');
+            document.querySelector('.poll-comp-body').scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+        
+        setValidationError('');
 
         let deadline = null;
         if (durationIdx === 'custom' && customDate) {
@@ -65,9 +83,8 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
     };
 
     const validOptionCount = options.filter(o => o.text.trim()).length;
-    const isValid = question.trim().length > 0 && 
-                    validOptionCount >= 2 && 
-                    (!quizMode || correctIndex !== null);
+    // Button is deliberately kept enabled so the user can click it and see the guided validation error scroll
+    const isValid = true;
 
     return (
         <div className="poll-composer-overlay" onClick={onClose}>
@@ -78,6 +95,13 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                 </header>
 
                 <div className="poll-comp-body">
+                    {validationError && (
+                        <div className="pc-error-banner">
+                            <i className="fas fa-exclamation-circle"></i>
+                            {validationError}
+                        </div>
+                    )}
+                    
                     <div className="pc-group">
                         <label className="pc-label">Question</label>
                         <input className="pc-input" type="text" placeholder="Ask a question..." value={question} onChange={e => setQuestion(e.target.value)} autoFocus />
@@ -136,7 +160,10 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                             <div className="pc-setting-row" onClick={() => {
                                 const next = !multipleAnswers;
                                 setMultipleAnswers(next);
-                                if(next) setQuizMode(false);
+                                if(next) {
+                                    setQuizMode(false);
+                                    setAllowRevote(true); // Multiple answers mandates revoting
+                                }
                             }}>
                                 <div className="pc-setting-info">
                                     <span className="pc-setting-title">Multiple Answers</span>
@@ -145,12 +172,15 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                                 <div className={`toggle-switch ${multipleAnswers ? 'on' : 'off'}`}></div>
                             </div>
 
-                            <div className="pc-setting-row" onClick={() => setAllowRevote(!allowRevote)}>
+                            <div className="pc-setting-row" onClick={() => {
+                                if (multipleAnswers) return; // Locked when Multiple Answers is active
+                                setAllowRevote(!allowRevote);
+                            }}>
                                 <div className="pc-setting-info">
                                     <span className="pc-setting-title">Allow Revoting</span>
                                     <span className="pc-setting-desc">Users can change their answer</span>
                                 </div>
-                                <div className={`toggle-switch ${allowRevote ? 'on' : 'off'}`}></div>
+                                <div className={`toggle-switch ${allowRevote ? 'on' : 'off'} ${multipleAnswers ? 'disabled' : ''}`}></div>
                             </div>
 
                             <div className="pc-setting-row" style={{flexDirection: 'column', alignItems: 'stretch'}}>
