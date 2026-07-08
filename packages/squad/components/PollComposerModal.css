@@ -1,0 +1,100 @@
+.poll-composer-overlay {
+    position: fixed; inset: 0; z-index: 6000;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    animation: fadeInModal 0.3s ease;
+}
+
+.poll-composer-sheet {
+    background: #121212; border-top: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px 24px 0 0; padding: 1.5rem;
+    display: flex; flex-direction: column; max-height: 85vh;
+    animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: 'Poppins', sans-serif;
+}
+
+@keyframes slideUpSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.poll-comp-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.poll-comp-header h2 { font-size: 1.25rem; font-weight: 600; margin: 0; color: #fff; }
+
+.poll-comp-body {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem;
+    padding-bottom: 2rem;
+}
+
+.poll-comp-body::-webkit-scrollbar { display: none; }
+
+.pc-group { display: flex; flex-direction: column; gap: 8px; }
+.pc-label { font-size: 0.8rem; font-weight: 600; color: var(--accent-teal); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.pc-input {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    color: #fff; padding: 12px 14px; border-radius: 12px; font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+}
+.pc-input:focus { border-color: var(--accent-teal); background: rgba(0,0,0,0.3); }
+
+.pc-options-list { display: flex; flex-direction: column; gap: 10px; }
+.pc-option-row { display: flex; align-items: center; gap: 10px; }
+.pc-quiz-radio {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid #888;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.2s;
+}
+.pc-quiz-radio.selected {
+    border-color: var(--accent-teal); background: var(--accent-teal); color: #000;
+}
+.pc-quiz-radio.selected::after {
+    content: '✓'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 0.7rem;
+}
+
+.pc-add-btn {
+    background: transparent; border: 1px dashed rgba(255,255,255,0.2); color: var(--accent-teal);
+    padding: 12px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s;
+}
+.pc-add-btn:hover { background: rgba(66, 215, 184, 0.05); border-color: var(--accent-teal); }
+
+.pc-settings-panel {
+    background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 4px;
+}
+
+.pc-setting-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.pc-setting-row:last-child { border-bottom: none; }
+.pc-setting-info { display: flex; flex-direction: column; }
+.pc-setting-title { font-size: 0.95rem; color: #fff; font-weight: 500; }
+.pc-setting-desc { font-size: 0.75rem; color: #888; }
+
+.pc-duration-pills {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
+}
+.pc-duration-pill {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    color: #ccc; padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+}
+.pc-duration-pill.active {
+    background: rgba(66, 215, 184, 0.15); color: var(--accent-teal); border-color: var(--accent-teal);
+}
+
+.poll-submit-btn {
+    width: 100%; background: var(--accent-teal); color: #000; border: none;
+    padding: 16px; border-radius: 16px; font-weight: 700; font-size: 1rem;
+    cursor: pointer; box-shadow: 0 5px 20px rgba(66, 215, 184, 0.2);
+    transition: transform 0.2s; margin-top: 10px; flex-shrink: 0;
+}
+.poll-submit-btn:disabled {
+    background: rgba(255,255,255,0.1); color: #888; cursor: not-allowed; box-shadow: none;
+}
+.poll-submit-btn:active:not(:disabled) { transform: scale(0.98); }
