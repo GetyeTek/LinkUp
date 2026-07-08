@@ -1,10 +1,10 @@
 /* --- INTERACTIVE CHAT QUIZ STYLES --- */
 .miron-quiz-card {
     margin: 20px -1.2rem;
-    background: #0d0d0d;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    color: #e0e0e0;
+    background: var(--surface-dark);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary-dark);
     font-family: 'Poppins', sans-serif;
 }
 
@@ -34,7 +34,7 @@
     font-size: 1.1rem;
     line-height: 1.4;
     margin-bottom: 16px;
-    color: #fff;
+    color: var(--text-primary-dark);
 }
 
 .mq-q-num {
@@ -49,14 +49,14 @@
 }
 
 .mq-opt-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
     padding: 12px 16px;
     border-radius: 12px;
     display: flex;
     align-items: center;
     gap: 12px;
-    color: #d0d0d0;
+    color: var(--text-primary-dark);
     font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.2s;
@@ -74,7 +74,7 @@
 .mq-opt-btn.active {
     background: rgba(66, 215, 184, 0.1);
     border-color: var(--accent-teal);
-    color: #fff;
+    color: var(--text-primary-dark);
 }
 
 .mq-opt-btn.active .mq-opt-ind {
@@ -92,8 +92,8 @@
     flex: 1;
     padding: 14px;
     border-radius: 12px;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid var(--border-color);
+    background: var(--bg-dark);
     color: #888;
     font-weight: 700;
     letter-spacing: 1px;
