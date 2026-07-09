@@ -147,11 +147,38 @@ const Auth = () => {
                     }
                 }
 
-                // 2. Fresh Sign Up
+                // 1b. Phone Uniqueness Pre-Check & Normalization
+                let normalizedPhone = phone.replace(/\s+/g, '');
+                if (normalizedPhone) {
+                    if (!normalizedPhone.startsWith('+')) {
+                        if (normalizedPhone.startsWith('0')) {
+                            normalizedPhone = '+251' + normalizedPhone.substring(1);
+                        } else {
+                            normalizedPhone = '+' + normalizedPhone;
+                        }
+                    }
+
+                    const { data: phoneExists, error: phoneError } = await supabase.rpc('check_phone_registered', { 
+                        req_phone: normalizedPhone 
+                    });
+
+                    if (!phoneError && phoneExists) {
+                        setNotice({
+                            title: 'Phone Already Linked',
+                            message: 'This phone number is already verified and linked to another account (likely via Telegram). Please log in using the Telegram button.',
+                            type: 'exists',
+                            actionLabel: 'Okay'
+                        });
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                // 2. Fresh Sign Up with Normalized Phone
                 const { error: signUpError } = await supabase.auth.signUp({
                     email,
                     password,
-                    options: { data: { full_name: fullName, phone: phone } }
+                    options: { data: { full_name: fullName, phone: normalizedPhone } }
                 });
                 if (signUpError) throw signUpError;
                 
@@ -171,7 +198,23 @@ const Auth = () => {
                 if (signInError) throw signInError;
             }
         } catch (err) {
-            setError(err.message);
+            const isPhoneConflict = err.message && (
+                err.message.includes('profiles_phone_unique') || 
+                err.message.includes('profiles_phone_key') || 
+                err.message.includes('saving new user') ||
+                err.message.includes('violates unique constraint')
+            );
+
+            if (isPhoneConflict) {
+                setNotice({
+                    title: 'Phone Already Linked',
+                    message: 'This phone number is already verified and linked to another account. Please use the Telegram login button instead.',
+                    type: 'exists',
+                    actionLabel: 'Okay'
+                });
+            } else {
+                setError(err.message);
+            }
         } finally {
             setLoading(false);
         }
