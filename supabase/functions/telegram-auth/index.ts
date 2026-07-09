@@ -55,7 +55,9 @@ serve(async (req) => {
           full_name: fullName,
           telegram_id: tgId,
           telegram_username: meta.username,
-          registered_with_telegram: true
+          registered_with_telegram: true,
+          avatar_url: meta.avatar_url,
+          phone: meta.phone
         }
       });
 
