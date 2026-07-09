@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-09T12:05:40.972Z
+-- Date: 2026-07-09T18:28:16.743Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -1513,6 +1513,13 @@ BEGIN
   JOIN public.conversation_members cm ON c.id = cm.conversation_id
   WHERE cm.user_id = req_user_id
   ORDER BY c.last_message_at DESC;
+END;
+
+
+-- Function: check_phone_registered
+
+BEGIN
+    RETURN EXISTS (SELECT 1 FROM public.profiles WHERE phone = req_phone);
 END;
 
 
