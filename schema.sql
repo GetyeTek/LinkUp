@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-09T07:42:45.109Z
+-- Date: 2026-07-09T12:05:40.972Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -450,20 +450,9 @@ BEGIN
 END;
 
 
--- Function: is_member_of
-
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.conversation_members
-    WHERE conversation_id = conv_id AND user_id = auth.uid()
-  );
-END;
-
-
 -- Function: handle_new_user
 
 BEGIN
-  -- Insert profile, fallback to safe defaults if not created via Telegram oauth
   INSERT INTO public.profiles (
     id, 
     full_name, 
@@ -472,25 +461,33 @@ BEGIN
     telegram_id,
     telegram_username,
     registered_with_telegram,
+    phone, -- Pull the verified phone record
     level, 
     linkoin_balance
   )
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', 'New Scholar'),
-    COALESCE(
-      new.raw_user_meta_data->>'avatar_url', 
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80'
-    ),
-    -- Grab preferred username from TG payload if available, else let onboarding handle it
+    new.raw_user_meta_data->>'avatar_url',
     COALESCE(new.raw_user_meta_data->>'username', null),
     (new.raw_user_meta_data->>'telegram_id')::bigint,
     new.raw_user_meta_data->>'telegram_username',
     COALESCE((new.raw_user_meta_data->>'registered_with_telegram')::boolean, false),
+    COALESCE(new.phone, new.raw_user_meta_data->>'phone'), -- Auto-assign verified phone
     'Division I',
     100
   );
   RETURN new;
+END;
+
+
+-- Function: is_member_of
+
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.conversation_members
+    WHERE conversation_id = conv_id AND user_id = auth.uid()
+  );
 END;
 
 
