@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@linkup-platform/sdk-core';
+import { usePhoneCheck } from './hooks/usePhoneCheck.js';
 import './Auth.css';
 
 const Auth = () => {
@@ -13,6 +14,8 @@ const Auth = () => {
     const [error, setError] = useState(null);
     const [notice, setNotice] = useState(null); // { title, message, type, actionLabel }
     const [verifyingToken, setVerifyingToken] = useState(false);
+
+    const phoneStatus = usePhoneCheck(phone, '');
 
     // Intercept Telegram Token
     useEffect(() => {
@@ -350,8 +353,18 @@ const Auth = () => {
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
                                     required
+                                    style={phoneStatus === 'taken' || phoneStatus === 'invalid' ? { borderColor: '#ff5f5f' } : (phoneStatus === 'available' ? { borderColor: 'var(--accent-teal)' } : {})}
                                 />
-                                <i className="fas fa-phone input-icon"></i>
+                                <i className="fas fa-phone input-icon" style={phoneStatus === 'taken' || phoneStatus === 'invalid' ? { color: '#ff5f5f' } : (phoneStatus === 'available' ? { color: 'var(--accent-teal)' } : {})}></i>
+                                {phone !== '' && phoneStatus !== 'idle' && (
+                                    <div style={{marginTop: '6px', fontSize: '0.75rem', fontWeight: 500, color: (phoneStatus === 'taken' || phoneStatus === 'invalid') ? '#ff5f5f' : 'var(--accent-teal)', display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '4px'}}>
+                                        {phoneStatus === 'checking' && <><i className="fas fa-circle-notch fa-spin"></i> Checking availability...</>}
+                                        {phoneStatus === 'invalid' && <><i className="fas fa-exclamation-circle"></i> Enter a valid Ethiopian phone number.</>}
+                                        {phoneStatus === 'taken' && <><i className="fas fa-times-circle"></i> This phone number is already registered.</>}
+                                        {phoneStatus === 'error' && <><i className="fas fa-exclamation-triangle"></i> Connection error.</>}
+                                        {phoneStatus === 'available' && <><i className="fas fa-check-circle"></i> Phone number available.</>}
+                                    </div>
+                                )}
                             </div>
                             <div className="commitment-note">
                                 <i className="fas fa-shield-halved"></i>
@@ -383,7 +396,7 @@ const Auth = () => {
                         </>
                     )}
 
-                    <button type="submit" className="auth-submit-btn" disabled={loading}>
+                    <button type="submit" className="auth-submit-btn" disabled={loading || (isSignUp && !isForgotPassword && (phoneStatus === 'taken' || phoneStatus === 'invalid' || phoneStatus === 'checking'))}>
                         {loading ? <i className="fas fa-circle-notch fa-spin"></i> : (isForgotPassword ? 'Send Link' : isSignUp ? 'Sign Up' : 'Sign In')}
                     </button>
                 </form>
