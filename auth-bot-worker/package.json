@@ -1,0 +1,8 @@
+{
+  "name": "linkup-auth-bot",
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {
+    "wrangler": "^3.107.0"
+  }
+}
