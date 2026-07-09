@@ -5,6 +5,11 @@ export default {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
+    const secretHeader = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+    if (env.TELEGRAM_WEBHOOK_SECRET && secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
+      return new Response("Unauthorized", { status: 403 });
+    }
+
     try {
       const update = await request.json();
       
