@@ -4,6 +4,7 @@ import AvatarCropperModal from './AvatarCropperModal.jsx';
 import ProfileAvatarPicker from './ProfileAvatarPicker.jsx';
 import UsernameField from './UsernameField.jsx';
 import { useUsernameCheck } from '../hooks/useUsernameCheck.js';
+import { usePhoneCheck } from '../hooks/usePhoneCheck.js';
 import './OnboardingGate.css';
 
 const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
@@ -14,6 +15,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const [username, setUsername] = useState('');
     const [phone, setPhone] = useState('');
     const status = useUsernameCheck(username, '');
+    const phoneStatus = usePhoneCheck(phone, userProfile?.phone || sessionUser?.user_metadata?.phone);
     const [loading, setLoading] = useState(false);
     const [claimError, setClaimError] = useState(null);
     const [initialized, setInitialized] = useState(false);
@@ -131,11 +133,10 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const currentWizardId = wizardSteps[stepIndex];
   
     const handleNextPhase = () => {
-        const cleanPhone = phone.replace(/\s/g, '');
-        const isPhoneValid = /^(09|07)\d{8}$|^\+251[79]\d{8}$/.test(cleanPhone);
-        
-        if (status !== 'available' || sureName.trim().length < 2 || !isPhoneValid) {
-            if (!isPhoneValid && phone.length > 0) setClaimError("Invalid phone. Use 09/07 (10 digits) or +251 (13 digits).");
+        if (status !== 'available' || sureName.trim().length < 2 || (!isTelegramVerified && phoneStatus !== 'available')) {
+            if (!isTelegramVerified && phoneStatus !== 'available' && phone.length > 0) {
+                setClaimError("Please provide a valid and available phone number.");
+            }
             return;
         }
         setClaimError(null);
@@ -254,7 +255,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
   
                 <div className="input-group-sm">
                   <label>Phone Number</label>
-                  <div className={`handle-input-wrapper status-${phone.length > 0 ? (/^(09|07)\d{8}$|^\+251[79]\d{8}$/.test(phone.replace(/\s/g, '')) ? 'available' : 'invalid') : 'idle'}`}>
+                  <div className={`handle-input-wrapper status-${isTelegramVerified ? 'available' : phoneStatus}`}>
                     <span className="handle-prefix" style={{fontSize: '0.9rem'}}><i className="fas fa-phone"></i></span>
                     <input 
                       type="tel" 
@@ -267,10 +268,23 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                       {isTelegramVerified ? (
                         <i className="fas fa-lock" style={{color: 'var(--accent-teal)'}}></i>
                       ) : (
-                        phone.length > 0 && /^(09|07)\d{8}$|^\+251[79]\d{8}$/.test(phone.replace(/\s/g, '')) && <i className="fas fa-check"></i>
+                        phoneStatus === 'checking' ? <i className="fas fa-circle-notch fa-spin"></i> :
+                        phoneStatus === 'available' ? <i className="fas fa-check"></i> :
+                        phoneStatus === 'taken' ? <i className="fas fa-times"></i> :
+                        phoneStatus === 'invalid' ? <i className="fas fa-exclamation"></i> : null
                       )}
                     </div>
                   </div>
+                  
+                  {!isTelegramVerified && phoneStatus !== 'idle' && (
+                      <div className="handle-hint" style={{marginTop: '4px', fontSize: '0.75rem', fontWeight: 500, color: (phoneStatus === 'taken' || phoneStatus === 'invalid') ? '#ff5f5f' : 'var(--accent-teal)', paddingLeft: '4px'}}>
+                          {phoneStatus === 'invalid' && "Enter a valid Ethiopian phone number (e.g. 09... or +251...)."}
+                          {phoneStatus === 'taken' && "This phone number is already registered to another account."}
+                          {phoneStatus === 'error' && "Connection error. Try again."}
+                          {phoneStatus === 'available' && "Looks great! Phone number is available."}
+                      </div>
+                  )}
+
                   <div className="commitment-note" style={{marginTop: '10px', marginBottom: '0'}}>
                       <i className={isTelegramVerified ? "fas fa-shield-halved" : "fas fa-circle-info"}></i>
                       <p>
@@ -285,7 +299,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
   
                 {phase === 1 && claimError && <div className="onboarding-error-alert">{claimError}</div>}
   
-                <button className="onboarding-submit-btn" disabled={status !== 'available' || sureName.trim().length < 2} onClick={handleNextPhase}>
+                <button className="onboarding-submit-btn" disabled={status !== 'available' || sureName.trim().length < 2 || (!isTelegramVerified && phoneStatus !== 'available')} onClick={handleNextPhase}>
                   Continue <i className="fas fa-arrow-right" style={{marginLeft: '8px'}}></i>
                 </button>
               </div>
