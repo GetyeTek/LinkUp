@@ -59,6 +59,17 @@ serve(async (req) => {
           if (!normalizedPhone.startsWith('+')) {
               normalizedPhone = '+' + normalizedPhone;
           }
+
+          // Pre-emptively verify if phone number is already taken to avoid GoTrue trigger rollback cycles
+          const { data: phoneCheck } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('phone', normalizedPhone)
+              .maybeSingle();
+
+          if (phoneCheck) {
+              throw new Error("PHONE_ALREADY_TAKEN");
+          }
       }
 
       const { error: createError } = await supabase.auth.admin.createUser({
