@@ -40,12 +40,38 @@ const Auth = () => {
                 if (data.action_link) {
                     window.location.href = data.action_link; // Hands off to Supabase magic login redirect
                 } else {
-                    throw new Error(data.error || "Invalid link");
+                    if (data.error === "PHONE_ALREADY_TAKEN") {
+                        setVerifyingToken(false);
+                        setNotice({
+                            title: "Phone Number Already Linked",
+                            message: "This phone number is already registered to an existing account. Please sign in with your email and password instead.",
+                            type: "exists",
+                            actionLabel: "Okay"
+                        });
+                    } else {
+                        throw new Error(data.error || "Invalid link");
+                    }
                 }
             })
             .catch(err => {
                 setVerifyingToken(false);
-                setNotice({ title: "Link Expired", message: err.message, type: "error", actionLabel: "Okay" });
+                const isPhoneTaken = err.message && (
+                    err.message.includes('PHONE_ALREADY_TAKEN') ||
+                    err.message.includes('profiles_phone_unique') ||
+                    err.message.includes('profiles_phone_key') ||
+                    err.message.includes('violates unique constraint')
+                );
+
+                if (isPhoneTaken) {
+                    setNotice({
+                        title: "Phone Number Already Linked",
+                        message: "This phone number is already registered to an existing account. Please sign in with your email and password instead.",
+                        type: "exists",
+                        actionLabel: "Okay"
+                    });
+                } else {
+                    setNotice({ title: "Link Expired", message: err.message, type: "error", actionLabel: "Okay" });
+                }
             });
         }
     }, []);
