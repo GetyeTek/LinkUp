@@ -74,35 +74,48 @@ serve(async (req) => {
       targetEmail = userData.user.email!;
       log(`Resolved target email: ${targetEmail}`);
     } else {
-      currentStep = "AUTH_CREATE_USER";
+      currentStep = "AUTH_CREATE_USER_RAW_HTTP";
       targetEmail = `tg_${tgId}@linkup.invalid`;
       const password = crypto.randomUUID(); 
       const fullName = [meta.first_name, meta.last_name].filter(Boolean).join(" ") || "Scholar";
 
-      log(`No profile found. Provisioning new Auth User: ${targetEmail}`);
-      const { error: createError } = await supabase.auth.admin.createUser({
-        email: targetEmail,
-        password: password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName,
-          telegram_id: tgId,
-          telegram_username: meta.username || null,
-          registered_with_telegram: true,
-          avatar_url: meta.avatar_url || null,
-          phone: meta.phone || null
-        }
+      log(`No profile found. Provisioning new Auth User via raw HTTP to bypass JS Client masking: ${targetEmail}`);
+      
+      const goTrueUrl = `${Deno.env.get('SUPABASE_URL')}/auth/v1/admin/users`;
+      log(`GoTrue URL: ${goTrueUrl}`);
+      
+      const createUserRes = await fetch(goTrueUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: targetEmail,
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullName,
+            telegram_id: tgId,
+            telegram_username: meta.username || null,
+            registered_with_telegram: true,
+            avatar_url: meta.avatar_url || null,
+            phone: meta.phone || null
+          }
+        })
       });
 
-      if (createError) {
-          log(`GoTrue Error (createUser): ${JSON.stringify(createError)}`);
-          // Ignore if user already exists from a previous partial run
-          if (createError.status !== 422 && createError.message?.indexOf('already registered') === -1) {
-              throw new Error(`GoTrue user creation failed: ${createError.message}`);
+      const createResText = await createUserRes.text();
+      log(`Raw GoTrue Response [${createUserRes.status}]: ${createResText}`);
+
+      if (!createUserRes.ok) {
+          if (createUserRes.status !== 422 && createResText.indexOf('already registered') === -1) {
+              throw new Error(`GoTrue API Error: HTTP ${createUserRes.status} - ${createResText}`);
           }
           log(`User already registered (Failsafe caught 422). Proceeding.`);
       } else {
-          log(`Auth User provisioned successfully.`);
+          log(`Auth User provisioned successfully via raw HTTP.`);
       }
     }
 
