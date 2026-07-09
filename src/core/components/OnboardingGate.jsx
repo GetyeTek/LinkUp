@@ -137,7 +137,8 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                 target_department: academicData.target_department || null
             };
   
-            const { error } = await supabase.from('profiles').update(updatePayload).eq('id', userProfile.id);
+            const targetId = userProfile?.id || sessionUser?.id;
+            const { error } = await supabase.from('profiles').update(updatePayload).eq('id', targetId);
             if (error) throw error;
             
             onComplete(username, finalFullName, finalAvatarUrl);
