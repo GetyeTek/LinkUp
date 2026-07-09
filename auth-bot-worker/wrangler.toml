@@ -5,6 +5,14 @@ compatibility_date = "2026-05-20"
 [vars]
 SUPABASE_URL = "https://ryaxynjczfwqyqvpmorl.supabase.co"
 
+[[durable_objects.bindings]]
+name = "AuthSessionManager"
+class_name = "AuthSessionManager"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AuthSessionManager"]
+
 [observability]
 enabled = true
 head_sampling_rate = 1
