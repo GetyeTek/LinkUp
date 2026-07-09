@@ -56,21 +56,57 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
         }
       }
       
-      setSureName(defaultSure);
-      setFatherName(defaultFather);
-      setPhone(userProfile?.phone || sessionUser?.user_metadata?.phone || '');
-  
-      let baseForUsername = initialFullName || sessionUser?.email?.split('@')[0] || '';
-      let suggestion = baseForUsername.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0, 20);
-      while(suggestion.startsWith('_')) suggestion = suggestion.substring(1);
-      if (suggestion.length > 0 && suggestion.length < 3) suggestion = suggestion.padEnd(3, 'x');
-      
-      if (suggestion) {
-          setUsername(suggestion);
-      }
-      
-      setInitialized(true);
-    }, [userProfile, sessionUser, initialized]);
+          setSureName(defaultSure);
+    setFatherName(defaultFather);
+    setPhone(userProfile?.phone || sessionUser?.user_metadata?.phone || '');
+
+    setInitialized(true); // Lock instantly to prevent React 18 Strict Mode double-firing
+
+    const resolveUsernameSuggestion = async () => {
+        const tgUsername = userProfile?.telegram_username || sessionUser?.user_metadata?.telegram_username;
+        
+        if (tgUsername) {
+            // Normalize Telegram's handle to match platform regex requirements
+            let base = tgUsername.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0, 20);
+            while (base.startsWith('_')) base = base.substring(1);
+            if (base.length > 0 && base.length < 3) base = base.padEnd(3, 'x');
+            
+            // Check direct availability
+            const { data: isAvailable } = await supabase.rpc('check_username_available', { req_username: base });
+            if (isAvailable) {
+                setUsername(base);
+                return;
+            }
+            
+            // Group and User naming collision resolution algorithm
+            let counter = 1;
+            while (true) {
+                const suffix = counter.toString();
+                const candidate = base.substring(0, 20 - suffix.length) + suffix;
+                
+                const { data: checkNext } = await supabase.rpc('check_username_available', { req_username: candidate });
+                if (checkNext) {
+                    setUsername(candidate);
+                    break;
+                }
+                counter++;
+                if (counter > 100) break; // Infinite loop block
+            }
+        } else {
+            // Standard fallback suggestion
+            let baseForUsername = initialFullName || sessionUser?.email?.split('@')[0] || '';
+            let suggestion = baseForUsername.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0, 20);
+            while(suggestion.startsWith('_')) suggestion = suggestion.substring(1);
+            if (suggestion.length > 0 && suggestion.length < 3) suggestion = suggestion.padEnd(3, 'x');
+            
+            if (suggestion) {
+                setUsername(suggestion);
+            }
+        }
+    };
+
+    resolveUsernameSuggestion();
+  }, [userProfile, sessionUser, initialized]);
   
     useEffect(() => {
       if (username) {
