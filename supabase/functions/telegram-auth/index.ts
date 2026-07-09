@@ -67,7 +67,7 @@ serve(async (req) => {
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: targetEmail,
-      options: { redirectTo: 'https://getyeteklu2.github.io/LinkUp/' }
+      options: { redirectTo: 'https://getyetek.github.io/LinkUp/' }
     });
 
     if (linkError) throw linkError;
