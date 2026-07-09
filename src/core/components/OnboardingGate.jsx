@@ -109,7 +109,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
         setClaimError(null);
         
         const finalFullName = fatherName.trim() ? `${sureName.trim()} ${fatherName.trim()}` : sureName.trim();
-        let finalAvatarUrl = sessionUser?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(finalFullName)}&background=1e1e1e&color=42d7b8&size=256`;
+        let finalAvatarUrl = userProfile?.avatar_url || sessionUser?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(finalFullName)}&background=1e1e1e&color=42d7b8&size=256`;
         
         try {
             if (croppedAvatar?.blob) {
