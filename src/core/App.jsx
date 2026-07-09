@@ -130,7 +130,7 @@ const App = () => {
     } catch (e) {}
 
             const fetchProfile = async (userId, retries = 3) => {
-          const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+          const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
           if (data) {
               setUserProfile(data);
               if (data.theme && data.theme !== theme) {
