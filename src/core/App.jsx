@@ -129,7 +129,7 @@ const App = () => {
       }
     } catch (e) {}
 
-            const fetchProfile = async (userId) => {
+            const fetchProfile = async (userId, retries = 3) => {
           const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
           if (data) {
               setUserProfile(data);
@@ -137,8 +137,12 @@ const App = () => {
                   setTheme(data.theme);
                   localStorage.setItem('linkup_theme', data.theme);
               }
+              setIsProfileLoaded(true);
+          } else if (retries > 0) {
+              setTimeout(() => fetchProfile(userId, retries - 1), 500);
+          } else {
+              setIsProfileLoaded(true);
           }
-          setIsProfileLoaded(true);
         };
 
     const updateLastSeen = async () => {
@@ -285,9 +289,9 @@ const App = () => {
   }
 
   // The Onboarding Gatekeeper (Unified name and handle verification)
-  if (userProfile && !userProfile.username) {
+  if (!userProfile || !userProfile.username) {
     return <OnboardingGate userProfile={userProfile} sessionUser={session?.user} onComplete={(newUsername, newFullName, newAvatarUrl) => {
-      setUserProfile({ ...userProfile, username: newUsername, full_name: newFullName, avatar_url: newAvatarUrl });
+      setUserProfile({ id: session?.user?.id, ...userProfile, username: newUsername, full_name: newFullName, avatar_url: newAvatarUrl });
     }} />;
   }
 
