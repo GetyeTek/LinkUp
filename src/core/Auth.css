@@ -200,6 +200,43 @@
 
 .google-icon { width: 20px; height: 20px; }
 
+/* Telegram Fast Login Button */
+.telegram-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px;
+    background: rgba(41, 169, 234, 0.1);
+    border: 1px solid rgba(41, 169, 234, 0.3);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 10px;
+}
+
+.telegram-btn:hover { background: rgba(41, 169, 234, 0.15); }
+.telegram-btn:active { background: rgba(41, 169, 234, 0.05); }
+.telegram-btn i { color: #29A9EA; font-size: 1.2rem; }
+
+.notice-icon.telegram { background: rgba(41, 169, 234, 0.1); color: #29A9EA; }
+
+.webview-escape-card {
+    background: rgba(18,18,18,0.95);
+    padding: 2rem;
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.1);
+    text-align: center;
+    z-index: 10;
+    max-width: 360px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+
 /* Footer Toggle */
 .auth-footer {
     text-align: center;
