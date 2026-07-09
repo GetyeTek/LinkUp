@@ -19,14 +19,15 @@ async function fetchTelegramAvatar(tgUserId, env) {
         
         if (imgRes.ok) {
           const imgBuffer = await imgRes.arrayBuffer();
-          const sbStoragePath = `telegram_${tgUserId}_${Date.now()}.jpg`;
+          const sbStoragePath = `telegram_${tgUserId}.jpg`;
           
           const uploadRes = await fetch(`${env.SUPABASE_URL}/storage/v1/object/avatars/${sbStoragePath}`, {
             method: 'POST',
             headers: {
               'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
               'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-              'Content-Type': 'image/jpeg'
+              'Content-Type': 'image/jpeg',
+              'x-upsert': 'true'
             },
             body: imgBuffer
           });
@@ -43,7 +44,7 @@ async function fetchTelegramAvatar(tgUserId, env) {
   return avatarUrl;
 }
 
-// Stateful Session Manager to handle visual expiration reliably
+// Stateful Session Manager to handle visual expiration reliably (Batched per user)
 export class AuthSessionManager extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -55,9 +56,11 @@ export class AuthSessionManager extends DurableObject {
       const { chatId, messageId, tgUserId, delayMs } = await request.json();
       
       // Store reference coordinates and user identity in DO persistence
-      await this.ctx.storage.put('session_data', { chatId, messageId, tgUserId });
+      let activeSessions = await this.ctx.storage.get('active_sessions') || [];
+      activeSessions.push({ chatId, messageId, tgUserId });
+      await this.ctx.storage.put('active_sessions', activeSessions);
       
-      // Set Alarm to trigger visual recess in 5 minutes
+      // Set Alarm to trigger visual recess in 5 minutes (will overwrite existing alarm, which is fine, pushing it back slightly)
       await this.ctx.storage.setAlarm(Date.now() + delayMs);
       
       return new Response("Scheduled", { status: 200 });
@@ -66,10 +69,10 @@ export class AuthSessionManager extends DurableObject {
   }
 
   async alarm() {
-    const data = await this.ctx.storage.get('session_data');
-    if (!data) return;
+    const sessions = await this.ctx.storage.get('active_sessions');
+    if (!sessions || sessions.length === 0) return;
 
-    const { chatId, messageId, tgUserId } = data;
+    const tgUserId = sessions[0].tgUserId;
     
     // Dynamic Self-Healing: Check profile status to render the correct dashboard
     let hasProfile = false;
@@ -98,27 +101,31 @@ export class AuthSessionManager extends DurableObject {
       ? { text: "🔓 Access Dashboard", callback_data: "initiate_auth" }
       : { text: "✨ Create Account", callback_data: "request_contact" };
 
-    try {
-      await fetch(`https://api.telegram.org/bot${this.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          message_id: messageId,
-          text: actionText,
-          parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [
-              [primaryBtn],
-              [{ text: "ℹ️ Help & Support", callback_data: "help_support" }]
-            ]
-          }
-        })
-      });
-      console.log(`[SessionManager] Self-healed expired magic link message ID: ${messageId} back to dashboard.`);
-    } catch (e) {
-      console.error("[SessionManager] Failed to revert expired message:", e.message);
+    for (const sess of sessions) {
+      try {
+        await fetch(`https://api.telegram.org/bot${this.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: sess.chatId,
+            message_id: sess.messageId,
+            text: actionText,
+            parse_mode: "Markdown",
+            reply_markup: {
+              inline_keyboard: [
+                [primaryBtn],
+                [{ text: "ℹ️ Help & Support", callback_data: "help_support" }]
+              ]
+            }
+          })
+        });
+        console.log(`[SessionManager] Self-healed expired magic link message ID: ${sess.messageId} back to dashboard.`);
+      } catch (e) {
+        console.error("[SessionManager] Failed to revert expired message:", e.message);
+      }
     }
+    
+    await this.ctx.storage.delete('active_sessions');
   }
 }
 
@@ -126,6 +133,11 @@ export default {
   async fetch(request, env, ctx) {
     if (request.method !== "POST") {
       return new Response("Auth Bot Active. Send POST from Telegram Webhook.", { status: 200 });
+    }
+
+    const secretHeader = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+    if (env.TELEGRAM_WEBHOOK_SECRET && secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
+      return new Response("Unauthorized", { status: 403 });
     }
 
     try {
@@ -261,7 +273,7 @@ export default {
                 const sentMsgId = linkData.result.message_id;
                 
                 // Route to Durable Object namespace to schedule the guaranteed alarm
-                const doId = env.AuthSessionManager.idFromName(`session_${sentMsgId}`);
+                const doId = env.AuthSessionManager.idFromName(`user_${msg.from.id}`);
                 const doStub = env.AuthSessionManager.get(doId);
                 
                 ctx.waitUntil(doStub.fetch(new Request(`https://auth-session-manager/schedule-expiry`, {
@@ -443,7 +455,7 @@ export default {
               const sentMsgId = authData.result.message_id;
               
               // Resolve DO stub and set standard Alarm
-              const doId = env.AuthSessionManager.idFromName(`session_${sentMsgId}`);
+              const doId = env.AuthSessionManager.idFromName(`user_${tgUser.id}`);
               const doStub = env.AuthSessionManager.get(doId);
               
               ctx.waitUntil(doStub.fetch(new Request(`https://auth-session-manager/schedule-expiry`, {
