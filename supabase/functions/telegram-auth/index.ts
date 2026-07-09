@@ -60,7 +60,14 @@ serve(async (req) => {
               normalizedPhone = '+' + normalizedPhone;
           }
 
-          // Pre-emptively verify if phone number is already taken to avoid GoTrue trigger rollback cycles
+          // Self-Healing Trust Hierarchy: Evict low-trust unverified manual registrations claiming this phone
+          await supabase
+              .from('profiles')
+              .update({ phone: null })
+              .eq('phone', normalizedPhone)
+              .is('telegram_id', null);
+
+          // Pre-emptively verify if phone number is already taken by a high-trust user
           const { data: phoneCheck } = await supabase
               .from('profiles')
               .select('id')
