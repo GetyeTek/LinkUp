@@ -19,6 +19,8 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const [initialized, setInitialized] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [croppedAvatar, setCroppedAvatar] = useState(null);
+
+    const isTelegramVerified = !!((userProfile?.registered_with_telegram || sessionUser?.user_metadata?.registered_with_telegram) && (userProfile?.phone || sessionUser?.user_metadata?.phone));
   
     // Phase 2 State (Academic Wizard)
     const [stepIndex, setStepIndex] = useState(0);
@@ -259,15 +261,25 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                       placeholder="09... or +251..."
                       value={phone}
                       onChange={e => setPhone(e.target.value)}
-                      disabled={loading}
+                      disabled={loading || isTelegramVerified}
                     />
                     <div className="handle-status-icon">
-                      {phone.length > 0 && /^(09|07)\d{8}$|^\+251[79]\d{8}$/.test(phone.replace(/\s/g, '')) && <i className="fas fa-check"></i>}
+                      {isTelegramVerified ? (
+                        <i className="fas fa-lock" style={{color: 'var(--accent-teal)'}}></i>
+                      ) : (
+                        phone.length > 0 && /^(09|07)\d{8}$|^\+251[79]\d{8}$/.test(phone.replace(/\s/g, '')) && <i className="fas fa-check"></i>
+                      )}
                     </div>
                   </div>
                   <div className="commitment-note" style={{marginTop: '10px', marginBottom: '0'}}>
-                      <i className="fas fa-circle-info"></i>
-                      <p>Used for <strong>rewards</strong> and secure account access.</p>
+                      <i className={isTelegramVerified ? "fas fa-shield-halved" : "fas fa-circle-info"}></i>
+                      <p>
+                        {isTelegramVerified ? (
+                          <span>Verified and locked via Telegram login.</span>
+                        ) : (
+                          <span>Used for <strong>rewards</strong> and secure account access.</span>
+                        )}
+                      </p>
                   </div>
                 </div>
   
