@@ -50,7 +50,7 @@ export default {
               parse_mode: "Markdown",
               reply_markup: {
                 inline_keyboard: [[
-                  { text: "⚡ Enter LinkUp Dashboard", url: `https://getyeteklu2.github.io/LinkUp/?auth_token=${token}` }
+                  { text: "⚡ Enter LinkUp Dashboard", url: `https://getyetek.github.io/LinkUp/?auth_token=${token}` }
                 ]]
               }
             })
