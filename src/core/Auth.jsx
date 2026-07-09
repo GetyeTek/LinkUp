@@ -335,12 +335,9 @@ const Auth = () => {
                             Google
                         </button>
 
-                        <button className="telegram-btn" type="button" onClick={() => setNotice({
-                            title: 'Fast Login via Telegram',
-                            message: 'Open Telegram and search for @LinkUpCampusBot. Send /login to receive a secure, one-tap magic link.',
-                            type: 'telegram',
-                            actionLabel: 'Got it'
-                        })}>
+                        <button className="telegram-btn" type="button" onClick={() => {
+                            window.open('https://t.me/linkupregistrationbot', '_blank', 'noopener,noreferrer');
+                        }}>
                             <i className="fab fa-telegram"></i> Log in with Telegram
                         </button>
 
