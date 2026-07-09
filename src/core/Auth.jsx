@@ -12,6 +12,43 @@ const Auth = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [notice, setNotice] = useState(null); // { title, message, type, actionLabel }
+    const [verifyingToken, setVerifyingToken] = useState(false);
+
+    // Intercept Telegram Token
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('auth_token');
+        if (token) {
+            setVerifyingToken(true);
+            
+            // Clean URL visually so they can safely bookmark/share it later
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+
+            // Call Edge Function via secure Gateway
+            fetch('https://linkup-gateway.getyeteklu2.workers.dev/functions/v1/telegram-auth', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'apikey': 'plt_pub_1a99f3c4d5e68d9e0a2f8d73b', 
+                    'x-linkup-client': 'linkup-secure-client-2026' 
+                },
+                body: JSON.stringify({ auth_token: token })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.action_link) {
+                    window.location.href = data.action_link; // Hands off to Supabase magic login redirect
+                } else {
+                    throw new Error(data.error || "Invalid link");
+                }
+            })
+            .catch(err => {
+                setVerifyingToken(false);
+                setNotice({ title: "Link Expired", message: err.message, type: "error", actionLabel: "Okay" });
+            });
+        }
+    }, []);
 
     const getBasePath = () => {
         let path = window.location.origin + window.location.pathname;
@@ -140,6 +177,35 @@ const Auth = () => {
         }
     };
 
+    // The Escape View Check (Blocks Telegram's isolated In-App Browser)
+    const isTelegramWebView = navigator.userAgent.includes('Telegram');
+    
+    if (isTelegramWebView) {
+        return (
+            <div className="auth-root" style={{ flexDirection: 'column' }}>
+                <div className="ambient-elegant-bg"></div>
+                <div className="webview-escape-card">
+                    <i className="fab fa-safari" style={{ fontSize: '3rem', color: '#42d7b8', marginBottom: '1rem' }}></i>
+                    <h2 style={{ marginBottom: '1rem', color: '#fff', fontSize: '1.4rem' }}>Open in Browser</h2>
+                    <p style={{ color: '#aaa', lineHeight: 1.5, fontSize: '0.9rem' }}>
+                        Telegram's built-in browser cannot save your secure session. <br/><br/>
+                        Please tap the <strong>three dots (⋮)</strong> at the top right of your screen and select <strong>"Open in Chrome"</strong> or <strong>"Open in Safari"</strong>.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (verifyingToken) {
+        return (
+            <div className="auth-root" style={{ flexDirection: 'column' }}>
+                <div className="ambient-elegant-bg"></div>
+                <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '2.5rem', color: '#42d7b8', zIndex: 10 }}></i>
+                <h2 style={{ zIndex: 10, marginTop: '1rem', fontWeight: 600, color: '#fff' }}>Securing Connection...</h2>
+            </div>
+        );
+    }
+
     return (
         <div className="auth-root">
             <div className="ambient-elegant-bg"></div>
@@ -267,6 +333,15 @@ const Auth = () => {
                                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                             </svg>
                             Google
+                        </button>
+
+                        <button className="telegram-btn" type="button" onClick={() => setNotice({
+                            title: 'Fast Login via Telegram',
+                            message: 'Open Telegram and search for @LinkUpCampusBot. Send /login to receive a secure, one-tap magic link.',
+                            type: 'telegram',
+                            actionLabel: 'Got it'
+                        })}>
+                            <i className="fab fa-telegram"></i> Log in with Telegram
                         </button>
 
                         <div className="auth-footer">
