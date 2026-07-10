@@ -141,6 +141,11 @@ const App = () => {
           } else if (retries > 0) {
               setTimeout(() => fetchProfile(userId, retries - 1), 500);
           } else {
+              // GHOST SESSION DETECTED: DB profile is permanently missing, but local JWT exists.
+              console.warn("[Security] Ghost session detected. Backend user likely deleted. Forcing local logout.");
+              await supabase.auth.signOut();
+              setSession(null);
+              setUserProfile(null);
               setIsProfileLoaded(true);
           }
         };
