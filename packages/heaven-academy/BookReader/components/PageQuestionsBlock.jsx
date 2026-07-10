@@ -129,15 +129,26 @@ const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onRepor
                                 return (
                                     <div key={idx} className={leftClass} onClick={() => !pairGraded && setActiveMatch(prev => ({ ...prev, [q.id]: isActive ? undefined : idx }))}>
                                         <span className="match-index">{idx + 1}.</span>
-                                        <span className="match-text" style={{ textDecoration: (pairGraded && !isCorrectMatch) ? 'line-through' : 'none' }}>
-                                            {item.text || item}
-                                        </span>
-                                        {pairGraded && !isCorrectMatch && correctRightIdx !== undefined && matchData.right_column && (
-                                            <span className="match-correction">
-                                                <i className="fas fa-arrow-right"></i> {String.fromCharCode(65 + correctRightIdx)}
-                                            </span>
+                                        <span className="match-text">{item.text || item}</span>
+                                        {isPaired && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
+                                                {pairGraded && !isCorrectMatch ? (
+                                                    <>
+                                                        <span className="match-badge wrong-badge" style={{ textDecoration: 'line-through', background: '#ff5f5f', color: '#fff', opacity: 0.8 }}>
+                                                            {String.fromCharCode(65 + qAnswers[idx])}
+                                                        </span>
+                                                        <span className="match-badge-arrow" style={{ color: '#42d7b8', fontWeight: 'bold', fontSize: '0.8rem', display: 'flex', alignItems: 'center' }}>
+                                                            <i className="fas fa-arrow-right"></i>
+                                                        </span>
+                                                        <span className="match-badge correct-badge" style={{ background: '#42d7b8', color: '#000' }}>
+                                                            {correctRightIdx !== undefined ? String.fromCharCode(65 + correctRightIdx) : '?'}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <span className="match-badge">{String.fromCharCode(65 + qAnswers[idx])}</span>
+                                                )}
+                                            </div>
                                         )}
-                                        {isPaired && <span className="match-badge">{String.fromCharCode(65 + qAnswers[idx])}</span>}
                                     </div>
                                 );
                             })}
@@ -245,7 +256,7 @@ const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onRepor
                     )}
                     {isGraded && (
                         <button className="bpq-btn-explain" onClick={() => onExplain(q.content_index, q.explanation)}>
-                            <i className="fas fa-book"></i> Explain
+                            <i className="fas fa-book-open"></i> Explain
                         </button>
                     )}
                     {q.exam_meta && (
