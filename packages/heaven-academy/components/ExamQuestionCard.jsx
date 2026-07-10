@@ -46,6 +46,7 @@ const ExamQuestionCard = ({
     setReportQuestionId, setActiveReferenceBook,
     gradingMode, evaluatedQs, handleEvaluate, showResults
 }) => {
+    const [isExplanationOpen, setIsExplanationOpen] = useState(false);
     const isMatching = (q.question_type && q.question_type.toLowerCase() === 'matching') || q.matching_data || (Array.isArray(q.options) && q.options.some(o => typeof o === 'string' && o.includes('Column A')));
     const isFIB = q.question_type?.toLowerCase() === 'fill_in_the_blank';
     const isWorkout = q.question_type?.toLowerCase() === 'workout' || q.question_type?.toLowerCase() === 'short_answer';
@@ -254,9 +255,22 @@ const ExamQuestionCard = ({
             )}
 
             {isEvaluated && q.explanation && (
-                <div className="ai-explanation-box" style={{marginTop: '15px'}}>
-                    <div className="ai-exp-header"><i className="fas fa-sparkles"></i> Miron Synthesis</div>
-                    <div className="ai-exp-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(q.explanation)) }} />
+                <div style={{ marginTop: '10px' }}>
+                    <button 
+                        className="check-answer-btn" 
+                        onClick={(e) => { e.stopPropagation(); setIsExplanationOpen(!isExplanationOpen); }}
+                        style={{ margin: '0', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', borderColor: 'rgba(66, 215, 184, 0.3)', width: '100%', justifyContent: 'center' }}
+                    >
+                        <i className={`fas fa-${isExplanationOpen ? 'chevron-up' : 'book-open'}`}></i> 
+                        {isExplanationOpen ? 'Hide Explanation' : 'View Miron Explanation'}
+                    </button>
+                    
+                    {isExplanationOpen && (
+                        <div className="ai-explanation-box" style={{ marginTop: '10px', animation: 'expandPad 0.3s ease-out' }}>
+                            <div className="ai-exp-header"><i className="fas fa-sparkles"></i> Miron Synthesis</div>
+                            <div className="ai-exp-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(q.explanation)) }} />
+                        </div>
+                    )}
                 </div>
             )}
 
