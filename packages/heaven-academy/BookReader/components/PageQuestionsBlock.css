@@ -71,7 +71,7 @@
 .match-item-left.correct-match { border-color: var(--accent) !important; background: rgba(66, 215, 184, 0.05) !important; }
 .match-item-left.correct-match .match-badge { background: var(--accent) !important; color: var(--ctx-bg) !important; }
 .match-item-left.wrong-match { border-color: #ff5f5f !important; background: rgba(255, 95, 95, 0.05) !important; }
-.match-item-left.wrong-match .match-badge { background: #ff5f5f !important; color: #fff !important; }
+.match-item-left.wrong-match .match-badge:not(.correct-badge) { background: #ff5f5f !important; color: #fff !important; }
 
 .bpq-actions button i { -webkit-text-stroke: 1px currentColor; }
 .match-correction { color: #42d7b8; margin-left: 8px; font-size: 0.8rem; font-weight: bold; }
