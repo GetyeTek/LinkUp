@@ -70,7 +70,7 @@ const ExamQuestionCard = ({
                         <i className="fas fa-triangle-exclamation"></i>
                     </button>
                     <button className={`hint ${hints[q.id]?.open ? 'active-hint' : ''}`} onClick={() => toggleHint(q.id)}>
-                        <i className="fas fa-wand-magic-sparkles"></i>
+                        <i className="fas fa-book"></i>
                     </button>
                     <button className={flagged[q.id] ? 'active' : ''} onClick={() => toggleFlag(q.id)}>
                         <i className={flagged[q.id] ? 'fas fa-flag' : 'far fa-flag'}></i>
@@ -123,14 +123,24 @@ const ExamQuestionCard = ({
                             const isDisabled = currentActive !== undefined && currentActive !== idx;
                             const isCorrectMatch = qAnswers[idx] === (q.correct_answer ? q.correct_answer[idx] : undefined);
                             
+                            const pairGraded = isEvaluated || (gradingMode === 'on_the_go' && isPaired);
+                            const correctRightIdx = q.correct_answer ? q.correct_answer[idx] : undefined;
+                            
                             let leftClass = `match-item-left ${isActive ? 'is-active' : ''} ${isPaired ? 'is-paired' : ''}`;
-                            if (isDisabled && !isEvaluated) leftClass += ' is-disabled';
-                            if (isEvaluated) leftClass += isCorrectMatch ? ' correct-match' : ' wrong-match';
+                            if (isDisabled && !pairGraded) leftClass += ' is-disabled';
+                            if (pairGraded) leftClass += isCorrectMatch ? ' correct-match' : ' wrong-match';
 
                             return (
-                                <div key={idx} className={leftClass} onClick={() => !isEvaluated && setActiveMatch(prev => ({ ...prev, [q.id]: isActive ? undefined : idx }))}>
+                                <div key={idx} className={leftClass} onClick={() => !pairGraded && setActiveMatch(prev => ({ ...prev, [q.id]: isActive ? undefined : idx }))}>
                                     <span className="match-index">{idx + 1}.</span>
-                                    <span className="match-text">{item.text || item}</span>
+                                    <span className="match-text" style={{ textDecoration: (pairGraded && !isCorrectMatch) ? 'line-through' : 'none' }}>
+                                        {item.text || item}
+                                    </span>
+                                    {pairGraded && !isCorrectMatch && correctRightIdx !== undefined && matchData.right_column && (
+                                        <span className="match-correction">
+                                            <i className="fas fa-arrow-right"></i> {String.fromCharCode(65 + correctRightIdx)}
+                                        </span>
+                                    )}
                                     {isPaired && <span className="match-badge">{String.fromCharCode(65 + qAnswers[idx])}</span>}
                                 </div>
                             );
@@ -145,12 +155,23 @@ const ExamQuestionCard = ({
 
                             return (
                                 <div key={idx} className={`match-item-right ${isUsed ? 'is-used' : ''}`} onClick={() => {
-                                    if (currentActive !== undefined && !isEvaluated) {
-                                        const newAnswers = { ...qAnswers };
-                                        if (isUsed) delete newAnswers[usedByLeftIdx];
-                                        newAnswers[currentActive] = idx;
-                                        handleLocalSelect(newAnswers);
-                                        setActiveMatch(prev => ({ ...prev, [q.id]: undefined }));
+                                    if (currentActive !== undefined) {
+                                        const pairGraded = isEvaluated || (gradingMode === 'on_the_go' && qAnswers[currentActive] !== undefined);
+                                        if (!pairGraded) {
+                                            const newAnswers = { ...qAnswers };
+                                            if (isUsed) delete newAnswers[usedByLeftIdx];
+                                            newAnswers[currentActive] = idx;
+                                            
+                                            handleSelect(q.id, newAnswers);
+                                            setActiveMatch(prev => ({ ...prev, [q.id]: undefined }));
+                                            
+                                            if (gradingMode === 'on_the_go' && matchData.left_column) {
+                                                const pairedCount = Object.keys(newAnswers).length;
+                                                if (pairedCount === matchData.left_column.length) {
+                                                    handleEvaluate(q.id);
+                                                }
+                                            }
+                                        }
                                     }
                                 }}>
                                     <span className="match-letter">{String.fromCharCode(65 + idx)}.</span>
@@ -217,7 +238,7 @@ const ExamQuestionCard = ({
                 </div>
             )}
 
-            {gradingMode === 'on_the_go' && !isEvaluated && (isMatching || isFIB || isWorkout) && (
+            {gradingMode === 'on_the_go' && !isEvaluated && (isFIB || isWorkout) && (
                 <button className="check-answer-btn" onClick={() => handleEvaluate(q.id)}><i className="fas fa-check-circle"></i> Check Answer</button>
             )}
 
