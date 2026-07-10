@@ -148,7 +148,51 @@ export default {
         const msg = update.message;
         if (msg.chat.type === 'private') {
           
-          if (msg.text && (msg.text.startsWith('/start') || msg.text.startsWith('/login'))) {
+          if (msg.text && msg.text.startsWith('/start verify_')) {
+            const googleUserId = msg.text.split('verify_')[1];
+            
+            // Clean up any old pending tokens for this user
+            await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?telegram_id=eq.${msg.from.id}`, {
+                method: 'DELETE',
+                headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+            });
+
+            // Register the pending merge intent
+            await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens`, {
+                method: 'POST',
+                headers: {
+                    'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    token_hash: `verify_${msg.from.id}_${Date.now()}`,
+                    telegram_id: msg.from.id,
+                    expires_at: new Date(Date.now() + 15 * 60000).toISOString(),
+                    metadata: { pending_google_id: googleUserId }
+                })
+            });
+
+            await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: msg.chat.id,
+                    text: `🔒 *Account Link Requested*\n\nTo securely link this Telegram account to your web session, please share your contact card below.`,
+                    parse_mode: "Markdown",
+                    reply_markup: {
+                        keyboard: [
+                            [{ text: "📱 Share Contact to Verify", request_contact: true }]
+                        ],
+                        resize_keyboard: true,
+                        one_time_keyboard: true
+                    }
+                })
+            });
+            return new Response("OK");
+          }
+          
+          else if (msg.text && (msg.text.startsWith('/start') || msg.text.startsWith('/login'))) {
             let hasProfile = false;
             try {
               const checkRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?telegram_id=eq.${msg.from.id}&select=id`, {
@@ -207,6 +251,81 @@ export default {
             }
 
             const phoneNumber = contact.phone_number;
+            
+            // 1. Intercept for Magic Migration
+            let pendingGoogleId = null;
+            try {
+                const verifyCheck = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?telegram_id=eq.${msg.from.id}&select=*`, {
+                    headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                });
+                if (verifyCheck.ok) {
+                    const rows = await verifyCheck.json();
+                    const pendingRow = rows.find(r => r.metadata && r.metadata.pending_google_id);
+                    if (pendingRow) {
+                        pendingGoogleId = pendingRow.metadata.pending_google_id;
+                        await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?id=eq.${pendingRow.id}`, {
+                            method: 'DELETE',
+                            headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                        });
+                    }
+                }
+            } catch (e) { console.error("Verify check error", e); }
+
+            if (pendingGoogleId) {
+                let normalizedPhone = phoneNumber.replace(/\s+/g, '');
+                if (!normalizedPhone.startsWith('+')) {
+                    normalizedPhone = '+' + normalizedPhone;
+                }
+
+                // Evict unverified claims holding this phone to prevent collision
+                await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?phone=eq.${encodeURIComponent(normalizedPhone)}&telegram_id=is.null`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: null })
+                });
+
+                // Delete old placeholder Telegram profile (if exists) so we don't violate unique constraints
+                try {
+                    const oldProfileRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?telegram_id=eq.${msg.from.id}&id=neq.${pendingGoogleId}&select=id`, {
+                        headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                    });
+                    if (oldProfileRes.ok) {
+                        const oldProfiles = await oldProfileRes.json();
+                        for (const oldP of oldProfiles) {
+                            await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${oldP.id}`, {
+                                method: 'DELETE',
+                                headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                            });
+                        }
+                    }
+                } catch (e) { console.error("Old profile cleanup failed", e); }
+
+                // Inject Telegram identity into the active Google profile
+                await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${pendingGoogleId}`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: normalizedPhone,
+                        telegram_id: msg.from.id,
+                        telegram_username: msg.from.username || null,
+                        registered_with_telegram: true
+                    })
+                });
+
+                await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: msg.chat.id,
+                        text: `✅ *Identity Verified & Accounts Linked!*\n\nYour Telegram has been successfully bound to your active web session.\n\nPlease return to your browser—it will automatically unlock now.`,
+                        parse_mode: "Markdown",
+                        reply_markup: { remove_keyboard: true }
+                    })
+                });
+                return new Response("OK");
+            }
+
+            // 2. Standard Login Path
             const avatarUrl = await fetchTelegramAvatar(msg.from.id, env);
 
             const token = crypto.randomUUID();
