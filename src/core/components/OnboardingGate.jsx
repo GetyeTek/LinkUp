@@ -22,7 +22,34 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [croppedAvatar, setCroppedAvatar] = useState(null);
 
-    const isTelegramVerified = !!((userProfile?.registered_with_telegram || sessionUser?.user_metadata?.registered_with_telegram) && (userProfile?.phone || sessionUser?.user_metadata?.phone));
+    const [localTelegramVerified, setLocalTelegramVerified] = useState(false);
+
+    useEffect(() => {
+        setLocalTelegramVerified(!!((userProfile?.registered_with_telegram || sessionUser?.user_metadata?.registered_with_telegram) && (userProfile?.phone || sessionUser?.user_metadata?.phone)));
+    }, [userProfile, sessionUser]);
+
+    // Realtime Listener for Auto-Magic Migration
+    useEffect(() => {
+        const targetId = userProfile?.id || sessionUser?.id;
+        if (!targetId) return;
+
+        const channel = supabase.channel('onboarding_profile_sync')
+            .on('postgres_changes', { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'profiles', 
+                filter: `id=eq.${targetId}` 
+            }, (payload) => {
+                const updatedProfile = payload.new;
+                if (updatedProfile.registered_with_telegram && updatedProfile.phone) {
+                    setPhone(updatedProfile.phone);
+                    setLocalTelegramVerified(true);
+                }
+            })
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
+    }, [userProfile?.id, sessionUser?.id]);
   
     // Phase 2 State (Academic Wizard)
     const [stepIndex, setStepIndex] = useState(0);
@@ -133,8 +160,8 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const currentWizardId = wizardSteps[stepIndex];
   
     const handleNextPhase = () => {
-        if (status !== 'available' || sureName.trim().length < 2 || (!isTelegramVerified && phoneStatus !== 'available')) {
-            if (!isTelegramVerified && phoneStatus !== 'available' && phone.length > 0) {
+        if (status !== 'available' || sureName.trim().length < 2 || (!localTelegramVerified && phoneStatus !== 'available')) {
+            if (!localTelegramVerified && phoneStatus !== 'available' && phone.length > 0) {
                 setClaimError("Please provide a valid and available phone number.");
             }
             return;
@@ -255,17 +282,17 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
   
                 <div className="input-group-sm">
                   <label>Phone Number</label>
-                  <div className={`handle-input-wrapper status-${isTelegramVerified ? 'available' : phoneStatus}`}>
+                  <div className={`handle-input-wrapper status-${localTelegramVerified ? 'available' : phoneStatus}`}>
                     <span className="handle-prefix" style={{fontSize: '0.9rem'}}><i className="fas fa-phone"></i></span>
                     <input 
                       type="tel" 
                       placeholder="09... or +251..."
                       value={phone}
                       onChange={e => setPhone(e.target.value)}
-                      disabled={loading || isTelegramVerified}
+                      disabled={loading || localTelegramVerified}
                     />
                     <div className="handle-status-icon">
-                      {isTelegramVerified ? (
+                      {localTelegramVerified ? (
                         <i className="fas fa-lock" style={{color: 'var(--accent-teal)'}}></i>
                       ) : (
                         phoneStatus === 'checking' ? <i className="fas fa-circle-notch fa-spin"></i> :
@@ -276,30 +303,56 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                     </div>
                   </div>
                   
-                  {!isTelegramVerified && phoneStatus !== 'idle' && (
-                      <div className="handle-hint" style={{marginTop: '4px', fontSize: '0.75rem', fontWeight: 500, color: (phoneStatus === 'taken' || phoneStatus === 'invalid') ? '#ff5f5f' : 'var(--accent-teal)', paddingLeft: '4px'}}>
-                          {phoneStatus === 'invalid' && "Enter a valid Ethiopian phone number (e.g. 09... or +251...)."}
-                          {phoneStatus === 'taken' && "This phone number is already registered to another account."}
-                          {phoneStatus === 'error' && "Connection error. Try again."}
-                          {phoneStatus === 'available' && "Looks great! Phone number is available."}
+                  {!localTelegramVerified && phoneStatus === 'taken' ? (
+                      <div className="commitment-note" style={{ marginTop: '10px', marginBottom: '0', background: 'rgba(255, 95, 95, 0.05)', borderColor: 'rgba(255, 95, 95, 0.2)' }}>
+                          <i className="fas fa-exclamation-circle" style={{color: '#ff5f5f'}}></i>
+                          <div style={{ flex: 1 }}>
+                              <p style={{ color: '#ff5f5f', fontWeight: 600, fontSize: '0.8rem', marginBottom: '4px' }}>Phone Already Linked</p>
+                              <p style={{ color: '#ccc', marginBottom: '10px' }}>This number is already registered. Verify ownership via Telegram to securely merge your accounts, or sign out.</p>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                  <button 
+                                      onClick={(e) => { e.preventDefault(); supabase.auth.signOut(); }}
+                                      style={{ padding: '8px 12px', borderRadius: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', fontSize: '0.8rem', cursor: 'pointer', flex: '1 1 auto' }}
+                                  >
+                                      Sign Out
+                                  </button>
+                                  <a 
+                                      href={`https://t.me/linkupregistrationbot?start=verify_${userProfile?.id || sessionUser?.id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(41, 169, 234, 0.1)', color: '#29A9EA', border: '1px solid rgba(41, 169, 234, 0.3)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flex: '2 1 auto' }}
+                                  >
+                                      <i className="fab fa-telegram"></i> Verify via Telegram
+                                  </a>
+                              </div>
+                          </div>
                       </div>
+                  ) : (
+                      <>
+                          {!localTelegramVerified && phoneStatus !== 'idle' && (
+                              <div className="handle-hint" style={{marginTop: '4px', fontSize: '0.75rem', fontWeight: 500, color: phoneStatus === 'invalid' ? '#ff5f5f' : 'var(--accent-teal)', paddingLeft: '4px'}}>
+                                  {phoneStatus === 'invalid' && "Enter a valid Ethiopian phone number (e.g. 09... or +251...)."}
+                                  {phoneStatus === 'error' && "Connection error. Try again."}
+                                  {phoneStatus === 'available' && "Looks great! Phone number is available."}
+                              </div>
+                          )}
+                          <div className="commitment-note" style={{marginTop: '10px', marginBottom: '0'}}>
+                              <i className={localTelegramVerified ? "fas fa-shield-halved" : "fas fa-circle-info"}></i>
+                              <p>
+                                {localTelegramVerified ? (
+                                  <span>Verified and locked via Telegram login.</span>
+                                ) : (
+                                  <span>Used for <strong>rewards</strong> and secure account access.</span>
+                                )}
+                              </p>
+                          </div>
+                      </>
                   )}
-
-                  <div className="commitment-note" style={{marginTop: '10px', marginBottom: '0'}}>
-                      <i className={isTelegramVerified ? "fas fa-shield-halved" : "fas fa-circle-info"}></i>
-                      <p>
-                        {isTelegramVerified ? (
-                          <span>Verified and locked via Telegram login.</span>
-                        ) : (
-                          <span>Used for <strong>rewards</strong> and secure account access.</span>
-                        )}
-                      </p>
-                  </div>
                 </div>
   
                 {phase === 1 && claimError && <div className="onboarding-error-alert">{claimError}</div>}
   
-                <button className="onboarding-submit-btn" disabled={status !== 'available' || sureName.trim().length < 2 || (!isTelegramVerified && phoneStatus !== 'available')} onClick={handleNextPhase}>
+                <button className="onboarding-submit-btn" disabled={status !== 'available' || sureName.trim().length < 2 || (!localTelegramVerified && phoneStatus !== 'available')} onClick={handleNextPhase}>
                   Continue <i className="fas fa-arrow-right" style={{marginLeft: '8px'}}></i>
                 </button>
               </div>
