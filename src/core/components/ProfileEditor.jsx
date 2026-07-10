@@ -133,6 +133,15 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
 
         const finalFullName = editForm.fatherName.trim() ? `${editForm.sureName.trim()} ${editForm.fatherName.trim()}` : editForm.sureName.trim();
 
+        let normalizedPhone = editForm.phone.replace(/\s+/g, '');
+        if (normalizedPhone && !normalizedPhone.startsWith('+')) {
+            if (normalizedPhone.startsWith('0')) {
+                normalizedPhone = '+251' + normalizedPhone.substring(1);
+            } else {
+                normalizedPhone = '+' + normalizedPhone;
+            }
+        }
+
         const isFreshman = editForm.department === 'Freshman';
         
         const profileData = {
@@ -140,7 +149,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
             username: editForm.username.toLowerCase().trim(),
             bio: editForm.bio.trim(),
             avatar_url: finalAvatarUrl,
-            phone: editForm.phone,
+            phone: normalizedPhone || null,
             university_id: editForm.university_id || null,
             program: editForm.program || null,
             department: editForm.department || null,
