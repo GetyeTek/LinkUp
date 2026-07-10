@@ -48,12 +48,12 @@ const ExamSession = ({ exam, onClose }) => {
     }, [exam.id]);
 
     useEffect(() => {
-        if (showModeModal || showResultsModal) return;
+        if (showModeModal || showResultsModal || loading) return;
         const timer = setInterval(() => {
             setTimeLeft(prev => prev > 0 ? prev - 1 : 0);
         }, 1000);
         return () => clearInterval(timer);
-    }, [showModeModal, showResultsModal]);
+    }, [showModeModal, showResultsModal, loading]);
 
     const formatTime = (seconds) => {
         const h = Math.floor(seconds / 3600);
@@ -95,6 +95,45 @@ const ExamSession = ({ exam, onClose }) => {
         document.querySelectorAll('.q-row').forEach(el => observer.observe(el));
         return () => observer.disconnect();
     }, [loading, sections]);
+
+    const isQuestionWrong = (qId) => {
+        if (!evaluatedQs[qId]) return false;
+        const q = allQuestions.find(x => x.id === qId);
+        if (!q) return false;
+        const ans = answers[qId];
+        const qType = (q.question_type || '').toLowerCase();
+
+        if (qType === 'true_false') {
+            const boolAns = ans === 'True' || ans?.text === 'True';
+            return boolAns !== q.correct_answer;
+        } else if (qType === 'multiple_choice' || qType === 'reading_comprehension') {
+            let selectedIdx = -1;
+            q.options?.forEach((opt, idx) => {
+                if ((opt.text || opt) === (ans?.text || ans)) selectedIdx = idx;
+            });
+            const correctIdx = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
+            return selectedIdx !== correctIdx;
+        } else if (qType === 'matching') {
+            if (q.correct_answer && ans) {
+                for (let k of Object.keys(q.correct_answer)) {
+                    if (ans[k] !== q.correct_answer[k]) return true;
+                }
+            } else if (!ans) {
+                return true;
+            }
+            return false;
+        } else if (qType === 'fill_in_the_blank') {
+            if (Array.isArray(q.correct_answer) && ans) {
+                for (let i = 0; i < q.correct_answer.length; i++) {
+                    if ((ans[i] || '').toLowerCase().trim() !== (q.correct_answer[i] || '').toLowerCase().trim()) return true;
+                }
+            } else {
+                return true;
+            }
+            return false;
+        }
+        return false;
+    };
 
     const toggleHint = async (qId) => {
         setHints(prev => {
@@ -232,7 +271,7 @@ const ExamSession = ({ exam, onClose }) => {
                         key={q.id} 
                         data-nav-id={q.id}
                         onClick={() => scrollToQuestion(q.id)}
-                        className={`nav-dot ${activeQuestionId === q.id ? 'active-focus' : ''} ${answers[q.id] ? 'answered' : ''} ${flagged[q.id] ? 'flagged' : ''}`}
+                        className={`nav-dot ${activeQuestionId === q.id ? 'active-focus' : ''} ${answers[q.id] ? 'answered' : ''} ${isQuestionWrong(q.id) ? 'wrong-answer' : ''} ${flagged[q.id] ? 'flagged' : ''}`}
                     >
                         {i + 1}
                     </div>
