@@ -179,12 +179,14 @@ const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onRepor
                         disabled={isGraded}
                     />
                 ) : (
-                    <div className="bpq-mc-pad">
+                        <div className="bpq-mc-pad">
                         {q.options?.map((opt, i) => {
                             const optText = opt.text || opt;
                             const ansText = ans?.text || ans;
                             const isSelected = ansText !== undefined && ansText === optText;
-                            const isThisOptionCorrect = isGraded && i === q.correct_answer;
+                            
+                            const correctIdx = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
+                            const isThisOptionCorrect = isGraded && i === correctIdx;
                             const isThisOptionWrong = isGraded && isSelected && !isThisOptionCorrect;
 
                             let optClass = "bpq-mc-btn";
