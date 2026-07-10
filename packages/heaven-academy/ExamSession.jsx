@@ -136,12 +136,13 @@ const ExamSession = ({ exam, onClose }) => {
             if (qType === 'true_false') {
                 const boolAns = ans === 'True' || ans?.text === 'True';
                 isCorrect = boolAns === q.correct_answer;
-            } else if (qType === 'multiple_choice') {
+            } else if (qType === 'multiple_choice' || qType === 'reading_comprehension') {
                 let selectedIdx = -1;
                 q.options?.forEach((opt, idx) => {
                     if ((opt.text || opt) === (ans?.text || ans)) selectedIdx = idx;
                 });
-                isCorrect = selectedIdx === q.correct_answer;
+                const correctIdx = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
+                isCorrect = selectedIdx === correctIdx;
             } else if (qType === 'matching') {
                 if (q.correct_answer && typeof q.correct_answer === 'object') {
                     const keys = Object.keys(q.correct_answer);
