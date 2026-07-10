@@ -190,11 +190,20 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                 finalAvatarUrl = publicUrl;
             }
   
+            let normalizedPhone = phone.replace(/\s+/g, '');
+            if (normalizedPhone && !normalizedPhone.startsWith('+')) {
+                if (normalizedPhone.startsWith('0')) {
+                    normalizedPhone = '+251' + normalizedPhone.substring(1);
+                } else {
+                    normalizedPhone = '+' + normalizedPhone;
+                }
+            }
+
             const updatePayload = {
                 username: username,
                 full_name: finalFullName,
                 avatar_url: finalAvatarUrl,
-                phone: phone,
+                phone: normalizedPhone || null,
                 university_id: academicData.university_id || null,
                 program: academicData.program || null,
                 department: academicData.department || null,
