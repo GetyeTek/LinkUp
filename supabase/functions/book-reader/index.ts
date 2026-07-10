@@ -93,7 +93,7 @@ serve(async (req) => {
           page_key,
           content_index,
           questions (
-            id, text, options, question_type, matching_data,
+            id, text, options, question_type, matching_data, correct_answer, explanation,
             sections (
               exams (
                 id, time_allowed_minutes, courses ( name, code )
@@ -116,6 +116,8 @@ serve(async (req) => {
           options: q?.options,
           question_type: q?.question_type,
           matching_data: q?.matching_data,
+          correct_answer: q?.correct_answer,
+          explanation: q?.explanation,
           page_key: d.page_key,
           content_index: d.content_index,
           exam_meta: examData ? {
