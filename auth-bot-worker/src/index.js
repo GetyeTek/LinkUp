@@ -310,7 +310,22 @@ export default {
                                     });
                                 } else {
                                     // CRITICAL SAFEGUARD: It is an established real account. Halt merge and notify user!
-                                    const maskedEmail = oldEmail.replace(/^(.)(.*)(@.*)$/, (_, first, middle, domain) => first + '*'.repeat(middle.length) + domain);
+                                    let maskedEmail = oldEmail;
+                                    const parts = oldEmail.split('@');
+                                    if (parts.length === 2) {
+                                        const localPart = parts[0];
+                                        const domainPart = parts[1];
+                                        const len = localPart.length;
+                                        if (len <= 1) {
+                                            maskedEmail = `*@${domainPart}`;
+                                        } else if (len === 2) {
+                                            maskedEmail = `${localPart[0]}*@${domainPart}`;
+                                        } else if (len <= 4) {
+                                            maskedEmail = `${localPart[0]}${'*'.repeat(len - 2)}${localPart[len - 1]}@${domainPart}`;
+                                        } else {
+                                            maskedEmail = `${localPart.substring(0, 2)}${'*'.repeat(len - 4)}${localPart.substring(len - 2)}@${domainPart}`;
+                                        }
+                                    }
                                     
                                     await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
                                         method: 'POST',
