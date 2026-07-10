@@ -195,10 +195,10 @@ const Auth = () => {
                         setNotice({
                             title: 'Phone Already Linked',
                             message: phoneCheckData.is_transient 
-                                ? 'This phone number is linked to a temporary guest profile. Please use the Telegram login button to merge it.' 
-                                : `This phone number is linked to an active account (${phoneCheckData.masked_email}). Please log in using the Telegram button.`,
+                                ? 'This phone number is already registered via Telegram. Please use the Telegram login button below to access your account.' 
+                                : `This phone number is linked to an active account (${phoneCheckData.masked_email}). Please log in using the Telegram button or your email.`,
                             type: 'exists',
-                            actionLabel: 'Okay'
+                            actionLabel: 'Got it'
                         });
                         setLoading(false);
                         return;
