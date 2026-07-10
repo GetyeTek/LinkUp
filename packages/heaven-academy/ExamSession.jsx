@@ -97,7 +97,7 @@ const ExamSession = ({ exam, onClose }) => {
     }, [loading, sections]);
 
     const isQuestionWrong = (qId) => {
-        if (!evaluatedQs[qId]) return false;
+        if (!evaluatedQs[qId] && !showResultsModal) return false;
         const q = allQuestions.find(x => x.id === qId);
         if (!q) return false;
         const ans = answers[qId];
@@ -271,7 +271,7 @@ const ExamSession = ({ exam, onClose }) => {
                         key={q.id} 
                         data-nav-id={q.id}
                         onClick={() => scrollToQuestion(q.id)}
-                        className={`nav-dot ${activeQuestionId === q.id ? 'active-focus' : ''} ${answers[q.id] ? 'answered' : ''} ${isQuestionWrong(q.id) ? 'wrong-answer' : ''} ${flagged[q.id] ? 'flagged' : ''}`}
+                        className={`nav-dot ${activeQuestionId === q.id ? 'active-focus' : ''} ${answers[q.id] && !isQuestionWrong(q.id) ? 'answered' : ''} ${isQuestionWrong(q.id) ? 'wrong-answer' : ''} ${flagged[q.id] ? 'flagged' : ''}`}
                     >
                         {i + 1}
                     </div>
