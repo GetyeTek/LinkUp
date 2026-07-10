@@ -187,8 +187,8 @@
 
 .match-badge {
     margin-left: auto;
-    background: var(--accent-teal);
-    color: #050505;
+    background: rgba(255, 255, 255, 0.15);
+    color: #e0e0e0;
     font-weight: 800;
     width: 26px;
     height: 26px;
@@ -197,7 +197,7 @@
     justify-content: center;
     border-radius: 6px;
     font-size: 0.85rem;
-    box-shadow: 0 2px 8px rgba(66, 215, 184, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     animation: popBadge 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -369,14 +369,14 @@
 }
 
 .opt-wrapper input:checked + .opt-btn {
-    background: rgba(66, 215, 184, 0.05);
-    border-color: var(--accent-teal);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .opt-wrapper input:checked + .opt-btn .opt-indicator {
-    border-color: var(--accent-teal);
-    background: var(--accent-teal);
-    box-shadow: 0 0 8px var(--accent-teal);
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
 .opt-wrapper input:checked + .opt-btn span { color: var(--text-primary-dark); }
@@ -455,18 +455,18 @@
 
 .tf-btn.is-true { color: #888; }
 .tf-wrapper input:checked + .tf-btn.is-true {
-    background: rgba(66, 215, 184, 0.1);
-    border-color: var(--accent-teal);
-    color: var(--accent-teal);
-    box-shadow: 0 10px 30px rgba(66, 215, 184, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.05);
 }
-.tf-wrapper input:checked + .tf-btn.is-true i { transform: scale(1.15); }
+.tf-wrapper input:checked + .tf-btn.is-true i { transform: scale(1.1); }
 
 .tf-btn.is-false { color: #888; }
 .tf-wrapper input:checked + .tf-btn.is-false {
-    background: rgba(66, 215, 184, 0.1);
-    border-color: var(--accent-teal);
-    color: var(--accent-teal);
-    box-shadow: 0 10px 30px rgba(66, 215, 184, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.05);
 }
-.tf-wrapper input:checked + .tf-btn.is-false i { transform: scale(1.15); }
+.tf-wrapper input:checked + .tf-btn.is-false i { transform: scale(1.1); }
