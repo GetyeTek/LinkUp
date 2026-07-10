@@ -285,6 +285,7 @@ export default {
                 });
 
                 // Delete old placeholder Telegram profile (if exists) so we don't violate unique constraints
+                // Safely inspect old profile if it exists (protect against deleting active email/Google accounts!)
                 try {
                     const oldProfileRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?telegram_id=eq.${msg.from.id}&id=neq.${pendingGoogleId}&select=id`, {
                         headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
@@ -292,13 +293,41 @@ export default {
                     if (oldProfileRes.ok) {
                         const oldProfiles = await oldProfileRes.json();
                         for (const oldP of oldProfiles) {
-                            await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${oldP.id}`, {
-                                method: 'DELETE',
+                            // Query GoTrue Admin API to inspect the account's real email address
+                            const oldUserRes = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${oldP.id}`, {
                                 headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
                             });
+                            
+                            if (oldUserRes.ok) {
+                                const oldUserData = await oldUserRes.json();
+                                const oldEmail = oldUserData.email || '';
+                                
+                                if (oldEmail.endsWith('@linkup.invalid')) {
+                                    // It is a transient Telegram-only placeholder. Safe to delete!
+                                    await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${oldP.id}`, {
+                                        method: 'DELETE',
+                                        headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                                    });
+                                } else {
+                                    // CRITICAL SAFEGUARD: It is an established real account. Halt merge and notify user!
+                                    const maskedEmail = oldEmail.replace(/^(.)(.*)(@.*)$/, (_, first, middle, domain) => first + '*'.repeat(middle.length) + domain);
+                                    
+                                    await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            chat_id: msg.chat.id,
+                                            text: `❌ *Account Link Aborted*\n\nTo protect your academic progress, we cannot merge this session.\n\nYour Telegram is already verified and linked to an active account with the email *${maskedEmail}*.\n\nIf you want to use this new email instead, please sign into your other account first, go to Settings, and unlink Telegram.`,
+                                            parse_mode: "Markdown",
+                                            reply_markup: { remove_keyboard: true }
+                                        })
+                                    });
+                                    return new Response("OK");
+                                }
+                            }
                         }
                     }
-                } catch (e) { console.error("Old profile cleanup failed", e); }
+                } catch (e) { console.error("Identity sentinel check failed", e); }
 
                 // Inject Telegram identity into the active Google profile
                 await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${pendingGoogleId}`, {
