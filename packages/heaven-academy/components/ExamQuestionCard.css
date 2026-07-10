@@ -401,6 +401,9 @@
 .match-item-left.wrong-match { border-color: #ff5f5f !important; background: rgba(255, 95, 95, 0.05) !important; }
 .match-item-left.wrong-match .match-badge { background: #ff5f5f !important; color: #fff !important; }
 
+.q-actions button i { -webkit-text-stroke: 1px currentColor; }
+.match-correction { color: #42d7b8; margin-left: 8px; font-size: 0.8rem; font-weight: bold; }
+
 .fib-container { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; width: 100%; }
 .fib-input { background: var(--bg-dark); border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 12px; color: var(--text-primary-dark); font-family: 'Poppins', sans-serif; outline: none; width: 100%; transition: all 0.2s; font-size: 0.95rem; }
 .fib-input:focus { border-color: var(--accent-teal); }
