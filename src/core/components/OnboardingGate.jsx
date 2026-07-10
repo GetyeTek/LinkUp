@@ -15,7 +15,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const [username, setUsername] = useState('');
     const [phone, setPhone] = useState('');
     const status = useUsernameCheck(username, '');
-    const phoneStatus = usePhoneCheck(phone, userProfile?.phone || sessionUser?.user_metadata?.phone);
+    const { status: phoneStatus, meta: phoneMeta } = usePhoneCheck(phone, userProfile?.phone || sessionUser?.user_metadata?.phone);
     const [loading, setLoading] = useState(false);
     const [claimError, setClaimError] = useState(null);
     const [initialized, setInitialized] = useState(false);
@@ -317,23 +317,46 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                           <i className="fas fa-exclamation-circle" style={{color: '#ff5f5f'}}></i>
                           <div style={{ flex: 1 }}>
                               <p style={{ color: '#ff5f5f', fontWeight: 600, fontSize: '0.8rem', marginBottom: '4px' }}>Phone Already Linked</p>
-                              <p style={{ color: '#ccc', marginBottom: '10px' }}>This number is already registered. Verify ownership via Telegram to securely merge your accounts, or sign out.</p>
-                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                  <button 
-                                      onClick={(e) => { e.preventDefault(); supabase.auth.signOut(); }}
-                                      style={{ padding: '8px 12px', borderRadius: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', fontSize: '0.8rem', cursor: 'pointer', flex: '1 1 auto' }}
-                                  >
-                                      Sign Out
-                                  </button>
-                                  <a 
-                                      href={`https://t.me/linkupregistrationbot?start=verify_${userProfile?.id || sessionUser?.id}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(41, 169, 234, 0.1)', color: '#29A9EA', border: '1px solid rgba(41, 169, 234, 0.3)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flex: '2 1 auto' }}
-                                  >
-                                      <i className="fab fa-telegram"></i> Verify via Telegram
-                                  </a>
-                              </div>
+                              
+                              {phoneMeta?.is_transient ? (
+                                  <>
+                                      <p style={{ color: '#ccc', marginBottom: '10px' }}>This number is associated with a temporary guest profile. Verify ownership via Telegram to securely merge your records.</p>
+                                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                          <button 
+                                              onClick={(e) => { e.preventDefault(); supabase.auth.signOut(); }}
+                                              style={{ padding: '8px 12px', borderRadius: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', fontSize: '0.8rem', cursor: 'pointer', flex: '1 1 auto' }}
+                                          >
+                                              Sign Out
+                                          </button>
+                                          <a 
+                                              href={`https://t.me/linkupregistrationbot?start=verify_${userProfile?.id || sessionUser?.id}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(41, 169, 234, 0.1)', color: '#29A9EA', border: '1px solid rgba(41, 169, 234, 0.3)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flex: '2 1 auto' }}
+                                          >
+                                              <i className="fab fa-telegram"></i> Verify via Telegram
+                                          </a>
+                                      </div>
+                                  </>
+                              ) : (
+                                  <>
+                                      <p style={{ color: '#ccc', marginBottom: '10px' }}>
+                                          This phone number is linked to an active account with the email <strong>{phoneMeta?.masked_email}</strong>. 
+                                          To protect your academic progress, these sessions cannot be merged.
+                                      </p>
+                                      <p style={{ color: '#aaa', fontSize: '0.75rem', marginBottom: '12px' }}>
+                                          If you want to use this new email instead, please sign into your other account first, go to Settings, and unlink Telegram.
+                                      </p>
+                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                          <button 
+                                              onClick={(e) => { e.preventDefault(); supabase.auth.signOut(); }}
+                                              style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.1)', color: 'white', border: 'none', fontSize: '0.8rem', cursor: 'pointer', width: '100%', fontWeight: 600 }}
+                                          >
+                                              Sign Out to Switch Accounts
+                                          </button>
+                                      </div>
+                                  </>
+                              )}
                           </div>
                       </div>
                   ) : (
