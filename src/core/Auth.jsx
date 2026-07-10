@@ -15,7 +15,7 @@ const Auth = () => {
     const [notice, setNotice] = useState(null); // { title, message, type, actionLabel }
     const [verifyingToken, setVerifyingToken] = useState(false);
 
-    const phoneStatus = usePhoneCheck(phone, '');
+    const { status: phoneStatus } = usePhoneCheck(phone, '');
 
     // Intercept Telegram Token
     useEffect(() => {
@@ -187,14 +187,16 @@ const Auth = () => {
                         }
                     }
 
-                    const { data: phoneExists, error: phoneError } = await supabase.rpc('check_phone_registered', { 
+                    const { data: phoneCheckData, error: phoneError } = await supabase.rpc('check_phone_link_status', { 
                         req_phone: normalizedPhone 
                     });
 
-                    if (!phoneError && phoneExists) {
+                    if (!phoneError && phoneCheckData?.exists) {
                         setNotice({
                             title: 'Phone Already Linked',
-                            message: 'This phone number is already verified and linked to another account (likely via Telegram). Please log in using the Telegram button.',
+                            message: phoneCheckData.is_transient 
+                                ? 'This phone number is linked to a temporary guest profile. Please use the Telegram login button to merge it.' 
+                                : `This phone number is linked to an active account (${phoneCheckData.masked_email}). Please log in using the Telegram button.`,
                             type: 'exists',
                             actionLabel: 'Okay'
                         });
