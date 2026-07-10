@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invokeBookReader } from '../api.js';
 import { usePinchToZoom } from './hooks/usePinchToZoom.js';
+import { marked } from 'https://esm.sh/marked';
+import DOMPurify from 'dompurify';
 import { useTextSelectionMenu } from './hooks/useTextSelectionMenu.js';
 import { useDraggable } from './hooks/useDraggable.js';
 import './BookReader.css';
@@ -358,8 +360,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                                                                 <i className="fas fa-times"></i>
                                                             </button>
                                                         </div>
-                                                        <div className="inline-exp-body">
-                                                            <p>This is where the AI-generated explanation will be wired up. Miron will synthesize the textbook snapshot above to clarify why a certain choice is correct, directly addressing common misconceptions in this topic.</p>
+                                                        <div className="inline-exp-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(activeExplanations[expKey] === true ? 'Processing...' : (activeExplanations[expKey] || ''))) }}>
                                                         </div>
                                                     </div>
                                                 )}
@@ -372,9 +373,9 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                                         questions={mappedQuestions[page.page_key]} 
                                         pageNumber={page.page_number}
                                         pageKey={page.page_key}
-                                        onExplain={(contentIndex) => {
+                                        onExplain={(contentIndex, explanationText) => {
                                             const key = `${page.page_key}_${contentIndex}`;
-                                            setActiveExplanations(prev => ({ ...prev, [key]: true }));
+                                            setActiveExplanations(prev => ({ ...prev, [key]: explanationText || "No explanation provided for this question." }));
                                             setTimeout(() => {
                                                 const el = document.getElementById(`page-${page.page_number}-block-${contentIndex}`);
                                                 if (el) {
