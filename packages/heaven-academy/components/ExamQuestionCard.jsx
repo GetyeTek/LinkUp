@@ -56,7 +56,7 @@ const ExamQuestionCard = ({
     const handleLocalSelect = (opt) => {
         if (isEvaluated) return;
         handleSelect(q.id, opt);
-        if (gradingMode === 'on_the_go' && (q.question_type === 'multiple_choice' || q.question_type === 'true_false')) {
+        if (gradingMode === 'on_the_go' && (q.question_type === 'multiple_choice' || q.question_type === 'true_false' || q.question_type === 'reading_comprehension')) {
             handleEvaluate(q.id);
         }
     };
@@ -192,7 +192,8 @@ const ExamQuestionCard = ({
             ) : (
                 <div className={`options-cluster ${q.options?.some(o => (o.text || o).length > 45) ? 'vertical-layout' : ''}`}>
                     {q.options?.map((opt, idx) => {
-                        const isThisOptionCorrect = isEvaluated && idx === q.correct_answer;
+                        const correctIdx = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
+                        const isThisOptionCorrect = isEvaluated && idx === correctIdx;
                         const isThisOptionSelected = answers[q.id] === opt || answers[q.id]?.text === (opt.text || opt);
                         const isThisOptionWrong = isEvaluated && isThisOptionSelected && !isThisOptionCorrect;
 
