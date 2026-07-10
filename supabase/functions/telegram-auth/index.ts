@@ -79,15 +79,12 @@ serve(async (req) => {
           }
       }
 
-      const { error: createError } = await supabase.auth.admin.createUser({
+      const { data: createData, error: createError } = await supabase.auth.admin.createUser({
         email: targetEmail,
         password: password,
         email_confirm: true,
         user_metadata: {
           full_name: fullName,
-          telegram_id: tgId,
-          telegram_username: meta.username || null,
-          registered_with_telegram: true,
           avatar_url: meta.avatar_url || null,
           phone: normalizedPhone
         }
@@ -95,10 +92,20 @@ serve(async (req) => {
 
       if (createError) {
           console.error("Create User Error:", createError);
-          // Failsafe: Ignore if user already exists from a previous partial run
           if (createError.status !== 422 && createError.message?.indexOf('already registered') === -1) {
               throw new Error(`GoTrue user creation failed: ${createError.message}`);
           }
+      }
+
+      // EXPLICIT SECURE UPDATE
+      // Because our DB trigger now ruthlessly ignores client-side telegram_id injections,
+      // we must manually update the profile using our Service Role privileges.
+      if (createData?.user) {
+          await supabase.from('profiles').update({
+              telegram_id: tgId,
+              telegram_username: meta.username || null,
+              registered_with_telegram: true
+          }).eq('id', createData.user.id);
       }
     }
 
