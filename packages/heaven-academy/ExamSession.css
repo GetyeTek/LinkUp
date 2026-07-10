@@ -103,6 +103,13 @@
     transform: scale(1.1);
 }
 
+.nav-dot.wrong-answer {
+    background: rgba(255, 95, 95, 0.15);
+    color: #ff5f5f;
+    border-color: rgba(255, 95, 95, 0.4);
+    box-shadow: inset 0 0 10px rgba(255, 95, 95, 0.1);
+}
+
 .nav-dot.answered {
     background: rgba(66, 215, 184, 0.15);
     color: var(--accent-teal);
