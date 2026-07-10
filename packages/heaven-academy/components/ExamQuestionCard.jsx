@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import DOMPurify from 'dompurify';
 import { renderBookBlock } from '../BookReader/subjects/Registry.jsx';
