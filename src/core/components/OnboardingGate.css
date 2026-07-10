@@ -1,6 +1,27 @@
 /* --- ONBOARDING GATE UI --- */
-.onboarding-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background-color: var(--bg-dark); font-family: 'Poppins', sans-serif; padding: 1rem; }
-.onboarding-card { position: relative; z-index: 10; width: 100%; max-width: 440px; padding: 2.5rem 2rem; background: rgba(18, 18, 18, 0.7); backdrop-filter: blur(30px); border: 1px solid var(--border-color); border-radius: 24px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); animation: popModal 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; gap: 1.5rem; }
+.onboarding-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background-color: var(--bg-dark); font-family: 'Poppins', sans-serif; padding: 1rem; box-sizing: border-box; }
+.onboarding-card { 
+    position: relative; 
+    z-index: 10; 
+    width: 100%; 
+    max-width: 440px; 
+    max-height: calc(100dvh - 2rem); /* Constrain strictly within viewport boundaries */
+    overflow-y: auto; /* Enable internal scrolling on small screens */
+    scrollbar-width: none; /* Hide default scrollbar on Firefox */
+    padding: 2rem 1.5rem; 
+    background: rgba(18, 18, 18, 0.7); 
+    backdrop-filter: blur(30px); 
+    border: 1px solid var(--border-color); 
+    border-radius: 24px; 
+    box-shadow: 0 25px 50px rgba(0,0,0,0.5); 
+    animation: popModal 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+    display: flex; 
+    flex-direction: column; 
+    gap: 1.25rem; /* Slightly tighter gaps to maximize vertical space */
+}
+.onboarding-card::-webkit-scrollbar {
+    display: none; /* Hide default scrollbar on Webkit browsers (Chrome, Safari, Edge) */
+}
 @keyframes popModal { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
 .onboarding-title { font-size: 1.6rem; font-weight: 700; color: #fff; margin: 0; text-align: center; }
