@@ -21,6 +21,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const [initialized, setInitialized] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [croppedAvatar, setCroppedAvatar] = useState(null);
+    const [syncedAvatar, setSyncedAvatar] = useState(null);
 
     const [localTelegramVerified, setLocalTelegramVerified] = useState(false);
 
@@ -44,6 +45,16 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                 if (updatedProfile.registered_with_telegram && updatedProfile.phone) {
                     setPhone(updatedProfile.phone);
                     setLocalTelegramVerified(true);
+                    
+                    // Instantly reflect enriched Telegram data grabbed by the worker
+                    if (updatedProfile.avatar_url) {
+                        setSyncedAvatar(updatedProfile.avatar_url);
+                    }
+                    if (updatedProfile.full_name && updatedProfile.full_name !== 'New Scholar') {
+                        const parts = updatedProfile.full_name.trim().split(' ');
+                        setSureName(parts[0] || '');
+                        setFatherName(parts.slice(1).join(' ') || '');
+                    }
                 }
             })
             .subscribe();
@@ -225,7 +236,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
         }
     };
   
-    const displayAvatar = croppedAvatar?.url || userProfile?.avatar_url || sessionUser?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(sureName || 'Scholar')}&background=1e1e1e&color=42d7b8&size=256`;
+    const displayAvatar = croppedAvatar?.url || syncedAvatar || userProfile?.avatar_url || sessionUser?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(sureName || 'Scholar')}&background=1e1e1e&color=42d7b8&size=256`;
     const displayFullName = `${sureName} ${fatherName}`.trim() || 'Scholar';
   
     const advanceWizard = () => setStepIndex(p => Math.min(p + 1, wizardSteps.length - 1));
