@@ -344,16 +344,53 @@ export default {
                     }
                 } catch (e) { console.error("Identity sentinel check failed", e); }
 
-                // Inject Telegram identity into the active Google profile
+                // Evaluate Google Profile state for missing or generic data
+                let patchPayload = {
+                    phone: normalizedPhone,
+                    telegram_id: msg.from.id,
+                    telegram_username: msg.from.username || null,
+                    registered_with_telegram: true
+                };
+
+                try {
+                    const profRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${pendingGoogleId}&select=full_name,avatar_url`, {
+                        headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                    });
+                    
+                    if (profRes.ok) {
+                        const profiles = await profRes.json();
+                        if (profiles.length > 0) {
+                            const currentGoogleProfile = profiles[0];
+                            
+                            // 1. Full Name Fallback
+                            const tgFullName = [msg.from.first_name, msg.from.last_name].filter(Boolean).join(' ');
+                            if ((!currentGoogleProfile.full_name || currentGoogleProfile.full_name === 'New Scholar') && tgFullName) {
+                                patchPayload.full_name = tgFullName;
+                            }
+
+                            // 2. Avatar Fallback (Google Default or Missing)
+                            const isGoogleAvatarDefault = (url) => {
+                                if (!url) return true;
+                                if (url.includes('googleusercontent.com') && url.includes('/a/') && !url.includes('/a-/')) return true;
+                                if (url.includes('ui-avatars.com')) return true;
+                                return false;
+                            };
+
+                            if (isGoogleAvatarDefault(currentGoogleProfile.avatar_url)) {
+                                const tgAvatar = await fetchTelegramAvatar(msg.from.id, env);
+                                if (tgAvatar) patchPayload.avatar_url = tgAvatar;
+                            }
+                        }
+                    }
+                } catch (e) { 
+                    console.error("Profile evaluation failed", e); 
+                }
+
+                // Inject enriched identity into the active Google profile
                 await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${pendingGoogleId}`, {
                     method: 'PATCH',
                     headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone: normalizedPhone,
-                        telegram_id: msg.from.id,
-                        telegram_username: msg.from.username || null,
-                        registered_with_telegram: true
-                    })
+                    body: JSON.stringify(patchPayload)
                 });
 
                 await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
