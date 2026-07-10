@@ -189,6 +189,46 @@
 }
 .results-close-btn:active { transform: scale(0.95); }
 
+/* --- REAL ESTATE COMPRESSION & MEDIA QUERIES --- */
+@media (max-width: 600px) {
+    .session-header {
+        padding: 0.4rem 0.8rem !important;
+        height: 48px !important;
+    }
+    .session-title-box h1 {
+        font-size: 0.9rem !important;
+        max-width: 140px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    .session-title-box p {
+        font-size: 0.55rem !important;
+        letter-spacing: 0.5px !important;
+    }
+    .timer-pill {
+        padding: 2px 8px !important;
+        font-size: 0.8rem !important;
+    }
+    .question-nav-strip {
+        height: 38px !important;
+        padding: 0 0.8rem !important;
+        gap: 6px !important;
+    }
+    .nav-dot {
+        min-width: 26px !important;
+        height: 26px !important;
+        border-radius: 6px !important;
+        font-size: 0.75rem !important;
+    }
+    .exam-viewport {
+        padding: 0 0.8rem !important;
+    }
+    .session-footer {
+        padding: 0.8rem 1rem calc(0.5rem + env(safe-area-inset-bottom)) !important;
+    }
+}
+
 .finish-exam-btn {
     background: var(--accent-teal);
     color: #050505;
