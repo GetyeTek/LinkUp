@@ -89,6 +89,55 @@
 .check-answer-btn:hover { background: rgba(0,0,0,0.1); }
 .check-answer-btn:active { transform: scale(0.95); }
 
+/* --- MOBILE BOOK BLOCK COMPRESSION --- */
+@media (max-width: 600px) {
+    .bpq-container {
+        width: 100% !important;
+        border-radius: 12px !important;
+    }
+    .bpq-body {
+        padding: 15px 15px !important;
+        gap: 15px !important;
+    }
+    .bpq-text {
+        font-size: 1.05rem !important;
+    }
+    .bpq-tf-btn {
+        padding: 12px !important;
+        border-radius: 8px !important;
+        font-size: 0.95rem !important;
+    }
+    .bpq-tf-btn i {
+        font-size: 1.3rem !important;
+    }
+    .bpq-mc-btn {
+        padding: 10px 12px !important;
+        border-radius: 10px !important;
+        gap: 10px !important;
+    }
+    .bpq-mc-indicator {
+        width: 14px !important;
+        height: 14px !important;
+    }
+    /* Force Matching side-by-side on mobile */
+    .interactive-match-container.vertical-match {
+        flex-direction: row !important;
+        gap: 8px !important;
+    }
+    .match-item-left, .match-item-right {
+        padding: 8px 10px !important;
+        font-size: 0.75rem !important;
+        border-radius: 8px !important;
+        gap: 6px !important;
+    }
+    .match-badge, .match-correct-badge {
+        width: 20px !important;
+        height: 20px !important;
+        font-size: 0.7rem !important;
+        border-radius: 4px !important;
+    }
+}
+
 .bpq-mc-pad { display: flex; flex-direction: column; gap: 12px; }
 .bpq-mc-btn {
     padding: 14px 20px; border-radius: 12px; border: 1px solid var(--ctx-border);
