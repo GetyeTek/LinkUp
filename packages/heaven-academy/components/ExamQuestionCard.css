@@ -417,6 +417,76 @@
 .check-answer-btn:hover { background: rgba(255,255,255,0.1); }
 .check-answer-btn:active { transform: scale(0.95); }
 
+/* --- MOBILE CARD COMPRESSION --- */
+@media (max-width: 600px) {
+    .q-row {
+        padding: 0.8rem 0 !important;
+        gap: 8px !important;
+    }
+    .q-text {
+        font-size: 0.95rem !important;
+        line-height: 1.4 !important;
+    }
+    .opt-btn {
+        padding: 10px 12px !important;
+        border-radius: 10px !important;
+        gap: 8px !important;
+    }
+    .opt-btn span {
+        font-size: 0.85rem !important;
+    }
+    .opt-indicator {
+        width: 14px !important;
+        height: 14px !important;
+    }
+    .tf-btn {
+        padding: 14px 10px !important;
+        border-radius: 12px !important;
+        gap: 6px !important;
+    }
+    .tf-btn i {
+        font-size: 1.4rem !important;
+    }
+    .tf-btn span {
+        font-size: 0.9rem !important;
+        letter-spacing: 1px !important;
+    }
+    /* Force Matching side-by-side on mobile to eliminate vertical scrolling */
+    .interactive-match-container.vertical-match {
+        flex-direction: row !important;
+        gap: 8px !important;
+    }
+    .match-item-left, .match-item-right {
+        padding: 8px 10px !important;
+        font-size: 0.75rem !important;
+        border-radius: 8px !important;
+        gap: 6px !important;
+    }
+    .match-badge, .match-correct-badge {
+        width: 20px !important;
+        height: 20px !important;
+        font-size: 0.7rem !important;
+        border-radius: 4px !important;
+    }
+    .ai-explanation-box {
+        padding: 12px !important;
+        border-radius: 8px !important;
+    }
+    .ai-exp-body {
+        font-size: 0.8rem !important;
+    }
+    .workout-textarea {
+        min-height: 80px !important;
+        padding: 10px !important;
+        font-size: 0.85rem !important;
+    }
+    .fib-input {
+        padding: 10px 12px !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+    }
+}
+
 .tf-pad-container {
     display: flex;
     gap: 16px;
