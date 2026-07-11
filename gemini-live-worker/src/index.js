@@ -15,7 +15,12 @@ export class GeminiLiveAgent {
     // Stateful Playback Engine
     this.readingQueue = [];
     this.currentChunkIndex = 0;
-    this.stageState = "idle"; // "idle" | "reading" | "interrupted_qa"
+    this.stageState = "idle"; // "idle" | "reading" | "answering_qa" | "resuming_lecture"
+    
+    this.questionBucket = [];
+    this.pendingAnswersQueue = [];
+    this.lastAnsweredTime = Date.now();
+    this.qaTimer = null;
     
     console.log(`[Agent|DO|INIT] 🏗️ Native Constructor initialized.`);
   }
@@ -66,6 +71,57 @@ export class GeminiLiveAgent {
     // Initialize Miron's autonomous heartbeat engine
     if (!this.heartbeatTimer) {
         this.heartbeatTimer = setInterval(() => this.dbHeartbeat(), 15000);
+    }
+
+    // Initialize the Silent Double-Guardrail Bucket Compiler
+    if (!this.qaTimer) {
+        this.qaTimer = setInterval(async () => {
+            if (this.questionBucket.length === 0) return;
+            
+            const timeSinceLast = Date.now() - this.lastAnsweredTime;
+            // Guardrail: >= 3 questions OR >= 2 minutes
+            if (this.questionBucket.length >= 3 || timeSinceLast >= 120000) {
+                const questionsToProcess = [...this.questionBucket];
+                this.questionBucket = [];
+                this.lastAnsweredTime = Date.now();
+                
+                console.log(`[Agent|DO|REST] Bucket filled (${questionsToProcess.length} items). Compiling Q&A answers statelessly...`);
+
+                try {
+                    const res = await fetch(`${this.env.SUPABASE_URL}/functions/v1/miron-lecture-generator`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
+                        },
+                        body: JSON.stringify({
+                            action: 'compile_answers',
+                            conversation_id: this.conversationId,
+                            questions: questionsToProcess
+                        })
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        console.log(`[Agent|DO|REST] Received ${data.answers?.length || 0} answers and ${data.flags?.length || 0} flags.`);
+                        
+                        // Immediately broadcast moderation flags to the Hostess UI
+                        if (data.flags && data.flags.length > 0) {
+                            this.broadcast(JSON.stringify({ type: "moderation_warning", flags: data.flags }));
+                        }
+                        
+                        // Park answers silently until Miron finishes his current reading chunk
+                        if (data.answers && data.answers.length > 0) {
+                            this.pendingAnswersQueue.push(...data.answers);
+                        }
+                    } else {
+                        console.error("[Agent|DO|REST] Edge Function failed:", await res.text());
+                    }
+                } catch(e) {
+                    console.error("[Agent|DO|REST] Request threw exception:", e.message);
+                }
+            }
+        }, 5000);
     }
 
     const { 0: client, 1: server } = new WebSocketPair();
@@ -128,29 +184,17 @@ export class GeminiLiveAgent {
                 } catch(e) {
                     console.error("[Agent|DO|STATE] Exception fetching DB chunks:", e.message);
                 }
-                return; // Intercepted. Do not forward raw client payload.
+                return;
             }
             
-            if (parsed.action === "inject_question") {
-                console.log(`[Agent|DO|STATE] Intercepting question from ${parsed.sender}`);
-                let prompt = "";
-                if (this.stageState === "reading") {
-                    this.stageState = "interrupted_qa";
-                    prompt = `A student named ${parsed.sender} just asked: "${parsed.text}". Pause the lecture. Answer them directly in your informal Amharic/English peer tone, and end by saying you're going back to the material.`;
-                } else {
-                    prompt = `A student named ${parsed.sender} just asked: "${parsed.text}". Answer them directly in your informal Amharic/English peer tone.`;
-                }
-                
-                const payload = JSON.stringify({
-                    clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
+            if (parsed.action === "submit_question") {
+                console.log(`[Agent|DO|STATE] Queuing silent question from ${parsed.sender}`);
+                this.questionBucket.push({
+                    user_id: parsed.user_id,
+                    sender_name: parsed.sender,
+                    text: parsed.text
                 });
-                
-                if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
-                    this.geminiWs.send(payload);
-                } else {
-                    this.messageQueue.push(payload);
-                }
-                return; // Intercepted.
+                return;
             }
         } catch(e) { /* Fallthrough for non-JSON or standard WS frames */ }
 
@@ -192,6 +236,11 @@ export class GeminiLiveAgent {
       if (this.heartbeatTimer) {
         clearInterval(this.heartbeatTimer);
         this.heartbeatTimer = null;
+      }
+      
+      if (this.qaTimer) {
+        clearInterval(this.qaTimer);
+        this.qaTimer = null;
       }
 
       if (this.geminiWs) {
@@ -392,13 +441,23 @@ export class GeminiLiveAgent {
                 console.log(`[Agent|GEMINI->DO|PAYLOAD] -> ${preview}`);
             }
             
-            // --- DO STATE MACHINE PLAYBACK CURSOR MANAGER ---
+            // --- NON-INTERRUPTIVE PIVOT PLAYBACK MANAGER ---
             try {
                 const parsed = JSON.parse(data);
                 if (parsed.serverContent && parsed.serverContent.turnComplete) {
                     if (this.stageState === "reading") {
                         this.currentChunkIndex++;
-                        if (this.currentChunkIndex < this.readingQueue.length) {
+                        
+                        // Pivot check: Did the REST compiler deliver answers?
+                        if (this.pendingAnswersQueue.length > 0) {
+                            this.stageState = "answering_qa";
+                            const ans = this.pendingAnswersQueue.shift();
+                            console.log(`[Agent|DO|STATE] Pivoting to Q&A. Delivering answer to ${ans.sender_name}...`);
+                            const prompt = `Read the following answer exactly in your conversational tone:\n\n${ans.answer_text}`;
+                            ws.send(JSON.stringify({
+                                clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
+                            }));
+                        } else if (this.currentChunkIndex < this.readingQueue.length) {
                             console.log(`[Agent|DO|STATE] Advancing lecture cursor to chunk ${this.currentChunkIndex}`);
                             const chunk = this.readingQueue[this.currentChunkIndex];
                             const prompt = `Let's continue. Read this segment exactly:\n\n${chunk}`;
@@ -406,18 +465,39 @@ export class GeminiLiveAgent {
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
                             }));
                         } else {
+                            // Lecture completed. Final clean-up of bucket if necessary.
                             console.log(`[Agent|DO|STATE] Lecture completed.`);
                             this.stageState = "idle";
                         }
-                    } else if (this.stageState === "interrupted_qa") {
-                        console.log(`[Agent|DO|STATE] Pivoting back from QA to lecture chunk ${this.currentChunkIndex}`);
+                    } else if (this.stageState === "answering_qa") {
+                        // Are there more answers?
+                        if (this.pendingAnswersQueue.length > 0) {
+                            const ans = this.pendingAnswersQueue.shift();
+                            console.log(`[Agent|DO|STATE] Delivering next answer to ${ans.sender_name}...`);
+                            const prompt = `Read the following answer exactly in your conversational tone:\n\n${ans.answer_text}`;
+                            ws.send(JSON.stringify({
+                                clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
+                            }));
+                        } else {
+                            // Queue empty, pivot back to lecture!
+                            this.stageState = "resuming_lecture";
+                            const prompt = `Read this exactly: "Alright guys, let's get back to the text!"`;
+                            ws.send(JSON.stringify({
+                                clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
+                            }));
+                        }
+                    } else if (this.stageState === "resuming_lecture") {
                         this.stageState = "reading";
                         if (this.currentChunkIndex < this.readingQueue.length) {
+                            console.log(`[Agent|DO|STATE] Resuming lecture at chunk ${this.currentChunkIndex}`);
                             const chunk = this.readingQueue[this.currentChunkIndex];
                             const prompt = `Let's resume the lecture where we left off. Read this segment exactly:\n\n${chunk}`;
                             ws.send(JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
                             }));
+                        } else {
+                            console.log(`[Agent|DO|STATE] Lecture completed.`);
+                            this.stageState = "idle";
                         }
                     }
                 }
