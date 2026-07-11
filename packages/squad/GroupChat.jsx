@@ -110,7 +110,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const {
         liveState, setLiveState, liveCredentials,
         showLiveSetup, setShowLiveSetup, liveSetupData, setLiveSetupData,
-        isStartingLive, showRecoveryModal,
+        isStartingLive, showRecoveryModal, pendingChunks,
         startLiveSession, joinLiveSession, endLiveSession
     } = useLiveStageSession({ chat, localChatInfo, setLocalChatInfo, currentUser, isMeHost, isLiveDead, setAlertNotice });
 
@@ -1009,6 +1009,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         setLiveState={setLiveState}
                         onLeave={endLiveSession}
                         currentUser={currentUser}
+                        pendingChunks={pendingChunks}
                     />
                     <RoomAudioRenderer />
                 </LiveKitRoom>
