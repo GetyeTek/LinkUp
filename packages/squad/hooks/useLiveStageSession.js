@@ -62,7 +62,7 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
         }
     }, [chat.auto_join_live, liveState, localChatInfo.metadata, chat.metadata]);
 
-    const startLiveSession = async (setupData = null, chunks = null) => {
+    const startLiveSession = async (setupData = null, chunks = null, rawText = null) => {
         setIsStartingLive(true);
         try {
             const resToken = await invokeLiveToken({ conversation_id: chat.conversation_id });
@@ -75,7 +75,13 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
             setLiveCredentials({ token: resToken.token, url: resToken.ws_url });
             
             if (setupData) {
-                const resMeta = await invokeSocial({ action: 'start_live_session', conversation_id: chat.conversation_id, setupData, lecture_chunks: chunks });
+                const resMeta = await invokeSocial({ 
+                    action: 'start_live_session', 
+                    conversation_id: chat.conversation_id, 
+                    setupData, 
+                    lecture_chunks: chunks,
+                    raw_source_text: rawText
+                });
                 if (resMeta.error) throw new Error(resMeta.error);
                 setLocalChatInfo(prev => ({ ...prev, metadata: resMeta.metadata }));
             }
