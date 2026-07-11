@@ -91,22 +91,42 @@ export class GeminiLiveAgent {
         try {
             const parsed = JSON.parse(message);
             if (parsed.action === "start_lecture") {
-                console.log(`[Agent|DO|STATE] Starting lecture. Loaded ${parsed.chunks?.length || 0} chunks.`);
-                this.readingQueue = parsed.chunks || [];
-                this.currentChunkIndex = 0;
-                this.stageState = "reading";
+                console.log(`[Agent|DO|STATE] Intercepted start_lecture. Fetching chunks from database for ${this.conversationId}...`);
                 
-                if (this.readingQueue.length > 0) {
-                    const prompt = `Read the following segment exactly in your informal peer tone:\n\n${this.readingQueue[0]}`;
-                    const payload = JSON.stringify({
-                        clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
+                try {
+                    const res = await fetch(`${this.env.SUPABASE_URL}/rest/v1/live_study_sessions?conversation_id=eq.${this.conversationId}&select=lecture_chunks`, {
+                        headers: {
+                            'apikey': this.env.SUPABASE_SERVICE_ROLE_KEY,
+                            'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
+                        }
                     });
                     
-                    if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
-                        this.geminiWs.send(payload);
+                    if (res.ok) {
+                        const rows = await res.json();
+                        const chunks = rows[0]?.lecture_chunks || [];
+                        console.log(`[Agent|DO|STATE] Successfully loaded ${chunks.length} chunks from DB.`);
+                        
+                        this.readingQueue = chunks;
+                        this.currentChunkIndex = 0;
+                        this.stageState = "reading";
+                        
+                        if (this.readingQueue.length > 0) {
+                            const prompt = `Read the following segment exactly in your informal peer tone:\n\n${this.readingQueue[0]}`;
+                            const payload = JSON.stringify({
+                                clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
+                            });
+                            
+                            if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
+                                this.geminiWs.send(payload);
+                            } else {
+                                this.messageQueue.push(payload);
+                            }
+                        }
                     } else {
-                        this.messageQueue.push(payload);
+                        console.error("[Agent|DO|STATE] Failed to fetch chunks:", await res.text());
                     }
+                } catch(e) {
+                    console.error("[Agent|DO|STATE] Exception fetching DB chunks:", e.message);
                 }
                 return; // Intercepted. Do not forward raw client payload.
             }
