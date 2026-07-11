@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@linkup-platform/sdk-core';
 import { generateMironLecture } from '../api.js';
+import './LiveStageSetupModal.css';
 
 const TOCNode = ({ node, selectedNode, setSelectedNode, depth = 0 }) => {
     const [isOpen, setIsOpen] = useState(false);
