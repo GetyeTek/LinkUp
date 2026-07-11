@@ -53,6 +53,21 @@ export const uploadChatMedia = async (file, filePath, onProgress) => {
     }
 };
 
+export const generateMironLecture = async (payload) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${SQUAD_GATEWAY}/functions/v1/miron-lecture-generator`, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'apikey': DUMMY_KEY,
+            'x-linkup-client': 'linkup-secure-client-2026',
+            ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        },
+        body: JSON.stringify(payload)
+    });
+    return response.json();
+};
+
 export const invokeSocial = async (payload) => {
     const { data: { session } } = await supabase.auth.getSession();
     const response = await fetch(`${SQUAD_GATEWAY}/functions/v1/social-core`, {
