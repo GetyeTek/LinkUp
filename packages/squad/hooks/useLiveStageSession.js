@@ -9,6 +9,7 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
     const [liveCredentials, setLiveCredentials] = useState(null);
     const [isStartingLive, setIsStartingLive] = useState(false);
     const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+    const [pendingChunks, setPendingChunks] = useState(null);
 
     // Eject attendants instantly if the session is explicitly killed
     useEffect(() => {
@@ -61,11 +62,16 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
         }
     }, [chat.auto_join_live, liveState, localChatInfo.metadata, chat.metadata]);
 
-    const startLiveSession = async (setupData = null) => {
+    const startLiveSession = async (setupData = null, chunks = null) => {
         setIsStartingLive(true);
         try {
             const resToken = await invokeLiveToken({ conversation_id: chat.conversation_id });
             if (resToken.error) throw new Error(resToken.error);
+            
+            if (chunks) {
+                setPendingChunks(chunks);
+            }
+
             setLiveCredentials({ token: resToken.token, url: resToken.ws_url });
             
             if (setupData) {
@@ -124,6 +130,7 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
         liveSetupData, setLiveSetupData,
         isStartingLive,
         showRecoveryModal,
+        pendingChunks,
         startLiveSession, joinLiveSession, endLiveSession
     };
 };
