@@ -97,7 +97,7 @@ serve(async (req) => {
     }
 
     if (action === 'start_live_session') {
-        const { conversation_id, setupData } = body;
+        const { conversation_id, setupData, lecture_chunks } = body;
         await verifyAdmin(conversation_id, true); // Admins CAN host live sessions
         
         // Let backend RPC handle the heartbeat timestamping
@@ -119,7 +119,8 @@ serve(async (req) => {
                 course_name: setupData.course || 'General Study',
                 lesson_topic: setupData.topic,
                 active_user_ids: [requesterId],
-                last_updated_at: new Date().toISOString()
+                last_updated_at: new Date().toISOString(),
+                lecture_chunks: lecture_chunks || null
             });
         }
 
