@@ -96,7 +96,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     // Intercept Moderation Flags from DO REST Compiler
                     if (payload.type === "moderation_warning") {
                         if (payload.flags && Array.isArray(payload.flags)) {
-                            payload.flags.forEach((flag: any) => {
+                            payload.flags.forEach((flag) => {
                                 console.warn(`[Moderation] Miron flagged ${flag.sender_name} for: ${flag.reason}`);
                                 // We could trigger an alert notice here to the Hostess UI
                                 // e.g. "Miron flagged Spammer for offensive language."
@@ -360,7 +360,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                         src={mironAvatarUrl} 
                                         alt="Miron" 
                                         style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
-                                        onError={() => setAvatarError(true)} 
+                                        onError={() => setMironAvatarError(true)} 
                                     />
                                 ) : (
                                     <i className="fas fa-sparkles"></i>
