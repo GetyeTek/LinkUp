@@ -51,6 +51,7 @@ serve(async (req) => {
             conversation_id, user_id: target_user_id, role: 'member'
         });
         if (error) throw error;
+        console.log(`[Social Core] Admin successfully added target user ${target_user_id} to conversation ${conversation_id}`);
         return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -79,6 +80,7 @@ serve(async (req) => {
 
         const { error } = await supabase.from('conversations').update({ title: newTitle, metadata: currentMeta }).eq('id', conversation_id);
         if (error) throw error;
+        console.log(`[Social Core] Successfully updated group metadata for conversation ${conversation_id}. Title: "${newTitle}"`);
         return new Response(JSON.stringify({ success: true, metadata: currentMeta, title: newTitle }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -93,6 +95,7 @@ serve(async (req) => {
         
         const { error } = await supabase.from('conversations').update({ metadata: currentMeta }).eq('id', conversation_id);
         if (error) throw error;
+        console.log(`[Social Core] Successfully toggled admin setting "${key}" to "${value}" for conversation ${conversation_id}`);
         return new Response(JSON.stringify({ success: true, metadata: currentMeta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -112,8 +115,10 @@ serve(async (req) => {
         await supabase.from('conversations').update({ metadata: meta }).eq('id', conversation_id);
 
         if (setupData) {
-            await supabase.from('live_study_sessions').delete().eq('conversation_id', conversation_id);
-            await supabase.from('live_study_sessions').insert({
+            const { error: delErr } = await supabase.from('live_study_sessions').delete().eq('conversation_id', conversation_id);
+            if (delErr) throw delErr;
+
+            const { error: insErr } = await supabase.from('live_study_sessions').insert({
                 conversation_id: conversation_id,
                 course_name: setupData.course || 'General Study',
                 lesson_topic: setupData.topic,
@@ -122,6 +127,8 @@ serve(async (req) => {
                 lecture_chunks: lecture_chunks || null,
                 raw_source_text: raw_source_text || null
             });
+            if (insErr) throw insErr;
+            console.log(`[Social Core] Successfully saved live study session context to database for conversation ${conversation_id}. Topic: "${setupData.topic}"`);
         }
 
         return new Response(JSON.stringify({ success: true, metadata: meta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -139,6 +146,7 @@ serve(async (req) => {
         
         const { error } = await supabase.from('conversations').update({ metadata: meta }).eq('id', conversation_id);
         if (error) throw error;
+        console.log(`[Social Core] Successfully updated pin message status for conversation ${conversation_id}`);
         return new Response(JSON.stringify({ success: true, metadata: meta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -154,6 +162,7 @@ serve(async (req) => {
         
         const { error } = await supabase.from('conversations').update({ metadata: meta }).eq('id', conversation_id);
         if (error) throw error;
+        console.log(`[Social Core] Successfully toggled AI hosting (ai_hosting: ${ai_hosting}) for conversation ${conversation_id}`);
         return new Response(JSON.stringify({ success: true, metadata: meta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
