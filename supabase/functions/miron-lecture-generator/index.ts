@@ -110,6 +110,32 @@ serve(async (req) => {
             return keyRecord.api_key;
         };
 
+        const callGeminiWithRetry = async (payload: any, getApiKey: () => Promise<string>, maxRetries = 3) => {
+            let attempts = 0;
+            while (attempts <= maxRetries) {
+                const apiKey = await getApiKey();
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+                
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.status === 503 && attempts < maxRetries) {
+                    console.warn(`[Gemini API] Received 503 Service Unavailable. Retrying immediately (Attempt ${attempts + 1}/${maxRetries})...`);
+                    attempts++;
+                    continue;
+                }
+                
+                if (!res.ok) {
+                    throw new Error(`Gemini API Error: ${res.status}`);
+                }
+                
+                return await res.json();
+            }
+        };
+
         if (action === "generate_lecture") {
             const { book_id, chapter_title } = body;
         
@@ -157,26 +183,17 @@ serve(async (req) => {
         const rawText = pages.map(p => extractTextFromBlockArray(p.content_json || [])).join("\n\n");
         if (!rawText.trim()) throw new Error("No readable text found in this chapter.");
 
-        // 4. API Key Round-Robin
-        const apiKey = await getGeminiKey();
-
-        // 5. Generation Prompt with upgraded Peer Tutoring and Ethio-English style guidelines
+        // 4. Generation Prompt with upgraded Peer Tutoring and Ethio-English style guidelines
         const prompt = `${MIRON_CORE_PROMPT}
 
 Source Material:
 ${rawText}`;
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: "application/json" }
-            })
-        });
-
-        if (!res.ok) throw new Error(`Gemini API Error: ${res.status}`);
-        const geminiData = await res.json();
+        // 5. callGeminiWithRetry execution
+        const geminiData = await callGeminiWithRetry({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+        }, getGeminiKey);
         
         let resultJson = { chunks: [] };
         try {
@@ -229,18 +246,11 @@ Return ONLY a JSON object matching this exact schema, with no markdown wrappers:
                 }
             ];
 
-            const apiKey = await getGeminiKey();
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents,
-                    generationConfig: { responseMimeType: "application/json" }
-                })
-            });
-
-            if (!res.ok) throw new Error(`Gemini API Error: ${res.status}`);
-            const geminiData = await res.json();
+            // callGeminiWithRetry execution
+            const geminiData = await callGeminiWithRetry({
+                contents,
+                generationConfig: { responseMimeType: "application/json" }
+            }, getGeminiKey);
             
             let resultJson = { answers: [], flags: [] };
             try {
