@@ -97,12 +97,11 @@ serve(async (req) => {
     }
 
     if (action === 'start_live_session') {
-        const { conversation_id, setupData, lecture_chunks } = body;
+        const { conversation_id, setupData, lecture_chunks, raw_source_text } = body;
         await verifyAdmin(conversation_id, true); // Admins CAN host live sessions
         
         // Let backend RPC handle the heartbeat timestamping
         const { error: hbError } = await supabase.rpc('heartbeat_live_session', { conv_id: conversation_id, req_host_id: requesterId });
-        if (hbError) throw hbError;
 
         const { data: conv } = await supabase.from('conversations').select('metadata').eq('id', conversation_id).single();
         let meta = conv?.metadata || {};
@@ -120,8 +119,10 @@ serve(async (req) => {
                 lesson_topic: setupData.topic,
                 active_user_ids: [requesterId],
                 last_updated_at: new Date().toISOString(),
-                lecture_chunks: lecture_chunks || null
+                lecture_chunks: lecture_chunks || null,
+                raw_source_text: raw_source_text || null
             });
+        }
         }
 
         return new Response(JSON.stringify({ success: true, metadata: meta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
