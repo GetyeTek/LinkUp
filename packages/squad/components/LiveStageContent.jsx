@@ -8,7 +8,7 @@ import LiveStageModPanel from './LiveStageModPanel.jsx';
 import LiveStageAttendantQs from './LiveStageAttendantQs.jsx';
 import { invokeSocial } from '../api.js';
 
-const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser }) => {
+const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser, pendingChunks }) => {
     const [qInput, setQInput] = useState('');
     const [liveQuestions, setLiveQuestions] = useState([]);
     const [aiConnected, setAiConnected] = useState(false);
@@ -70,6 +70,12 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             ws.onopen = () => {
                 console.log("[Client|Stage] WS Connection Opened. Edge Worker handles Gemini configuration.");
                 setAiConnected(true);
+                
+                // Inject the generated lecture chunks into the DO state machine
+                if (pendingChunks && pendingChunks.length > 0) {
+                    console.log(`[Client|Stage] Injecting ${pendingChunks.length} lecture chunks into DO State Machine.`);
+                    ws.send(JSON.stringify({ action: "start_lecture", chunks: pendingChunks }));
+                }
             };
 
             let timeoutId;
@@ -211,6 +217,20 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         const { error } = await supabase.from('live_stage_questions').update(updates).eq('id', id);
         if (!error) {
             setLiveQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q));
+            
+            // Intercept Pin Action and inject question into DO State Machine
+            if (action === 'pin' && isAiHosting && aiSocketRef.current?.readyState === WebSocket.OPEN) {
+                const q = liveQuestions.find(x => x.id === id);
+                if (q) {
+                    const senderName = members[q.sender_id]?.name || 'A student';
+                    console.log(`[Client|Stage] Injecting Question into DO State Machine.`);
+                    aiSocketRef.current.send(JSON.stringify({
+                        action: "inject_question",
+                        text: q.text,
+                        sender: senderName
+                    }));
+                }
+            }
         } else {
             console.error("Moderation action failed:", error);
         }
