@@ -123,7 +123,6 @@ serve(async (req) => {
                 raw_source_text: raw_source_text || null
             });
         }
-        }
 
         return new Response(JSON.stringify({ success: true, metadata: meta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
