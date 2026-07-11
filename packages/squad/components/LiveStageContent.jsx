@@ -71,10 +71,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 console.log("[Client|Stage] WS Connection Opened. Edge Worker handles Gemini configuration.");
                 setAiConnected(true);
                 
-                // Inject the generated lecture chunks into the DO state machine
-                if (pendingChunks && pendingChunks.length > 0) {
-                    console.log(`[Client|Stage] Injecting ${pendingChunks.length} lecture chunks into DO State Machine.`);
-                    ws.send(JSON.stringify({ action: "start_lecture", chunks: pendingChunks }));
+                // Trigger the DO state machine to fetch chunks from the DB and start lecturing
+                if (isMeHost) {
+                    console.log(`[Client|Stage] Triggering DO State Machine to start lecture.`);
+                    ws.send(JSON.stringify({ action: "start_lecture" }));
                 }
             };
 
