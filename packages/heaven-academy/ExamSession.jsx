@@ -5,6 +5,44 @@ import ReportModal from './components/ReportModal.jsx';
 import ExamQuestionCard from './components/ExamQuestionCard.jsx';
 import './ExamSession.css';
 
+const typeOrder = {
+    'true_false': 1,
+    'matching': 2,
+    'reading_comprehension': 3,
+    'multiple_choice': 4,
+    'fill_in_the_blank': 5,
+    'short_answer': 6,
+    'workout': 7
+};
+
+const typeTitles = {
+    'true_false': 'Part: True or False',
+    'matching': 'Part: Matching',
+    'reading_comprehension': 'Part: Reading Comprehension',
+    'multiple_choice': 'Part: Multiple Choice',
+    'fill_in_the_blank': 'Part: Fill in the Blanks',
+    'short_answer': 'Part: Short Answer',
+    'workout': 'Part: Workout'
+};
+
+const typeInstructions = {
+    'true_false': 'Read each statement carefully and decide whether it is True or False.',
+    'matching': 'Match the items in Column A with the correct items in Column B.',
+    'reading_comprehension': 'Read the passage and answer the questions that follow.',
+    'multiple_choice': 'Choose the best answer from the given alternatives.',
+    'fill_in_the_blank': 'Fill in the blank spaces with the appropriate word or phrase.',
+    'short_answer': 'Provide a concise and accurate answer for each question.',
+    'workout': 'Show all necessary steps and clearly state your final answer.'
+};
+
+const getNormalizedType = (q) => {
+    let type = (q.question_type || '').toLowerCase();
+    const isMatching = type === 'matching' || q.matching_data || (Array.isArray(q.options) && q.options.some(o => typeof o === 'string' && o.includes('Column A')));
+    if (isMatching) return 'matching';
+    if (!type) return 'multiple_choice'; 
+    return type;
+};
+
 const ExamSession = ({ exam, onClose }) => {
     const [timeLeft, setTimeLeft] = useState(exam.time_allowed_minutes * 60 || 3600);
     const [activeReferenceBook, setActiveReferenceBook] = useState(null);
@@ -39,7 +77,24 @@ const ExamSession = ({ exam, onClose }) => {
         invokeBookReader({ action: 'get_exam_questions', exam_id: exam.id })
         .then(data => {
             if (data.sections) {
-                setSections(data.sections);
+                let allQs = data.sections.flatMap(s => s.questions || []);
+                let grouped = {};
+                allQs.forEach(q => {
+                    const nType = getNormalizedType(q);
+                    if (!grouped[nType]) grouped[nType] = [];
+                    grouped[nType].push(q);
+                });
+
+                const sortedKeys = Object.keys(grouped).sort((a, b) => (typeOrder[a] || 99) - (typeOrder[b] || 99));
+                
+                const virtualSections = sortedKeys.map((typeKey) => ({
+                    id: `virtual-sec-${typeKey}`,
+                    title: typeTitles[typeKey] || `Part: ${typeKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`,
+                    instructions: typeInstructions[typeKey] || '',
+                    questions: grouped[typeKey]
+                }));
+
+                setSections(virtualSections);
                 setExamMeta({ name: data.course_name, code: data.course_code });
             }
             setLoading(false);
@@ -287,11 +342,13 @@ const ExamSession = ({ exam, onClose }) => {
                             <h3 style={{color: 'var(--accent-teal)'}}>{section.title}</h3>
                             <p style={{fontSize: '0.8rem', opacity: 0.6}}>{section.instructions}</p>
                         </div>
-                        {section.questions.map((q, idx) => (
+                        {section.questions.map((q) => {
+                            const globalIdx = allQuestions.findIndex(x => x.id === q.id);
+                            return (
                             <ExamQuestionCard
                                 key={q.id}
                                 q={q}
-                                idx={idx}
+                                idx={globalIdx !== -1 ? globalIdx : 0}
                                 answers={answers}
                                 handleSelect={handleSelect}
                                 flagged={flagged}
@@ -307,7 +364,8 @@ const ExamSession = ({ exam, onClose }) => {
                                 handleEvaluate={handleEvaluate}
                                 showResults={showResultsModal}
                             />
-                        ))}
+                            );
+                        })}
                     </div>
                 ))}
             </main>
