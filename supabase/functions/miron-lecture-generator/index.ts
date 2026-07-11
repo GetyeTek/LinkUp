@@ -29,7 +29,23 @@ serve(async (req) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
     try {
-        const { book_id, chapter_title } = await req.json();
+        const body = await req.json();
+        const action = body.action || "generate_lecture";
+        
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+        const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const getGeminiKey = async () => {
+            const { data: keys } = await supabase.from('api_keys').select('*').eq('service', 'gemini').eq('is_active', true).order('last_used_at', { ascending: true, nullsFirst: true });
+            const keyRecord = keys?.find(k => !k.cooldown_until || new Date(k.cooldown_until) < new Date());
+            if (!keyRecord) throw new Error("No active Gemini API keys available.");
+            await supabase.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', keyRecord.id);
+            return keyRecord.api_key;
+        };
+
+        if (action === "generate_lecture") {
+            const { book_id, chapter_title } = body;
         
         const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
         const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -77,11 +93,7 @@ serve(async (req) => {
         if (!rawText.trim()) throw new Error("No readable text found in this chapter.");
 
         // 4. API Key Round-Robin
-        const { data: keys } = await supabase.from('api_keys').select('*').eq('service', 'gemini').eq('is_active', true).order('last_used_at', { ascending: true, nullsFirst: true });
-        const keyRecord = keys?.find(k => !k.cooldown_until || new Date(k.cooldown_until) < new Date());
-        if (!keyRecord) throw new Error("No active Gemini API keys available.");
-        
-        await supabase.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', keyRecord.id);
+        const apiKey = await getGeminiKey();
 
         // 5. Generation Prompt with upgraded Peer Tutoring and Ethio-English style guidelines
         const prompt = `You are Miron, an expert peer tutor and a highly supportive classmate. Your peer is struggling with this textbook section. Your job is to write a comprehensive video or audio study script breaking it down, explaining it clearly, and helping them ace their exam.
@@ -153,7 +165,7 @@ CHUNK & STRUCTURAL SPECIFICATIONS:
 Source Material:
 ${rawText}`;
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${keyRecord.api_key}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -173,7 +185,74 @@ ${rawText}`;
             throw new Error("Failed to parse JSON chunks from Gemini.");
         }
 
-        return new Response(JSON.stringify(resultJson), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ chunks: resultJson.chunks, raw_text: rawText }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        
+        if (action === "compile_answers") {
+            const { conversation_id, questions } = body;
+            
+            // 1. Fetch Session State for Stateless Stitching
+            const { data: session, error: sessErr } = await supabase.from('live_study_sessions')
+                .select('lecture_chunks, raw_source_text')
+                .eq('conversation_id', conversation_id)
+                .single();
+                
+            if (sessErr || !session) throw new Error("Active session not found.");
+            
+            const stitchPrompt = `You are Miron, an expert peer tutor and a highly supportive classmate. Your peer friends are struggling with this textbook section.
+
+You must follow these rules when answering:
+1. You must use an extremely casual and informal tone because what I'm addressing is my peer friends. Think of a group study you do with your ride or die buddies.
+2. You must write it in Amharic first, blended with English. Use English for technical words, terms that aren't meant to be translated, and things that boys in Addis Ababa talk like (slangs, usages).
+3. Don't use brackets or such stuffs that troubles me to read straight. Make everything textual.
+4. When introducing a difficult concept, explain it using simple, relatable, real-world analogies.
+
+Source Material Context:
+${session.raw_source_text}
+
+You previously generated this lecture script based on the material:
+${JSON.stringify(session.lecture_chunks)}
+
+Active attendants have just asked the following questions while you were reading:
+${questions.map((q: any) => `- [${q.user_id}] ${q.sender_name}: ${q.text}`).join('\n')}
+
+Task: Answer these questions sequentially. 
+- Maintain the EXACT same informal, conversational Ethio-English peer tone as your lecture.
+- Address each student warmly by their name (e.g., 'Sileshi, ...', 'Alex, ...'). Humans love to be called out!
+- Keep each answer to 2-4 flowing sentences.
+- If any question is highly offensive, sexual, or malicious, ignore it completely and flag the user in the 'flags' array.
+
+Return ONLY a JSON object matching this exact schema, with no markdown wrappers:
+{
+  "answers": [ { "user_id": "...", "sender_name": "...", "answer_text": "..." } ],
+  "flags": [ { "user_id": "...", "sender_name": "...", "severity": "mute|ban", "reason": "..." } ]
+}`;
+
+            const apiKey = await getGeminiKey();
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: "user", parts: [{ text: stitchPrompt }] }],
+                    generationConfig: { responseMimeType: "application/json" }
+                })
+            });
+
+            if (!res.ok) throw new Error(`Gemini API Error: ${res.status}`);
+            const geminiData = await res.json();
+            
+            let resultJson = { answers: [], flags: [] };
+            try {
+                const rawOutput = geminiData.candidates[0].content.parts[0].text;
+                resultJson = JSON.parse(rawOutput);
+            } catch (e) {
+                throw new Error("Failed to parse JSON answers from Gemini.");
+            }
+
+            return new Response(JSON.stringify(resultJson), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        throw new Error("Invalid action.");
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: corsHeaders });
     }
