@@ -93,6 +93,18 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 try {
                     const payload = JSON.parse(event.data);
                     
+                    // Intercept Moderation Flags from DO REST Compiler
+                    if (payload.type === "moderation_warning") {
+                        if (payload.flags && Array.isArray(payload.flags)) {
+                            payload.flags.forEach((flag: any) => {
+                                console.warn(`[Moderation] Miron flagged ${flag.sender_name} for: ${flag.reason}`);
+                                // We could trigger an alert notice here to the Hostess UI
+                                // e.g. "Miron flagged Spammer for offensive language."
+                            });
+                        }
+                        return;
+                    }
+
                     if (payload.serverContent?.modelTurn) {
                         console.log("[Client|Stage] 🗣️ Received Audio/Turn from Miron!");
                     } else if (payload.serverContent?.turnComplete) {
@@ -177,18 +189,15 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         
         console.log(`[Client|Stage] 📝 handleSendQuestion triggered. Payload text: "${qInput.trim()}"`);
         
-        // Pass immediately to Miron if AI is hosting
+        // Queue the question in the DO Bucket silently if AI is hosting
         if (isAiHosting && aiSocketRef.current?.readyState === WebSocket.OPEN) {
-            const payload = {
-                clientContent: {
-                    turns: [{ role: "user", parts: [{ text: `${members[currentUser.id]?.name || 'A student'} asks: ${qInput.trim()}` }] }],
-                    turnComplete: true
-                }
-            };
-            console.log("[Client|Stage] 🚀 Sending Text Question to Gemini (WS OPEN):", JSON.stringify(payload));
-            aiSocketRef.current.send(JSON.stringify(payload));
-        } else if (isAiHosting) {
-            console.warn(`[Client|Stage] ⚠️ Cannot send text to Gemini! WS State: ${aiSocketRef.current?.readyState}`);
+            console.log("[Client|Stage] 🚀 Queuing question directly to DO Bucket.");
+            aiSocketRef.current.send(JSON.stringify({
+                action: "submit_question",
+                user_id: currentUser.id,
+                sender: members[currentUser.id]?.name || 'A student',
+                text: qInput.trim()
+            }));
         }
 
         const { error } = await supabase.from('live_stage_questions').insert({
