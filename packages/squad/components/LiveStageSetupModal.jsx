@@ -73,7 +73,7 @@ const LiveStageSetupModal = ({
                 if (res.error) throw new Error(res.error);
                 
                 const metaData = { topic: selectedNode.title, course: selectedBook.course_code || selectedBook.title };
-                startLiveSession(metaData, res.chunks);
+                startLiveSession(metaData, res.chunks, res.raw_text);
                 setShowLiveSetup(false);
             } catch (err) {
                 setGenError(err.message || "Failed to generate lecture script.");
