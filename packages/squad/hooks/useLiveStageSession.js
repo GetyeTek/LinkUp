@@ -75,7 +75,7 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
             setLiveCredentials({ token: resToken.token, url: resToken.ws_url });
             
             if (setupData) {
-                const resMeta = await invokeSocial({ action: 'start_live_session', conversation_id: chat.conversation_id, setupData });
+                const resMeta = await invokeSocial({ action: 'start_live_session', conversation_id: chat.conversation_id, setupData, lecture_chunks: chunks });
                 if (resMeta.error) throw new Error(resMeta.error);
                 setLocalChatInfo(prev => ({ ...prev, metadata: resMeta.metadata }));
             }
