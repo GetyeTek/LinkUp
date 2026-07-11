@@ -196,6 +196,48 @@ export class GeminiLiveAgent {
                 });
                 return;
             }
+
+            if (parsed.action === "inject_question") {
+                console.log(`[Agent|DO|STATE] Intercepted inject_question. Compiling single pinned question immediately...`);
+                const singleQuestion = {
+                    user_id: parsed.user_id || "pinned_user",
+                    sender_name: parsed.sender,
+                    text: parsed.text
+                };
+
+                this.ctx.waitUntil((async () => {
+                    try {
+                        const res = await fetch(`${this.env.SUPABASE_URL}/functions/v1/miron-lecture-generator`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
+                            },
+                            body: JSON.stringify({
+                                action: 'compile_answers',
+                                conversation_id: this.conversationId,
+                                questions: [singleQuestion]
+                              })
+                        });
+
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.flags && data.flags.length > 0) {
+                                this.broadcast(JSON.stringify({ type: "moderation_warning", flags: data.flags }));
+                            }
+                            if (data.answers && data.answers.length > 0) {
+                                this.pendingAnswersQueue.push(...data.answers);
+                                console.log(`[Agent|DO|STATE] Pinned question answer compiled and queued. Total pending answers: ${this.pendingAnswersQueue.length}`);
+                            }
+                        } else {
+                            console.error("[Agent|DO|STATE] Failed to compile injected question:", await res.text());
+                        }
+                    } catch (e) {
+                        console.error("[Agent|DO|STATE] Exception compiling injected question:", e.message);
+                    }
+                })());
+                return;
+            }
         } catch(e) { /* Fallthrough for non-JSON or standard WS frames */ }
 
         const sample = message.substring(0, 150).replace(/\n/g, '');
