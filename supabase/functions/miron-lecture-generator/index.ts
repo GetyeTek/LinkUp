@@ -182,6 +182,7 @@ ${rawText}`;
         try {
             const rawOutput = geminiData.candidates[0].content.parts[0].text;
             resultJson = JSON.parse(rawOutput);
+            console.log(`[Miron Lecture Generator] Successfully generated ${resultJson.chunks?.length || 0} chunks for book ID: ${book_id}`);
         } catch (e) {
             throw new Error("Failed to parse JSON chunks from Gemini.");
         }
@@ -245,8 +246,20 @@ Return ONLY a JSON object matching this exact schema, with no markdown wrappers:
             try {
                 const rawOutput = geminiData.candidates[0].content.parts[0].text;
                 resultJson = JSON.parse(rawOutput);
+                console.log(`[Miron Lecture Generator] Successfully compiled ${resultJson.answers?.length || 0} answers for conversation ID: ${conversation_id}`);
             } catch (e) {
                 throw new Error("Failed to parse JSON answers from Gemini.");
+            }
+
+            // Save compiled answers directly back into the live_study_sessions table
+            const { error: dbErr } = await supabase.from('live_study_sessions')
+                .update({ compiled_answers: resultJson.answers })
+                .eq('conversation_id', conversation_id);
+                
+            if (dbErr) {
+                console.error(`[Miron Lecture Generator] Failed to save compiled answers to database for conversation ${conversation_id}:`, dbErr.message);
+            } else {
+                console.log(`[Miron Lecture Generator] Successfully saved compiled answers to database for conversation ${conversation_id}`);
             }
 
             return new Response(JSON.stringify(resultJson), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
