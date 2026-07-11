@@ -103,11 +103,11 @@ serve(async (req) => {
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const getGeminiKey = async () => {
-            const { data: keys } = await supabase.from('api_keys').select('*').eq('service', 'gemini').eq('is_active', true).order('last_used_at', { ascending: true, nullsFirst: true });
-            const keyRecord = keys?.find(k => !k.cooldown_until || new Date(k.cooldown_until) < new Date());
-            if (!keyRecord) throw new Error("No active Gemini API keys available.");
-            await supabase.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', keyRecord.id);
-            return keyRecord.api_key;
+            const { data, error } = await supabase.rpc('lease_gemini_api_key');
+            if (error || !data || data.length === 0) {
+                throw new Error("No active Gemini API keys available.");
+            }
+            return data[0].api_key;
         };
 
         const callGeminiWithRetry = async (payload: any, getApiKey: () => Promise<string>, maxRetries = 3) => {
