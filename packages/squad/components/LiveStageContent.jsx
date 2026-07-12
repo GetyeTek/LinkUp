@@ -8,7 +8,7 @@ import LiveStageModPanel from './LiveStageModPanel.jsx';
 import LiveStageAttendantQs from './LiveStageAttendantQs.jsx';
 import { invokeSocial } from '../api.js';
 
-const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser, pendingChunks }) => {
+const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser, pendingChunks, setShowMironSetup }) => {
     const [qInput, setQInput] = useState('');
     const [liveQuestions, setLiveQuestions] = useState([]);
     const [aiConnected, setAiConnected] = useState(false);
@@ -211,12 +211,16 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     };
 
     const toggleMironState = async (turnOn) => {
-        if (stageMicEnabled) setStageMicEnabled(false);
-        try {
-            const res = await invokeSocial({ action: 'toggle_miron', conversation_id: conversationId, ai_hosting: turnOn });
-            if (res.error) throw new Error(res.error);
-        } catch(e) {
-            console.error("Failed to toggle Miron:", e.message);
+        if (turnOn) {
+            setShowMironSetup(true);
+        } else {
+            if (stageMicEnabled) setStageMicEnabled(false);
+            try {
+                const res = await invokeSocial({ action: 'toggle_miron', conversation_id: conversationId, ai_hosting: false });
+                if (res.error) throw new Error(res.error);
+            } catch(e) {
+                console.error("Failed to toggle Miron:", e.message);
+            }
         }
     };
 
