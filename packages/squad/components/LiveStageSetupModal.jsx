@@ -92,7 +92,7 @@ const LiveStageSetupModal = ({
     const isChildNode = selectedNode && (!selectedNode.children || selectedNode.children.length === 0);
 
     return (
-        <div className="poll-composer-overlay" onClick={() => !isGenerating && onClose()}>
+        <div className="poll-composer-overlay" style={{ zIndex: 100000 }} onClick={() => !isGenerating && onClose()}>
             <div className="poll-composer-sheet" style={{position: 'relative'}} onClick={e => e.stopPropagation()}>
                 
                 {isGenerating && (
