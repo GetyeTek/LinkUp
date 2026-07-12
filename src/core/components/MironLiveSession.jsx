@@ -161,6 +161,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
             <div className="ml-transcript-area">
                 <div className="ml-transcript-scroll" ref={transcriptRef}>
+                    <div style={{ minHeight: '60vh', flexShrink: 0 }}></div>
                     {transcripts.length === 0 && (
                         <div className="ml-empty-prompt">Listening...</div>
                     )}
