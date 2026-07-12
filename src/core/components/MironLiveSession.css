@@ -23,7 +23,9 @@
 @keyframes blink { 50% { opacity: 0.5; } }
 .ml-stage {
     flex: 1; display: flex; align-items: center; justify-content: center; z-index: 10;
-    min-height: 200px; pointer-events: none;
+    min-height: 200px;
+    pointer-events: none;
+    padding-bottom: 20vh; /* Shove the center point slightly upwards */
 }
 .ml-avatar-container {
     position: relative; width: 120px; height: 120px; border-radius: 50%;
