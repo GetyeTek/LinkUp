@@ -54,14 +54,14 @@
 
 @keyframes mlHalo { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
 
-.ml-transcript-area {
-    position: absolute; inset: 0; z-index: 5;
-    padding: 80px 1.5rem 100px 1.5rem;
-    display: flex; flex-direction: column;
-    mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
-    pointer-events: auto;
-}
+    .ml-transcript-area {
+        position: absolute; inset: 0; z-index: 5;
+        padding: 80px 1.5rem 100px 1.5rem;
+        display: flex; flex-direction: column;
+        mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 12%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,1) 55%, rgba(0,0,0,1) 85%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 12%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,1) 55%, rgba(0,0,0,1) 85%, transparent 100%);
+        pointer-events: auto;
+    }
 .ml-transcript-scroll {
     flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 0 0 2rem 0;
 }
