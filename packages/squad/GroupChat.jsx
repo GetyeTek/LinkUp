@@ -43,6 +43,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     // Group Hub State
     const [localChatInfo, setLocalChatInfo] = useState({ title: chat.title, avatar_url: chat.avatar_url, metadata: chat.metadata });
     const [isInfoOpen, setIsInfoOpen] = useState(false);
+    const [showMironSetup, setShowMironSetup] = useState(false);
     
     // Auto-hide success toasts on parent
     // Auto-hide success toasts on parent
@@ -793,12 +794,36 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             )}
 
             <LiveStageSetupModal 
-                showLiveSetup={showLiveSetup} 
-                setShowLiveSetup={setShowLiveSetup} 
+                mode="host"
+                show={showLiveSetup} 
+                onClose={() => setShowLiveSetup(false)} 
                 liveSetupData={liveSetupData} 
                 setLiveSetupData={setLiveSetupData} 
-                startLiveSession={startLiveSession} 
+                onStartLive={startLiveSession} 
                 isStartingLive={isStartingLive} 
+            />
+
+            <LiveStageSetupModal 
+                mode="miron"
+                show={showMironSetup}
+                onClose={() => setShowMironSetup(false)}
+                onInviteMiron={async (chunks, rawText) => {
+                    const { error } = await supabase.from('live_study_sessions')
+                        .update({ lecture_chunks: chunks, raw_source_text: rawText })
+                        .eq('conversation_id', chat.conversation_id);
+                    if (error) {
+                        setAlertNotice({ title: 'Failed to update chunks', msg: error.message, success: false });
+                        return;
+                    }
+                    try {
+                        const res = await invokeSocial({ action: 'toggle_miron', conversation_id: chat.conversation_id, ai_hosting: true });
+                        if (res.error) throw new Error(res.error);
+                        setLocalChatInfo(prev => ({...prev, metadata: res.metadata || {...prev.metadata, ai_hosting: true}}));
+                    } catch(e) {
+                        console.error("Failed to toggle Miron:", e.message);
+                        setAlertNotice({ title: 'Miron failed to join', msg: e.message, success: false });
+                    }
+                }}
             />
 
             <main className="squad-flow" ref={flowRef} onClick={() => setActiveMenu(null)} onScroll={(e) => {
@@ -1010,6 +1035,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         onLeave={endLiveSession}
                         currentUser={currentUser}
                         pendingChunks={pendingChunks}
+                        setShowMironSetup={setShowMironSetup}
                     />
                     <RoomAudioRenderer />
                 </LiveKitRoom>
