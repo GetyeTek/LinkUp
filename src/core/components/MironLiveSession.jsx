@@ -131,7 +131,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     };
 
     if (viewState === 'minimized') {
-        return <FloatingMironOrb mironAvatarUrl={mironAvatarUrl} onClick={() => setViewState('full')} />;
+        return <FloatingMironOrb mironAvatarUrl={mironAvatarUrl} isConnected={isConnected} onClick={() => setViewState('full')} />;
     }
 
     return (
