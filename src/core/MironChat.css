@@ -326,6 +326,8 @@
     color: #030303;
     font-weight: 500;
     border-radius: 20px 20px 6px 20px;
+    align-self: flex-end;
+    max-width: 85%;
 }
 
 /* Typing Indicator */
