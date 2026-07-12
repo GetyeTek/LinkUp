@@ -31,15 +31,20 @@
 
 /* --- SLEEK HEADER --- */
 .athena-header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.5rem;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border-color);
-    z-index: 10;
+    background: transparent;
+    border-bottom: none;
+    z-index: 20;
+    pointer-events: none; /* Let scroll pass through empty areas */
+}
+
+.athena-header > * {
+    pointer-events: auto; /* Re-enable clicks on header buttons */
 }
 
 .athena-brand {
@@ -67,6 +72,7 @@
     font-weight: 500;
     letter-spacing: -0.2px;
     color: var(--text-primary-dark);
+    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
 }
 
 .athena-close {
@@ -81,18 +87,28 @@
     justify-content: center;
     cursor: pointer;
     transition: background 0.2s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
 }
 .athena-close:hover { background: rgba(255, 255, 255, 0.1); }
+
+.athena-live-btn {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    border-radius: 10px;
+}
 
 /* --- CHAT FLOW --- */
 .athena-flow {
     flex: 1;
-    padding: 1rem 0 0 0; /* Horizontal padding KILLED */
+    padding: 90px 0 0 0; /* Space to clear the absolute header */
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 2rem;
     scroll-behavior: smooth;
+    
+    /* The Fade Mask: Opacity reduction mapping precisely to avatar coordinates */
+    mask-image: linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.1) 15px, rgba(0,0,0,0.6) 50px, black 90px, black 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.1) 15px, rgba(0,0,0,0.6) 50px, black 90px, black 100%);
 }
 .athena-flow::-webkit-scrollbar { display: none; }
 
