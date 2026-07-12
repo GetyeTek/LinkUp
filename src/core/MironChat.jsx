@@ -85,8 +85,8 @@ const MironChat = ({ onClose, initialContext }) => {
             setMessages(prev => [...prev, {
                 id: Date.now() + 1,
                 side: 'miron',
-                thought: "Connection unstable...",
-                text: "My cognitive link to the mainframe encountered an anomaly. Please try asking again."
+                thought: "Connection error...",
+                text: "I apologize, but I am currently having trouble processing your request. Please try asking again in a moment."
             }]);
         } finally {
             setIsTyping(false);
