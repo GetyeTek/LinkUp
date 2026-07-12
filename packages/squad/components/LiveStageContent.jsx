@@ -261,7 +261,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const isConnected = isAiHosting ? aiConnected : !isHostPaused;
 
     if (liveState === 'minimized') {
-        return <FloatingLiveOrb hostAvatar={hostInfo.avatar} hostId={hostId} onClick={() => setLiveState('full')} />;
+        return <FloatingLiveOrb hostAvatar={hostInfo.avatar} hostId={hostId} isConnected={isConnected} onClick={() => setLiveState('full')} />;
     }
 
     return (
