@@ -1,7 +1,5 @@
 /* --- INTERACTIVE TREE EXPLORER --- */
-.explorer-tabs { display: flex; gap: 10px; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 12px; }
-.explorer-tabs button { flex: 1; padding: 10px; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: #888; transition: all 0.2s; }
-.explorer-tabs button.active { background: var(--surface-dark); color: var(--accent-teal); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+/* Explorer tabs removed */
 
 .books-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
 .book-selector-card { display: flex; align-items: center; gap: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); padding: 12px; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
