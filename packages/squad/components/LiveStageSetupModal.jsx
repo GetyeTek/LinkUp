@@ -34,14 +34,15 @@ const TOCNode = ({ node, selectedNode, setSelectedNode, depth = 0 }) => {
 };
 
 const LiveStageSetupModal = ({
-    showLiveSetup,
-    setShowLiveSetup,
+    mode = 'host',
+    show,
+    onClose,
     liveSetupData,
     setLiveSetupData,
-    startLiveSession,
+    onStartLive,
+    onInviteMiron,
     isStartingLive
 }) => {
-    const [setupMode, setSetupMode] = useState('guided'); // 'guided' | 'manual'
     const [books, setBooks] = useState([]);
     const [selectedBook, setSelectedBook] = useState(null);
     const [selectedNode, setSelectedNode] = useState(null);
@@ -49,22 +50,24 @@ const LiveStageSetupModal = ({
     const [genError, setGenError] = useState(null);
 
     useEffect(() => {
-        if (showLiveSetup) {
-            supabase.from('books').select('id, title, course_code, toc').order('title').then(({ data }) => {
-                if (data) setBooks(data);
-            });
+        if (show) {
+            if (mode === 'miron') {
+                supabase.from('books').select('id, title, course_code, toc').order('title').then(({ data }) => {
+                    if (data) setBooks(data);
+                });
+            }
         } else {
             // Reset state
             setSelectedBook(null);
             setSelectedNode(null);
             setGenError(null);
         }
-    }, [showLiveSetup]);
+    }, [show, mode]);
 
-    if (!showLiveSetup) return null;
+    if (!show) return null;
 
     const handlePrepareLecture = async () => {
-        if (setupMode === 'guided') {
+        if (mode === 'miron') {
             if (!selectedBook || !selectedNode) return;
             setIsGenerating(true);
             setGenError(null);
@@ -72,21 +75,24 @@ const LiveStageSetupModal = ({
                 const res = await generateMironLecture({ book_id: selectedBook.id, chapter_title: selectedNode.title });
                 if (res.error) throw new Error(res.error);
                 
-                const metaData = { topic: selectedNode.title, course: selectedBook.course_code || selectedBook.title };
-                startLiveSession(metaData, res.chunks, res.raw_text);
-                setShowLiveSetup(false);
+                if (onInviteMiron) {
+                    await onInviteMiron(res.chunks, res.raw_text);
+                }
+                onClose();
             } catch (err) {
                 setGenError(err.message || "Failed to generate lecture script.");
             }
             setIsGenerating(false);
         } else {
-            startLiveSession(liveSetupData, null);
-            setShowLiveSetup(false);
+            onStartLive(liveSetupData, null);
+            onClose();
         }
     };
 
+    const isChildNode = selectedNode && (!selectedNode.children || selectedNode.children.length === 0);
+
     return (
-        <div className="poll-composer-overlay" onClick={() => !isGenerating && setShowLiveSetup(false)}>
+        <div className="poll-composer-overlay" onClick={() => !isGenerating && onClose()}>
             <div className="poll-composer-sheet" style={{position: 'relative'}} onClick={e => e.stopPropagation()}>
                 
                 {isGenerating && (
@@ -99,15 +105,14 @@ const LiveStageSetupModal = ({
 
                 <header className="poll-comp-header" style={{ marginBottom: '1rem' }}>
                     <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <i className="fas fa-broadcast-tower" style={{ color: 'var(--accent-teal)' }}></i> Host Live Session
+                        {mode === 'miron' ? (
+                            <><i className="fas fa-sparkles" style={{ color: 'var(--accent-teal)' }}></i> Invite Miron</>
+                        ) : (
+                            <><i className="fas fa-broadcast-tower" style={{ color: 'var(--accent-teal)' }}></i> Host Live Session</>
+                        )}
                     </h2>
-                    <button className="icon-button" style={{ color: '#888' }} onClick={() => setShowLiveSetup(false)} disabled={isGenerating}><i className="fas fa-times"></i></button>
+                    <button className="icon-button" style={{ color: '#888' }} onClick={onClose} disabled={isGenerating}><i className="fas fa-times"></i></button>
                 </header>
-
-                <div className="explorer-tabs">
-                    <button className={setupMode === 'guided' ? 'active' : ''} onClick={() => setSetupMode('guided')}>📚 Guided Lecture</button>
-                    <button className={setupMode === 'manual' ? 'active' : ''} onClick={() => setSetupMode('manual')}>⚡ Quick Stage</button>
-                </div>
 
                 <div className="poll-comp-body" style={{ paddingBottom: '1rem', gap: '1rem' }}>
                     {genError && (
@@ -116,7 +121,7 @@ const LiveStageSetupModal = ({
                         </div>
                     )}
 
-                    {setupMode === 'guided' ? (
+                    {mode === 'miron' ? (
                         <>
                             {!selectedBook ? (
                                 <div className="books-grid">
@@ -169,9 +174,9 @@ const LiveStageSetupModal = ({
                 <button 
                     className="poll-submit-btn" 
                     onClick={handlePrepareLecture} 
-                    disabled={isGenerating || isStartingLive || (setupMode === 'guided' ? (!selectedBook || !selectedNode) : (!liveSetupData.topic?.trim() || !liveSetupData.course?.trim()))}
+                    disabled={isGenerating || isStartingLive || (mode === 'miron' ? (!selectedBook || !isChildNode) : (!liveSetupData?.topic?.trim() || !liveSetupData?.course?.trim()))}
                 >
-                    {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : (setupMode === 'guided' ? 'Prepare Lecture & Go Live' : 'Go Live')}
+                    {isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? 'Prepare Lecture & Invite' : 'Go Live')}
                 </button>
             </div>
         </div>
