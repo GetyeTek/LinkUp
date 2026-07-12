@@ -12,15 +12,7 @@ const MironChat = ({ onClose, initialContext }) => {
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
     const [messages, setMessages] = useState(() => {
-        const base = [
-            {
-                id: 1,
-                side: 'miron',
-                text: "I'm monitoring your cognitive path. Let's explore.",
-                thought: null
-            }
-        ];
-        
+        const base = [];
         if (initialContext) {
             base.push({
                 id: 2,
@@ -193,6 +185,15 @@ const MironChat = ({ onClose, initialContext }) => {
             </header>
 
             <main className="athena-flow" ref={flowRef}>
+                {messages.length === 0 && (
+                    <div className="athena-welcome-container">
+                        <div className="athena-welcome-logo">
+                            <i className="fa-solid fa-sparkles"></i>
+                        </div>
+                        <h2>How can I help you with your courses?</h2>
+                        <p>Ask Miron about formulas, textbook concepts, or assignments.</p>
+                    </div>
+                )}
                 {messages.map(m => (
                                         <div key={m.id} className={`chat-node ${m.side}`}>
                         {m.side === 'miron' && m.thought && (
