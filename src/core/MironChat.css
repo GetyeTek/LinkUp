@@ -112,6 +112,53 @@
 }
 .athena-flow::-webkit-scrollbar { display: none; }
 
+.athena-welcome-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: auto;
+    padding: 2rem;
+    max-width: 320px;
+    animation: welcomeFadeIn 0.5s ease-out;
+}
+@keyframes welcomeFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.athena-welcome-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #42d7b8, #1a9c8b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 30px rgba(66, 215, 184, 0.3);
+    animation: welcomeFloat 3s infinite ease-in-out;
+}
+@keyframes welcomeFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+.athena-welcome-container h2 {
+    font-family: 'Newsreader', serif;
+    font-size: 1.6rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary-dark);
+}
+.athena-welcome-container p {
+    font-size: 0.85rem;
+    color: var(--text-secondary-dark);
+    line-height: 1.5;
+}
+
 .chat-node {
     display: flex;
     flex-direction: column;
