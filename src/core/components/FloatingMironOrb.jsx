@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import './FloatingMironOrb.css';
 
-const FloatingMironOrb = ({ mironAvatarUrl, onClick }) => {
+const FloatingMironOrb = ({ mironAvatarUrl, isConnected, onClick }) => {
     const orbRef = useRef(null);
     const [pos, setPos] = useState({ x: window.innerWidth - 96, y: window.innerHeight - 240 });
     const dragStart = useRef(null);
@@ -48,7 +48,7 @@ const FloatingMironOrb = ({ mironAvatarUrl, onClick }) => {
             onPointerMove={handlePointerMove} 
             onPointerUp={handlePointerUp}
         >
-            <div className="orb-pulse-ring"></div>
+            {isConnected && <div className="orb-pulse-ring"></div>}
             <img src={mironAvatarUrl} className="floating-orb-host" alt="Live Host" />
             <div className="orb-expand-badge"><i className="fas fa-expand-alt"></i></div>
         </div>
