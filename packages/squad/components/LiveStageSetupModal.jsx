@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@linkup-platform/sdk-core';
 import { generateMironLecture } from '../api.js';
 import './LiveStageSetupModal.css';
@@ -52,7 +53,99 @@ const LiveStageSetupModal = ({
 
     // Dev Sandbox States
     const [isDevMode, setIsDevMode] = useState(false);
-    const [devPayload, setDevPayload] = useState('{\n  "action": "draw",\n  "elements": [\n    {\n      "id": "1",\n      "text": "Thermodynamics",\n      "type": "title",\n      "x": "50%",\n      "y": "30%",\n      "fontSize": "2.5rem",\n      "color": "#42d7b8",\n      "animation": "pop-in",\n      "fontWeight": "bold"\n    },\n    {\n      "id": "2",\n      "text": "The branch of physical science that deals with the relations between heat and other forms of energy.",\n      "type": "body",\n      "x": "50%",\n      "y": "45%",\n      "fontSize": "1rem",\n      "color": "#e0e0e0",\n      "animation": "fade-in",\n      "fontFamily": "serif"\n    }\n  ]\n}');
+    const [devPayload, setDevPayload] = useState(JSON.stringify({
+      action: "draw",
+      elements: [
+        {
+          id: "bg-accent",
+          text: "",
+          type: "shape",
+          x: "50%",
+          y: "50%",
+          animation: "fade-in",
+          customStyles: {
+            width: "90vw",
+            height: "50vh",
+            background: "radial-gradient(circle, rgba(155, 89, 182, 0.12) 0%, transparent 70%)",
+            borderRadius: "50%",
+            zIndex: "0"
+          }
+        },
+        {
+          id: "title",
+          text: "Maxwell's Equations",
+          type: "title",
+          x: "50%",
+          y: "20%",
+          fontSize: "2.5rem",
+          color: "#42d7b8",
+          animation: "pop-in",
+          fontWeight: "800",
+          fontFamily: "serif",
+          customStyles: {
+            textShadow: "0 10px 30px rgba(66, 215, 184, 0.6)",
+            letterSpacing: "2px",
+            zIndex: "2"
+          }
+        },
+        {
+          id: "subtitle",
+          text: "The Foundation of Electromagnetism",
+          type: "body",
+          x: "50%",
+          y: "30%",
+          fontSize: "1rem",
+          color: "#ffab40",
+          animation: "slide-up",
+          fontWeight: "600",
+          fontFamily: "sans-serif",
+          customStyles: {
+            textTransform: "uppercase",
+            letterSpacing: "3px",
+            zIndex: "2"
+          }
+        },
+        {
+          id: "equation-card",
+          text: "∇ ⋅ E = ρ / ε₀\n∇ ⋅ B = 0\n∇ × E = -∂B/∂t\n∇ × B = μ₀(J + ε₀∂E/∂t)",
+          type: "code",
+          x: "50%",
+          y: "55%",
+          fontSize: "1.1rem",
+          color: "#fff",
+          animation: "pop-in",
+          fontWeight: "bold",
+          customStyles: {
+            fontFamily: "monospace",
+            background: "rgba(0, 0, 0, 0.6)",
+            border: "1px solid rgba(66, 215, 184, 0.4)",
+            padding: "1.5rem",
+            borderRadius: "16px",
+            boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
+            lineHeight: "1.8",
+            textAlign: "left",
+            zIndex: "2",
+            whiteSpace: "pre"
+          }
+        },
+        {
+          id: "footnote",
+          text: "Notice how the equations unify electricity and magnetism into a single electromagnetic tensor.",
+          type: "body",
+          x: "50%",
+          y: "85%",
+          fontSize: "0.85rem",
+          color: "#a0a0a0",
+          animation: "fade-in",
+          fontStyle: "italic",
+          customStyles: {
+            maxWidth: "400px",
+            lineHeight: "1.6",
+            zIndex: "2"
+          }
+        }
+      ]
+    }, null, 2));
 
     useEffect(() => {
         if (show) {
@@ -106,7 +199,7 @@ const LiveStageSetupModal = ({
 
     const isChildNode = selectedNode && (!selectedNode.children || selectedNode.children.length === 0);
 
-    return (
+    return createPortal(
         <div className="poll-composer-overlay" style={{ zIndex: 100000 }} onClick={() => !isGenerating && onClose()}>
             <div className="poll-composer-sheet" style={{position: 'relative'}} onClick={e => e.stopPropagation()}>
                 
@@ -217,7 +310,8 @@ const LiveStageSetupModal = ({
                     {isDevMode ? 'Simulate Board' : (isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? 'Prepare Lecture & Invite' : 'Go Live'))}
                 </button>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
