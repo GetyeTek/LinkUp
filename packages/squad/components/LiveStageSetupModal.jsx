@@ -40,6 +40,7 @@ const LiveStageSetupModal = ({
     liveSetupData,
     setLiveSetupData,
     onStartLive,
+    onDevInject,
     onInviteMiron,
     isStartingLive
 }) => {
@@ -48,6 +49,10 @@ const LiveStageSetupModal = ({
     const [selectedNode, setSelectedNode] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [genError, setGenError] = useState(null);
+
+    // Dev Sandbox States
+    const [isDevMode, setIsDevMode] = useState(false);
+    const [devPayload, setDevPayload] = useState('{\n  "action": "draw",\n  "elements": [\n    {\n      "id": "1",\n      "text": "Thermodynamics",\n      "type": "title",\n      "x": "50%",\n      "y": "30%",\n      "fontSize": "2.5rem",\n      "color": "#42d7b8",\n      "animation": "pop-in",\n      "fontWeight": "bold"\n    },\n    {\n      "id": "2",\n      "text": "The branch of physical science that deals with the relations between heat and other forms of energy.",\n      "type": "body",\n      "x": "50%",\n      "y": "45%",\n      "fontSize": "1rem",\n      "color": "#e0e0e0",\n      "animation": "fade-in",\n      "fontFamily": "serif"\n    }\n  ]\n}');
 
     useEffect(() => {
         if (show) {
@@ -67,6 +72,16 @@ const LiveStageSetupModal = ({
     if (!show) return null;
 
     const handlePrepareLecture = async () => {
+        if (isDevMode && mode === 'miron' && onDevInject) {
+            try {
+                const parsed = JSON.parse(devPayload);
+                onDevInject(parsed);
+            } catch (e) {
+                setGenError("Invalid JSON Payload: " + e.message);
+            }
+            return;
+        }
+
         if (mode === 'miron') {
             if (!selectedBook || !selectedNode) return;
             setIsGenerating(true);
@@ -111,7 +126,19 @@ const LiveStageSetupModal = ({
                             <><i className="fas fa-broadcast-tower" style={{ color: 'var(--accent-teal)' }}></i> Host Live Session</>
                         )}
                     </h2>
-                    <button className="icon-button" style={{ color: '#888' }} onClick={onClose} disabled={isGenerating}><i className="fas fa-times"></i></button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {mode === 'miron' && (
+                            <button 
+                                className={`icon-button ${isDevMode ? 'active' : ''}`} 
+                                style={{ color: isDevMode ? 'var(--accent-teal)' : '#888', background: isDevMode ? 'rgba(66, 215, 184, 0.1)' : 'transparent', borderRadius: '8px' }} 
+                                onClick={() => setIsDevMode(!isDevMode)} 
+                                title="Dev Mode: Board Injector"
+                            >
+                                <i className="fas fa-bug"></i>
+                            </button>
+                        )}
+                        <button className="icon-button" style={{ color: '#888' }} onClick={onClose} disabled={isGenerating}><i className="fas fa-times"></i></button>
+                    </div>
                 </header>
 
                 <div className="poll-comp-body" style={{ paddingBottom: '1rem', gap: '1rem' }}>
@@ -121,7 +148,18 @@ const LiveStageSetupModal = ({
                         </div>
                     )}
 
-                    {mode === 'miron' ? (
+                    {mode === 'miron' && isDevMode ? (
+                        <div className="pc-group" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <label className="pc-label">Dev: Inject Board Payload</label>
+                            <textarea
+                                className="pc-input dev-payload-textarea"
+                                value={devPayload}
+                                onChange={e => setDevPayload(e.target.value)}
+                                style={{ flex: 1, minHeight: '260px', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', lineHeight: '1.4' }}
+                                spellCheck="false"
+                            />
+                        </div>
+                    ) : mode === 'miron' ? (
                         <>
                             {!selectedBook ? (
                                 <div className="books-grid">
@@ -174,9 +212,9 @@ const LiveStageSetupModal = ({
                 <button 
                     className="poll-submit-btn" 
                     onClick={handlePrepareLecture} 
-                    disabled={isGenerating || isStartingLive || (mode === 'miron' ? (!selectedBook || !isChildNode) : (!liveSetupData?.topic?.trim() || !liveSetupData?.course?.trim()))}
+                    disabled={isGenerating || isStartingLive || (!isDevMode && mode === 'miron' ? (!selectedBook || !isChildNode) : (!isDevMode && (!liveSetupData?.topic?.trim() || !liveSetupData?.course?.trim())))}
                 >
-                    {isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? 'Prepare Lecture & Invite' : 'Go Live')}
+                    {isDevMode ? 'Simulate Board' : (isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? 'Prepare Lecture & Invite' : 'Go Live'))}
                 </button>
             </div>
         </div>
