@@ -44,6 +44,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const [localChatInfo, setLocalChatInfo] = useState({ title: chat.title, avatar_url: chat.avatar_url, metadata: chat.metadata });
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [showMironSetup, setShowMironSetup] = useState(false);
+    const [devBoardPayload, setDevBoardPayload] = useState(null);
     
     // Auto-hide success toasts on parent
     // Auto-hide success toasts on parent
@@ -807,6 +808,11 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 mode="miron"
                 show={showMironSetup}
                 onClose={() => setShowMironSetup(false)}
+                onDevInject={(payload) => {
+                    setDevBoardPayload(payload);
+                    setLiveState('full');
+                    setShowMironSetup(false);
+                }}
                 onInviteMiron={async (chunks, rawText) => {
                     const { error } = await supabase.from('live_study_sessions')
                         .update({ lecture_chunks: chunks, raw_source_text: rawText })
@@ -1036,6 +1042,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         currentUser={currentUser}
                         pendingChunks={pendingChunks}
                         setShowMironSetup={setShowMironSetup}
+                        devBoardPayload={devBoardPayload}
+                        setDevBoardPayload={setDevBoardPayload}
                     />
                     <RoomAudioRenderer />
                 </LiveKitRoom>
