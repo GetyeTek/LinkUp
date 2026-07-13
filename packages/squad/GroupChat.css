@@ -489,6 +489,115 @@
    LIVE STAGE HIGH-FIDELITY COMPRESSION & TRANSITIONS
    ============================================================================== */
 
+/* --- INTERACTIVE BOARD MODE --- */
+.stage-core.board-active {
+    position: relative;
+    padding: 0;
+    overflow: hidden;
+    justify-content: flex-start;
+}
+
+.stage-core.board-active .stage-host-node {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    margin: 0;
+    z-index: 100;
+}
+
+.stage-core.board-active .stage-host-avatar-wrapper {
+    width: 60px;
+    height: 60px;
+}
+
+.stage-core.board-active .host-image-clip, 
+.stage-core.board-active .miron-host-orb {
+    width: 60px;
+    height: 60px;
+    border-width: 2px;
+    font-size: 1.2rem;
+}
+
+.stage-core.board-active .stage-host-label,
+.stage-core.board-active .hostess-ai-controls,
+.stage-core.board-active .pinned-hero-card,
+.stage-core.board-active .immersive-listeners-panel,
+.stage-core.board-active .host-mod-panel,
+.stage-core.board-active .stage-questions-box {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    transform: scale(0.9);
+    transition: all 0.3s ease;
+}
+
+.live-board-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    background: radial-gradient(circle at center, rgba(12, 12, 12, 0.4) 0%, var(--bg-dark) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInBoard 0.5s ease-out;
+}
+
+@keyframes fadeInBoard {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.close-board-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 110;
+    transition: background 0.2s;
+}
+
+.close-board-btn:hover {
+    background: rgba(255, 95, 95, 0.2);
+    color: #ff5f5f;
+    border-color: rgba(255, 95, 95, 0.4);
+}
+
+.live-board-element {
+    position: absolute;
+    text-align: center;
+    white-space: pre-wrap;
+    pointer-events: none;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    will-change: transform, opacity;
+}
+
+/* Dynamic Board Animations */
+.anim-fade-in { animation: boardFadeIn 0.8s ease-out forwards; }
+.anim-pop-in { animation: boardPopIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-slide-up { animation: boardSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes boardFadeIn { 
+    from { opacity: 0; } 
+    to { opacity: 1; } 
+}
+@keyframes boardPopIn { 
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); } 
+}
+@keyframes boardSlideUp { 
+    from { opacity: 0; transform: translate(-50%, -30%); } 
+    to { opacity: 1; transform: translate(-50%, -50%); } 
+}
+
 /* Base Stage Transition Setup */
 .stage-core {
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
