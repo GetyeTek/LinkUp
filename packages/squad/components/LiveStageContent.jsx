@@ -841,7 +841,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             )}
 
                             {boardElements.map(el => {
-                                const isShape = ['circle', 'rect', 'rectangle', 'square', 'shape'].includes(el.type);
+                                const isShape = ['circle', 'rect', 'rectangle', 'square', 'shape', 'image'].includes(el.type);
                                 const shapeClass = isShape ? `board-shape-${el.type}` : 'board-shape-text';
                                 return (
                                     <div
@@ -863,6 +863,19 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                         {isShape ? (
                                             <div className={`shape-container ${el.type}`} style={el.shapeStyles}>
                                                 {el.title && <div className="shape-title-node">{el.title}</div>}
+                                                
+                                                {el.imageUrl && (
+                                                    <div className="shape-image-wrapper">
+                                                        <img 
+                                                            src={el.imageUrl} 
+                                                            alt={el.title || "Visual Guide"} 
+                                                            className="shape-image-node" 
+                                                            draggable="false"
+                                                            onContextMenu={(e) => e.preventDefault()}
+                                                        />
+                                                    </div>
+                                                )}
+
                                                 {el.text && (
                                                     <div 
                                                         className="shape-text-scroller"
