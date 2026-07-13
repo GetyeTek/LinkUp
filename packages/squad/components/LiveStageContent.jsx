@@ -317,6 +317,36 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             animation: n.animation || 'pop-in'
         }));
 
+        // --- Opposing Magnet Collision Solver Pass ---
+        // Prevents direct node overlapping and sibling subtree packing
+        const SAFE_GAP = 280; // Minimum physical pixel distance between node centers
+        
+        for (let pass = 0; pass < 3; pass++) {
+            const levelsY = {};
+            positionedNodes.forEach(node => {
+                const y = node.y;
+                if (!levelsY[y]) levelsY[y] = [];
+                levelsY[y].push(node);
+            });
+
+            Object.keys(levelsY).forEach(yStr => {
+                const rowNodes = levelsY[yStr];
+                rowNodes.sort((a, b) => a.x - b.x); // Sort left-to-right
+
+                for (let i = 0; i < rowNodes.length - 1; i++) {
+                    const nodeA = rowNodes[i];
+                    const nodeB = rowNodes[i + 1];
+                    const distance = Math.abs(nodeB.x - nodeA.x);
+                    
+                    if (distance < SAFE_GAP) {
+                        const overlap = SAFE_GAP - distance;
+                        nodeA.x = nodeA.x - (overlap / 2);
+                        nodeB.x = nodeB.x + (overlap / 2);
+                    }
+                }
+            });
+        }
+
         return { elements: positionedNodes, edges };
     };
 
