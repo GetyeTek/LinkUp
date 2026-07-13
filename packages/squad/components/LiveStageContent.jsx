@@ -8,7 +8,7 @@ import LiveStageModPanel from './LiveStageModPanel.jsx';
 import LiveStageAttendantQs from './LiveStageAttendantQs.jsx';
 import { invokeSocial } from '../api.js';
 
-const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser, pendingChunks, setShowMironSetup }) => {
+const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser, pendingChunks, setShowMironSetup, devBoardPayload, setDevBoardPayload }) => {
     const [qInput, setQInput] = useState('');
     const [liveQuestions, setLiveQuestions] = useState([]);
     const [aiConnected, setAiConnected] = useState(false);
@@ -30,6 +30,23 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const isHostPaused = !isMeHost && !hostParticipant;
 
     const questionsEndRef = useRef(null);
+
+    // Interactive Board State
+    const [boardMode, setBoardMode] = useState(false);
+    const [boardElements, setBoardElements] = useState([]);
+
+    useEffect(() => {
+        if (devBoardPayload) {
+            setBoardMode(true);
+            setBoardElements(devBoardPayload.elements || []);
+        }
+    }, [devBoardPayload]);
+
+    const closeBoardMode = () => {
+        setBoardMode(false);
+        setBoardElements([]);
+        if (setDevBoardPayload) setDevBoardPayload(null);
+    };
 
     // AI Stage State
     const isAiHosting = chatInfo.metadata?.ai_hosting === true;
@@ -347,7 +364,35 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 </div>
             </header>
 
-            <main className={`stage-core ${shouldCompressStage ? 'compact-stage-mode' : ''}`}>
+            <main className={`stage-core ${shouldCompressStage && !boardMode ? 'compact-stage-mode' : ''} ${boardMode ? 'board-active' : ''}`}>
+                
+                {boardMode && (
+                    <div className="live-board-canvas">
+                        <button className="close-board-btn" onClick={closeBoardMode} title="Close Board">
+                            <i className="fas fa-times"></i>
+                        </button>
+                        {boardElements.map(el => (
+                            <div
+                                key={el.id}
+                                className={`live-board-element anim-${el.animation || 'fade-in'}`}
+                                style={{
+                                    left: el.x || '50%',
+                                    top: el.y || '50%',
+                                    transform: `translate(-50%, -50%)`, // Centered on precise anchor point
+                                    color: el.color || 'var(--text-primary-dark)',
+                                    fontSize: el.fontSize || '1rem',
+                                    fontWeight: el.fontWeight || 'normal',
+                                    fontFamily: el.fontFamily === 'serif' ? '"Newsreader", serif' : '"Poppins", sans-serif',
+                                    fontStyle: el.fontStyle || 'normal',
+                                    ...el.customStyles
+                                }}
+                            >
+                                {el.text}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <div className="stage-host-node">
                     <div className="stage-host-avatar-wrapper">
                         <ConnectionRing isConnected={isConnected} />
