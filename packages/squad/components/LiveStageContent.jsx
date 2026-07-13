@@ -225,7 +225,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         const { layout = 'vertical-tree', nodes = [], edges = [] } = payload;
         let positionedNodes = [];
         
-        // 1. Build adjacency mapping & calculate degrees
+        // 1. Build adjacency list & calculate indegrees
         const adj = {};
         const inDegree = {};
         nodes.forEach(n => { adj[n.id] = []; inDegree[n.id] = 0; });
@@ -234,75 +234,85 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             if (inDegree[e.to] !== undefined) inDegree[e.to]++;
         });
 
-        // 2. Map depths using Breadth-First Search (BFS)
-        const levels = {};
-        const queue = nodes.filter(n => inDegree[n.id] === 0).map(n => ({ id: n.id, depth: 0 }));
-        if (queue.length === 0 && nodes.length > 0) queue.push({ id: nodes[0].id, depth: 0 }); // Cycle breaker
+        // 2. Identify root nodes
+        const roots = nodes.filter(n => inDegree[n.id] === 0);
+        if (roots.length === 0 && nodes.length > 0) roots.push(nodes[0]); // Cycle fallback
 
-        const visited = new Set();
-        while (queue.length > 0) {
-            const { id, depth } = queue.shift();
-            if (!levels[depth]) levels[depth] = [];
-            if (!visited.has(id)) {
-                visited.add(id);
-                levels[depth].push(id);
-                (adj[id] || []).forEach(childId => {
-                    queue.push({ id: childId, depth: depth + 1 });
-                });
-            }
-        }
-
-        // Attach stragglers (disconnected nodes)
-        nodes.forEach(n => {
-            if (!visited.has(n.id)) {
-                if (!levels[0]) levels[0] = [];
-                levels[0].push(n.id);
-            }
-        });
-
-        // 3. Spatial Math Distribution
-        const Y_GAP = 300;
+        const Y_GAP = 280;
         const X_GAP = 350;
 
-        Object.keys(levels).forEach(levelStr => {
-            const depth = parseInt(levelStr);
-            const levelNodes = levels[levelStr];
-            
-            if (layout === 'vertical-tree') {
-                const totalWidth = (levelNodes.length - 1) * X_GAP;
-                const startX = -(totalWidth / 2);
-                levelNodes.forEach((nodeId, idx) => {
-                    const node = nodes.find(n => n.id === nodeId);
-                    positionedNodes.push({ ...node, x: startX + (idx * X_GAP), y: depth * Y_GAP });
-                });
-            } else if (layout === 'horizontal-process') {
-                const totalHeight = (levelNodes.length - 1) * Y_GAP;
-                const startY = -(totalHeight / 2);
-                levelNodes.forEach((nodeId, idx) => {
-                    const node = nodes.find(n => n.id === nodeId);
-                    positionedNodes.push({ ...node, x: depth * X_GAP, y: startY + (idx * Y_GAP) });
-                });
-            } else {
-                // Radial Fan Logic
-                const rootId = levels[0]?.[0];
-                const children = nodes.filter(n => n.id !== rootId);
-                const radius = Math.max(250, children.length * 50);
-                
-                positionedNodes.push({ ...nodes.find(n => n.id === rootId), x: 0, y: 0 });
-                children.forEach((node, idx) => {
-                    const angle = (idx / children.length) * 2 * Math.PI;
-                    positionedNodes.push({
-                        ...node,
-                        x: Math.cos(angle) * radius,
-                        y: Math.sin(angle) * radius
+        const visited = new Set();
+        const positions = {};
+
+        // Recursive DFS Subtree Spacing Solver
+        const layoutSubtree = (nodeId, px, py) => {
+            if (visited.has(nodeId)) return;
+            visited.add(nodeId);
+
+            positions[nodeId] = { x: px, y: py };
+
+            const children = adj[nodeId] || [];
+            const unvisitedChildren = children.filter(cid => !visited.has(cid));
+            const N = unvisitedChildren.length;
+
+            if (N > 0) {
+                if (layout === 'vertical-tree') {
+                    const totalWidth = (N - 1) * X_GAP;
+                    const startX = px - (totalWidth / 2);
+                    unvisitedChildren.forEach((childId, idx) => {
+                        layoutSubtree(childId, startX + (idx * X_GAP), py + Y_GAP);
                     });
-                });
+                } else if (layout === 'horizontal-process') {
+                    const totalHeight = (N - 1) * Y_GAP;
+                    const startY = py - (totalHeight / 2);
+                    unvisitedChildren.forEach((childId, idx) => {
+                        layoutSubtree(childId, px + X_GAP, startY + (idx * Y_GAP));
+                    });
+                }
+            }
+        };
+
+        // 3. Position root elements. Symmetrically spread multiple roots.
+        if (layout === 'vertical-tree') {
+            const totalRootsWidth = (roots.length - 1) * X_GAP * 2;
+            const startRootsX = -(totalRootsWidth / 2);
+            roots.forEach((root, idx) => {
+                layoutSubtree(root.id, startRootsX + (idx * X_GAP * 2), 0);
+            });
+        } else if (layout === 'horizontal-process') {
+            const totalRootsHeight = (roots.length - 1) * Y_GAP * 2;
+            const startRootsY = -(totalRootsHeight / 2);
+            roots.forEach((root, idx) => {
+                layoutSubtree(root.id, 0, startRootsY + (idx * Y_GAP * 2));
+            });
+        } else {
+            // Radial Fan: Center root at 0,0 and fan children in a circle
+            const rootId = roots[0]?.id;
+            positions[rootId] = { x: 0, y: 0 };
+            visited.add(rootId);
+            const children = nodes.filter(n => n.id !== rootId);
+            const radius = Math.max(250, children.length * 50);
+            children.forEach((node, idx) => {
+                const angle = (idx / children.length) * 2 * Math.PI;
+                positions[node.id] = {
+                    x: Math.cos(angle) * radius,
+                    y: Math.sin(angle) * radius
+                };
+            });
+        }
+
+        // Failsafe for disconnected floating nodes
+        nodes.forEach(n => {
+            if (!positions[n.id]) {
+                positions[n.id] = { x: 0, y: 0 };
             }
         });
 
-        // Ensure nodes have foundational fallback classes
-        positionedNodes = positionedNodes.map(n => ({
+        // Compile positioned coordinates back to state format
+        positionedNodes = nodes.map(n => ({
             ...n,
+            x: positions[n.id].x,
+            y: positions[n.id].y,
             type: n.type || 'rectangle',
             animation: n.animation || 'pop-in'
         }));
