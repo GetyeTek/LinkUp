@@ -35,10 +35,80 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         const [boardMode, setBoardMode] = useState(false);
         const [boardElements, setBoardElements] = useState([]);
 
-        // Draggable Board Canvas Engine
+        // Draggable Board Canvas Engine with Self-Healing Camera
         const [pan, setPan] = useState({ x: 0, y: 0 });
+        const [boardScale, setBoardScale] = useState(1);
         const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
         const dragStartOffset = useRef({ x: 0, y: 0 });
+        const canvasRef = useRef(null);
+
+        const parseCoord = (val, max) => {
+            if (!val) return max / 2;
+            if (typeof val === 'number') return val;
+            if (val.includes('%')) return (parseFloat(val) / 100) * max;
+            if (val.includes('px')) return parseFloat(val);
+            return max / 2;
+        };
+
+        useEffect(() => {
+            if (!boardMode || boardElements.length === 0 || !canvasRef.current) return;
+
+            const calibrateBoard = () => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const { width: W, height: H } = canvas.getBoundingClientRect();
+
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+                boardElements.forEach(el => {
+                    const cx = parseCoord(el.x, W);
+                    const cy = parseCoord(el.y, H);
+                    
+                    // Approximate bounding radii based on shape types
+                    let rx = 100, ry = 100;
+                    if (el.type === 'rectangle' || el.type === 'rect') { rx = 140; ry = 90; }
+                    else if (el.type === 'text') { rx = 100; ry = 30; }
+
+                    minX = Math.min(minX, cx - rx);
+                    maxX = Math.max(maxX, cx + rx);
+                    minY = Math.min(minY, cy - ry);
+                    maxY = Math.max(maxY, cy + ry);
+                });
+
+                // Failsafe bounds
+                if (minX === Infinity) { minX = 0; maxX = W; minY = 0; maxY = H; }
+                if (maxX - minX < 100) { minX -= 50; maxX += 50; }
+                if (maxY - minY < 100) { minY -= 50; maxY += 50; }
+
+                const spanX = maxX - minX;
+                const spanY = maxY - minY;
+
+                // Calculate ideal scale (padding the viewport tightly)
+                const scaleX = W / (spanX + 80);
+                const scaleY = H / (spanY + 80);
+                const idealScale = Math.min(scaleX, scaleY, 1.0);
+                
+                // Anti-Sky Safety Cap: Don't zoom out infinitely
+                const finalScale = Math.max(0.45, idealScale);
+                setBoardScale(finalScale);
+
+                // Auto-center camera on content cluster
+                const contentCenterX = (minX + maxX) / 2;
+                const contentCenterY = (minY + maxY) / 2;
+
+                setPan({
+                    x: (W / 2) - (contentCenterX * finalScale),
+                    y: (H / 2) - (contentCenterY * finalScale)
+                });
+            };
+
+            // Run calibration on mount and when resizing the window
+            calibrateBoard();
+            const ro = new ResizeObserver(() => calibrateBoard());
+            ro.observe(canvasRef.current);
+
+            return () => ro.disconnect();
+        }, [boardElements, boardMode]);
 
         const handleCanvasPointerDown = (e) => {
             if (e.target.closest('.close-board-btn') || e.target.closest('.live-board-element')) return;
@@ -70,7 +140,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const closeBoardMode = () => {
         setBoardMode(false);
         setBoardElements([]);
-        setPan({ x: 0, y: 0 }); // Zero out pan offsets on close to prevent orientation offset drift
+        setPan({ x: 0, y: 0 }); // Zero out pan offsets on close
+        setBoardScale(1);       // Reset camera scale
         if (setDevBoardPayload) setDevBoardPayload(null);
     };
 
@@ -395,6 +466,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 {boardMode && (
                     <div 
                         className="live-board-canvas"
+                        ref={canvasRef}
                         onPointerDown={handleCanvasPointerDown}
                         onPointerMove={handleCanvasPointerMove}
                         onPointerUp={handleCanvasPointerUp}
@@ -404,7 +476,11 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         </button>
                         <div 
                             className="live-board-viewport"
-                            style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0)` }}
+                            style={{ 
+                                transformOrigin: '0 0',
+                                transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${boardScale})`,
+                                transition: isDraggingCanvas ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)' 
+                            }}
                         >
                             {boardElements.map(el => {
                                 const isShape = ['circle', 'rect', 'rectangle', 'square', 'shape'].includes(el.type);
