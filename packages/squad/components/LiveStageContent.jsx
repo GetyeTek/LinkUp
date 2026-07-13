@@ -35,10 +35,12 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         const [boardMode, setBoardMode] = useState(false);
         const [boardElements, setBoardElements] = useState([]);
 
-        // Draggable Board Canvas Engine with Self-Healing Camera
+        // Draggable Board Canvas Engine with Self-Healing Camera & Zoom
         const [pan, setPan] = useState({ x: 0, y: 0 });
         const [boardScale, setBoardScale] = useState(1);
-        const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
+        const [isInteracting, setIsInteracting] = useState(false);
+        const pointers = useRef(new Map());
+        const pinchStart = useRef({ dist: 0, scale: 1, cx: 0, cy: 0, panX: 0, panY: 0 });
         const dragStartOffset = useRef({ x: 0, y: 0 });
         const canvasRef = useRef(null);
 
@@ -111,24 +113,106 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         }, [boardElements, boardMode]);
 
         const handleCanvasPointerDown = (e) => {
-            if (e.target.closest('.close-board-btn') || e.target.closest('.live-board-element')) return;
+            if (e.target.closest('.close-board-btn')) return;
             e.currentTarget.setPointerCapture(e.pointerId);
-            setIsDraggingCanvas(true);
-            dragStartOffset.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+            pointers.current.set(e.pointerId, e);
+            setIsInteracting(true);
+
+            if (pointers.current.size === 1) {
+                dragStartOffset.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+            } else if (pointers.current.size === 2) {
+                const pts = Array.from(pointers.current.values());
+                const dist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+                const cx = (pts[0].clientX + pts[1].clientX) / 2;
+                const cy = (pts[0].clientY + pts[1].clientY) / 2;
+                
+                pinchStart.current = { dist, scale: boardScale, cx, cy, panX: pan.x, panY: pan.y };
+            }
         };
 
         const handleCanvasPointerMove = (e) => {
-            if (!isDraggingCanvas) return;
-            setPan({
-                x: e.clientX - dragStartOffset.current.x,
-                y: e.clientY - dragStartOffset.current.y
-            });
+            if (!pointers.current.has(e.pointerId)) return;
+            pointers.current.set(e.pointerId, e);
+
+            if (pointers.current.size === 1) {
+                setPan({
+                    x: e.clientX - dragStartOffset.current.x,
+                    y: e.clientY - dragStartOffset.current.y
+                });
+            } else if (pointers.current.size === 2) {
+                const pts = Array.from(pointers.current.values());
+                const dist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+                
+                const ratio = dist / pinchStart.current.dist;
+                let newScale = pinchStart.current.scale * ratio;
+                newScale = Math.max(0.15, Math.min(newScale, 4.0));
+
+                const { cx, cy, panX, panY, scale: oldScale } = pinchStart.current;
+                const viewportX = (cx - panX) / oldScale;
+                const viewportY = (cy - panY) / oldScale;
+                
+                setPan({
+                    x: cx - viewportX * newScale,
+                    y: cy - viewportY * newScale
+                });
+                setBoardScale(newScale);
+            }
         };
 
         const handleCanvasPointerUp = (e) => {
-            setIsDraggingCanvas(false);
+            pointers.current.delete(e.pointerId);
             e.currentTarget.releasePointerCapture(e.pointerId);
+
+            if (pointers.current.size === 1) {
+                const remainingPointer = Array.from(pointers.current.values())[0];
+                dragStartOffset.current = { x: remainingPointer.clientX - pan.x, y: remainingPointer.clientY - pan.y };
+            } else if (pointers.current.size === 0) {
+                setIsInteracting(false);
+            }
         };
+
+        // Desktop Wheel Zoom Support
+        useEffect(() => {
+            const canvas = canvasRef.current;
+            if (!canvas || !boardMode) return;
+
+            let wheelTimeout;
+            const handleWheel = (e) => {
+                if (e.target.closest('.close-board-btn') || e.target.closest('.shape-text-scroller')) return;
+                
+                e.preventDefault();
+                setIsInteracting(true);
+                
+                setBoardScale(prevScale => {
+                    const zoomSensitivity = 0.005;
+                    const delta = -e.deltaY * zoomSensitivity;
+                    let newScale = prevScale * Math.exp(delta);
+                    newScale = Math.max(0.15, Math.min(newScale, 4.0));
+                    
+                    setPan(prevPan => {
+                        const cx = e.clientX;
+                        const cy = e.clientY;
+                        const viewportX = (cx - prevPan.x) / prevScale;
+                        const viewportY = (cy - prevPan.y) / prevScale;
+                        return {
+                            x: cx - viewportX * newScale,
+                            y: cy - viewportY * newScale
+                        };
+                    });
+                    
+                    return newScale;
+                });
+
+                clearTimeout(wheelTimeout);
+                wheelTimeout = setTimeout(() => setIsInteracting(false), 150);
+            };
+
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
+            return () => {
+                canvas.removeEventListener('wheel', handleWheel);
+                clearTimeout(wheelTimeout);
+            };
+        }, [boardMode]);
 
     useEffect(() => {
         if (devBoardPayload) {
@@ -479,7 +563,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             style={{ 
                                 transformOrigin: '0 0',
                                 transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${boardScale})`,
-                                transition: isDraggingCanvas ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)' 
+                                transition: isInteracting ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)' 
                             }}
                         >
                             {boardElements.map(el => {
