@@ -285,6 +285,16 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             roots.forEach((root, idx) => {
                 layoutSubtree(root.id, 0, startRootsY + (idx * Y_GAP * 2));
             });
+        } else if (layout === 'circular-cycle') {
+            // Perfect geometric ring layout (No central node, all equal partners on the ring)
+            const radius = Math.max(280, nodes.length * 55);
+            nodes.forEach((node, idx) => {
+                const angle = (idx / nodes.length) * 2 * Math.PI;
+                positions[node.id] = {
+                    x: Math.cos(angle) * radius,
+                    y: Math.sin(angle) * radius
+                };
+            });
         } else {
             // Radial Fan: Center root at 0,0 and fan children in a circle
             const rootId = roots[0]?.id;
