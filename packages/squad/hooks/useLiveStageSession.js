@@ -131,7 +131,7 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
 
     return {
         liveState, setLiveState,
-        liveCredentials,
+        liveCredentials, setLiveCredentials,
         showLiveSetup, setShowLiveSetup,
         liveSetupData, setLiveSetupData,
         isStartingLive,
