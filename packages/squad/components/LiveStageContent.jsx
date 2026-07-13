@@ -44,12 +44,16 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
         const pinchStart = useRef({ dist: 0, scale: 1, cx: 0, cy: 0, panX: 0, panY: 0 });
         const dragStartOffset = useRef({ x: 0, y: 0 });
         const canvasRef = useRef(null);
+        const viewportDims = useRef({ w: 400, h: 800 });
 
         const parseCoord = (val, max) => {
-            if (!val) return max / 2;
+            if (val === undefined || val === null) return max / 2;
             if (typeof val === 'number') return val;
-            if (val.includes('%')) return (parseFloat(val) / 100) * max;
-            if (val.includes('px')) return parseFloat(val);
+            if (typeof val === 'string') {
+                if (val.includes('%')) return (parseFloat(val) / 100) * max;
+                if (val.includes('px')) return parseFloat(val);
+                return parseFloat(val);
+            }
             return max / 2;
         };
 
@@ -60,6 +64,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 const canvas = canvasRef.current;
                 if (!canvas) return;
                 const { width: W, height: H } = canvas.getBoundingClientRect();
+                viewportDims.current = { w: W, h: H };
 
                 let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
 
@@ -667,9 +672,9 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         >
                             {/* SVG Connection Layer */}
                             {boardEdges.length > 0 && (
-                                <svg style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', zIndex: -1, pointerEvents: 'none' }}>
+                                <svg style={{ position: 'absolute', top: 0, left: 0, width: '1px', height: '1px', overflow: 'visible', zIndex: -1, pointerEvents: 'none' }}>
                                     <defs>
-                                        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="22" refY="3" orient="auto">
+                                        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto">
                                             <polygon points="0 0, 8 3, 0 6" fill="var(--accent-teal)" />
                                         </marker>
                                         <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -685,21 +690,39 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                         const toEl = boardElements.find(e => e.id === edge.to);
                                         if (!fromEl || !toEl) return null;
 
-                                        const x1 = parseFloat(fromEl.x);
-                                        const y1 = parseFloat(fromEl.y);
-                                        const x2 = parseFloat(toEl.x);
-                                        const y2 = parseFloat(toEl.y);
+                                        const W = viewportDims.current.w;
+                                        const H = viewportDims.current.h;
                                         
-                                        // Dynamic Bezier generation based on layout flow
+                                        const x1 = typeof fromEl.x === 'number' ? fromEl.x : parseCoord(fromEl.x, W);
+                                        const y1 = typeof fromEl.y === 'number' ? fromEl.y : parseCoord(fromEl.y, H);
+                                        const x2 = typeof toEl.x === 'number' ? toEl.x : parseCoord(toEl.x, W);
+                                        const y2 = typeof toEl.y === 'number' ? toEl.y : parseCoord(toEl.y, H);
+                                        
+                                        // Dynamic Bezier edge snapping calculation
                                         let pathData = '';
                                         if (devBoardPayload?.layout === 'vertical-tree') {
-                                            const offset = Math.abs(y2 - y1) / 2;
-                                            pathData = `M ${x1},${y1} C ${x1},${y1 + offset} ${x2},${y2 - offset} ${x2},${y2}`;
+                                            const startOffsetY = ['circle', 'square'].includes(fromEl.type) ? 90 : 60;
+                                            const endOffsetY = ['circle', 'square'].includes(toEl.type) ? 105 : 75; // Extra padding for arrow
+                                            const startY = y1 + startOffsetY;
+                                            const endY = y2 - endOffsetY;
+                                            const offset = Math.abs(endY - startY) / 2;
+                                            pathData = `M ${x1},${startY} C ${x1},${startY + offset} ${x2},${endY - offset} ${x2},${endY}`;
                                         } else if (devBoardPayload?.layout === 'horizontal-process') {
-                                            const offset = Math.abs(x2 - x1) / 2;
-                                            pathData = `M ${x1},${y1} C ${x1 + offset},${y1} ${x2 - offset},${y2} ${x2},${y2}`;
+                                            const startOffsetX = ['circle', 'square'].includes(fromEl.type) ? 90 : 110;
+                                            const endOffsetX = ['circle', 'square'].includes(toEl.type) ? 105 : 125;
+                                            const startX = x1 + startOffsetX;
+                                            const endX = x2 - endOffsetX;
+                                            const offset = Math.abs(endX - startX) / 2;
+                                            pathData = `M ${startX},${y1} C ${startX + offset},${y1} ${endX - offset},${y2} ${endX},${y2}`;
                                         } else {
-                                            pathData = `M ${x1},${y1} Q ${(x1+x2)/2},${(y1+y2)/2 - 50} ${x2},${y2}`;
+                                            const angle = Math.atan2(y2 - y1, x2 - x1);
+                                            const r1 = ['circle', 'square'].includes(fromEl.type) ? 90 : 110;
+                                            const r2 = ['circle', 'square'].includes(toEl.type) ? 105 : 125;
+                                            const startX = x1 + Math.cos(angle) * r1;
+                                            const startY = y1 + Math.sin(angle) * r1;
+                                            const endX = x2 - Math.cos(angle) * r2;
+                                            const endY = y2 - Math.sin(angle) * r2;
+                                            pathData = `M ${startX},${startY} Q ${(startX+endX)/2},${(startY+endY)/2 - 50} ${endX},${endY}`;
                                         }
 
                                         return (
@@ -741,8 +764,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                         key={el.id}
                                         className={`live-board-element anim-${el.animation || 'fade-in'} ${shapeClass}`}
                                         style={{
-                                            left: el.x || '50%',
-                                            top: el.y || '50%',
+                                            left: typeof el.x === 'number' ? `${el.x}px` : (el.x !== undefined ? el.x : '50%'),
+                                            top: typeof el.y === 'number' ? `${el.y}px` : (el.y !== undefined ? el.y : '50%'),
                                             transform: `translate(-50%, -50%)`, // Centered on precise anchor point
                                             color: el.color || 'var(--text-primary-dark)',
                                             fontSize: el.fontSize || '1rem',
