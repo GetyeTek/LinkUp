@@ -31,9 +31,34 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
     const questionsEndRef = useRef(null);
 
-    // Interactive Board State
-    const [boardMode, setBoardMode] = useState(false);
-    const [boardElements, setBoardElements] = useState([]);
+            // Interactive Board State
+        const [boardMode, setBoardMode] = useState(false);
+        const [boardElements, setBoardElements] = useState([]);
+
+        // Draggable Board Canvas Engine
+        const [pan, setPan] = useState({ x: 0, y: 0 });
+        const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
+        const dragStartOffset = useRef({ x: 0, y: 0 });
+
+        const handleCanvasPointerDown = (e) => {
+            if (e.target.closest('.close-board-btn') || e.target.closest('.live-board-element')) return;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            setIsDraggingCanvas(true);
+            dragStartOffset.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+        };
+
+        const handleCanvasPointerMove = (e) => {
+            if (!isDraggingCanvas) return;
+            setPan({
+                x: e.clientX - dragStartOffset.current.x,
+                y: e.clientY - dragStartOffset.current.y
+            });
+        };
+
+        const handleCanvasPointerUp = (e) => {
+            setIsDraggingCanvas(false);
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        };
 
     useEffect(() => {
         if (devBoardPayload) {
@@ -45,6 +70,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const closeBoardMode = () => {
         setBoardMode(false);
         setBoardElements([]);
+        setPan({ x: 0, y: 0 }); // Zero out pan offsets on close to prevent orientation offset drift
         if (setDevBoardPayload) setDevBoardPayload(null);
     };
 
@@ -367,29 +393,60 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             <main className={`stage-core ${shouldCompressStage && !boardMode ? 'compact-stage-mode' : ''} ${boardMode ? 'board-active' : ''}`}>
                 
                 {boardMode && (
-                    <div className="live-board-canvas">
+                    <div 
+                        className="live-board-canvas"
+                        onPointerDown={handleCanvasPointerDown}
+                        onPointerMove={handleCanvasPointerMove}
+                        onPointerUp={handleCanvasPointerUp}
+                    >
                         <button className="close-board-btn" onClick={closeBoardMode} title="Close Board">
                             <i className="fas fa-times"></i>
                         </button>
-                        {boardElements.map(el => (
-                            <div
-                                key={el.id}
-                                className={`live-board-element anim-${el.animation || 'fade-in'}`}
-                                style={{
-                                    left: el.x || '50%',
-                                    top: el.y || '50%',
-                                    transform: `translate(-50%, -50%)`, // Centered on precise anchor point
-                                    color: el.color || 'var(--text-primary-dark)',
-                                    fontSize: el.fontSize || '1rem',
-                                    fontWeight: el.fontWeight || 'normal',
-                                    fontFamily: el.fontFamily === 'serif' ? '"Newsreader", serif' : '"Poppins", sans-serif',
-                                    fontStyle: el.fontStyle || 'normal',
-                                    ...el.customStyles
-                                }}
-                            >
-                                {el.text}
-                            </div>
-                        ))}
+                        <div 
+                            className="live-board-viewport"
+                            style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0)` }}
+                        >
+                            {boardElements.map(el => {
+                                const isShape = ['circle', 'rect', 'rectangle', 'square', 'shape'].includes(el.type);
+                                const shapeClass = isShape ? `board-shape-${el.type}` : 'board-shape-text';
+                                return (
+                                    <div
+                                        key={el.id}
+                                        className={`live-board-element anim-${el.animation || 'fade-in'} ${shapeClass}`}
+                                        style={{
+                                            left: el.x || '50%',
+                                            top: el.y || '50%',
+                                            transform: `translate(-50%, -50%)`, // Centered on precise anchor point
+                                            color: el.color || 'var(--text-primary-dark)',
+                                            fontSize: el.fontSize || '1rem',
+                                            fontWeight: el.fontWeight || 'normal',
+                                            fontFamily: el.fontFamily === 'serif' ? '"Newsreader", serif' : '"Poppins", sans-serif',
+                                            fontStyle: el.fontStyle || 'normal',
+                                            pointerEvents: 'auto', // Overrides general non-clickable text state
+                                            ...el.customStyles
+                                        }}
+                                    >
+                                        {isShape ? (
+                                            <div className={`shape-container ${el.type}`} style={el.shapeStyles}>
+                                                {el.title && <div className="shape-title-node">{el.title}</div>}
+                                                {el.text && (
+                                                    <div 
+                                                        className="shape-text-scroller"
+                                                        onPointerDown={(e) => e.stopPropagation()}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        onTouchStart={(e) => e.stopPropagation()}
+                                                    >
+                                                        {el.text}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="text-element-node">{el.text}</div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
 
