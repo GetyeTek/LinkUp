@@ -295,6 +295,28 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     y: Math.sin(angle) * radius
                 };
             });
+        } else if (layout === 'comparison-split') {
+            // T-Chart Compare & Contrast Layout
+            let leftY = 0, rightY = 0;
+            nodes.forEach(node => {
+                if (node.side === 'left') {
+                    positions[node.id] = { x: -280, y: leftY };
+                    leftY += Y_GAP;
+                } else if (node.side === 'right') {
+                    positions[node.id] = { x: 280, y: rightY };
+                    rightY += Y_GAP;
+                } else {
+                    positions[node.id] = { x: 0, y: Math.max(leftY, rightY) };
+                }
+                visited.add(node.id);
+            });
+            // Center the columns vertically
+            const maxLeftY = Math.max(0, leftY - Y_GAP);
+            const maxRightY = Math.max(0, rightY - Y_GAP);
+            nodes.forEach(node => {
+                if (node.side === 'left') positions[node.id].y -= maxLeftY / 2;
+                if (node.side === 'right') positions[node.id].y -= maxRightY / 2;
+            });
         } else {
             // Radial Fan: Center root at 0,0 and fan children in a circle
             const rootId = roots[0]?.id;
@@ -764,6 +786,13 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                             const endX = x2 - endOffsetX;
                                             const offset = Math.abs(endX - startX) / 2;
                                             pathData = `M ${startX},${y1} C ${startX + offset},${y1} ${endX - offset},${y2} ${endX},${y2}`;
+                                        } else if (devBoardPayload?.layout === 'comparison-split') {
+                                            const isLeftToRight = x1 <= x2;
+                                            const startOffsetX = ['circle', 'square'].includes(fromEl.type) ? 90 : 140;
+                                            const endOffsetX = ['circle', 'square'].includes(toEl.type) ? 105 : 140;
+                                            const startX = isLeftToRight ? x1 + startOffsetX : x1 - startOffsetX;
+                                            const endX = isLeftToRight ? x2 - endOffsetX : x2 + endOffsetX;
+                                            pathData = `M ${startX},${y1} C ${(startX+endX)/2},${y1} ${(startX+endX)/2},${y2} ${endX},${y2}`;
                                         } else {
                                             const angle = Math.atan2(y2 - y1, x2 - x1);
                                             const r1 = ['circle', 'square'].includes(fromEl.type) ? 90 : 110;
@@ -781,24 +810,29 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                                     d={pathData} 
                                                     stroke={edge.color || 'var(--accent-teal)'} 
                                                     strokeWidth="3" 
+                                                    strokeDasharray={edge.style === 'dashed' ? '8,8' : 'none'}
                                                     fill="none" 
-                                                    markerEnd="url(#arrowhead)" 
+                                                    markerEnd={edge.style === 'dashed' ? 'none' : "url(#arrowhead)"} 
                                                     filter="url(#neonGlow)"
                                                     style={{ opacity: 0.6, animation: 'boardFadeIn 1s ease-out' }}
                                                 />
                                                 {edge.label && (
-                                                    <text 
-                                                        x={(x1 + x2) / 2} 
-                                                        y={(y1 + y2) / 2} 
-                                                        fill="#aaa" 
-                                                        fontSize="13" 
-                                                        fontWeight="600"
-                                                        fontFamily="'Poppins', sans-serif"
-                                                        textAnchor="middle" 
-                                                        dy="-8"
-                                                    >
-                                                        {edge.label}
-                                                    </text>
+                                                    <g transform={`translate(${(x1 + x2) / 2}, ${(y1 + y2) / 2})`}>
+                                                        {edge.style === 'dashed' && (
+                                                            <rect x="-16" y="-12" width="32" height="24" rx="12" fill="var(--bg-dark)" stroke={edge.color || 'var(--accent-teal)'} strokeWidth="2" />
+                                                        )}
+                                                        <text 
+                                                            x="0" 
+                                                            y={edge.style === 'dashed' ? 4 : -8} 
+                                                            fill={edge.style === 'dashed' ? (edge.color || 'var(--accent-teal)') : '#aaa'} 
+                                                            fontSize={edge.style === 'dashed' ? "11" : "13"} 
+                                                            fontWeight="800"
+                                                            fontFamily="'Poppins', sans-serif"
+                                                            textAnchor="middle" 
+                                                        >
+                                                            {edge.label}
+                                                        </text>
+                                                    </g>
                                                 )}
                                             </g>
                                         );
