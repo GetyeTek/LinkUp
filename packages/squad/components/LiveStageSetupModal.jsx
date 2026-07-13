@@ -42,6 +42,7 @@ const LiveStageSetupModal = ({
     setLiveSetupData,
     onStartLive,
     onDevInject,
+    onLocalBoardTest,
     onInviteMiron,
     isStartingLive
 }) => {
@@ -309,6 +310,15 @@ const LiveStageSetupModal = ({
                 >
                     {isDevMode ? 'Simulate Board' : (isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? 'Prepare Lecture & Invite' : 'Go Live'))}
                 </button>
+                {mode === 'host' && onLocalBoardTest && (
+                    <button 
+                        className="poll-submit-btn" 
+                        style={{background: 'transparent', border: '2px dashed var(--accent-teal)', color: 'var(--accent-teal)', marginTop: '10px'}}
+                        onClick={onLocalBoardTest}
+                    >
+                        <i className="fas fa-hammer"></i> Quick Board (Local Test)
+                    </button>
+                )}
             </div>
         </div>,
         document.body
