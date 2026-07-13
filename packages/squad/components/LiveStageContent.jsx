@@ -34,6 +34,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             // Interactive Board State
         const [boardMode, setBoardMode] = useState(false);
         const [boardElements, setBoardElements] = useState([]);
+        const [boardEdges, setBoardEdges] = useState([]);
 
         // Draggable Board Canvas Engine with Self-Healing Camera & Zoom
         const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -214,16 +215,114 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             };
         }, [boardMode]);
 
+    // --- AI Logical Flow Solver Engine ---
+    const computeFlowLayout = (payload) => {
+        const { layout = 'vertical-tree', nodes = [], edges = [] } = payload;
+        let positionedNodes = [];
+        
+        // 1. Build adjacency mapping & calculate degrees
+        const adj = {};
+        const inDegree = {};
+        nodes.forEach(n => { adj[n.id] = []; inDegree[n.id] = 0; });
+        edges.forEach(e => {
+            if (adj[e.from]) adj[e.from].push(e.to);
+            if (inDegree[e.to] !== undefined) inDegree[e.to]++;
+        });
+
+        // 2. Map depths using Breadth-First Search (BFS)
+        const levels = {};
+        const queue = nodes.filter(n => inDegree[n.id] === 0).map(n => ({ id: n.id, depth: 0 }));
+        if (queue.length === 0 && nodes.length > 0) queue.push({ id: nodes[0].id, depth: 0 }); // Cycle breaker
+
+        const visited = new Set();
+        while (queue.length > 0) {
+            const { id, depth } = queue.shift();
+            if (!levels[depth]) levels[depth] = [];
+            if (!visited.has(id)) {
+                visited.add(id);
+                levels[depth].push(id);
+                (adj[id] || []).forEach(childId => {
+                    queue.push({ id: childId, depth: depth + 1 });
+                });
+            }
+        }
+
+        // Attach stragglers (disconnected nodes)
+        nodes.forEach(n => {
+            if (!visited.has(n.id)) {
+                if (!levels[0]) levels[0] = [];
+                levels[0].push(n.id);
+            }
+        });
+
+        // 3. Spatial Math Distribution
+        const Y_GAP = 300;
+        const X_GAP = 350;
+
+        Object.keys(levels).forEach(levelStr => {
+            const depth = parseInt(levelStr);
+            const levelNodes = levels[levelStr];
+            
+            if (layout === 'vertical-tree') {
+                const totalWidth = (levelNodes.length - 1) * X_GAP;
+                const startX = -(totalWidth / 2);
+                levelNodes.forEach((nodeId, idx) => {
+                    const node = nodes.find(n => n.id === nodeId);
+                    positionedNodes.push({ ...node, x: startX + (idx * X_GAP), y: depth * Y_GAP });
+                });
+            } else if (layout === 'horizontal-process') {
+                const totalHeight = (levelNodes.length - 1) * Y_GAP;
+                const startY = -(totalHeight / 2);
+                levelNodes.forEach((nodeId, idx) => {
+                    const node = nodes.find(n => n.id === nodeId);
+                    positionedNodes.push({ ...node, x: depth * X_GAP, y: startY + (idx * Y_GAP) });
+                });
+            } else {
+                // Radial Fan Logic
+                const rootId = levels[0]?.[0];
+                const children = nodes.filter(n => n.id !== rootId);
+                const radius = Math.max(250, children.length * 50);
+                
+                positionedNodes.push({ ...nodes.find(n => n.id === rootId), x: 0, y: 0 });
+                children.forEach((node, idx) => {
+                    const angle = (idx / children.length) * 2 * Math.PI;
+                    positionedNodes.push({
+                        ...node,
+                        x: Math.cos(angle) * radius,
+                        y: Math.sin(angle) * radius
+                    });
+                });
+            }
+        });
+
+        // Ensure nodes have foundational fallback classes
+        positionedNodes = positionedNodes.map(n => ({
+            ...n,
+            type: n.type || 'rectangle',
+            animation: n.animation || 'pop-in'
+        }));
+
+        return { elements: positionedNodes, edges };
+    };
+
     useEffect(() => {
         if (devBoardPayload) {
             setBoardMode(true);
-            setBoardElements(devBoardPayload.elements || []);
+            if (devBoardPayload.action === 'draw_flow') {
+                const { elements, edges } = computeFlowLayout(devBoardPayload);
+                setBoardElements(elements);
+                setBoardEdges(edges);
+            } else {
+                setBoardElements(devBoardPayload.elements || []);
+                setBoardEdges([]);
+            }
         }
     }, [devBoardPayload]);
 
     const closeBoardMode = () => {
         setBoardMode(false);
         setBoardElements([]);
+        setBoardEdges([]);
         setPan({ x: 0, y: 0 }); // Zero out pan offsets on close
         setBoardScale(1);       // Reset camera scale
         if (setDevBoardPayload) setDevBoardPayload(null);
@@ -566,6 +665,74 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                 transition: isInteracting ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)' 
                             }}
                         >
+                            {/* SVG Connection Layer */}
+                            {boardEdges.length > 0 && (
+                                <svg style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', zIndex: -1, pointerEvents: 'none' }}>
+                                    <defs>
+                                        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="22" refY="3" orient="auto">
+                                            <polygon points="0 0, 8 3, 0 6" fill="var(--accent-teal)" />
+                                        </marker>
+                                        <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+                                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                            <feMerge>
+                                                <feMergeNode in="coloredBlur"/>
+                                                <feMergeNode in="SourceGraphic"/>
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
+                                    {boardEdges.map((edge, idx) => {
+                                        const fromEl = boardElements.find(e => e.id === edge.from);
+                                        const toEl = boardElements.find(e => e.id === edge.to);
+                                        if (!fromEl || !toEl) return null;
+
+                                        const x1 = parseFloat(fromEl.x);
+                                        const y1 = parseFloat(fromEl.y);
+                                        const x2 = parseFloat(toEl.x);
+                                        const y2 = parseFloat(toEl.y);
+                                        
+                                        // Dynamic Bezier generation based on layout flow
+                                        let pathData = '';
+                                        if (devBoardPayload?.layout === 'vertical-tree') {
+                                            const offset = Math.abs(y2 - y1) / 2;
+                                            pathData = `M ${x1},${y1} C ${x1},${y1 + offset} ${x2},${y2 - offset} ${x2},${y2}`;
+                                        } else if (devBoardPayload?.layout === 'horizontal-process') {
+                                            const offset = Math.abs(x2 - x1) / 2;
+                                            pathData = `M ${x1},${y1} C ${x1 + offset},${y1} ${x2 - offset},${y2} ${x2},${y2}`;
+                                        } else {
+                                            pathData = `M ${x1},${y1} Q ${(x1+x2)/2},${(y1+y2)/2 - 50} ${x2},${y2}`;
+                                        }
+
+                                        return (
+                                            <g key={idx}>
+                                                <path 
+                                                    d={pathData} 
+                                                    stroke={edge.color || 'var(--accent-teal)'} 
+                                                    strokeWidth="3" 
+                                                    fill="none" 
+                                                    markerEnd="url(#arrowhead)" 
+                                                    filter="url(#neonGlow)"
+                                                    style={{ opacity: 0.6, animation: 'boardFadeIn 1s ease-out' }}
+                                                />
+                                                {edge.label && (
+                                                    <text 
+                                                        x={(x1 + x2) / 2} 
+                                                        y={(y1 + y2) / 2} 
+                                                        fill="#aaa" 
+                                                        fontSize="13" 
+                                                        fontWeight="600"
+                                                        fontFamily="'Poppins', sans-serif"
+                                                        textAnchor="middle" 
+                                                        dy="-8"
+                                                    >
+                                                        {edge.label}
+                                                    </text>
+                                                )}
+                                            </g>
+                                        );
+                                    })}
+                                </svg>
+                            )}
+
                             {boardElements.map(el => {
                                 const isShape = ['circle', 'rect', 'rectangle', 'square', 'shape'].includes(el.type);
                                 const shapeClass = isShape ? `board-shape-${el.type}` : 'board-shape-text';
