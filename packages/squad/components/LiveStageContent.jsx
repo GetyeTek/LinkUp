@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, useGeminiAudio } from '@linkup-platform/sdk-core';
+import DOMPurify from 'dompurify';
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
 import GenericConfirmModal from './GenericConfirmModal.jsx';
 import FloatingLiveOrb from './FloatingLiveOrb.jsx';
@@ -887,7 +888,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             )}
 
                             {boardElements.map(el => {
-                                const isShape = ['circle', 'rect', 'rectangle', 'square', 'shape', 'image'].includes(el.type);
+                                const isShape = ['circle', 'rect', 'rectangle', 'square', 'shape', 'image', 'svg'].includes(el.type);
                                 const shapeClass = isShape ? `board-shape-${el.type}` : 'board-shape-text';
                                 const isSplitListLeft = devBoardPayload?.layout === 'split-list' && el.side === 'left';
                                 const isSplitListRight = devBoardPayload?.layout === 'split-list' && el.side === 'right';
@@ -920,19 +921,28 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                                 >
                                                     {el.title && !isSplitListLeft && <div className="shape-title-node">{el.title}</div>}
                                                     
-                                                    {el.imageUrl && (
-                                                        <div className="shape-image-wrapper">
-                                                            <img 
-                                                                src={el.imageUrl} 
-                                                                alt={el.title || "Visual Guide"} 
-                                                                className="shape-image-node" 
-                                                                draggable="false"
-                                                                onContextMenu={(e) => e.preventDefault()}
-                                                            />
-                                                        </div>
-                                                    )}
+                                                                                                    {el.imageUrl && (
+                                                    <div className="shape-image-wrapper">
+                                                        <img 
+                                                            src={el.imageUrl} 
+                                                            alt={el.title || "Visual Guide"} 
+                                                            className="shape-image-node" 
+                                                            draggable="false"
+                                                            onContextMenu={(e) => e.preventDefault()}
+                                                        />
+                                                    </div>
+                                                )}
 
-                                                    {el.text && (
+                                                {el.svgCode && (
+                                                    <div 
+                                                        className="shape-svg-wrapper"
+                                                        dangerouslySetInnerHTML={{ 
+                                                            __html: DOMPurify.sanitize(el.svgCode, { USE_PROFILES: { svg: true, svgFilters: true } }) 
+                                                        }}
+                                                    />
+                                                )}
+
+                                                {el.text && (
                                                         <div 
                                                             className="shape-text-scroller"
                                                             onPointerDown={(e) => e.stopPropagation()}
