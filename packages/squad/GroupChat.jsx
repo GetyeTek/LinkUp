@@ -802,19 +802,9 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 setLiveSetupData={setLiveSetupData} 
                 onStartLive={startLiveSession} 
                 isStartingLive={isStartingLive} 
-                onLocalBoardTest={() => {
+                onDevInject={(payload) => {
                     setLiveCredentials({ token: 'local', url: 'local' });
-                    setDevBoardPayload({
-                        action: 'draw_flow',
-                        layout: 'comparison-split',
-                        nodes: [
-                            { id: 'left_main', side: 'left', title: 'Monolithic Architecture', text: 'All functionality is managed in a single, tightly coupled codebase.\n\n• Simple to deploy initially\n• Easy to test end-to-end\n• Becomes a bottleneck at scale', color: '#3498db', shapeStyles: { border: '2px solid #3498db'} },
-                            { id: 'right_main', side: 'right', title: 'Microservices', text: 'Application is structured as a collection of loosely coupled, independent services.\n\n• Highly scalable\n• Teams operate autonomously\n• Complex infrastructure overhead', color: '#42d7b8', shapeStyles: { border: '2px solid #42d7b8'} }
-                        ],
-                        edges: [
-                            { from: 'left_main', to: 'right_main', label: 'VS', style: 'dashed', color: '#ffab40' }
-                        ]
-                    });
+                    setDevBoardPayload(payload);
                     setLiveState('full');
                     setShowLiveSetup(false);
                 }}
