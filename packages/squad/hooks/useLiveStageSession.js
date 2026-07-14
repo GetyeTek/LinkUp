@@ -13,12 +13,14 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
 
     // Eject attendants instantly if the session is explicitly killed
     useEffect(() => {
+        if (liveCredentials?.url === 'local') return; // Bypass security hook for local simulation
+
         if (!(localChatInfo.metadata?.is_live && !isLiveDead) && liveState !== 'none') {
             setLiveState('none');
             setLiveCredentials(null);
             setShowRecoveryModal(false);
         }
-    }, [localChatInfo.metadata?.is_live, isLiveDead, liveState]);
+    }, [localChatInfo.metadata?.is_live, isLiveDead, liveState, liveCredentials]);
 
     useEffect(() => {
         if (localChatInfo.metadata?.is_live && isMeHost && liveState === 'none') {
@@ -33,14 +35,14 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
 
     // Heartbeat Engine (Host Only)
     useEffect(() => {
-        if (liveState !== 'full' || !isMeHost) return;
+        if (liveState !== 'full' || !isMeHost || liveCredentials?.url === 'local') return;
         const beat = () => {
             supabase.rpc('heartbeat_live_session', { conv_id: chat.conversation_id, req_host_id: currentUser.id });
         };
         beat(); // Initial pulse
         const int = setInterval(beat, 15000); // Pulse every 15s
         return () => clearInterval(int);
-    }, [liveState, isMeHost, chat.conversation_id, currentUser.id]);
+    }, [liveState, isMeHost, chat.conversation_id, currentUser.id, liveCredentials]);
 
     // Auto-Join Interceptor for Live Links
     useEffect(() => {
