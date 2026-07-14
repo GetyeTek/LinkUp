@@ -166,7 +166,7 @@ const LiveStageSetupModal = ({
     if (!show) return null;
 
     const handlePrepareLecture = async () => {
-        if (isDevMode && mode === 'miron' && onDevInject) {
+        if (isDevMode && onDevInject) {
             try {
                 const parsed = JSON.parse(devPayload);
                 onDevInject(parsed);
@@ -221,16 +221,14 @@ const LiveStageSetupModal = ({
                         )}
                     </h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {mode === 'miron' && (
-                            <button 
-                                className={`icon-button ${isDevMode ? 'active' : ''}`} 
-                                style={{ color: isDevMode ? 'var(--accent-teal)' : '#888', background: isDevMode ? 'rgba(66, 215, 184, 0.1)' : 'transparent', borderRadius: '8px' }} 
-                                onClick={() => setIsDevMode(!isDevMode)} 
-                                title="Dev Mode: Board Injector"
-                            >
-                                <i className="fas fa-bug"></i>
-                            </button>
-                        )}
+                        <button 
+                            className={`icon-button ${isDevMode ? 'active' : ''}`} 
+                            style={{ color: isDevMode ? 'var(--accent-teal)' : '#888', background: isDevMode ? 'rgba(66, 215, 184, 0.1)' : 'transparent', borderRadius: '8px' }} 
+                            onClick={() => setIsDevMode(!isDevMode)} 
+                            title="Dev Mode: Board Injector"
+                        >
+                            <i className="fas fa-bug"></i>
+                        </button>
                         <button className="icon-button" style={{ color: '#888' }} onClick={onClose} disabled={isGenerating}><i className="fas fa-times"></i></button>
                     </div>
                 </header>
@@ -242,7 +240,7 @@ const LiveStageSetupModal = ({
                         </div>
                     )}
 
-                    {mode === 'miron' && isDevMode ? (
+                    {isDevMode ? (
                         <div className="pc-group" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                             <label className="pc-label">Dev: Inject Board Payload</label>
                             <textarea
@@ -310,11 +308,11 @@ const LiveStageSetupModal = ({
                 >
                     {isDevMode ? 'Simulate Board' : (isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? 'Prepare Lecture & Invite' : 'Go Live'))}
                 </button>
-                {mode === 'host' && onLocalBoardTest && (
+                {mode === 'host' && !isDevMode && onDevInject && (
                     <button 
                         className="poll-submit-btn" 
                         style={{background: 'transparent', border: '2px dashed var(--accent-teal)', color: 'var(--accent-teal)', marginTop: '10px'}}
-                        onClick={onLocalBoardTest}
+                        onClick={() => setIsDevMode(true)}
                     >
                         <i className="fas fa-hammer"></i> Quick Board (Local Test)
                     </button>
