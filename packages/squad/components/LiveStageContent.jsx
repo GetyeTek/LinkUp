@@ -317,6 +317,45 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 if (node.side === 'left') positions[node.id].y -= maxLeftY / 2;
                 if (node.side === 'right') positions[node.id].y -= maxRightY / 2;
             });
+        } else if (layout === 'split-list') {
+            // Split Key-Value Glossary List Layout
+            const leftNodes = nodes.filter(n => n.side === 'left');
+            const rightNodes = nodes.filter(n => n.side === 'right');
+            const ROW_GAP = 240;
+
+            leftNodes.forEach((lnode, idx) => {
+                positions[lnode.id] = { x: -220, y: idx * ROW_GAP };
+                
+                // Pair with connected right node natively via edge traversal
+                const edge = edges.find(e => e.from === lnode.id || e.to === lnode.id);
+                if (edge) {
+                    const targetId = edge.from === lnode.id ? edge.to : edge.from;
+                    const rnode = rightNodes.find(n => n.id === targetId);
+                    if (rnode) {
+                        positions[rnode.id] = { x: 220, y: idx * ROW_GAP };
+                        visited.add(rnode.id);
+                    }
+                }
+                visited.add(lnode.id);
+            });
+
+            // Fallback for unpaired right nodes
+            let remainingRightY = 0;
+            rightNodes.forEach(rnode => {
+                if (!visited.has(rnode.id)) {
+                    positions[rnode.id] = { x: 220, y: remainingRightY * ROW_GAP };
+                    remainingRightY++;
+                    visited.add(rnode.id);
+                }
+            });
+
+            // Center the entire list vertically
+            const totalHeight = (leftNodes.length - 1) * ROW_GAP;
+            nodes.forEach(node => {
+                if (positions[node.id]) {
+                    positions[node.id].y -= totalHeight / 2;
+                }
+            });
         } else {
             // Radial Fan: Center root at 0,0 and fan children in a circle
             const rootId = roots[0]?.id;
@@ -793,6 +832,13 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                             const startX = isLeftToRight ? x1 + startOffsetX : x1 - startOffsetX;
                                             const endX = isLeftToRight ? x2 - endOffsetX : x2 + endOffsetX;
                                             pathData = `M ${startX},${y1} C ${(startX+endX)/2},${y1} ${(startX+endX)/2},${y2} ${endX},${y2}`;
+                                        } else if (devBoardPayload?.layout === 'split-list') {
+                                            const isLeftToRight = x1 <= x2;
+                                            const startOffsetX = ['circle', 'square'].includes(fromEl.type) ? 90 : 110;
+                                            const endOffsetX = ['circle', 'square'].includes(toEl.type) ? 105 : 110;
+                                            const startX = isLeftToRight ? x1 + startOffsetX : x1 - startOffsetX;
+                                            const endX = isLeftToRight ? x2 - endOffsetX : x2 + endOffsetX;
+                                            pathData = `M ${startX},${y1} L ${endX},${y2}`; // Pure horizontal vector line
                                         } else {
                                             const angle = Math.atan2(y2 - y1, x2 - x1);
                                             const r1 = ['circle', 'square'].includes(fromEl.type) ? 90 : 110;
