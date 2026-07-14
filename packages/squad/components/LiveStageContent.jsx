@@ -462,14 +462,14 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
     // Heartbeat Engine (Host Only)
     useEffect(() => {
-        if (liveState !== 'full' || !isMeHost) return;
+        if (liveState !== 'full' || !isMeHost || devBoardPayload) return;
         const beat = () => {
             supabase.rpc('heartbeat_live_session', { conv_id: conversationId, req_host_id: currentUser.id });
         };
         beat(); // Initial pulse
         const int = setInterval(beat, 15000); // Pulse every 15s
         return () => clearInterval(int);
-    }, [liveState, isMeHost, conversationId, currentUser.id]);
+    }, [liveState, isMeHost, conversationId, currentUser.id, devBoardPayload]);
 
 
 
