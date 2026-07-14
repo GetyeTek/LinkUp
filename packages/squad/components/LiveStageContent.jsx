@@ -21,6 +21,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const { localParticipant } = useLocalParticipant();
     const [mironAvatarError, setMironAvatarError] = useState(false);
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
+
+    // Board Alignment Engine State
+    const [spokenText, setSpokenText] = useState("");
+    const [activeBoardBlocks, setActiveBoardBlocks] = useState([]);
     
     const hostId = chatInfo.metadata?.live_host_id;
     const hostInfo = members[hostId] || { name: 'Host', avatar: 'https://via.placeholder.com/150' };
@@ -507,6 +511,45 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 try {
                     const payload = JSON.parse(event.data);
                     
+                    // Intercept Dynamic Board Synchronization
+                    if (payload.type === "chunk_transition") {
+                        setSpokenText("");
+                        const rawChunk = payload.chunk || "";
+                        const blocks = [];
+                        const regex = /\[print\]([\s\S]*?)\[print\]/gi;
+                        let match;
+                        while ((match = regex.exec(rawChunk)) !== null) {
+                            blocks.push(match[1]);
+                        }
+                        
+                        if (blocks.length > 0) {
+                            setBoardMode(true);
+                            const parsed = blocks.map(blockStr => {
+                                let currentStyles = { u: false, h: false, p: false, b: false, i: false, t: false };
+                                const tokens = blockStr.split(/(\{[uhpbit]\})/i);
+                                let spans = [];
+                                for (const token of tokens) {
+                                    const tagMatch = token.match(/^\{([uhpbit])\}$/i);
+                                    if (tagMatch) {
+                                        const tag = tagMatch[1].toLowerCase();
+                                        currentStyles[tag] = !currentStyles[tag];
+                                    } else if (token) {
+                                        const subWords = token.split(/(\s+)/);
+                                        for (const sw of subWords) {
+                                            if (sw) spans.push({ text: sw, styles: { ...currentStyles } });
+                                        }
+                                    }
+                                }
+                                return spans;
+                            });
+                            setActiveBoardBlocks(parsed);
+                        } else {
+                            // If no print tags, clear the board text payload but maintain boardMode if dev payload is active
+                            setActiveBoardBlocks([]);
+                        }
+                        return;
+                    }
+                    
                     // Intercept Moderation Flags from DO REST Compiler
                     if (payload.type === "moderation_warning") {
                         if (payload.flags && Array.isArray(payload.flags)) {
@@ -529,6 +572,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         console.error("[Client|Stage] ❌ Gemini Error Payload:", payload.error);
                     } else {
                         console.log("[Client|Stage] 📩 Received payload:", payload);
+                    }
+
+                    if (payload.serverContent?.outputTranscription?.text) {
+                        setSpokenText(prev => prev + " " + payload.serverContent.outputTranscription.text);
                     }
 
                     if (payload.serverContent?.modelTurn?.parts) {
@@ -673,6 +720,62 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const attendantViewQs = liveQuestions.filter(q => !q.is_pinned);
     const shouldCompressStage = !!pinnedQ || liveQuestions.length > 0;
     const isConnected = isAiHosting ? aiConnected : !isHostPaused;
+
+    const renderBoardBlocks = () => {
+        const spokenWords = spokenText.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
+        
+        return activeBoardBlocks.map((spans, bIdx) => {
+            let targetWords = spans.filter(s => s.text.trim()).map(s => s.text.toLowerCase().replace(/[^\w\s]/g, ''));
+            let revealedIndex = -1;
+            let sIdx = 0;
+            
+            for (let tIdx = 0; tIdx < targetWords.length; tIdx++) {
+                const target = targetWords[tIdx];
+                if (!target) {
+                    revealedIndex = tIdx; 
+                    continue;
+                }
+                let found = false;
+                for (let i = sIdx; i < Math.min(sIdx + 10, spokenWords.length); i++) {
+                    if (spokenWords[i] === target || spokenWords[i].includes(target) || target.includes(spokenWords[i])) {
+                        found = true;
+                        sIdx = i + 1;
+                        revealedIndex = tIdx;
+                        break;
+                    }
+                }
+                if (!found) break;
+            }
+            
+            let spanWordCounter = 0;
+            return (
+                <div key={bIdx} className="dynamic-blackboard-block">
+                    {spans.map((span, sIdx) => {
+                        const isSpace = !span.text.trim();
+                        let isRevealed = false;
+                        if (!isSpace) {
+                            isRevealed = spanWordCounter <= revealedIndex;
+                            spanWordCounter++;
+                        } else {
+                            isRevealed = spanWordCounter - 1 <= revealedIndex;
+                        }
+                        
+                        let cls = `bb-span ${isRevealed ? 'revealed' : 'ghost'}`;
+                        if (isRevealed) {
+                            if (span.styles.u) cls += ' bb-u';
+                            if (span.styles.h) cls += ' bb-h';
+                            if (span.styles.p) cls += ' bb-p';
+                            if (span.styles.b) cls += ' bb-b';
+                            if (span.styles.i) cls += ' bb-i';
+                            if (span.styles.t) cls += ' bb-t';
+                        }
+                        
+                        return <span key={sIdx} className={cls}>{span.text}</span>
+                    })}
+                </div>
+            );
+        });
+    };
 
     if (liveState === 'minimized') {
         return <FloatingLiveOrb hostAvatar={hostInfo.avatar} hostId={hostId} isConnected={isConnected} onClick={() => setLiveState('full')} />;
@@ -885,6 +988,12 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                         );
                                     })}
                                 </svg>
+                            )}
+
+                            {activeBoardBlocks.length > 0 && (
+                                <div className="dynamic-blackboard-container">
+                                    {renderBoardBlocks()}
+                                </div>
                             )}
 
                             {boardElements.map(el => {
