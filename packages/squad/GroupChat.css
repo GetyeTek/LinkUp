@@ -782,6 +782,53 @@
             padding-right: 0 !important;
         }
 
+        /* SVG Vector Canvas Framework Styles */
+        .shape-svg-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 10px;
+        }
+
+        .shape-svg-wrapper svg {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 280px;
+            display: block;
+        }
+
+        /* Pure SVG Board Canvas */
+        .shape-container.svg {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            min-width: auto !important;
+            min-height: auto !important;
+            width: 450px;
+            max-width: 90vw;
+        }
+
+        .shape-container.svg .shape-svg-wrapper {
+            margin-bottom: 0;
+            background: rgba(18, 18, 18, 0.4);
+            border: 2px solid var(--accent-teal);
+            border-radius: 16px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8), 0 0 25px rgba(66, 215, 184, 0.15);
+            padding: 15px;
+        }
+
+        .shape-container.svg .shape-svg-wrapper svg {
+            max-height: 400px;
+        }
+
 /* Dynamic Board Animations */
 .anim-fade-in { animation: boardFadeIn 0.8s ease-out forwards; }
 .anim-pop-in { animation: boardPopIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
