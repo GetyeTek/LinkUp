@@ -872,7 +872,7 @@
 .bb-span {
     transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
 }
-.bb-span.ghost { opacity: 0.15; }
+.bb-span.ghost { opacity: 0; pointer-events: none; }
 .bb-span.revealed { opacity: 1; }
 .bb-u { text-decoration: underline; text-underline-offset: 6px; text-decoration-color: var(--accent-teal); }
 .bb-h { background: rgba(66, 215, 184, 0.3); border-radius: 6px; padding: 0 4px; box-shadow: 0 0 15px rgba(66, 215, 184, 0.2); color: #000; }
