@@ -25,6 +25,13 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     // Board Alignment Engine State
     const [spokenText, setSpokenText] = useState("");
     const [activeBoardBlocks, setActiveBoardBlocks] = useState([]);
+
+    const cleanWord = (word) => {
+        if (!word) return "";
+        return word.toLowerCase()
+            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?።፡]/g, "")
+            .trim();
+    };
     
     const hostId = chatInfo.metadata?.live_host_id;
     const hostInfo = members[hostId] || { name: 'Host', avatar: 'https://via.placeholder.com/150' };
@@ -722,10 +729,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const isConnected = isAiHosting ? aiConnected : !isHostPaused;
 
     const renderBoardBlocks = () => {
-        const spokenWords = spokenText.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
+        const spokenWords = spokenText.split(/\s+/).map(cleanWord).filter(Boolean);
         
         return activeBoardBlocks.map((spans, bIdx) => {
-            let targetWords = spans.filter(s => s.text.trim()).map(s => s.text.toLowerCase().replace(/[^\w\s]/g, ''));
+            let targetWords = spans.filter(s => s.text.trim()).map(s => cleanWord(s.text));
             let revealedIndex = -1;
             let sIdx = 0;
             
