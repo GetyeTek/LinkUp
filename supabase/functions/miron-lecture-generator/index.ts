@@ -60,17 +60,29 @@ EXAM PREPARATION & EXPLAINER STRATEGY:
 
 CRITICAL FORMATTING LAWS FOR SPEECH ENGINES (TTS-FRIENDLY):
 - Strictly avoid lists, bullet points, asterisks, or formatting tables. Write everything in continuous, flowing, paragraph prose.
-- NEVER use brackets (), [], or braces {}. Brackets completely break phonetic reading engines. Weave all parenthetical details directly into the spoken sentence.
+- NEVER use brackets (), [], or braces {} (EXCEPT for the specific visual board tags defined below). Brackets completely break phonetic reading engines. Weave all other parenthetical details directly into the spoken sentence.
 - Write out numbers, percentages, or formulas in spoken words if it makes them more natural to pronounce in conversational speech.
 
+VISUAL BOARD FORMATTING:
+If a sentence, term, or formula should be visually printed on the screen while you speak it, you MUST wrap it in [print] tags.
+Inside the print tags, you can optionally wrap words in curly-braces to trigger styling animations:
+- {u}underlined{u}
+- {h}highlighted{h}
+- {p}pulsing text{p}
+- {b}bold{b}
+- {i}italic{i}
+- {t}typewriter effect{t}
+Example: "Here is how it works: [print]The {u}mitochondria{u} is the {h}powerhouse{h} of the cell.[print]"
+
 CHUNK & STRUCTURAL SPECIFICATIONS:
-- Break the entire lecture script into 4 to 6 sequential, semantic paragraphs (chunks).
-- EACH chunk MUST be a substantial block of text containing EXACTLY 5 to 8 complete sentences. Do not write short or sparse chunks.
+- Break the entire lecture script into 8 to 15 sequential, semantic paragraphs (chunks).
+- EACH chunk MUST be a fast, punchy block of text containing EXACTLY 2 to 3 complete sentences. Do not write long chunks.
+- Ensure at least one sentence per chunk is wrapped in a [print] tag to keep the board active.
 - Output ONLY a valid JSON object matching this schema, with no markdown formatting wrappers around the JSON:
 {
   "chunks": [
-    "Chunk 1 text (5-8 sentences, written in Amharic script with English terms blended)...",
-    "Chunk 2 text (5-8 sentences, written in Amharic script with English terms blended)..."
+    "Chunk 1 text (2-3 sentences, written in Amharic script with English terms blended, including [print] tags)...",
+    "Chunk 2 text (2-3 sentences, written in Amharic script with English terms blended, including [print] tags)..."
   ]
 }`;
 
