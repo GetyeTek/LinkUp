@@ -1,6 +1,12 @@
 // ==============================================================================
 // THE STATEFUL DURABLE OBJECT VOICE AGENT (BARE METAL WEBSOCKET HIBERNATION)
 // ==============================================================================
+
+const sanitizeForSpeech = (txt) => {
+    if (!txt) return "";
+    return txt.replace(/\[print\]/gi, '').replace(/\{[uhpbit]\}/gi, '');
+};
+
 export class GeminiLiveAgent {
   constructor(ctx, env) {
     this.ctx = ctx;
@@ -167,7 +173,11 @@ export class GeminiLiveAgent {
                         this.stageState = "reading";
                         
                         if (this.readingQueue.length > 0) {
-                            const prompt = `Read the following segment exactly in your informal peer tone:\n\n${this.readingQueue[0]}`;
+                            const rawChunk = this.readingQueue[0];
+                            this.broadcast(JSON.stringify({ type: "chunk_transition", index: 0, chunk: rawChunk }));
+                            
+                            const cleanChunk = sanitizeForSpeech(rawChunk);
+                            const prompt = `Read the following segment exactly in your informal peer tone:\n\n${cleanChunk}`;
                             const payload = JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
                             });
@@ -495,14 +505,22 @@ export class GeminiLiveAgent {
                             this.stageState = "answering_qa";
                             const ans = this.pendingAnswersQueue.shift();
                             console.log(`[Agent|DO|STATE] Pivoting to Q&A. Delivering answer to ${ans.sender_name}...`);
-                            const prompt = `Read the following answer exactly in your conversational tone:\n\n${ans.answer_text}`;
+                            
+                            const rawChunk = `[print]{p}Q&A Time!{p}\n\n${ans.answer_text}[print]`;
+                            this.broadcast(JSON.stringify({ type: "chunk_transition", index: -1, chunk: rawChunk }));
+                            
+                            const cleanChunk = sanitizeForSpeech(ans.answer_text);
+                            const prompt = `Read the following answer exactly in your conversational tone:\n\n${cleanChunk}`;
                             ws.send(JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
                             }));
                         } else if (this.currentChunkIndex < this.readingQueue.length) {
                             console.log(`[Agent|DO|STATE] Advancing lecture cursor to chunk ${this.currentChunkIndex}`);
-                            const chunk = this.readingQueue[this.currentChunkIndex];
-                            const prompt = `Let's continue. Read this segment exactly:\n\n${chunk}`;
+                            const rawChunk = this.readingQueue[this.currentChunkIndex];
+                            this.broadcast(JSON.stringify({ type: "chunk_transition", index: this.currentChunkIndex, chunk: rawChunk }));
+                            
+                            const cleanChunk = sanitizeForSpeech(rawChunk);
+                            const prompt = `Let's continue. Read this segment exactly:\n\n${cleanChunk}`;
                             ws.send(JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
                             }));
@@ -516,13 +534,21 @@ export class GeminiLiveAgent {
                         if (this.pendingAnswersQueue.length > 0) {
                             const ans = this.pendingAnswersQueue.shift();
                             console.log(`[Agent|DO|STATE] Delivering next answer to ${ans.sender_name}...`);
-                            const prompt = `Read the following answer exactly in your conversational tone:\n\n${ans.answer_text}`;
+                            
+                            const rawChunk = `[print]{p}Q&A Time!{p}\n\n${ans.answer_text}[print]`;
+                            this.broadcast(JSON.stringify({ type: "chunk_transition", index: -1, chunk: rawChunk }));
+                            
+                            const cleanChunk = sanitizeForSpeech(ans.answer_text);
+                            const prompt = `Read the following answer exactly in your conversational tone:\n\n${cleanChunk}`;
                             ws.send(JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
                             }));
                         } else {
                             // Queue empty, pivot back to lecture!
                             this.stageState = "resuming_lecture";
+                            
+                            this.broadcast(JSON.stringify({ type: "chunk_transition", index: -1, chunk: "" }));
+                            
                             const prompt = `Read this exactly: "Alright guys, let's get back to the text!"`;
                             ws.send(JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
@@ -532,8 +558,11 @@ export class GeminiLiveAgent {
                         this.stageState = "reading";
                         if (this.currentChunkIndex < this.readingQueue.length) {
                             console.log(`[Agent|DO|STATE] Resuming lecture at chunk ${this.currentChunkIndex}`);
-                            const chunk = this.readingQueue[this.currentChunkIndex];
-                            const prompt = `Let's resume the lecture where we left off. Read this segment exactly:\n\n${chunk}`;
+                            const rawChunk = this.readingQueue[this.currentChunkIndex];
+                            this.broadcast(JSON.stringify({ type: "chunk_transition", index: this.currentChunkIndex, chunk: rawChunk }));
+                            
+                            const cleanChunk = sanitizeForSpeech(rawChunk);
+                            const prompt = `Let's resume the lecture where we left off. Read this segment exactly:\n\n${cleanChunk}`;
                             ws.send(JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
                             }));
