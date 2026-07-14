@@ -324,7 +324,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             const ROW_GAP = 240;
 
             leftNodes.forEach((lnode, idx) => {
-                positions[lnode.id] = { x: -220, y: idx * ROW_GAP };
+                positions[lnode.id] = { x: -160, y: idx * ROW_GAP };
                 
                 // Pair with connected right node natively via edge traversal
                 const edge = edges.find(e => e.from === lnode.id || e.to === lnode.id);
@@ -332,7 +332,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     const targetId = edge.from === lnode.id ? edge.to : edge.from;
                     const rnode = rightNodes.find(n => n.id === targetId);
                     if (rnode) {
-                        positions[rnode.id] = { x: 220, y: idx * ROW_GAP };
+                        positions[rnode.id] = { x: 160, y: idx * ROW_GAP };
                         visited.add(rnode.id);
                     }
                 }
@@ -834,8 +834,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                             pathData = `M ${startX},${y1} C ${(startX+endX)/2},${y1} ${(startX+endX)/2},${y2} ${endX},${y2}`;
                                         } else if (devBoardPayload?.layout === 'split-list') {
                                             const isLeftToRight = x1 <= x2;
-                                            const startOffsetX = ['circle', 'square'].includes(fromEl.type) ? 90 : 110;
-                                            const endOffsetX = ['circle', 'square'].includes(toEl.type) ? 105 : 110;
+                                            const startOffsetX = ['circle', 'square'].includes(fromEl.type) ? 90 : 90; // Align with 180px full-bleed box
+                                            const endOffsetX = ['circle', 'square'].includes(toEl.type) ? 105 : 160; // Align with 320px text block
                                             const startX = isLeftToRight ? x1 + startOffsetX : x1 - startOffsetX;
                                             const endX = isLeftToRight ? x2 - endOffsetX : x2 + endOffsetX;
                                             pathData = `M ${startX},${y1} L ${endX},${y2}`; // Pure horizontal vector line
@@ -889,6 +889,9 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             {boardElements.map(el => {
                                 const isShape = ['circle', 'rect', 'rectangle', 'square', 'shape', 'image'].includes(el.type);
                                 const shapeClass = isShape ? `board-shape-${el.type}` : 'board-shape-text';
+                                const isSplitListLeft = devBoardPayload?.layout === 'split-list' && el.side === 'left';
+                                const isSplitListRight = devBoardPayload?.layout === 'split-list' && el.side === 'right';
+                                
                                 return (
                                     <div
                                         key={el.id}
@@ -907,31 +910,39 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                         }}
                                     >
                                         {isShape ? (
-                                            <div className={`shape-container ${el.type}`} style={el.shapeStyles}>
-                                                {el.title && <div className="shape-title-node">{el.title}</div>}
-                                                
-                                                {el.imageUrl && (
-                                                    <div className="shape-image-wrapper">
-                                                        <img 
-                                                            src={el.imageUrl} 
-                                                            alt={el.title || "Visual Guide"} 
-                                                            className="shape-image-node" 
-                                                            draggable="false"
-                                                            onContextMenu={(e) => e.preventDefault()}
-                                                        />
-                                                    </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                {isSplitListLeft && el.title && (
+                                                    <div className="shape-title-outside-above">{el.title}</div>
                                                 )}
+                                                <div 
+                                                    className={`shape-container ${el.type} ${isSplitListLeft ? 'is-split-list-left' : ''} ${isSplitListRight ? 'is-split-list-right' : ''}`} 
+                                                    style={el.shapeStyles}
+                                                >
+                                                    {el.title && !isSplitListLeft && <div className="shape-title-node">{el.title}</div>}
+                                                    
+                                                    {el.imageUrl && (
+                                                        <div className="shape-image-wrapper">
+                                                            <img 
+                                                                src={el.imageUrl} 
+                                                                alt={el.title || "Visual Guide"} 
+                                                                className="shape-image-node" 
+                                                                draggable="false"
+                                                                onContextMenu={(e) => e.preventDefault()}
+                                                            />
+                                                        </div>
+                                                    )}
 
-                                                {el.text && (
-                                                    <div 
-                                                        className="shape-text-scroller"
-                                                        onPointerDown={(e) => e.stopPropagation()}
-                                                        onMouseDown={(e) => e.stopPropagation()}
-                                                        onTouchStart={(e) => e.stopPropagation()}
-                                                    >
-                                                        {el.text}
-                                                    </div>
-                                                )}
+                                                    {el.text && (
+                                                        <div 
+                                                            className="shape-text-scroller"
+                                                            onPointerDown={(e) => e.stopPropagation()}
+                                                            onMouseDown={(e) => e.stopPropagation()}
+                                                            onTouchStart={(e) => e.stopPropagation()}
+                                                        >
+                                                            {el.text}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         ) : (
                                             <div className="text-element-node">{el.text}</div>
