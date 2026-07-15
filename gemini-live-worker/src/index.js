@@ -66,13 +66,39 @@ export class GeminiLiveAgent {
   }
 
   async fetch(request) {
+    const url = new URL(request.url);
+    this.conversationId = url.searchParams.get("agent");
+
+    // Handle the Supabase dynamic chunk append webhook
+    if (request.method === "POST" && url.searchParams.get("action") === "append_chunks") {
+        try {
+            const authHeader = request.headers.get("Authorization");
+            const expectedAuth = `Bearer ${this.env?.SUPABASE_SERVICE_ROLE_KEY}`;
+            if (authHeader !== expectedAuth) {
+                return new Response("Unauthorized webhook trigger", { status: 401 });
+            }
+
+            const payload = await request.json();
+            const dbChunks = payload.record?.lecture_chunks || [];
+            const currentLength = this.readingQueue.length;
+
+            if (dbChunks.length > currentLength) {
+                const chunksToAppend = dbChunks.slice(currentLength);
+                this.readingQueue.push(...chunksToAppend);
+                console.log(`[Agent|DO|WEBHOOK] Webhook matched. Appended ${chunksToAppend.length} chunks. New total: ${this.readingQueue.length}`);
+                return new Response(JSON.stringify({ success: true, appended: chunksToAppend.length }), { status: 200 });
+            }
+            return new Response(JSON.stringify({ success: true, appended: 0, reason: "No new chunks to process" }), { status: 200 });
+        } catch (e) {
+            console.error("[Agent|DO|WEBHOOK] Exception parsing append webhook:", e.message);
+            return new Response(`Error: ${e.message}`, { status: 500 });
+        }
+    }
+
     console.log(`[Agent|DO|FETCH] 🚀 Intercepting WebSocket upgrade request...`);
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected Upgrade: websocket", { status: 426 });
     }
-
-    const url = new URL(request.url);
-    this.conversationId = url.searchParams.get("agent");
 
     // Initialize Miron's autonomous heartbeat engine
     if (!this.heartbeatTimer) {
@@ -651,9 +677,22 @@ export default {
     const url = new URL(request.url);
     
     if (url.pathname === '/realtime-ai') {
-      const agentId = url.searchParams.get("agent");
+      let agentId = url.searchParams.get("agent");
+
+      // Autodetect conversation_id from standard Supabase webhook payload if not in URL query
+      if (!agentId && request.method === "POST") {
+        try {
+          const clone = request.clone();
+          const body = await clone.json();
+          agentId = body.record?.conversation_id;
+          console.log(`[GeminiWorker|Router] Webhook routing detected for Agent ID: ${agentId}`);
+        } catch (e) {
+          console.error("[GeminiWorker|Router] Failed to autodetect agent ID from webhook JSON body:", e.message);
+        }
+      }
+
       if (!agentId) {
-         console.error("[GeminiWorker|Router] ❌ Missing agent ID in URL");
+         console.error("[GeminiWorker|Router] ❌ Missing agent ID in URL query and webhook payload");
          return new Response("Missing agent ID", { status: 400 });
       }
       
