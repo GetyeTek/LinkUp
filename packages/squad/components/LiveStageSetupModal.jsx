@@ -44,7 +44,8 @@ const LiveStageSetupModal = ({
     onDevInject,
     onLocalBoardTest,
     onInviteMiron,
-    isStartingLive
+    isStartingLive,
+    conversation_id
 }) => {
     const [books, setBooks] = useState([]);
     const [selectedBook, setSelectedBook] = useState(null);
@@ -181,13 +182,29 @@ const LiveStageSetupModal = ({
             setIsGenerating(true);
             setGenError(null);
             try {
-                const res = await generateMironLecture({ book_id: selectedBook.id, chapter_title: selectedNode.title });
+                // Batch 1: Generate the first 50 chunks (approx. 15s)
+                const res = await generateMironLecture({ 
+                    book_id: selectedBook.id, 
+                    chapter_title: selectedNode.title,
+                    conversation_id 
+                });
                 if (res.error) throw new Error(res.error);
                 
+                // Instantly boot Miron on stage with Batch 1 chunks
                 if (onInviteMiron) {
                     await onInviteMiron(res.chunks, res.raw_text);
                 }
                 onClose();
+
+                // Batch 2: Background process generates chunks 51-100 immediately
+                generateMironLecture({ 
+                    book_id: selectedBook.id, 
+                    chapter_title: selectedNode.title,
+                    conversation_id 
+                }).catch(err => {
+                    console.error("[SetupModal] Background Batch 2 generation failed:", err);
+                });
+
             } catch (err) {
                 setGenError(err.message || "Failed to generate lecture script.");
             }
