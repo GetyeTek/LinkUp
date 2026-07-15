@@ -797,6 +797,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             <LiveStageSetupModal 
                 mode="host"
                 show={showLiveSetup} 
+                conversation_id={chat.conversation_id}
                 onClose={() => setShowLiveSetup(false)} 
                 liveSetupData={liveSetupData} 
                 setLiveSetupData={setLiveSetupData} 
@@ -813,6 +814,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             <LiveStageSetupModal 
                 mode="miron"
                 show={showMironSetup}
+                conversation_id={chat.conversation_id}
                 onClose={() => setShowMironSetup(false)}
                 onDevInject={(payload) => {
                     setDevBoardPayload(payload);
