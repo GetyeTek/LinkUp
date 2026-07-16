@@ -99,6 +99,13 @@
     border: 1px solid rgba(41, 169, 234, 0.4);
 }
 
+.claim-btn.locked-action {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #666;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: not-allowed;
+}
+
 .claim-btn.gold-pulse {
     background-color: var(--linkoin-gold);
     color: #000;
