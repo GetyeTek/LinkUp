@@ -16,6 +16,78 @@
 .claim-btn.claimable { background-color: var(--linkoin-gold); color: var(--bg-dark); }
 .claim-btn.claimed { background-color: var(--accent-teal); color: var(--bg-dark); }
 
+/* --- SQUAD NETWORK (REFERRALS) UI --- */
+.invite-card-premium {
+    background: linear-gradient(145deg, rgba(30, 30, 30, 0.8), rgba(12, 12, 12, 0.9));
+    border: 1px solid var(--linkoin-gold);
+    border-radius: 20px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(255, 215, 0, 0.05);
+}
+
+.invite-card-premium::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 50%);
+    pointer-events: none; z-index: 0;
+}
+
+.ic-header { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.ic-header h3 { color: var(--linkoin-gold); font-size: 1.1rem; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+
+.ic-body { position: relative; z-index: 1; font-size: 0.9rem; color: #ccc; line-height: 1.5; margin-bottom: 1.5rem; }
+
+.ic-link-box {
+    display: flex; align-items: center; background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px;
+    padding: 6px 6px 6px 14px; position: relative; z-index: 1;
+}
+
+.ic-link-text { flex: 1; font-family: 'Roboto Mono', monospace; font-size: 0.85rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.ic-copy-btn {
+    background: var(--linkoin-gold); color: #000; border: none; border-radius: 8px;
+    padding: 10px 16px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+}
+.ic-copy-btn:active { transform: scale(0.95); }
+
+.ic-share-actions {
+    display: flex; gap: 10px; margin-top: 1rem; position: relative; z-index: 1;
+}
+
+.ic-share-btn {
+    flex: 1; padding: 12px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; transition: transform 0.2s;
+}
+.ic-share-btn:active { transform: scale(0.97); }
+.ic-share-btn.tg { background: rgba(41, 169, 234, 0.15); color: #29A9EA; border: 1px solid rgba(41, 169, 234, 0.3); }
+.ic-share-btn.wa { background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); }
+
+.network-tracker-header { font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+
+.ref-row {
+    background: var(--surface-dark); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 16px; margin-bottom: 12px; display: flex; gap: 14px; align-items: center;
+}
+.ref-row.is-pending { opacity: 0.8; }
+.ref-row.is-completed { border-color: rgba(66, 215, 184, 0.4); background: rgba(66, 215, 184, 0.03); }
+
+.ref-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--bg-dark); }
+.ref-info { flex: 1; overflow: hidden; }
+.ref-name { font-weight: 600; color: #fff; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ref-time { font-size: 0.75rem; color: #888; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+
+.ref-status-badge {
+    padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+}
+.ref-status-badge.pending { background: rgba(255, 255, 255, 0.1); color: #aaa; }
+.ref-status-badge.completed { background: rgba(66, 215, 184, 0.15); color: var(--accent-teal); }
+
+.ref-ledger-id { font-family: 'Roboto Mono', monospace; font-size: 0.65rem; color: #666; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.05); }
+
 .claim-btn.verify-action {
     background-color: rgba(41, 169, 234, 0.15);
     color: #29A9EA;
