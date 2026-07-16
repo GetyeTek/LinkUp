@@ -201,7 +201,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                         <h3>Invite Friends, Earn Together</h3>
                                     </div>
                                     <div className="ic-body">
-                                        Earn <strong>+100 Linkoins</strong> for every classmate who joins and verifies their phone. They get a <strong>+20 welcome boost</strong> too!
+                                        Earn <strong>+30 Linkoins</strong> for every classmate who joins and verifies their phone. They get a <strong>+20 welcome boost</strong> too!
                                     </div>
                                     <div className="ic-link-box">
                                         <div className="ic-link-text">{referralLink || 'Loading link...'}</div>
@@ -239,7 +239,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                                 )}
                                             </div>
                                             <div className={`ref-status-badge ${ref.status}`}>
-                                                {ref.status === 'completed' ? <><i className="fas fa-coins"></i> +100</> : <><i className="fas fa-hourglass-half"></i> Pending</>}
+                                                {ref.status === 'completed' ? <><i className="fas fa-coins"></i> +30</> : <><i className="fas fa-hourglass-half"></i> Pending</>}
                                             </div>
                                         </div>
                                     ))
