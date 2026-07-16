@@ -165,10 +165,21 @@ const App = () => {
         setUnreadCount(count || 0);
     };
 
+    const resolveReferralStorage = (sessionObj) => {
+        const refUsername = localStorage.getItem('linkup_ref');
+        if (sessionObj && refUsername) {
+            // Silently link the referral on the backend and clear the cache
+            supabase.rpc('register_referral', { referrer_username: refUsername }).then(() => {
+                localStorage.removeItem('linkup_ref');
+            });
+        }
+    };
+
     // 1. Check active session on load
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
+        resolveReferralStorage(session);
         fetchProfile(session.user.id);
         updateLastSeen();
         fetchNotificationsCount(session.user.id);
@@ -188,6 +199,7 @@ const App = () => {
         setRequiresPasswordReset(true);
       }
       if (session) {
+        resolveReferralStorage(session);
         fetchProfile(session.user.id);
         fetchNotificationsCount(session.user.id);
       } else {
