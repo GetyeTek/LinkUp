@@ -166,6 +166,53 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true, metadata: meta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (action === 'get_target_tg_group') {
+        const targetGroup = Deno.env.get('TARGET_TG_GROUP') || '@linkup_official_squad';
+        return new Response(JSON.stringify({ success: true, target_group: targetGroup }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === 'verify_tg_group_join') {
+        const targetGroup = Deno.env.get('TARGET_TG_GROUP') || '@linkup_official_squad';
+        const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+        
+        if (!botToken) throw new Error("Bot token not configured on server.");
+
+        const { data: profile } = await supabase.from('profiles').select('telegram_id, registered_with_telegram').eq('id', requesterId).single();
+        if (!profile?.registered_with_telegram || !profile?.telegram_id) {
+            throw new Error("You must verify your Telegram account first.");
+        }
+
+        const idempotencyKey = `tg_group_join_reward_${requesterId}`;
+        const { data: tx } = await supabase.from('linkoin_transactions').select('id').eq('idempotency_key', idempotencyKey).maybeSingle();
+        if (tx) throw new Error("Reward already claimed.");
+
+        // Query Telegram Bot API securely from the backend
+        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${targetGroup}&user_id=${profile.telegram_id}`);
+        const tgData = await tgRes.json();
+
+        if (!tgData.ok) {
+            console.error("[Social Core] TG API Error:", tgData);
+            throw new Error("Could not verify membership. Are you sure you joined the correct group?");
+        }
+
+        const status = tgData.result.status;
+        if (!['member', 'administrator', 'creator'].includes(status)) {
+            throw new Error("You have not joined the group yet, or you left.");
+        }
+
+        const { error: insertErr } = await supabase.from('linkoin_transactions').insert({
+            user_id: requesterId,
+            amount: 30,
+            transaction_type: 'reward',
+            description: `Joined Official Telegram Group: ${targetGroup}`,
+            idempotency_key: idempotencyKey
+        });
+
+        if (insertErr) throw insertErr;
+
+        return new Response(JSON.stringify({ success: true, amount: 30 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     throw new Error(`Unknown action: ${action}`);
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: corsHeaders });
