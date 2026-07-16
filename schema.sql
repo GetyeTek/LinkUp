@@ -1,116 +1,125 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-16T05:03:22.160Z
+-- Date: 2026-07-16T18:50:02.989Z
 
 -- ========================
 -- TABLES & COLUMNS
 -- ========================
 Table: api_keys
-cooldown_until (timestamp with time zone), last_used_at (timestamp with time zone), service (text), api_key (text), name (text), id (bigint), created_at (timestamp with time zone), is_active (boolean)
+is_active (boolean), created_at (timestamp with time zone), api_key (text), name (text), service (text), id (bigint), cooldown_until (timestamp with time zone), last_used_at (timestamp with time zone)
 
 Table: book_pages
-manual_flag (text), page_key (text), id (uuid), book_id (uuid), page_number (integer), content_json (jsonb), created_at (timestamp with time zone)
+book_id (uuid), page_key (text), page_number (integer), content_json (jsonb), created_at (timestamp with time zone), id (uuid), manual_flag (text)
 
 Table: book_question_links
-id (uuid), chunk_id (uuid), question_id (uuid), created_at (timestamp with time zone), similarity_score (double precision)
+question_id (uuid), id (uuid), chunk_id (uuid), created_at (timestamp with time zone), similarity_score (double precision)
 
 Table: books
-course_code (text), author (text), cover_url (text), category (text), title (text), page_offset (integer), toc (jsonb), created_at (timestamp with time zone), id (uuid)
+cover_url (text), author (text), category (text), title (text), id (uuid), created_at (timestamp with time zone), toc (jsonb), page_offset (integer), course_code (text)
 
 Table: campus_channels
-id (uuid), is_private (boolean), channel_handle (text), created_at (timestamp with time zone), is_active (boolean), telegram_peer_id (bigint), last_scraped_id (bigint)
+last_scraped_id (bigint), id (uuid), is_private (boolean), channel_handle (text), telegram_peer_id (bigint), created_at (timestamp with time zone), is_active (boolean)
 
 Table: campus_feed
-metadata (jsonb), created_at (timestamp with time zone), full_text (text), telegram_id (bigint), image_url (text), telegram_timestamp (timestamp with time zone), id (uuid), channel_handle (text)
+created_at (timestamp with time zone), metadata (jsonb), telegram_timestamp (timestamp with time zone), telegram_id (bigint), id (uuid), channel_handle (text), image_url (text), full_text (text)
 
 Table: chunks
-embedding (USER-DEFINED), chunk_text (text), chunk_index (integer), next_chunk_id (uuid), prev_chunk_id (uuid), id (uuid), toc_node_id (uuid), created_at (timestamp with time zone), page_number (integer), document_id (uuid)
+id (uuid), prev_chunk_id (uuid), next_chunk_id (uuid), chunk_index (integer), chunk_text (text), page_number (integer), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), document_id (uuid)
 
 Table: conduit_favorites
-id (uuid), metadata (jsonb), created_at (timestamp with time zone), category (text), target_id (text), repo_name (text)
+created_at (timestamp with time zone), target_id (text), repo_name (text), category (text), id (uuid), metadata (jsonb)
 
 Table: conduit_history
-created_at (timestamp with time zone), ops (jsonb), type (text), id (uuid), conduit_id (integer), meta (text), note (text), title (text), sha (text), repo_name (text)
+created_at (timestamp with time zone), sha (text), repo_name (text), conduit_id (integer), id (uuid), ops (jsonb), note (text), meta (text), type (text), title (text)
 
 Table: conduit_logs
-type (text), created_at (timestamp with time zone), data (jsonb), repo_name (text), id (uuid)
+type (text), repo_name (text), created_at (timestamp with time zone), data (jsonb), id (uuid)
 
 Table: conversation_members
-user_id (uuid), last_read_at (timestamp with time zone), role (USER-DEFINED), created_at (timestamp with time zone), muted_until (timestamp with time zone), id (uuid), conversation_id (uuid)
+created_at (timestamp with time zone), role (USER-DEFINED), user_id (uuid), id (uuid), conversation_id (uuid), muted_until (timestamp with time zone), last_read_at (timestamp with time zone)
 
 Table: conversations
-owner_id (uuid), created_at (timestamp with time zone), type (USER-DEFINED), id (uuid), metadata (jsonb), title (character varying), avatar_url (text), last_message_at (timestamp with time zone)
+type (USER-DEFINED), avatar_url (text), title (character varying), metadata (jsonb), owner_id (uuid), last_message_at (timestamp with time zone), created_at (timestamp with time zone), id (uuid)
 
 Table: courses
-department_id (uuid), id (uuid), name (text), code (text), created_at (timestamp with time zone)
+department_id (uuid), code (text), name (text), created_at (timestamp with time zone), id (uuid)
 
 Table: departments
-created_at (timestamp with time zone), id (uuid), name (text)
+created_at (timestamp with time zone), name (text), id (uuid)
 
 Table: documents
-last_processed_at (timestamp with time zone), page_count (integer), id (uuid), user_id (uuid), chunk_count (integer), created_at (timestamp with time zone), file_name (text), storage_path (text), status (text)
+chunk_count (integer), user_id (uuid), created_at (timestamp with time zone), last_processed_at (timestamp with time zone), storage_path (text), page_count (integer), status (text), file_name (text), id (uuid)
 
 Table: embedding_progress
-id (uuid), book_id (uuid), page_number (integer), block_index (integer), locked_until (timestamp with time zone), updated_at (timestamp with time zone), status (text), error_message (text)
+page_number (integer), status (text), id (uuid), book_id (uuid), error_message (text), block_index (integer), locked_until (timestamp with time zone), updated_at (timestamp with time zone)
 
 Table: exams
-created_at (timestamp with time zone), course_id (uuid), total_marks (numeric), date (text), exam_type (text), time_allowed_minutes (integer), general_instructions (text), program (text), id (uuid), university_id (uuid), constants_provided (jsonb), exam_quality_notes (jsonb), media_summary (jsonb)
+media_summary (jsonb), created_at (timestamp with time zone), general_instructions (text), program (text), course_id (uuid), exam_type (text), date (text), id (uuid), university_id (uuid), time_allowed_minutes (integer), total_marks (numeric), constants_provided (jsonb), exam_quality_notes (jsonb)
 
 Table: featured_events
-action_type (text), tag_color (text), button_color (text), id (uuid), app_route (jsonb), is_active (boolean), created_at (timestamp with time zone), metadata (jsonb), button_text (text), title (text), body (text), image_url (text), external_url (text), tag_text (text), html_content (text)
+external_url (text), id (uuid), app_route (jsonb), is_active (boolean), created_at (timestamp with time zone), metadata (jsonb), title (text), body (text), image_url (text), tag_text (text), tag_color (text), button_text (text), button_color (text), action_type (text), html_content (text)
+
+Table: linkoin_transactions
+created_at (timestamp with time zone), idempotency_key (text), description (text), amount (integer), user_id (uuid), id (uuid), transaction_type (text)
 
 Table: live_stage_questions
-id (uuid), is_pinned (boolean), status (text), text (text), created_at (timestamp with time zone), sender_id (uuid), conversation_id (uuid)
+status (text), is_pinned (boolean), id (uuid), conversation_id (uuid), sender_id (uuid), created_at (timestamp with time zone), text (text)
 
 Table: live_study_sessions
-raw_source_text (text), lecture_chunks (jsonb), compiled_answers (jsonb), layout_blueprint (jsonb), generation_state (text), active_user_ids (ARRAY), last_updated_at (timestamp with time zone), lesson_topic (text), course_name (text), id (uuid), conversation_id (uuid)
+conversation_id (uuid), last_updated_at (timestamp with time zone), course_name (text), lecture_chunks (jsonb), compiled_answers (jsonb), layout_blueprint (jsonb), generation_state (text), raw_source_text (text), lesson_topic (text), id (uuid), active_user_ids (ARRAY)
 
 Table: messages
-forward_meta (jsonb), text (text), id (uuid), conversation_id (uuid), sender_id (uuid), attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean), reply_to_id (uuid)
+sender_id (uuid), is_edited (boolean), reply_to_id (uuid), forward_meta (jsonb), conversation_id (uuid), id (uuid), text (text), attachments (jsonb), created_at (timestamp with time zone)
 
 Table: migration_progress
-status (text), remote_id (text), pdf_name (text), page_index (text), error_message (text), processed_at (timestamp with time zone), id (uuid)
+page_index (text), error_message (text), id (uuid), processed_at (timestamp with time zone), remote_id (text), pdf_name (text), status (text)
 
 Table: migration_sync_state
-id (integer), current_offset (integer), last_run_at (timestamp with time zone)
+current_offset (integer), last_run_at (timestamp with time zone), id (integer)
 
 Table: news_feed
-image_url (text), post_url (text), id (bigint), title (text), snippet (text), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), full_text (text), channel (text), telegram_id (bigint)
+post_url (text), image_url (text), id (bigint), full_text (text), title (text), telegram_timestamp (timestamp with time zone), created_at (timestamp with time zone), telegram_id (bigint), snippet (text), channel (text)
 
 Table: notifications
-title (text), user_id (uuid), type (text), is_read (boolean), action_data (jsonb), created_at (timestamp with time zone), id (uuid), description (text), insight (text), icon (text)
+icon (text), created_at (timestamp with time zone), action_data (jsonb), is_read (boolean), user_id (uuid), id (uuid), type (text), title (text), description (text), insight (text)
 
 Table: peer_questions
-course_tag (text), user_id (uuid), created_at (timestamp with time zone), title (text), id (uuid), body (text)
+id (uuid), created_at (timestamp with time zone), user_id (uuid), title (text), body (text), course_tag (text)
 
 Table: poll_votes
-message_id (uuid), created_at (timestamp with time zone), option_index (integer), user_id (uuid), id (uuid)
+user_id (uuid), created_at (timestamp with time zone), option_index (integer), message_id (uuid), id (uuid)
 
 Table: profiles
-freshman_stream (text), year (text), updated_at (timestamp with time zone), last_seen_at (timestamp with time zone), university_id (uuid), last_username_change_at (timestamp with time zone), target_department (text), program (text), telegram_username (text), telegram_id (bigint), bio (text), theme (text), registered_with_telegram (boolean), level (text), avatar_url (text), full_name (text), phone (text), id (uuid), linkoin_balance (integer), username (text), department (text)
+linkoin_balance (integer), university_id (uuid), last_username_change_at (timestamp with time zone), target_department (text), full_name (text), avatar_url (text), updated_at (timestamp with time zone), last_seen_at (timestamp with time zone), id (uuid), telegram_id (bigint), registered_with_telegram (boolean), current_streak (integer), longest_streak (integer), last_streak_update (date), telegram_username (text), theme (text), bio (text), phone (text), program (text), year (text), freshman_stream (text), department (text), username (text), level (text)
 
 Table: question_book_mappings
-processed_at (timestamp with time zone), created_at (timestamp with time zone), content_index (integer), is_valid (boolean), book_id (uuid), question_id (uuid), id (uuid), status (text), page_key (text), snippet (text), error_message (text)
+error_message (text), is_valid (boolean), snippet (text), status (text), page_key (text), processed_at (timestamp with time zone), content_index (integer), question_id (uuid), book_id (uuid), created_at (timestamp with time zone), id (uuid)
 
 Table: question_processing_progress
-book_id (uuid), created_at (timestamp with time zone), status (text), question_id (uuid), error_message (text), processed_at (timestamp with time zone)
+created_at (timestamp with time zone), book_id (uuid), error_message (text), question_id (uuid), status (text), processed_at (timestamp with time zone)
 
 Table: question_reports
-status (text), source (text), created_at (timestamp with time zone), id (uuid), question_id (uuid), report_text (text)
+status (text), report_text (text), source (text), id (uuid), question_id (uuid), created_at (timestamp with time zone)
 
 Table: questions
-points (numeric), embedding_status (text), question_number (text), question_type (text), media (jsonb), transcription_quality (jsonb), text (text), explanation (text), matching_data (jsonb), options (jsonb), question_order (integer), retry_count (integer), embedding (USER-DEFINED), created_at (timestamp with time zone), correct_answer (jsonb), id (uuid), section_id (uuid)
+matching_data (jsonb), transcription_quality (jsonb), created_at (timestamp with time zone), embedding_status (text), question_order (integer), options (jsonb), points (numeric), retry_count (integer), embedding (USER-DEFINED), correct_answer (jsonb), id (uuid), text (text), explanation (text), section_id (uuid), media (jsonb), question_number (text), question_type (text)
+
+Table: referrals
+created_at (timestamp with time zone), referee_id (uuid), id (uuid), referrer_id (uuid), status (text)
 
 Table: sections
-exam_id (uuid), total_points (numeric), shared_context (jsonb), section_order (integer), created_at (timestamp with time zone), instructions (text), title (text), id (uuid)
+instructions (text), title (text), id (uuid), exam_id (uuid), total_points (numeric), shared_context (jsonb), section_order (integer), created_at (timestamp with time zone)
 
 Table: squad_bans
-banned_until (timestamp with time zone), user_id (uuid), id (uuid), conversation_id (uuid), created_at (timestamp with time zone)
+user_id (uuid), created_at (timestamp with time zone), banned_until (timestamp with time zone), conversation_id (uuid), id (uuid)
+
+Table: system_config
+key (text), value (jsonb)
 
 Table: telegram_login_tokens
-created_at (timestamp with time zone), expires_at (timestamp with time zone), id (uuid), metadata (jsonb), token_hash (text), telegram_id (bigint)
+id (uuid), created_at (timestamp with time zone), telegram_id (bigint), expires_at (timestamp with time zone), token_hash (text), metadata (jsonb)
 
 Table: universities
-created_at (timestamp with time zone), id (uuid), short_name (text), name (text)
+created_at (timestamp with time zone), short_name (text), name (text), id (uuid)
 
 -- ========================
 -- RLS POLICIES
@@ -168,6 +177,8 @@ Table: live_study_sessions | Policy: Hosts can manage live sessions | Cmd: ALL |
   WHERE ((cm.conversation_id = live_study_sessions.conversation_id) AND (cm.user_id = auth.uid()) AND (cm.role = ANY (ARRAY['owner'::member_role, 'admin'::member_role])))))
 Table: live_stage_questions | Policy: Members can read live questions | Cmd: SELECT | Using: is_member_of(conversation_id)
 Table: poll_votes | Policy: Public read for poll votes | Cmd: SELECT | Using: true
+Table: linkoin_transactions | Policy: Users can view their own transactions | Cmd: SELECT | Using: (auth.uid() = user_id)
+Table: referrals | Policy: Users can view their own referrals | Cmd: SELECT | Using: ((auth.uid() = referrer_id) OR (auth.uid() = referee_id))
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -1636,6 +1647,232 @@ BEGIN
     FROM locked
     WHERE qpp.question_id = locked.question_id
     RETURNING qpp.question_id;
+END;
+
+
+-- Function: get_my_referrals
+
+DECLARE
+    result jsonb;
+BEGIN
+    SELECT jsonb_agg(jsonb_build_object(
+        'id', r.id,
+        'status', r.status,
+        'created_at', r.created_at,
+        'referee_name', p.full_name,
+        'referee_username', p.username,
+        'referee_avatar', p.avatar_url
+    ) ORDER BY r.created_at DESC) INTO result
+    FROM public.referrals r
+    JOIN public.profiles p ON p.id = r.referee_id
+    WHERE r.referrer_id = auth.uid();
+    
+    RETURN COALESCE(result, '[]'::jsonb);
+END;
+
+
+-- Function: sync_linkoin_balance
+
+BEGIN
+    UPDATE public.profiles
+    SET linkoin_balance = COALESCE(linkoin_balance, 0) + NEW.amount
+    WHERE id = NEW.user_id;
+    RETURN NEW;
+END;
+
+
+-- Function: claim_telegram_verification_reward
+
+DECLARE
+    v_user record;
+    v_key text;
+BEGIN
+    -- 1. Fetch user status and lock the row to prevent concurrent race conditions
+    SELECT id, registered_with_telegram INTO v_user
+    FROM public.profiles
+    WHERE id = auth.uid()
+    FOR UPDATE;
+
+    IF v_user IS NULL THEN
+        RAISE EXCEPTION 'User not found';
+    END IF;
+
+    IF v_user.registered_with_telegram IS NOT TRUE THEN
+        RAISE EXCEPTION 'You must verify your Telegram account first.';
+    END IF;
+
+    -- 2. Check Idempotency (Has this specific reward already been claimed?)
+    v_key := 'tg_verify_reward_' || v_user.id::text;
+
+    IF EXISTS (SELECT 1 FROM public.linkoin_transactions WHERE idempotency_key = v_key) THEN
+        RAISE EXCEPTION 'Reward already claimed.';
+    END IF;
+
+    -- 3. Insert transaction (Trigger automatically updates balance)
+    INSERT INTO public.linkoin_transactions (user_id, amount, transaction_type, description, idempotency_key)
+    VALUES (v_user.id, 50, 'reward', 'Telegram Verification Mission', v_key);
+
+    RETURN jsonb_build_object('success', true, 'amount_granted', 50);
+END;
+
+
+-- Function: register_referral
+
+DECLARE
+    v_referrer_id UUID;
+BEGIN
+    -- Resolve the username to an ID
+    SELECT id INTO v_referrer_id FROM public.profiles WHERE username = referrer_username LIMIT 1;
+    
+    IF v_referrer_id IS NOT NULL AND v_referrer_id != auth.uid() THEN
+        -- Safely insert the pending referral (ignores if referee already has an inviter)
+        INSERT INTO public.referrals (referrer_id, referee_id, status)
+        VALUES (v_referrer_id, auth.uid(), 'pending')
+        ON CONFLICT (referee_id) DO NOTHING;
+    END IF;
+END;
+
+
+-- Function: update_user_streak
+
+DECLARE
+    v_today date;
+    v_yesterday date;
+    v_last_update date;
+BEGIN
+    v_today := (now() AT TIME ZONE 'Africa/Addis_Ababa')::date;
+    v_yesterday := v_today - interval '1 day';
+    
+    -- Lock row for safety
+    SELECT last_streak_update INTO v_last_update
+    FROM public.profiles WHERE id = auth.uid() FOR UPDATE;
+    
+    IF v_last_update IS NULL OR v_last_update < v_yesterday THEN
+        -- Streak broken or first ever load
+        UPDATE public.profiles 
+        SET current_streak = 1, last_streak_update = v_today
+        WHERE id = auth.uid();
+    ELSIF v_last_update = v_yesterday THEN
+        -- Active yesterday, increment!
+        UPDATE public.profiles 
+        SET current_streak = current_streak + 1,
+            longest_streak = GREATEST(longest_streak, current_streak + 1),
+            last_streak_update = v_today
+        WHERE id = auth.uid();
+    END IF;
+    -- If v_last_update = v_today, they already checked in. Do nothing.
+END;
+
+
+-- Function: trigger_referral_reward
+
+DECLARE
+    v_referral record;
+    v_referrer_key text;
+BEGIN
+    -- Only trigger when registered_with_telegram transitions from false to true
+    IF NEW.registered_with_telegram = true AND OLD.registered_with_telegram = false THEN
+        
+        -- Check if this user was invited by someone
+        SELECT * INTO v_referral FROM public.referrals WHERE referee_id = NEW.id AND status = 'pending' LIMIT 1;
+        
+        IF v_referral IS NOT NULL THEN
+            -- 1. Mark as completed
+            UPDATE public.referrals SET status = 'completed' WHERE id = v_referral.id;
+            
+            v_referrer_key := 'ref_bonus_referrer_' || v_referral.referee_id::text;
+            
+            -- 2. Reward the Referrer (+30). The referee relies on the 100 default coins given on signup.
+            INSERT INTO public.linkoin_transactions (user_id, amount, transaction_type, description, idempotency_key)
+            VALUES (v_referral.referrer_id, 30, 'reward', 'Squad Network Invite Bonus', v_referrer_key)
+            ON CONFLICT (idempotency_key) DO NOTHING;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+
+
+-- Function: get_current_streak_mission
+
+DECLARE
+    v_semester int;
+    v_current int;
+    v_target int;
+    v_reward int;
+    v_claimed boolean;
+BEGIN
+    SELECT COALESCE((value->>'semester')::int, 1) INTO v_semester FROM public.system_config WHERE key = 'academic_calendar';
+    SELECT current_streak INTO v_current FROM public.profiles WHERE id = auth.uid();
+    
+    -- Progressively scan targets. Stops and returns the FIRST unclaimed one.
+    FOREACH v_target IN ARRAY ARRAY[7, 15, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360]
+    LOOP
+        SELECT EXISTS(
+            SELECT 1 FROM public.linkoin_transactions 
+            WHERE idempotency_key = 'streak_claim_' || v_target::text || '_' || auth.uid()::text || '_sem' || v_semester::text
+        ) INTO v_claimed;
+        
+        IF NOT v_claimed THEN
+            IF v_target = 7 THEN v_reward := 70;
+            ELSIF v_target = 15 THEN v_reward := 150;
+            ELSIF v_target = 30 THEN v_reward := 300;
+            ELSIF v_target = 60 THEN v_reward := 400;
+            ELSE v_reward := 500 + (((v_target - 90) / 30) * 100);
+            END IF;
+            
+            RETURN jsonb_build_object(
+                'target', v_target, 
+                'reward', v_reward, 
+                'status', CASE WHEN v_current >= v_target THEN 'claimable' ELSE 'in_progress' END, 
+                'current', v_current
+            );
+        END IF;
+    END LOOP;
+    RETURN jsonb_build_object('status', 'maxed_out');
+END;
+
+
+-- Function: claim_streak_milestone
+
+DECLARE
+    v_semester int;
+    v_current int;
+    v_reward int;
+    v_key text;
+BEGIN
+    SELECT COALESCE((value->>'semester')::int, 1) INTO v_semester FROM public.system_config WHERE key = 'academic_calendar';
+    SELECT current_streak INTO v_current FROM public.profiles WHERE id = auth.uid() FOR UPDATE;
+    
+    IF v_current < p_target THEN RAISE EXCEPTION 'Streak target not reached yet.'; END IF;
+    
+    v_key := 'streak_claim_' || p_target::text || '_' || auth.uid()::text || '_sem' || v_semester::text;
+    IF EXISTS (SELECT 1 FROM public.linkoin_transactions WHERE idempotency_key = v_key) THEN
+        RAISE EXCEPTION 'Milestone already claimed.';
+    END IF;
+    
+    IF p_target = 7 THEN v_reward := 70;
+    ELSIF p_target = 15 THEN v_reward := 150;
+    ELSIF p_target = 30 THEN v_reward := 300;
+    ELSIF p_target = 60 THEN v_reward := 400;
+    ELSE v_reward := 500 + (((p_target - 90) / 30) * 100);
+    END IF;
+    
+    INSERT INTO public.linkoin_transactions (user_id, amount, transaction_type, description, idempotency_key)
+    VALUES (auth.uid(), v_reward, 'reward', p_target::text || ' Day Streak Bonus', v_key);
+    
+    RETURN jsonb_build_object('success', true);
+END;
+
+
+-- Function: admin_reset_semester_streaks
+
+DECLARE
+    v_old_semester int;
+BEGIN
+    SELECT COALESCE((value->>'semester')::int, 1) INTO v_old_semester FROM public.system_config WHERE key = 'academic_calendar';
+    
+    UPDATE public.system_config SET value = jsonb_build_object('semester', v_old_semester + 1) WHERE key = 'academic_calendar';
+    UPDATE public.profiles SET current_streak = 0, last_streak_update = NULL;
 END;
 
 
