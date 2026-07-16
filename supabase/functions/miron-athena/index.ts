@@ -126,6 +126,17 @@ const toolsDefinition = {
       }
     },
     {
+      name: "fetch_available_boards",
+      description: "List available pre-built visual boards for a specific course. Use this to find visual diagrams to show the user.",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          course_code: { type: "STRING", description: "The course code (e.g., 'PHYS 1011')" }
+        },
+        required: ["course_code"]
+      }
+    },
+    {
       name: "render_quiz",
       description: "Render an interactive quiz UI inside the chat to test the student's knowledge.",
       parameters: {
@@ -463,6 +474,21 @@ serve(async (req) => {
                 }
               } else {
                 toolResult = { status: "error", message: "Course code not found." };
+              }
+            }
+            else if (name === "fetch_available_boards") {
+              const { data: book } = await supabase.from('books').select('id').eq('course_code', args.course_code.toUpperCase().trim()).single();
+              if (book) {
+                const { data: boards } = await supabase.from('board_drawings').select('id, toc_node_title, description').eq('book_id', book.id);
+                if (boards && boards.length > 0) {
+                  toolResult = { status: "success", boards: boards.map(b => ({ id: b.id, topic: b.toc_node_title, description: b.description })) };
+                  executedTools.push(`Found ${boards.length} visual boards for ${args.course_code}`);
+                  toolResult.instruction = "You can render these instantly by inserting the tag [BOARD_asset_id] directly in your response text.";
+                } else {
+                  toolResult = { status: "success", message: "No pre-built boards found for this course." };
+                }
+              } else {
+                toolResult = { status: "error", message: "Course not found." };
               }
             }
             else if (name === "render_quiz") {
