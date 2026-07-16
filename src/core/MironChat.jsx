@@ -4,6 +4,7 @@ import { invokeMiron } from '../config/api.js';
 import { getComponent, usePlatform } from '@linkup-platform/sdk-core';
 import DOMPurify from 'dompurify';
 import InteractiveBoard from './components/InteractiveBoard.jsx';
+import InlineBoardTrigger from './components/InlineBoardTrigger.jsx';
 import './MironChat.css';
 
 import InlineChatQuiz from './components/InlineChatQuiz.jsx';
@@ -212,7 +213,12 @@ const MironChat = ({ onClose, initialContext }) => {
                             <span className="miron-thought">{m.thought}</span>
                         )}
                         <div className="athena-bubble">
-                            {m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\])/g).map((part, idx) => {
+                            {m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\])/g).map((part, idx) => {
+                                const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
+                                if (boardMatch) {
+                                    return <InlineBoardTrigger key={idx} boardId={boardMatch[1]} onOpen={setActiveBoardPayload} />;
+                                }
+
                                 const quizMatch = part.match(/\[QUIZ_(\d+)\]/);
                                 if (quizMatch) {
                                     const quizId = parseInt(quizMatch[1], 10);
