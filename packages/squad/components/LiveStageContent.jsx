@@ -113,6 +113,18 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     if (payload.type === "chunk_transition") {
                         setSpokenText("");
                         const rawChunk = payload.chunk || "";
+
+                        // INTERCEPT PRE-RENDERED BOARD ASSET TAG
+                        const boardMatch = rawChunk.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/i);
+                        if (boardMatch) {
+                            const boardId = boardMatch[1];
+                            supabase.from('board_drawings').select('payload').eq('id', boardId).single().then(({data}) => {
+                                if (data && data.payload) {
+                                    setDevBoardPayload(data.payload);
+                                }
+                            });
+                        }
+
                         const blocks = [];
                         const regex = /\[print\]([\s\S]*?)\[print\]/gi;
                         let match;
