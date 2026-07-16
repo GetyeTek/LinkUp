@@ -10,39 +10,73 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
     const [tgMissionState, setTgMissionState] = useState('loading');
     const [isClaiming, setIsClaiming] = useState(false);
     
+    // Telegram Group Join Mission States: 'loading' | 'locked' | 'join' | 'verify' | 'claimed'
+    const [tgGroupMissionState, setTgGroupMissionState] = useState('loading');
+    const [targetGroupHandle, setTargetGroupHandle] = useState('@linkup_official_squad');
+    const [isVerifyingGroup, setIsVerifyingGroup] = useState(false);
+
     // Referral Network States
     const [referrals, setReferrals] = useState([]);
     const [loadingReferrals, setLoadingReferrals] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
 
+    const invokePlatformSocial = async (payload) => {
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch('https://linkup-gateway.getyeteklu2.workers.dev/functions/v1/social-core', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'apikey': 'sq_pub_2d66a1b8c9e08d9e0a2f8d73b',
+                'x-linkup-client': 'linkup-secure-client-2026',
+                ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+            },
+            body: JSON.stringify(payload)
+        });
+        return response.json();
+    };
+
     const checkTgMissionStatus = useCallback(async () => {
         if (!sessionUser?.id) return;
         
         try {
-            // 1. Check if verified
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('registered_with_telegram')
                 .eq('id', sessionUser.id)
                 .single();
 
-            if (!profile?.registered_with_telegram) {
-                setTgMissionState('unverified');
-                return;
-            }
-
-            // 2. If verified, check the ledger to see if they already claimed it
-            const idempotencyKey = `tg_verify_reward_${sessionUser.id}`;
-            const { data: tx } = await supabase
+            // 1. Check Primary Verification Mission
+            const idKeyVerify = `tg_verify_reward_${sessionUser.id}`;
+            const { data: txVerify } = await supabase
                 .from('linkoin_transactions')
                 .select('id')
-                .eq('idempotency_key', idempotencyKey)
+                .eq('idempotency_key', idKeyVerify)
                 .maybeSingle();
 
-            if (tx) {
-                setTgMissionState('claimed');
+            if (txVerify) setTgMissionState('claimed');
+            else if (profile?.registered_with_telegram) setTgMissionState('unclaimed');
+            else setTgMissionState('unverified');
+
+            // 2. Check Group Join Mission
+            const idKeyGroup = `tg_group_join_reward_${sessionUser.id}`;
+            const { data: txGroup } = await supabase
+                .from('linkoin_transactions')
+                .select('id')
+                .eq('idempotency_key', idKeyGroup)
+                .maybeSingle();
+
+            if (txGroup) {
+                setTgGroupMissionState('claimed');
+            } else if (!profile?.registered_with_telegram) {
+                setTgGroupMissionState('locked');
             } else {
-                setTgMissionState('unclaimed');
+                // Fetch dynamic target group handle silently
+                invokePlatformSocial({ action: 'get_target_tg_group' }).then(res => {
+                    if (res.target_group) setTargetGroupHandle(res.target_group);
+                    setTgGroupMissionState(prev => prev === 'verify' ? 'verify' : 'join');
+                }).catch(() => {
+                    setTgGroupMissionState(prev => prev === 'verify' ? 'verify' : 'join');
+                });
             }
         } catch (error) {
             console.error("Failed to fetch mission status", error);
@@ -87,6 +121,26 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
             } finally {
                 setIsClaiming(false);
             }
+        }
+    };
+
+    const handleJoinGroupClick = () => {
+        window.open(`https://t.me/${targetGroupHandle.replace('@', '')}`, '_blank', 'noopener,noreferrer');
+        setTgGroupMissionState('verify');
+    };
+
+    const handleVerifyGroupClick = async () => {
+        setIsVerifyingGroup(true);
+        try {
+            const res = await invokePlatformSocial({ action: 'verify_tg_group_join' });
+            if (res.error) throw new Error(res.error);
+            
+            if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+            setTgGroupMissionState('claimed');
+        } catch (err) {
+            alert(err.message || "Failed to verify membership.");
+        } finally {
+            setIsVerifyingGroup(false);
         }
     };
 
@@ -188,8 +242,37 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                     </div>
                                 </li>
 
-                                {/* Static Placeholders */}
-                                <li><div className="task-card"><div className="task-icon"><i className="fas fa-lightbulb"></i></div><div className="task-details"><div className="task-title">Quick Quiz</div><div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>Test your knowledge</div></div><div className="task-action"><div className="reward-amount"><i className="fas fa-coins"></i> 15</div><button className="claim-btn disabled">In Progress</button></div></div></li>
+                                {/* The Telegram Group Join Mission */}
+                                <li>
+                                    <div className="task-card" style={{ opacity: tgGroupMissionState === 'locked' ? 0.6 : 1 }}>
+                                        <div className="task-icon" style={{ background: 'rgba(41, 169, 234, 0.1)', color: '#29A9EA' }}>
+                                            <i className="fas fa-users"></i>
+                                        </div>
+                                        <div className="task-details">
+                                            <div className="task-title">Join the Squad</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>
+                                                {tgGroupMissionState === 'locked' ? 'Requires Identity Verification' : `Join ${targetGroupHandle}`}
+                                            </div>
+                                        </div>
+                                        <div className="task-action">
+                                            <div className="reward-amount"><i className="fas fa-coins"></i> 30</div>
+                                            {tgGroupMissionState === 'locked' && (
+                                                <button className="claim-btn locked-action" disabled><i className="fas fa-lock"></i></button>
+                                            )}
+                                            {tgGroupMissionState === 'join' && (
+                                                <button className="claim-btn verify-action" onClick={handleJoinGroupClick}>Join</button>
+                                            )}
+                                            {tgGroupMissionState === 'verify' && (
+                                                <button className="claim-btn gold-pulse" onClick={handleVerifyGroupClick} disabled={isVerifyingGroup}>
+                                                    {isVerifyingGroup ? <i className="fas fa-circle-notch fa-spin"></i> : 'Verify'}
+                                                </button>
+                                            )}
+                                            {tgGroupMissionState === 'claimed' && (
+                                                <button className="claim-btn claimed" disabled><i className="fas fa-check"></i></button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </li>
                             </ul>
                         )}
 
