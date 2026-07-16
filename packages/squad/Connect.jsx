@@ -8,9 +8,6 @@ import Notes from './Notes.jsx';
 import UserInfoPanel from './components/UserInfoPanel.jsx';
 import GlobalSearchOverlay from './components/GlobalSearchOverlay.jsx';
 import DiscoveryScreen from './components/DiscoveryScreen.jsx';
-import QAComposerModal from './components/QAComposerModal.jsx';
-import ReplyFullScreen from './components/ReplyFullScreen.jsx';
-import ForYouFeed from './components/ForYouFeed.jsx';
 import SquadsFeed from './components/SquadsFeed.jsx';
 import MessagesFeed from './components/MessagesFeed.jsx';
 
@@ -44,18 +41,11 @@ const Connect = () => {
     const [presenceSynced, setPresenceSynced] = useState(false);
     const activeChatRef = useRef(null);
     
-    // Q&A State
-    const [peerQuestions, setPeerQuestions] = useState([]);
-    const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
-    const [replyTarget, setReplyTarget] = useState(null); // holds question object for full-screen reply
     const [targetMessageId, setTargetMessageId] = useState(null); // Deep link scroller
     
-    // Featured Events State
-    
-    // Featured Events & Live Sessions
+    // Featured Events & Html Rooms
     const [featuredEvents, setFeaturedEvents] = useState([]);
     const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
-    const [liveSessions, setLiveSessions] = useState([]);
 
     const isSessionLive = (metadata) => {
         if (!metadata?.is_live) return false;
@@ -156,9 +146,7 @@ const Connect = () => {
 
         fetchConversations();
         fetchSuggestedSquads();
-        fetchPeerQuestions();
         fetchFeaturedEvents();
-        fetchLiveSessions();
         
         // 1. Subscribe to Realtime Messages, Read Receipts, and Conversation updates
         const msgChannel = supabase.channel('chat_list_updates')
@@ -218,7 +206,7 @@ const Connect = () => {
     useEffect(() => {
         const handleSubSwipe = (e) => {
             const { direction } = e.detail;
-            const views = ['for-you', 'messages', 'squads'];
+            const views = ['messages', 'squads'];
             const currentIndex = views.indexOf(activeView);
             
             // Intercept the global swipe if we can shift tabs internally
@@ -258,19 +246,9 @@ const Connect = () => {
         if (error) console.error("Error fetching suggestions:", error);
     };
 
-    const fetchPeerQuestions = async () => {
-        const { data, error } = await supabase.rpc('get_peer_questions');
-        if (data) setPeerQuestions(data);
-    };
-
     const fetchFeaturedEvents = async () => {
         const { data } = await supabase.rpc('get_featured_events');
         if (data) setFeaturedEvents(data);
-    };
-
-    const fetchLiveSessions = async () => {
-        const { data } = await supabase.rpc('get_live_study_sessions', { req_user_id: currentUser.id });
-        if (data) setLiveSessions(data);
     };
 
     const handleFeaturedAction = (event) => {
@@ -471,7 +449,7 @@ const Connect = () => {
     };
 
     return (
-        <div className={`tab-content active ${isHeaderCollapsed ? 'header-collapsed' : ''} ${activeView === 'for-you' ? 'for-you-active' : ''}`} id="connect-content">
+        <div className={`tab-content active ${isHeaderCollapsed ? 'header-collapsed' : ''}`} id="connect-content">
             <header className="interactive-header">
                 {forwardTargetMsg && !activeChatId && (
                     <div className="forward-mode-banner">
@@ -501,10 +479,6 @@ const Connect = () => {
                 <div className="main-nav-row">
                     <div className="orbiter-container">
                         <div className="icon-orbiter">
-                            <div className={`option ${activeView === 'for-you' ? 'active' : ''}`} onClick={() => { setActiveView('for-you'); setIsHeaderCollapsed(false); }}>
-                                <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-star"></i></div>
-                                <span className="text-label">For You</span>
-                            </div>
                             <div className={`option ${activeView === 'messages' ? 'active' : ''}`} onClick={() => { setActiveView('messages'); setIsHeaderCollapsed(false); }}>
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-paper-plane"></i></div>
                                 <span className="text-label">Messages</span>
@@ -516,30 +490,9 @@ const Connect = () => {
                         </div>
                     </div>
                 </div>
-                
-                {/* Embedded Filter Pills specifically for the For You academic feed */}
-                <div className="filter-pills-container">
-                    <div className="filter-pills">
-                        <div className="chip active">All</div>
-                        <div className="chip">Study Groups</div>
-                        <div className="chip">Q&A Forum</div>
-                        <div className="chip">Miron Tips</div>
-                    </div>
-                </div>
             </header>
 
             <div className="content-panel">
-                <ForYouFeed 
-                    activeView={activeView}
-                    handleScroll={handleScroll}
-                    peerQuestions={peerQuestions}
-                    currentUser={currentUser}
-                    timeAgo={timeAgo}
-                    setReplyTarget={setReplyTarget}
-                    liveSessions={liveSessions}
-                    handleJoinSquad={handleJoinSquad}
-                    joiningSquadId={joiningSquadId}
-                />
                 
                 <SquadsFeed 
                     activeView={activeView}
@@ -575,44 +528,14 @@ const Connect = () => {
                 />
             </div>
             
-            {/* The Shape-Shifting FAB */}
+            {/* Standard Connect FAB */}
             <div 
                 className="connect-fab" 
-                style={{ 
-                    background: activeView === 'for-you' ? 'var(--purple-glow, #9b59b6)' : 'var(--accent-teal)',
-                    color: activeView === 'for-you' ? '#fff' : '#0c0c0c'
-                }}
-                onClick={() => activeView === 'for-you' ? setIsQuestionModalOpen(true) : setShowDiscovery(true)}
+                style={{ background: 'var(--accent-teal)', color: '#0c0c0c' }}
+                onClick={() => setShowDiscovery(true)}
             >
-                <i className={`fas ${activeView === 'for-you' ? 'fa-question' : 'fa-comment-medical'}`}></i>
+                <i className="fas fa-comment-medical"></i>
             </div>
-
-            {/* Q&A Composer Modal */}
-            {isQuestionModalOpen && (
-                <QAComposerModal 
-                    currentUser={currentUser}
-                    onClose={() => setIsQuestionModalOpen(false)}
-                    onSuccess={(msg) => {
-                        setToastNotice(msg);
-                        fetchPeerQuestions();
-                    }}
-                    onError={setGlobalNotice}
-                />
-            )}
-
-            {/* Full Screen Reply UI */}
-            {replyTarget && (
-                <ReplyFullScreen 
-                    replyTarget={replyTarget}
-                    onClose={() => setReplyTarget(null)}
-                    onSuccess={(msg) => {
-                        setToastNotice(msg);
-                        setActiveView('messages');
-                        fetchConversations();
-                    }}
-                    onError={setGlobalNotice}
-                />
-            )}
 
             {showDiscovery && (
                 <DiscoveryScreen 
