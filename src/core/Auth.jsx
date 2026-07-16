@@ -14,12 +14,26 @@ const Auth = () => {
     const [error, setError] = useState(null);
     const [notice, setNotice] = useState(null); // { title, message, type, actionLabel }
     const [verifyingToken, setVerifyingToken] = useState(false);
+    const [referrerSlug, setReferrerSlug] = useState(null);
 
     const { status: phoneStatus } = usePhoneCheck(phone, '');
 
-    // Intercept Telegram Token
+    // Intercept Telegram Token and Referral Links
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
+        
+        // Handle Referrals
+        const ref = params.get('ref');
+        if (ref) {
+            setReferrerSlug(ref);
+            localStorage.setItem('linkup_ref', ref);
+            
+            // Clean the URL visually
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+        }
+
+        // Handle Telegram Token
         const token = params.get('auth_token');
         if (token) {
             setVerifyingToken(true);
@@ -306,6 +320,16 @@ const Auth = () => {
                 </div>
             )}
             
+            {referrerSlug && (
+                <div className="welcome-banner-ref">
+                    <div className="ref-avatar-icon"><i className="fas fa-gift"></i></div>
+                    <div className="ref-content">
+                        <h3>👋 You've been invited by @{referrerSlug}!</h3>
+                        <p>Complete registration & verify your phone to claim your free +20 Linkoin welcome boost!</p>
+                    </div>
+                </div>
+            )}
+
             <div className="auth-card">
                 <header className="auth-header">
                     <h1 className="auth-title">{isForgotPassword ? 'Reset Password' : 'LinkUp'}</h1>
