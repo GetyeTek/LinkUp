@@ -15,3 +15,22 @@
 .claim-btn.disabled { background-color: #333; color: #777; cursor: not-allowed; }
 .claim-btn.claimable { background-color: var(--linkoin-gold); color: var(--bg-dark); }
 .claim-btn.claimed { background-color: var(--accent-teal); color: var(--bg-dark); }
+
+.claim-btn.verify-action {
+    background-color: rgba(41, 169, 234, 0.15);
+    color: #29A9EA;
+    border: 1px solid rgba(41, 169, 234, 0.4);
+}
+
+.claim-btn.gold-pulse {
+    background-color: var(--linkoin-gold);
+    color: #000;
+    animation: goldPulse 2s infinite;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+@keyframes goldPulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
+    70% { box-shadow: 0 0 0 10px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
