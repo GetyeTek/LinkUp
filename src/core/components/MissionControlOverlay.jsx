@@ -3,12 +3,17 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './MissionControlOverlay.css';
 
 const MissionControlOverlay = ({ isActive, onClose }) => {
-    const { sessionUser } = usePlatform();
+    const { sessionUser, user: userProfile } = usePlatform();
     const [activeMissionTab, setActiveMissionTab] = useState('daily');
     
     // Telegram Mission States: 'loading' | 'unverified' | 'unclaimed' | 'claimed'
     const [tgMissionState, setTgMissionState] = useState('loading');
     const [isClaiming, setIsClaiming] = useState(false);
+    
+    // Referral Network States
+    const [referrals, setReferrals] = useState([]);
+    const [loadingReferrals, setLoadingReferrals] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
 
     const checkTgMissionStatus = useCallback(async () => {
         if (!sessionUser?.id) return;
@@ -84,6 +89,48 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
             }
         }
     };
+
+    // Load Referrals when the Network tab is active
+    useEffect(() => {
+        if (isActive && activeMissionTab === 'network') {
+            setLoadingReferrals(true);
+            supabase.rpc('get_my_referrals').then(({ data }) => {
+                if (data) setReferrals(data);
+                setLoadingReferrals(false);
+            });
+        }
+    }, [isActive, activeMissionTab]);
+
+    const getBaseUrl = () => {
+        const cleanBase = (window.location.origin + window.location.pathname).split('?')[0].replace(/\/$/, '');
+        return cleanBase;
+    };
+
+    const referralLink = userProfile?.username ? `${getBaseUrl()}?ref=${userProfile.username}` : '';
+    const shareMessage = `Yo! Join me on LinkUp for freshman prep, exam pavilion files, and study sessions with Miron AI. Use my link to get a free +20 coin welcome boost:\n`;
+
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(referralLink);
+        setCopySuccess(true);
+        if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+        setTimeout(() => setCopySuccess(false), 2000);
+    };
+
+    const handleShareTg = () => {
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareMessage)}`, '_blank');
+    };
+
+    const handleShareWa = () => {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage + ' ' + referralLink)}`, '_blank');
+    };
+
+    const timeAgo = (isoString) => {
+        const diff = Math.floor((new Date() - new Date(isoString)) / 60000);
+        if (diff < 60) return `${diff}m ago`;
+        const hrs = Math.floor(diff/60);
+        if (hrs < 24) return `${hrs}h ago`;
+        return `${Math.floor(hrs/24)}d ago`;
+    };
     
     return (
         <div className={`fullscreen-overlay ${isActive ? 'is-active' : ''}`} id="mission-overlay">
@@ -94,7 +141,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                 </header>
                 <div className="overlay-inner-content">
                     <nav className="tasks-nav fade-in-up" style={{ transitionDelay: '0.1s' }}>
-                        {['daily', 'weekly', 'milestones'].map(tab => (
+                        {['daily', 'network', 'milestones'].map(tab => (
                             <div 
                                 key={tab} 
                                 className={`nav-tab ${activeMissionTab === tab ? 'active' : ''}`} 
@@ -105,7 +152,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                         ))}
                         <div className="nav-indicator" style={{ 
                             width: '33.33%', 
-                            transform: `translateX(${activeMissionTab === 'daily' ? '0%' : activeMissionTab === 'weekly' ? '100%' : '200%'})` 
+                            transform: `translateX(${activeMissionTab === 'daily' ? '0%' : activeMissionTab === 'network' ? '100%' : '200%'})` 
                         }}></div>
                     </nav>
                     <div className="tasks-list-container fade-in-up" style={{ transitionDelay: '0.2s' }}>
@@ -145,7 +192,62 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                 <li><div className="task-card"><div className="task-icon"><i className="fas fa-lightbulb"></i></div><div className="task-details"><div className="task-title">Quick Quiz</div><div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>Test your knowledge</div></div><div className="task-action"><div className="reward-amount"><i className="fas fa-coins"></i> 15</div><button className="claim-btn disabled">In Progress</button></div></div></li>
                             </ul>
                         )}
-                        {activeMissionTab === 'weekly' && (
+
+                        {activeMissionTab === 'network' && (
+                            <div className="tasks-list active" style={{ padding: '1rem 0' }}>
+                                <div className="invite-card-premium">
+                                    <div className="ic-header">
+                                        <i className="fas fa-gem" style={{ color: 'var(--linkoin-gold)', fontSize: '1.2rem' }}></i>
+                                        <h3>Invite Friends, Earn Together</h3>
+                                    </div>
+                                    <div className="ic-body">
+                                        Earn <strong>+100 Linkoins</strong> for every classmate who joins and verifies their phone. They get a <strong>+20 welcome boost</strong> too!
+                                    </div>
+                                    <div className="ic-link-box">
+                                        <div className="ic-link-text">{referralLink || 'Loading link...'}</div>
+                                        <button className="ic-copy-btn" onClick={handleCopyLink} disabled={!referralLink}>
+                                            {copySuccess ? <><i className="fas fa-check"></i> Copied</> : <><i className="fas fa-copy"></i> Copy</>}
+                                        </button>
+                                    </div>
+                                    <div className="ic-share-actions">
+                                        <button className="ic-share-btn tg" onClick={handleShareTg}><i className="fab fa-telegram-plane"></i> Telegram</button>
+                                        <button className="ic-share-btn wa" onClick={handleShareWa}><i className="fab fa-whatsapp"></i> WhatsApp</button>
+                                    </div>
+                                </div>
+
+                                <div className="network-tracker-header">
+                                    <span>Squad Network</span>
+                                    <span>{referrals.length} Invites</span>
+                                </div>
+
+                                {loadingReferrals ? (
+                                    <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}><i className="fas fa-circle-notch fa-spin"></i> Syncing Ledger...</div>
+                                ) : referrals.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '2rem', color: '#666', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                                        <i className="fas fa-users-slash" style={{ fontSize: '2rem', display: 'block', marginBottom: '10px', opacity: 0.5 }}></i>
+                                        Your network is currently empty.<br/>Share your link to start earning!
+                                    </div>
+                                ) : (
+                                    referrals.map(ref => (
+                                        <div key={ref.id} className={`ref-row ${ref.status === 'completed' ? 'is-completed' : 'is-pending'}`}>
+                                            <img src={ref.referee_avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="ref-avatar" />
+                                            <div className="ref-info">
+                                                <div className="ref-name">{ref.referee_name} (@{ref.referee_username})</div>
+                                                <div className="ref-time">Joined {timeAgo(ref.created_at)}</div>
+                                                {ref.status === 'completed' && (
+                                                    <div className="ref-ledger-id">TX_ID: ref_bonus_referrer_{ref.id.split('-')[0]}</div>
+                                                )}
+                                            </div>
+                                            <div className={`ref-status-badge ${ref.status}`}>
+                                                {ref.status === 'completed' ? <><i className="fas fa-coins"></i> +100</> : <><i className="fas fa-hourglass-half"></i> Pending</>}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                        
+                        {activeMissionTab === 'milestones' && (
                             <ul className="tasks-list active">
                                 <li><div className="task-card"><div className="task-icon"><i className="fas fa-fire"></i></div><div className="task-details"><div className="task-title">Maintain a Streak</div></div><div className="task-action"><div className="reward-amount"><i className="fas fa-coins"></i> 500</div><button className="claim-btn disabled">In Progress</button></div></div></li>
                             </ul>
