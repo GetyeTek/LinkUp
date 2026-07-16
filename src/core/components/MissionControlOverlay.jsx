@@ -20,6 +20,10 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
     const [loadingReferrals, setLoadingReferrals] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
 
+    // Streak Milestone States
+    const [streakData, setStreakData] = useState(null);
+    const [isClaimingStreak, setIsClaimingStreak] = useState(false);
+
     const invokePlatformSocial = async (payload) => {
         const { data: { session } } = await supabase.auth.getSession();
         const response = await fetch('https://linkup-gateway.getyeteklu2.workers.dev/functions/v1/social-core', {
@@ -141,6 +145,37 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
             alert(err.message || "Failed to verify membership.");
         } finally {
             setIsVerifyingGroup(false);
+        }
+    };
+
+    const loadStreakData = useCallback(async () => {
+        if (!sessionUser?.id) return;
+        try {
+            const { data } = await supabase.rpc('get_current_streak_mission');
+            if (data && data.status !== 'maxed_out') setStreakData(data);
+        } catch (e) {
+            console.error("Streak load error:", e);
+        }
+    }, [sessionUser?.id]);
+
+    useEffect(() => {
+        if (isActive && activeMissionTab === 'milestones') {
+            loadStreakData();
+        }
+    }, [isActive, activeMissionTab, loadStreakData]);
+
+    const handleClaimStreak = async () => {
+        if (!streakData || streakData.status !== 'claimable') return;
+        setIsClaimingStreak(true);
+        try {
+            const { error } = await supabase.rpc('claim_streak_milestone', { p_target: streakData.target });
+            if (error) throw error;
+            if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+            await loadStreakData(); // Instantly pulls the NEXT milestone
+        } catch (err) {
+            alert(err.message || "Failed to claim streak milestone.");
+        } finally {
+            setIsClaimingStreak(false);
         }
     };
 
@@ -332,7 +367,48 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                         
                         {activeMissionTab === 'milestones' && (
                             <ul className="tasks-list active">
-                                <li><div className="task-card"><div className="task-icon"><i className="fas fa-fire"></i></div><div className="task-details"><div className="task-title">Maintain a Streak</div></div><div className="task-action"><div className="reward-amount"><i className="fas fa-coins"></i> 500</div><button className="claim-btn disabled">In Progress</button></div></div></li>
+                                {!streakData ? (
+                                    <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}><i className="fas fa-circle-notch fa-spin"></i> Checking Logs...</div>
+                                ) : (
+                                    <li>
+                                        <div className="task-card" style={{flexDirection: 'column', alignItems: 'stretch', gap: '0'}}>
+                                            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                                                <div className="task-icon" style={{ background: 'rgba(255, 171, 64, 0.1)', color: '#ffab40' }}>
+                                                    <i className="fas fa-fire"></i>
+                                                </div>
+                                                <div className="task-details">
+                                                    <div className="task-title">{streakData.target}-Day Streak Quest</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>
+                                                        {streakData.status === 'claimable' ? 'Milestone achieved! Claim your reward.' : 'Log in daily to build consistency.'}
+                                                    </div>
+                                                </div>
+                                                <div className="task-action">
+                                                    <div className="reward-amount"><i className="fas fa-coins"></i> {streakData.reward}</div>
+                                                    <button 
+                                                        className={`claim-btn ${streakData.status === 'claimable' ? 'gold-pulse' : 'disabled'}`}
+                                                        disabled={streakData.status !== 'claimable' || isClaimingStreak}
+                                                        onClick={handleClaimStreak}
+                                                    >
+                                                        {isClaimingStreak ? <i className="fas fa-circle-notch fa-spin"></i> : streakData.status === 'claimable' ? 'Claim' : 'In Progress'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div style={{marginTop: '16px', background: 'rgba(0,0,0,0.4)', height: '6px', borderRadius: '3px', overflow: 'hidden', position: 'relative'}}>
+                                                <div style={{
+                                                    position: 'absolute', top: 0, left: 0, bottom: 0, 
+                                                    background: streakData.status === 'claimable' ? '#42d7b8' : '#ffab40',
+                                                    width: `${Math.min((streakData.current / streakData.target) * 100, 100)}%`,
+                                                    transition: 'width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                                    boxShadow: streakData.status === 'claimable' ? '0 0 10px rgba(66, 215, 184, 0.5)' : '0 0 10px rgba(255, 171, 64, 0.3)'
+                                                }}></div>
+                                            </div>
+                                            <div style={{textAlign: 'right', fontSize: '0.75rem', color: '#888', marginTop: '6px', fontWeight: 600, fontFamily: '"Roboto Mono", monospace'}}>
+                                                {streakData.current} / {streakData.target} Days
+                                            </div>
+                                        </div>
+                                    </li>
+                                )}
                             </ul>
                         )}
                     </div>
