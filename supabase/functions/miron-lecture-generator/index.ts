@@ -172,6 +172,18 @@ serve(async (req) => {
                 return new Response(JSON.stringify({ chunks: session.lecture_chunks, finished: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
             }
 
+            // 1.5 Fetch Pre-Rendered Board Assets for this exact chapter
+            const { data: boards } = await supabase.from('board_drawings')
+                .select('id, description')
+                .eq('book_id', book_id)
+                .eq('toc_node_title', chapter_title);
+
+            let boardContext = "";
+            if (boards && boards.length > 0) {
+                boardContext = `\nPRE-BUILT VISUAL BOARDS AVAILABLE:\nYou have access to highly detailed visual diagrams for this chapter. You MUST instantly render them by placing the exact tag directly in your text stream exactly when you are explaining the concept.\nAvailable assets:\n` +
+                boards.map(b => `- Tag: [BOARD_${b.id}] | Description: ${b.description}`).join('\n');
+            }
+
             // 2. Fetch Book & TOC to determine midpoint
             const { data: book, error: bookErr } = await supabase.from('books').select('title, toc').eq('id', book_id).single();
             if (bookErr || !book) throw new Error("Book not found.");
@@ -228,7 +240,7 @@ serve(async (req) => {
 
             if (state === 'idle') {
                 // Batch 1 Prompt: Includes introductory elements and leaves session open
-                prompt = `${MIRON_CORE_PROMPT_BASE}
+                prompt = `${MIRON_CORE_PROMPT_BASE}${boardContext}
 
 CHUNK & STRUCTURAL SPECIFICATIONS (BATCH 1 OF 2):
 - Break this batch of the lecture script into at least 50 sequential chunks (paragraphs). You're encouraged to write even more if possible.
@@ -250,7 +262,7 @@ ${rawText}`;
                 // Batch 2 Prompt: Forces absolute continuation and appends terminal closing statements
                 const existingChunks = session.lecture_chunks || [];
                 
-                prompt = `${MIRON_CORE_PROMPT_BASE}
+                prompt = `${MIRON_CORE_PROMPT_BASE}${boardContext}
 
 CHUNK & STRUCTURAL SPECIFICATIONS (BATCH 2 OF 2):
 - Break this batch of the lecture script into at least 50 sequential chunks (paragraphs). You're encouraged to write more if possible.
