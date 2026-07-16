@@ -190,11 +190,15 @@ const App = () => {
     // Sync last seen every 2 minutes while active
     const presenceInterval = setInterval(() => {
       updateLastSeen();
-      supabase.rpc('update_user_streak').catch(() => {}); // Catch midnight cross-overs
+      supabase.rpc('update_user_streak').then(({ error }) => {
+          if (error) console.error("Streak sync failed:", error);
+      });
     }, 120000);
 
     // Initial streak bump on load
-    supabase.rpc('update_user_streak').catch(() => {});
+    supabase.rpc('update_user_streak').then(({ error }) => {
+        if (error) console.error("Streak init failed:", error);
+    });
 
     // 2. Listen for login/logout events in realtime
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
