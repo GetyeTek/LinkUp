@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ForYouFeed from '@linkup/squad/components/ForYouFeed.jsx';
 import './ExploreTab.css';
 
 const ExploreTab = ({ activeSubTab }) => {
@@ -48,6 +49,8 @@ const ExploreTab = ({ activeSubTab }) => {
                     </div>
                 </div>
             </section>
+            
+            <ForYouFeed />
         </div>
     );
 };
