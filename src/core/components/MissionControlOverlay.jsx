@@ -4,7 +4,7 @@ import './MissionControlOverlay.css';
 
 const MissionControlOverlay = ({ isActive, onClose }) => {
     const { sessionUser, user: userProfile } = usePlatform();
-    const [activeMissionTab, setActiveMissionTab] = useState('daily');
+    const [activeMissionTab, setActiveMissionTab] = useState('missions');
     
     // Telegram Mission States: 'loading' | 'unverified' | 'unclaimed' | 'claimed'
     const [tgMissionState, setTgMissionState] = useState('loading');
