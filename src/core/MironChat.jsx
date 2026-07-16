@@ -3,6 +3,7 @@ import { marked } from 'https://esm.sh/marked';
 import { invokeMiron } from '../config/api.js';
 import { getComponent, usePlatform } from '@linkup-platform/sdk-core';
 import DOMPurify from 'dompurify';
+import InteractiveBoard from './components/InteractiveBoard.jsx';
 import './MironChat.css';
 
 import InlineChatQuiz from './components/InlineChatQuiz.jsx';
@@ -30,6 +31,7 @@ const MironChat = ({ onClose, initialContext }) => {
     });
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [activeBoardPayload, setActiveBoardPayload] = useState(null);
     const flowRef = useRef(null);
 
     const mironThoughts = [
@@ -78,6 +80,9 @@ const MironChat = ({ onClose, initialContext }) => {
 
             if (data.ui_command && data.ui_command.action === 'open_page') {
                 console.log("Miron instructed UI to open page:", data.ui_command);
+            }
+            if (data.ui_command && (data.ui_command.action === 'draw_flow' || data.ui_command.action === 'draw')) {
+                setActiveBoardPayload(data.ui_command);
             }
 
         } catch (error) {
@@ -183,6 +188,13 @@ const MironChat = ({ onClose, initialContext }) => {
                     </svg>
                 </button>
             </header>
+
+            {activeBoardPayload && (
+                <InteractiveBoard 
+                    payload={activeBoardPayload} 
+                    onClose={() => setActiveBoardPayload(null)} 
+                />
+            )}
 
             <main className="athena-flow" ref={flowRef}>
                 {messages.length === 0 && (
