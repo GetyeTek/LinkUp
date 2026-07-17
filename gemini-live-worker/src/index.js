@@ -494,9 +494,9 @@ export class GeminiLiveAgent {
                   text: `You are Miron, an expert peer tutor and a highly supportive classmate to ${this.studentName}. You are doing a 1-on-1 voice study session.
 
 CORE PERSONALITY & TONE:
-- Be extremely casual, supportive, and natural. Act like a brilliant close friend leading a relaxed study session.
-- You must write your spoken thoughts in Amharic first (using the Ge'ez/Fidel alphabet), but natively blend English in for technical words, terms that aren't meant to be translated, and casual Addis Ababa university slangs/usages. You must be familiar with how university students mix English into their Amharic speech.
-- Address the student warmly by their name (${this.studentName}) directly instead of using a dry "you". Humans love to be called out!
+- Be casual, supportive, and natural. Act like a brilliant close friend leading a relaxed study session.
+- You must write your spoken thoughts in Amharic first (using the Ge'ez/Fidel alphabet), but natively blend English in for technical words and terms that aren't meant to be translated. Do not overdo the slang or flip languages unnecessarily; keep it authentic.
+- Address the student warmly by their name (${this.studentName}) occasionally, but do not overuse it.
 
 COURSE CATALOG:
 You have access to textbooks for the following courses:
@@ -639,6 +639,22 @@ TOOL USAGE & GROUNDING (CRITICAL):
                         'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
                     };
 
+                    const fetchWithTimeout = async (url, options = {}, timeoutMs = 1500) => {
+                        const controller = new AbortController();
+                        const id = setTimeout(() => controller.abort(), timeoutMs);
+                        try {
+                            const response = await fetch(url, { ...options, signal: controller.signal });
+                            clearTimeout(id);
+                            return response;
+                        } catch (err) {
+                            clearTimeout(id);
+                            if (err.name === 'AbortError') {
+                                throw new Error("Textbook database retrieval timed out. Fall back entirely to your pre-trained knowledge to answer the student.");
+                            }
+                            throw err;
+                        }
+                    };
+
                     const functionResponses = [];
 
                     for (const call of parsed.toolCall.functionCalls) {
@@ -648,7 +664,7 @@ TOOL USAGE & GROUNDING (CRITICAL):
                         try {
                             if (name === "get_book_toc") {
                                 const code = args.course_code.toUpperCase().trim();
-                                const res = await fetch(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,title,toc`, { headers: authHeaders });
+                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,title,toc`, { headers: authHeaders });
                                 const json = await res.json();
                                 if (json && json.length > 0) {
                                     result = { status: "success", book_id: json[0].id, title: json[0].title, toc: json[0].toc };
@@ -658,7 +674,7 @@ TOOL USAGE & GROUNDING (CRITICAL):
                             } 
                             else if (name === "read_book_section") {
                                 const code = args.course_code.toUpperCase().trim();
-                                const res = await fetch(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,toc`, { headers: authHeaders });
+                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,toc`, { headers: authHeaders });
                                 const json = await res.json();
                                 
                                 if (json && json.length > 0) {
@@ -683,7 +699,7 @@ TOOL USAGE & GROUNDING (CRITICAL):
                                             }
                                         }
 
-                                        const pageRes = await fetch(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${startPage}&page_number=lt.${endPage}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
+                                        const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${startPage}&page_number=lt.${endPage}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
                                         const pages = await pageRes.json();
                                         
                                         const sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
@@ -700,12 +716,12 @@ TOOL USAGE & GROUNDING (CRITICAL):
                                 const start = args.start_page;
                                 const end = args.end_page || (start + 1);
 
-                                const res = await fetch(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id`, { headers: authHeaders });
+                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id`, { headers: authHeaders });
                                 const json = await res.json();
 
                                 if (json && json.length > 0) {
                                     const bookId = json[0].id;
-                                    const pageRes = await fetch(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${start}&page_number=lte.${end}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
+                                    const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${start}&page_number=lte.${end}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
                                     const pages = await pageRes.json();
 
                                     const sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
@@ -723,9 +739,11 @@ TOOL USAGE & GROUNDING (CRITICAL):
                         });
                     }
 
-                    ws.send(JSON.stringify({
-                        clientContent: { turns: [{ role: "user", parts: functionResponses }], turnComplete: true }
-                    }));
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            clientContent: { turns: [{ role: "user", parts: functionResponses }], turnComplete: true }
+                        }));
+                    }
                     
                     this.broadcast(JSON.stringify({ type: "tool_call_state", executing: false }));
                     return;
