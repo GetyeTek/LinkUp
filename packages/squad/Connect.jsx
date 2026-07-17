@@ -33,6 +33,7 @@ const Connect = () => {
     const [isGroupCreatorOpen, setIsGroupCreatorOpen] = useState(false);
     const [conversations, setConversations] = useState([]);
     const [suggestedSquads, setSuggestedSquads] = useState([]);
+    const [campusClasses, setCampusClasses] = useState([]);
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const [showDiscovery, setShowDiscovery] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
@@ -147,6 +148,7 @@ const Connect = () => {
         fetchConversations();
         fetchSuggestedSquads();
         fetchFeaturedEvents();
+        fetchCampusClasses();
         
         // 1. Subscribe to Realtime Messages, Read Receipts, and Conversation updates
         const msgChannel = supabase.channel('chat_list_updates')
@@ -170,6 +172,7 @@ const Connect = () => {
                 // Instantly update lists when a group goes live, stops, or alters metadata
                 fetchConversations();
                 fetchSuggestedSquads();
+                fetchCampusClasses();
             })
             .subscribe();
 
@@ -206,7 +209,7 @@ const Connect = () => {
     useEffect(() => {
         const handleSubSwipe = (e) => {
             const { direction } = e.detail;
-            const views = ['messages', 'squads'];
+            const views = ['messages', 'squads', 'class'];
             const currentIndex = views.indexOf(activeView);
             
             // Intercept the global swipe if we can shift tabs internally
@@ -244,6 +247,12 @@ const Connect = () => {
         const { data, error } = await supabase.rpc('get_suggested_squads', { req_user_id: currentUser.id });
         if (data) setSuggestedSquads(data);
         if (error) console.error("Error fetching suggestions:", error);
+    };
+
+    const fetchCampusClasses = async () => {
+        const { data, error } = await supabase.rpc('get_campus_classes', { req_user_id: currentUser.id });
+        if (data) setCampusClasses(data);
+        if (error) console.error("Error fetching classes:", error);
     };
 
     const fetchFeaturedEvents = async () => {
@@ -487,6 +496,10 @@ const Connect = () => {
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-layer-group"></i></div>
                                 <span className="text-label">Groups</span>
                             </div>
+                            <div className={`option ${activeView === 'class' ? 'active' : ''}`} onClick={() => { setActiveView('class'); setIsHeaderCollapsed(false); }}>
+                                <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-users-rectangle"></i></div>
+                                <span className="text-label">Class</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -500,6 +513,7 @@ const Connect = () => {
                     setIsGroupCreatorOpen={setIsGroupCreatorOpen}
                     conversations={conversations}
                     suggestedSquads={suggestedSquads}
+                    campusClasses={campusClasses}
                     handleChatClick={handleChatClick}
                     isSessionLive={isSessionLive}
                     formatTime={formatTime}
@@ -575,7 +589,7 @@ const Connect = () => {
             
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {viewingUserId && <UserInfoPanel userId={viewingUserId} currentUser={currentUser} onClose={() => setViewingUserId(null)} />}
-            {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); }} />}
+            {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); fetchCampusClasses(); fetchSuggestedSquads(); }} />}
             
             {toastNotice && (
                 <div className="connect-toast">
