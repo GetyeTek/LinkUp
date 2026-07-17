@@ -27,6 +27,7 @@ export class GeminiLiveAgent {
     this.pendingAnswersQueue = [];
     this.lastAnsweredTime = Date.now();
     this.qaTimer = null;
+    this.cleanupTimeout = null;
     
     console.log(`[Agent|DO|INIT] 🏗️ Native Constructor initialized.`);
   }
@@ -100,6 +101,13 @@ export class GeminiLiveAgent {
     console.log(`[Agent|DO|FETCH] 🚀 Intercepting WebSocket upgrade request...`);
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected Upgrade: websocket", { status: 426 });
+    }
+
+    // --- GRACE PERIOD RECOVERY ---
+    if (this.cleanupTimeout) {
+        console.log("[Agent|DO|RECOVERY] Client reconnected within grace period! Cancelling teardown...");
+        clearTimeout(this.cleanupTimeout);
+        this.cleanupTimeout = null;
     }
 
     // Initialize Miron's autonomous heartbeat engine
@@ -304,6 +312,92 @@ export class GeminiLiveAgent {
     }
   }
 
+  async executeHardCleanup() {
+    console.log("[Agent|DO|CLEANUP] Grace period expired. Executing hard cleanup...");
+    this.cleanupTimeout = null;
+    
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    
+    if (this.qaTimer) {
+      clearInterval(this.qaTimer);
+      this.qaTimer = null;
+    }
+
+    if (this.geminiWs) {
+      console.log("[Agent|DO|CLEANUP] Closing upstream Gemini WS.");
+      try {
+        this.geminiWs.close(1000, "Stage empty");
+      } catch (e) {
+        console.error("[Agent|DO|CLEANUP] Error closing Gemini WS:", e.message);
+      }
+      this.geminiWs = null;
+      this.isGeminiSetupComplete = false;
+    }
+
+    // Instantly kill the session in the database to stop the ghost pulsing
+    if (this.conversationId) {
+      const supabaseUrl = this.env?.SUPABASE_URL;
+      const serviceKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
+      
+      if (supabaseUrl && serviceKey) {
+        console.log(`[Agent|DO|CLEANUP] Nuking live session metadata for ${this.conversationId}`);
+        
+        try {
+          // Fetch current metadata to avoid clobbering other fields
+          const getRes = await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}&select=metadata`, {
+              headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
+          });
+          
+                        const rows = await getRes.json();
+            if (rows && rows.length > 0) {
+                const meta = rows[0].metadata || {};
+                
+                // If the stage is still live but Miron has simply been toggled off,
+                // do not scrub the database properties. Let the human stay on stage!
+                if (meta.is_live && !meta.ai_hosting) {
+                    console.log("[Agent|DO|CLEANUP] Miron toggled off. Human is still hosting. Preserving DB metadata.");
+                    return;
+                }
+
+                // Scrub live properties
+                delete meta.is_live;
+                delete meta.ai_hosting;
+                delete meta.live_host_id;
+                delete meta.live_status;
+                delete meta.live_heartbeat;
+                delete meta.live_started_at;
+                delete meta.live_topic;
+
+              // Patch conversation metadata
+              await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}`, {
+                  method: 'PATCH',
+                  headers: { 
+                      'apikey': serviceKey, 
+                      'Authorization': `Bearer ${serviceKey}`,
+                      'Content-Type': 'application/json',
+                      'Prefer': 'return=minimal'
+                  },
+                  body: JSON.stringify({ metadata: meta })
+              });
+              
+              // Delete discovery record so it drops from the global feed
+              await fetch(`${supabaseUrl}/rest/v1/live_study_sessions?conversation_id=eq.${this.conversationId}`, {
+                  method: 'DELETE',
+                  headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
+              });
+              
+              console.log("[Agent|DO|CLEANUP] Database successfully scrubbed. The ghost is dead.");
+          }
+        } catch (e) {
+          console.error("[Agent|DO|CLEANUP] DB Teardown Failed", e.message);
+        }
+      }
+    }
+  }
+
   async webSocketClose(ws, code, reason, wasClean) {
     console.log(`[Agent|DO|DISCONNECT] Client left stage. Code: ${code}, Reason: ${reason}`);
     
@@ -312,88 +406,10 @@ export class GeminiLiveAgent {
     const activeSockets = this.ctx.getWebSockets().filter(s => s !== ws);
     
     if (activeSockets.length === 0) {
-      console.log("[Agent|DO|CLEANUP] Stage is completely empty. Initiating teardown sequence...");
-      
-      if (this.heartbeatTimer) {
-        clearInterval(this.heartbeatTimer);
-        this.heartbeatTimer = null;
-      }
-      
-      if (this.qaTimer) {
-        clearInterval(this.qaTimer);
-        this.qaTimer = null;
-      }
-
-      if (this.geminiWs) {
-        console.log("[Agent|DO|CLEANUP] Closing upstream Gemini WS.");
-        try {
-          this.geminiWs.close(1000, "Stage empty");
-        } catch (e) {
-          console.error("[Agent|DO|CLEANUP] Error closing Gemini WS:", e.message);
-        }
-        this.geminiWs = null;
-        this.isGeminiSetupComplete = false;
-      }
-
-      // Instantly kill the session in the database to stop the ghost pulsing
-      if (this.conversationId) {
-        const supabaseUrl = this.env?.SUPABASE_URL;
-        const serviceKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
-        
-        if (supabaseUrl && serviceKey) {
-          console.log(`[Agent|DO|CLEANUP] Nuking live session metadata for ${this.conversationId}`);
-          
-          try {
-            // Fetch current metadata to avoid clobbering other fields
-            const getRes = await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}&select=metadata`, {
-                headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
-            });
-            
-                          const rows = await getRes.json();
-              if (rows && rows.length > 0) {
-                  const meta = rows[0].metadata || {};
-                  
-                  // If the stage is still live but Miron has simply been toggled off,
-                  // do not scrub the database properties. Let the human stay on stage!
-                  if (meta.is_live && !meta.ai_hosting) {
-                      console.log("[Agent|DO|CLEANUP] Miron toggled off. Human is still hosting. Preserving DB metadata.");
-                      return;
-                  }
-
-                  // Scrub live properties
-                  delete meta.is_live;
-                  delete meta.ai_hosting;
-                  delete meta.live_host_id;
-                  delete meta.live_status;
-                  delete meta.live_heartbeat;
-                  delete meta.live_started_at;
-                  delete meta.live_topic;
-
-                // Patch conversation metadata
-                await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}`, {
-                    method: 'PATCH',
-                    headers: { 
-                        'apikey': serviceKey, 
-                        'Authorization': `Bearer ${serviceKey}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({ metadata: meta })
-                });
-                
-                // Delete discovery record so it drops from the global feed
-                await fetch(`${supabaseUrl}/rest/v1/live_study_sessions?conversation_id=eq.${this.conversationId}`, {
-                    method: 'DELETE',
-                    headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
-                });
-                
-                console.log("[Agent|DO|CLEANUP] Database successfully scrubbed. The ghost is dead.");
-            }
-          } catch (e) {
-            console.error("[Agent|DO|CLEANUP] DB Teardown Failed", e.message);
-          }
-        }
-      }
+      console.log("[Agent|DO|CLEANUP] Stage is completely empty. Holding upstream socket warm for 30s...");
+      this.cleanupTimeout = setTimeout(() => {
+          this.executeHardCleanup();
+      }, 30000);
     }
   }
 
