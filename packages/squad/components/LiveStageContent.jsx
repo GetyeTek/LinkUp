@@ -75,37 +75,50 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
 
 
+    const hasSentStartRef = useRef(false);
+
     // AI Stage WebSocket Bridge
     useEffect(() => {
         if (liveState === 'full' && isAiHosting) {
             console.log(`[Client|Stage] Initializing AI Stage WS... Target: ${conversationId}`);
             const gatewayUrl = `wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${conversationId}`;
-            const ws = new WebSocket(gatewayUrl);
-            aiSocketRef.current = ws;
-
-            ws.onopen = () => {
-                console.log("[Client|Stage] WS Connection Opened. Edge Worker handles Gemini configuration.");
-                setAiConnected(true);
-                
-                // Trigger the DO state machine to fetch chunks from the DB and start lecturing
-                if (isMeHost) {
-                    console.log(`[Client|Stage] Triggering DO State Machine to start lecture.`);
-                    ws.send(JSON.stringify({ action: "start_lecture" }));
-                }
-            };
-
-            let timeoutId;
             
-            ws.onerror = (error) => {
-                console.error("[Client|Stage] ❌ WS Error:", error);
-            };
+            let ws = null;
+            let isMounted = true;
+            let reconnectTimer = null;
+            let timeoutId;
 
-            ws.onclose = (event) => {
-                console.warn(`[Client|Stage] 🔌 WS Closed. Code: ${event.code}, Reason: ${event.reason}`);
-                setAiConnected(false);
-            };
+            const connectWS = () => {
+                if (!isMounted) return;
+                ws = new WebSocket(gatewayUrl);
+                aiSocketRef.current = ws;
 
-            ws.onmessage = (event) => {
+                ws.onopen = () => {
+                    console.log("[Client|Stage] WS Connection Opened.");
+                    setAiConnected(true);
+                    
+                    // Trigger the DO state machine ONLY ONCE to fetch chunks from the DB and start lecturing
+                    if (isMeHost && !hasSentStartRef.current) {
+                        hasSentStartRef.current = true;
+                        console.log(`[Client|Stage] Triggering DO State Machine to start lecture.`);
+                        ws.send(JSON.stringify({ action: "start_lecture" }));
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error("[Client|Stage] ❌ WS Error:", error);
+                };
+
+                ws.onclose = (event) => {
+                    console.warn(`[Client|Stage] 🔌 WS Closed. Code: ${event.code}, Reason: ${event.reason}`);
+                    setAiConnected(false);
+                    if (isMounted) {
+                        console.log("[Client|Stage] Reconnecting in 2 seconds...");
+                        reconnectTimer = setTimeout(connectWS, 2000);
+                    }
+                };
+
+                ws.onmessage = (event) => {
                 try {
                     const payload = JSON.parse(event.data);
                     
@@ -214,8 +227,12 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 }
             };
 
+            connectWS();
+
             return () => {
-                ws.close();
+                isMounted = false;
+                clearTimeout(reconnectTimer);
+                if (ws) ws.close();
                 aiSocketRef.current = null;
             };
         }
