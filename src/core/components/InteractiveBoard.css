@@ -288,6 +288,10 @@
 @keyframes boardFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes boardPopIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @keyframes boardSlideUp { from { opacity: 0; transform: translate(-50%, -30%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+@keyframes boardItemSlideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
 .dynamic-blackboard-container {
     position: absolute;
@@ -340,7 +344,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    animation: boardSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: boardItemSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .board-group-title {
