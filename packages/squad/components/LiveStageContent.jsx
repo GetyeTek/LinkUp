@@ -112,10 +112,21 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     // Intercept Dynamic Board Synchronization
                     if (payload.type === "chunk_transition") {
                         setSpokenText("");
-                        const rawChunk = payload.chunk || "";
+                        const rawChunk = payload.chunk;
+
+                        if (typeof rawChunk === 'object' && rawChunk.spoken_text) {
+                            setBoardMode(true);
+                            setActiveBoardBlocks(prev => {
+                                if (prev.length > 0 && prev[prev.length - 1].chunk_index === payload.index) return prev;
+                                return [...prev, { ...rawChunk, chunk_index: payload.index }];
+                            });
+                            return;
+                        }
+
+                        const textTarget = typeof rawChunk === 'string' ? rawChunk : "";
 
                         // INTERCEPT PRE-RENDERED BOARD ASSET TAG
-                        const boardMatch = rawChunk.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/i);
+                        const boardMatch = textTarget.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/i);
                         if (boardMatch) {
                             const boardId = boardMatch[1];
                             supabase.from('board_drawings').select('payload').eq('id', boardId).single().then(({data}) => {
@@ -128,7 +139,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         const blocks = [];
                         const regex = /\[print\]([\s\S]*?)\[print\]/gi;
                         let match;
-                        while ((match = regex.exec(rawChunk)) !== null) {
+                        while ((match = regex.exec(textTarget)) !== null) {
                             blocks.push(match[1]);
                         }
                         
