@@ -37,15 +37,31 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (!sessionUser?.id) return;
         const agentId = `miron-personal-${sessionUser.id}`;
         const studentName = sessionUser.user_metadata?.full_name?.split(' ')[0] || "Scholar";
-        const ws = new WebSocket(`wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${agentId}&name=${encodeURIComponent(studentName)}`);
-        wsRef.current = ws;
+        const url = `wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${agentId}&name=${encodeURIComponent(studentName)}`;
+        
+        let ws = null;
+        let isMounted = true;
+        let reconnectTimer = null;
 
-        ws.onopen = () => {
-            console.log("[Miron Live] Secure Neural Link Established");
-            setIsConnected(true);
-        };
+        const connectWS = () => {
+            if (!isMounted) return;
+            ws = new WebSocket(url);
+            wsRef.current = ws;
 
-        ws.onmessage = (e) => {
+            ws.onopen = () => {
+                console.log("[Miron Live] Secure Neural Link Established");
+                setIsConnected(true);
+            };
+
+            ws.onclose = () => {
+                setIsConnected(false);
+                if (isMounted) {
+                    console.log("[Miron Live] Connection lost. Reconnecting in 2 seconds...");
+                    reconnectTimer = setTimeout(connectWS, 2000);
+                }
+            };
+
+            ws.onmessage = (e) => {
             try {
                 const payload = JSON.parse(e.data);
                 
@@ -113,9 +129,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         };
 
-        ws.onclose = () => setIsConnected(false);
+        connectWS();
 
-        return () => ws.close();
+        return () => {
+            isMounted = false;
+            clearTimeout(reconnectTimer);
+            if (ws) ws.close();
+        };
     }, [sessionUser?.id]);
 
 
