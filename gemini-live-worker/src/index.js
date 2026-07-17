@@ -68,6 +68,8 @@ export class GeminiLiveAgent {
   async fetch(request) {
     const url = new URL(request.url);
     this.conversationId = url.searchParams.get("agent");
+    this.studentName = url.searchParams.get("name") || "Scholar";
+    this.isOneOnOne = this.conversationId && this.conversationId.includes('miron-personal');
 
     // Handle the Supabase dynamic chunk append webhook
     if (request.method === "POST" && url.searchParams.get("action") === "append_chunks") {
@@ -485,6 +487,93 @@ export class GeminiLiveAgent {
           outputAudioTranscription: {}
         }
       };
+
+      if (this.isOneOnOne) {
+          setupMessage.setup.systemInstruction = {
+              parts: [{
+                  text: `You are Miron, an expert peer tutor and a highly supportive classmate to ${this.studentName}. You are doing a 1-on-1 voice study session.
+
+CORE PERSONALITY & TONE:
+- Be extremely casual, supportive, and natural. Act like a brilliant close friend leading a relaxed study session.
+- You must write your spoken thoughts in Amharic first (using the Ge'ez/Fidel alphabet), but natively blend English in for technical words, terms that aren't meant to be translated, and casual Addis Ababa university slangs/usages. You must be familiar with how university students mix English into their Amharic speech.
+- Address the student warmly by their name (${this.studentName}) directly instead of using a dry "you". Humans love to be called out!
+
+COURSE CATALOG:
+You have access to textbooks for the following courses:
+"FLEN 1011" - "COMMUNICATIVE ENGLISH LANGUAGE SKILLS"
+"ECEG 1052" - "COMPUTER PROGRAMMING"
+"CEN 2201" - "ENGINEERING MECHANICS"
+"MGMT 1012" - "ENTREPRENEURSHIP"
+"BIOL 1012" - "GENERAL BIOLOGY"
+"CHEM 1012" - "GENERAL CHEMISTRY"
+"PHYS 1011" - "GENERAL PHYSICS"
+"PSYC 1011" - "GENERAL PSYCHOLOGY"
+"SOSC 1011" - "GENERAL SOCIAL SCIENCE"
+"GEES 1011" - "GEOGRAPHY"
+"GLTR 1012" - "GLOBAL TRENDS"
+"HIST 1012" - "HISTORY"
+"INCL 1012" - "INCLUSIVENESS"
+"ICT 1011" - "INFORMATION & COMMUNICATION TECHNOLOGY (ICT)"
+"ECON 1011" - "INTRODUCTION TO ECONOMICS"
+"EMTE 1012" - "INTRODUCTION TO EMERGING TECHNOLOGIES"
+"LOCT 1011" - "LOGIC AND CRITICAL THINKING"
+"MATH 1012" - "MATHEMATICS FOR NATURAL SCIENCES"
+"MATH 1011" - "MATHEMATICS FOR SOCIAL SCIENCES"
+"MCIE 1012" - "MORAL AND CIVIC EDUCATION"
+"SPSC 1011" - "PHYSICAL EDUCATION"
+"STAT 2011" - "PROBABILITY AND STATISTICS"
+"ANTH 1012" - "SOCIAL ANTHROPOLOGY"
+
+TOOL USAGE & GROUNDING (CRITICAL):
+- When asked a conceptual or factual question regarding these courses, you MUST ground your answer in the textbook.
+- Step 1: Call "get_book_toc" using the course code to find where the topic lives.
+- Step 2: STRONGLY PREFERRED - Call "read_book_section" passing the EXACT identical section title from the TOC. This prevents you from having to guess page ranges and lets the system pull the whole topic.
+- Use "read_book_page" ONLY if the student explicitly asks about a specific page number or a specific page range (e.g., "what does page 34 to 37 talk about").
+- When you answer, make sure to naturally reference the book and the page number as a framework (e.g., "As written on page 73 of your book..."). Do not overdo it; make it sound organic.`
+              }]
+          };
+
+          setupMessage.setup.tools = [{
+              functionDeclarations: [
+                  {
+                      name: "get_book_toc",
+                      description: "Fetch the Table of Contents of a specific book to find section titles and pages.",
+                      parameters: {
+                          type: "OBJECT",
+                          properties: {
+                              course_code: { type: "STRING", description: "The course code (e.g., 'LOCT 1011')" }
+                          },
+                          required: ["course_code"]
+                      }
+                  },
+                  {
+                      name: "read_book_section",
+                      description: "Read the full text of a specific section. Use the exact section title obtained from the TOC.",
+                      parameters: {
+                          type: "OBJECT",
+                          properties: {
+                              course_code: { type: "STRING", description: "The course code (e.g., 'LOCT 1011')" },
+                              section_title: { type: "STRING", description: "Exact title of the section from the TOC" }
+                          },
+                          required: ["course_code", "section_title"]
+                      }
+                  },
+                  {
+                      name: "read_book_page",
+                      description: "Read the text of a specific page or range of pages. Use ONLY when requested by page number.",
+                      parameters: {
+                          type: "OBJECT",
+                          properties: {
+                              course_code: { type: "STRING", description: "The course code (e.g., 'LOCT 1011')" },
+                              start_page: { type: "INTEGER", description: "Starting page number" },
+                              end_page: { type: "INTEGER", description: "Optional ending page number" }
+                          },
+                          required: ["course_code", "start_page"]
+                      }
+                  }
+              ]
+          }];
+      }
       
       const setupMessageStr = JSON.stringify(setupMessage);
       console.log(`[Agent|GEMINI|WS] Sending natively constructed Setup Payload: ${setupMessageStr}`);
@@ -519,6 +608,129 @@ export class GeminiLiveAgent {
             if (!preview.includes('serverContent')) {
                 console.log(`[Agent|GEMINI->DO|PAYLOAD] -> ${preview}`);
             }
+
+            try {
+                const parsed = JSON.parse(data);
+                
+                // --- TOOL CALL INTERCEPTOR ---
+                if (parsed.toolCall) {
+                    console.log(`[Agent|GEMINI|TOOL] Tool call intercepted:`, parsed.toolCall);
+                    this.broadcast(JSON.stringify({ type: "tool_call_state", executing: true }));
+                    
+                    const extractTextFromBlockArray = (blocks) => {
+                        return blocks.map(b => {
+                            if (!b) return '';
+                            let text = [];
+                            if (b.main) text.push(b.main);
+                            if (b.sub) text.push(b.sub);
+                            if (b.title) text.push(b.title);
+                            if (b.body) text.push(b.body);
+                            if (b.text) text.push(b.text);
+                            if (b.items && Array.isArray(b.items)) text.push(b.items.join(' '));
+                            if (b.premises) text.push(b.premises.join(' '));
+                            if (b.conclusion) text.push(b.conclusion);
+                            if (b.question) text.push(b.question);
+                            return text.join(' ').replace(/<[^>]+>/g, '').trim(); 
+                        }).filter(Boolean).join('\n');
+                    };
+
+                    const authHeaders = {
+                        'apikey': this.env.SUPABASE_SERVICE_ROLE_KEY,
+                        'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
+                    };
+
+                    const functionResponses = [];
+
+                    for (const call of parsed.toolCall.functionCalls) {
+                        const { name, args, id } = call;
+                        let result = {};
+
+                        try {
+                            if (name === "get_book_toc") {
+                                const code = args.course_code.toUpperCase().trim();
+                                const res = await fetch(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,title,toc`, { headers: authHeaders });
+                                const json = await res.json();
+                                if (json && json.length > 0) {
+                                    result = { status: "success", book_id: json[0].id, title: json[0].title, toc: json[0].toc };
+                                } else {
+                                    result = { status: "error", message: `Book for course ${code} not found.` };
+                                }
+                            } 
+                            else if (name === "read_book_section") {
+                                const code = args.course_code.toUpperCase().trim();
+                                const res = await fetch(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,toc`, { headers: authHeaders });
+                                const json = await res.json();
+                                
+                                if (json && json.length > 0) {
+                                    const bookId = json[0].id;
+                                    const flatToc = [];
+                                    const flatten = (nodes) => {
+                                        for (const n of nodes) {
+                                            flatToc.push(n);
+                                            if (n.children) flatten(n.children);
+                                        }
+                                    };
+                                    flatten(json[0].toc || []);
+
+                                    const targetIdx = flatToc.findIndex(n => n.title.toLowerCase().includes(args.section_title.toLowerCase()));
+                                    if (targetIdx !== -1) {
+                                        const startPage = flatToc[targetIdx].page;
+                                        let endPage = 99999;
+                                        for (let i = targetIdx + 1; i < flatToc.length; i++) {
+                                            if (flatToc[i].page > startPage) {
+                                                endPage = flatToc[i].page;
+                                                break;
+                                            }
+                                        }
+
+                                        const pageRes = await fetch(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${startPage}&page_number=lt.${endPage}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
+                                        const pages = await pageRes.json();
+                                        
+                                        const sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
+                                        result = { status: "success", text: sectionText || "Section is empty." };
+                                    } else {
+                                        result = { status: "error", message: "Section title not found in TOC." };
+                                    }
+                                } else {
+                                    result = { status: "error", message: "Course book not found." };
+                                }
+                            }
+                            else if (name === "read_book_page") {
+                                const code = args.course_code.toUpperCase().trim();
+                                const start = args.start_page;
+                                const end = args.end_page || (start + 1);
+
+                                const res = await fetch(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id`, { headers: authHeaders });
+                                const json = await res.json();
+
+                                if (json && json.length > 0) {
+                                    const bookId = json[0].id;
+                                    const pageRes = await fetch(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${start}&page_number=lte.${end}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
+                                    const pages = await pageRes.json();
+
+                                    const sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
+                                    result = { status: "success", text: sectionText || "Pages are empty or do not exist." };
+                                } else {
+                                    result = { status: "error", message: "Course book not found." };
+                                }
+                            }
+                        } catch (err) {
+                            result = { status: "error", message: err.message };
+                        }
+
+                        functionResponses.push({
+                            functionResponse: { name, id, response: result }
+                        });
+                    }
+
+                    ws.send(JSON.stringify({
+                        clientContent: { turns: [{ role: "user", parts: functionResponses }], turnComplete: true }
+                    }));
+                    
+                    this.broadcast(JSON.stringify({ type: "tool_call_state", executing: false }));
+                    return;
+                }
+            } catch(e) {}
             
             // --- NON-INTERRUPTIVE PIVOT PLAYBACK MANAGER ---
             try {
