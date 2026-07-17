@@ -10,6 +10,7 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
     const [groupCount, setGroupCount] = useState(0);
     const [loadingCount, setLoadingCount] = useState(true);
     const [slugStatus, setSlugStatus] = useState('idle');
+    const [copySuccess, setCopySuccess] = useState(false);
 
     useEffect(() => {
         const fetchCount = async () => {
@@ -27,16 +28,17 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
 
     // Live debounced slug validator
     useEffect(() => {
-        if (form.type !== 'class' || !form.slug) return;
-        const cleanSlug = form.slug.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (form.slug !== cleanSlug) setForm(f => ({ ...f, slug: cleanSlug }));
-        if (cleanSlug.length < 3) {
+        if (form.type !== 'class' || !form.slug) {
+            setSlugStatus('idle');
+            return;
+        }
+        if (form.slug.length < 3) {
             setSlugStatus('invalid');
             return;
         }
         const timer = setTimeout(async () => {
             setSlugStatus('checking');
-            const { data } = await supabase.rpc('check_squad_slug_available', { req_slug: cleanSlug });
+            const { data } = await supabase.rpc('check_squad_slug_available', { req_slug: form.slug });
             setSlugStatus(data ? 'available' : 'taken');
         }, 500);
         return () => clearTimeout(timer);
@@ -201,14 +203,31 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
                                 <input 
                                     className="gc-slug-input" 
                                     value={form.slug} 
-                                    onChange={e => setForm({...form, slug: e.target.value})} 
+                                    onChange={e => setForm({...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '')})} 
                                     maxLength={20}
+                                    placeholder="handle"
                                 />
-                                <div className="gc-slug-status-icon">
+                                <div className="gc-slug-status-icon" style={{ display: 'flex', alignItems: 'center' }}>
                                     {slugStatus === 'checking' && <i className="fas fa-circle-notch fa-spin" style={{color: 'var(--accent-teal)'}}></i>}
                                     {slugStatus === 'available' && <i className="fas fa-check" style={{color: 'var(--accent-teal)'}}></i>}
                                     {(slugStatus === 'taken' || slugStatus === 'invalid') && <i className="fas fa-times" style={{color: '#ff5f5f'}}></i>}
                                 </div>
+                                <button 
+                                    type="button"
+                                    className="icon-button"
+                                    style={{ color: slugStatus === 'available' ? 'var(--accent-teal)' : '#555', marginLeft: '8px', cursor: slugStatus === 'available' ? 'pointer' : 'not-allowed', width: '32px', height: '32px', flexShrink: 0 }}
+                                    onClick={() => {
+                                        if (slugStatus === 'available') {
+                                            navigator.clipboard.writeText(`${getBaseUrl()}?sq=${form.slug}`);
+                                            setCopySuccess(true);
+                                            setTimeout(() => setCopySuccess(false), 2000);
+                                        }
+                                    }}
+                                    disabled={slugStatus !== 'available'}
+                                    title="Copy Invitation Link"
+                                >
+                                    <i className={`fas ${copySuccess ? 'fa-check' : 'fa-copy'}`}></i>
+                                </button>
                             </div>
                             
                             <div className="gc-slug-hint" style={{ color: slugStatus === 'taken' || slugStatus === 'invalid' ? '#ff5f5f' : 'var(--accent-teal)' }}>
