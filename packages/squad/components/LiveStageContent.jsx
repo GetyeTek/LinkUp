@@ -226,6 +226,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     console.warn("[Client|Stage] Non-JSON message or parse error:", event.data);
                 }
             };
+            };
 
             connectWS();
 
