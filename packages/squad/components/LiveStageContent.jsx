@@ -44,7 +44,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const closeBoardMode = () => {
         setBoardMode(false);
         if (setDevBoardPayload) setDevBoardPayload(null);
-        setActiveBoardBlocks([]);
+        // Retain activeBoardBlocks to preserve state on board reopen
     };
 
     // AI Stage State
@@ -446,14 +446,24 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 </div>
                 
                 <div className="header-right-cluster">
+                    {activeBoardBlocks.length > 0 && (
+                        <button 
+                            className="minimize-stage-btn" 
+                            onClick={() => setBoardMode(!boardMode)}
+                            title={boardMode ? "Collapse Board" : "Expand Board"}
+                            style={{ color: boardMode ? 'var(--accent-teal)' : '#fff' }}
+                        >
+                            <i className={boardMode ? "fas fa-compress-alt" : "fas fa-expand-alt"}></i>
+                        </button>
+                    )}
                     {isMeHost && (
                         <button 
-                            className={`miron-header-toggle ${isAiHosting ? 'active' : ''}`} 
+                            className={`miron-header-toggle \${isAiHosting ? 'active' : ''}`} 
                             onClick={() => toggleMironState(!isAiHosting)}
                             title={isAiHosting ? "Disconnect Miron" : "Let Miron Host"}
                             style={{ position: 'relative', width: '38px', height: '38px', borderRadius: '50%', padding: 0, overflow: 'visible', background: 'transparent', border: 'none' }}
                         >
-                            {isAiHosting && <ConnectionRing isConnected={aiConnected} />}
+                            {isAiHosting && <ConnectionRing isConnected={isConnected} />}
                             <div className="toggle-avatar-wrapper" style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative', border: isAiHosting ? 'none' : '1px solid rgba(255,255,255,0.2)' }}>
                                 <img 
                                     src={mironAvatarUrl} 
@@ -496,47 +506,51 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     />
                 )}
 
-                <div className="stage-host-node">
-                    <div className="stage-host-avatar-wrapper">
-                        <ConnectionRing isConnected={isConnected} />
-                        {isConnected && (
-                            <>
-                                <div className={`voice-halo-ring ${isAiHosting ? 'miron-halo' : ''}`}></div>
-                                <div className={`voice-halo-ring ${isAiHosting ? 'miron-halo' : ''}`} style={{animationDelay: '0.6s'}}></div>
-                            </>
-                        )}
-                        {isAiHosting ? (
-                            <div className="miron-host-orb" style={{ overflow: 'hidden', width: '100%', height: '100%', margin: 0, position: 'relative', zIndex: 2 }}>
-                                {!mironAvatarError ? (
-                                    <img 
-                                        src={mironAvatarUrl} 
-                                        alt="Miron" 
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
-                                        onError={() => setMironAvatarError(true)} 
-                                    />
+                {!boardMode && (
+                    <>
+                        <div className="stage-host-node">
+                            <div className="stage-host-avatar-wrapper">
+                                <ConnectionRing isConnected={isConnected} />
+                                {isConnected && (
+                                    <>
+                                        <div className={`voice-halo-ring ${isAiHosting ? 'miron-halo' : ''}`}></div>
+                                        <div className={`voice-halo-ring ${isAiHosting ? 'miron-halo' : ''}`} style={{animationDelay: '0.6s'}}></div>
+                                    </>
+                                )}
+                                {isAiHosting ? (
+                                    <div className="miron-host-orb" style={{ overflow: 'hidden', width: '100%', height: '100%', margin: 0, position: 'relative', zIndex: 2 }}>
+                                        {!mironAvatarError ? (
+                                            <img 
+                                                src={mironAvatarUrl} 
+                                                alt="Miron" 
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                                                onError={() => setMironAvatarError(true)} 
+                                            />
+                                        ) : (
+                                            <i className="fas fa-sparkles"></i>
+                                        )}
+                                    </div>
                                 ) : (
-                                    <i className="fas fa-sparkles"></i>
+                                    <>
+                                        <img src={hostInfo.avatar} className="host-image-clip" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none', width: '100%', height: '100%', margin: 0, position: 'relative', zIndex: 2 }} alt="Host" />
+                                        {isHostPaused && (
+                                            <div className="host-offline-veil" style={{borderRadius: '50%'}}>
+                                                <i className="fas fa-satellite-dish"></i>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
-                        ) : (
-                            <>
-                                <img src={hostInfo.avatar} className="host-image-clip" style={{ filter: isHostPaused ? 'grayscale(100%) opacity(0.5)' : 'none', width: '100%', height: '100%', margin: 0, position: 'relative', zIndex: 2 }} alt="Host" />
-                                {isHostPaused && (
-                                    <div className="host-offline-veil" style={{borderRadius: '50%'}}>
-                                        <i className="fas fa-satellite-dish"></i>
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                </div>
+                        </div>
 
-                <div className="stage-host-label">
-                    <h2>{isAiHosting ? 'Miron Athena' : hostInfo.name}</h2>
-                    <p>{isAiHosting ? 'AI Study Guide • Hosting' : (isHostPaused ? "Connecting..." : "Broadcasting • Host")}</p>
-                </div>
+                        <div className="stage-host-label">
+                            <h2>{isAiHosting ? 'Miron Athena' : hostInfo.name}</h2>
+                            <p>{isAiHosting ? 'AI Study Guide • Hosting' : (isHostPaused ? "Connecting..." : "Broadcasting • Host")}</p>
+                        </div>
+                    </>
+                )}
 
-                {isMeHost && (
+                {isMeHost && !boardMode && (
                     <div className="hostess-ai-controls" style={{ width: '100%', maxWidth: '340px', margin: '0 auto' }}>
                         <button 
                             className={`big-mic-btn ${stageMicEnabled ? 'active-mic' : ''}`}
