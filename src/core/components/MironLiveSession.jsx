@@ -128,6 +128,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 console.error("WS Parse error", err);
             }
         };
+        };
 
         connectWS();
 
