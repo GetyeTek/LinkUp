@@ -30,11 +30,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     }, [transcripts]);
 
+    const [isConsulting, setIsConsulting] = useState(false);
+
     // 1. Core WebSocket Connection to Gemini DO
     useEffect(() => {
         if (!sessionUser?.id) return;
         const agentId = `miron-personal-${sessionUser.id}`;
-        const ws = new WebSocket(`wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${agentId}`);
+        const studentName = sessionUser.user_metadata?.full_name?.split(' ')[0] || "Scholar";
+        const ws = new WebSocket(`wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${agentId}&name=${encodeURIComponent(studentName)}`);
         wsRef.current = ws;
 
         ws.onopen = () => {
@@ -100,6 +103,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         }
                     }
                 }
+
+                // 5. Intercept consulting state from Durable Object
+                if (payload.type === "tool_call_state") {
+                    setIsConsulting(payload.executing);
+                }
             } catch (err) {
                 console.error("WS Parse error", err);
             }
@@ -149,13 +157,20 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             <div className="ml-stage">
                 <div className="ml-avatar-container">
                     <MironConnectionRing isConnected={isConnected} />
-                    {isConnected && (
+                    {isConnected && !isConsulting && (
                         <>
                             <div className="ml-halo"></div>
                             <div className="ml-halo" style={{animationDelay: '0.6s'}}></div>
                         </>
                     )}
-                    <img src={mironAvatarUrl} alt="Miron" className="ml-avatar" />
+                    {isConsulting && (
+                        <>
+                            <div className="ml-consulting-pulse-1"></div>
+                            <div className="ml-consulting-pulse-2"></div>
+                            <div className="ml-consulting-label">Consulting textbook...</div>
+                        </>
+                    )}
+                    <img src={mironAvatarUrl} alt="Miron" className={`ml-avatar ${isConsulting ? 'consulting-mode' : ''}`} />
                 </div>
             </div>
 
