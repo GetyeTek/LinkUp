@@ -200,60 +200,156 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
         return word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?።፡]/g, "").trim();
     };
 
+    const prevBulletCount = useRef(0);
+    const groupsContainerRef = useRef(null);
+
     const renderBoardBlocks = () => {
-        const spokenWords = spokenText.split(/\s+/).map(cleanWord).filter(Boolean);
-        
-        return activeBoardBlocks.map((spans, bIdx) => {
-            let targetWords = spans.filter(s => s.text.trim()).map(s => cleanWord(s.text));
-            let revealedIndex = -1;
-            let sIdx = 0;
+        if (!activeBoardBlocks || activeBoardBlocks.length === 0) return null;
+
+        // NEW JSON BULLET STRUCTURE
+        if (activeBoardBlocks[0] && typeof activeBoardBlocks[0] === 'object' && !Array.isArray(activeBoardBlocks[0])) {
+            const chunks = activeBoardBlocks;
+            const lastChunk = chunks[chunks.length - 1];
+            let isLastChunkRevealed = false;
             
-            for (let tIdx = 0; tIdx < targetWords.length; tIdx++) {
-                const target = targetWords[tIdx];
-                if (!target) {
-                    revealedIndex = tIdx; 
-                    continue;
+            if (spokenText) {
+                const targetWords = lastChunk.spoken_text.split(/\s+/).map(cleanWord).filter(w => w.length > 4);
+                const recentSpoken = spokenText.split(/\s+/).slice(-20).map(cleanWord);
+                
+                let matchCount = 0;
+                for (const tw of targetWords) {
+                    if (recentSpoken.includes(tw)) matchCount++;
                 }
-                let found = false;
-                for (let i = sIdx; i < Math.min(sIdx + 10, spokenWords.length); i++) {
-                    if (spokenWords[i] === target || spokenWords[i].includes(target) || target.includes(spokenWords[i])) {
-                        found = true;
-                        sIdx = i + 1;
-                        revealedIndex = tIdx;
-                        break;
-                    }
+                
+                const threshold = Math.min(2, targetWords.length);
+                if (matchCount >= threshold || targetWords.length === 0) {
+                    isLastChunkRevealed = true;
                 }
-                if (!found) break;
             }
             
-            let spanWordCounter = 0;
+            const groups = [];
+            let currentGroup = null;
+            let currentBulletCount = 0;
+            
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                const isRevealed = i < chunks.length - 1 || isLastChunkRevealed;
+                
+                if (!isRevealed) continue;
+                
+                const inst = chunk.visual_instruction;
+                if (inst) {
+                    if (inst.action === 'create_group') {
+                        currentGroup = {
+                            id: `group-${i}`,
+                            title: inst.group_title,
+                            bullets: inst.bullet_point ? [inst.bullet_point] : []
+                        };
+                        groups.push(currentGroup);
+                        if (inst.bullet_point) currentBulletCount++;
+                    } else if (inst.action === 'append_bullet' && currentGroup) {
+                        if (inst.bullet_point) {
+                            currentGroup.bullets.push(inst.bullet_point);
+                            currentBulletCount++;
+                        }
+                    } else if (inst.action === 'clear') {
+                        groups.length = 0;
+                        currentGroup = null;
+                        currentBulletCount = 0;
+                    }
+                }
+            }
+
+            // Trigger pan side-effect only when bullet count increases
+            if (currentBulletCount > prevBulletCount.current) {
+                prevBulletCount.current = currentBulletCount;
+                setTimeout(() => {
+                    if (groupsContainerRef.current) {
+                        const contentHeight = groupsContainerRef.current.offsetHeight;
+                        const viewportH = viewportDims.current.h;
+                        // Set pan so the bottom of the content sits comfortably near the bottom of the viewport
+                        const targetY = (viewportH * 0.7) - (contentHeight * boardScale);
+                        setPan(p => ({ ...p, y: targetY }));
+                    }
+                }, 50);
+            } else if (currentBulletCount < prevBulletCount.current) {
+                prevBulletCount.current = currentBulletCount; // Handle clear
+            }
+            
             return (
-                <div key={bIdx} className="dynamic-blackboard-block">
-                    {spans.map((span, sIdx) => {
-                        const isSpace = !span.text.trim();
-                        let isRevealed = false;
-                        if (!isSpace) {
-                            isRevealed = spanWordCounter <= revealedIndex;
-                            spanWordCounter++;
-                        } else {
-                            isRevealed = spanWordCounter - 1 <= revealedIndex;
-                        }
-                        
-                        let cls = `bb-span ${isRevealed ? 'revealed' : 'ghost'}`;
-                        if (isRevealed) {
-                            if (span.styles.u) cls += ' bb-u';
-                            if (span.styles.h) cls += ' bb-h';
-                            if (span.styles.p) cls += ' bb-p';
-                            if (span.styles.b) cls += ' bb-b';
-                            if (span.styles.i) cls += ' bb-i';
-                            if (span.styles.t) cls += ' bb-t';
-                        }
-                        
-                        return <span key={sIdx} className={cls}>{span.text}</span>
-                    })}
+                <div className="board-groups-container" ref={groupsContainerRef}>
+                    {groups.map((g) => (
+                        <div key={g.id} className="board-group">
+                            {g.title && <div className="board-group-title">{g.title}</div>}
+                            <ul className="board-group-bullets">
+                                {g.bullets.map((b, bIdx) => (
+                                    <li key={bIdx} className="board-bullet-item">{b}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
                 </div>
             );
-        });
+        }
+
+        // LEGACY STRING ARRAY PARSING
+        const spokenWords = spokenText.split(/\s+/).map(cleanWord).filter(Boolean);
+        
+        return (
+            <div className="dynamic-blackboard-container">
+                {activeBoardBlocks.map((spans, bIdx) => {
+                    let targetWords = spans.filter(s => s.text.trim()).map(s => cleanWord(s.text));
+                    let revealedIndex = -1;
+                    let sIdx = 0;
+                    
+                    for (let tIdx = 0; tIdx < targetWords.length; tIdx++) {
+                        const target = targetWords[tIdx];
+                        if (!target) {
+                            revealedIndex = tIdx; 
+                            continue;
+                        }
+                        let found = false;
+                        for (let i = sIdx; i < Math.min(sIdx + 10, spokenWords.length); i++) {
+                            if (spokenWords[i] === target || spokenWords[i].includes(target) || target.includes(spokenWords[i])) {
+                                found = true;
+                                sIdx = i + 1;
+                                revealedIndex = tIdx;
+                                break;
+                            }
+                        }
+                        if (!found) break;
+                    }
+                    
+                    let spanWordCounter = 0;
+                    return (
+                        <div key={bIdx} className="dynamic-blackboard-block">
+                            {spans.map((span, sIdx) => {
+                                const isSpace = !span.text.trim();
+                                let isRevealed = false;
+                                if (!isSpace) {
+                                    isRevealed = spanWordCounter <= revealedIndex;
+                                    spanWordCounter++;
+                                } else {
+                                    isRevealed = spanWordCounter - 1 <= revealedIndex;
+                                }
+                                
+                                let cls = `bb-span ${isRevealed ? 'revealed' : 'ghost'}`;
+                                if (isRevealed) {
+                                    if (span.styles.u) cls += ' bb-u';
+                                    if (span.styles.h) cls += ' bb-h';
+                                    if (span.styles.p) cls += ' bb-p';
+                                    if (span.styles.b) cls += ' bb-b';
+                                    if (span.styles.i) cls += ' bb-i';
+                                    if (span.styles.t) cls += ' bb-t';
+                                }
+                                
+                                return <span key={sIdx} className={cls}>{span.text}</span>
+                            })}
+                        </div>
+                    );
+                })}
+            </div>
+        );
     };
 
     return (
@@ -380,9 +476,9 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
                 )}
 
                 {activeBoardBlocks.length > 0 && (
-                    <div className="dynamic-blackboard-container">
+                    <>
                         {renderBoardBlocks()}
-                    </div>
+                    </>
                 )}
 
                 {boardElements.map(el => {
