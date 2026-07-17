@@ -202,7 +202,8 @@ export class GeminiLiveAgent {
                             const rawChunk = this.readingQueue[0];
                             this.broadcast(JSON.stringify({ type: "chunk_transition", index: 0, chunk: rawChunk }));
                             
-                            const cleanChunk = sanitizeForSpeech(rawChunk);
+                            const textToSpeak = typeof rawChunk === 'object' ? (rawChunk.spoken_text || '') : rawChunk;
+                            const cleanChunk = sanitizeForSpeech(textToSpeak);
                             const prompt = `Read the following segment exactly in your informal peer tone:\n\n${cleanChunk}`;
                             const payload = JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
@@ -545,7 +546,8 @@ export class GeminiLiveAgent {
                             const rawChunk = this.readingQueue[this.currentChunkIndex];
                             this.broadcast(JSON.stringify({ type: "chunk_transition", index: this.currentChunkIndex, chunk: rawChunk }));
                             
-                            const cleanChunk = sanitizeForSpeech(rawChunk);
+                            const textToSpeak = typeof rawChunk === 'object' ? (rawChunk.spoken_text || '') : rawChunk;
+                            const cleanChunk = sanitizeForSpeech(textToSpeak);
                             const prompt = `Let's continue. Read this segment exactly:\n\n${cleanChunk}`;
                             ws.send(JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
@@ -587,7 +589,8 @@ export class GeminiLiveAgent {
                             const rawChunk = this.readingQueue[this.currentChunkIndex];
                             this.broadcast(JSON.stringify({ type: "chunk_transition", index: this.currentChunkIndex, chunk: rawChunk }));
                             
-                            const cleanChunk = sanitizeForSpeech(rawChunk);
+                            const textToSpeak = typeof rawChunk === 'object' ? (rawChunk.spoken_text || '') : rawChunk;
+                            const cleanChunk = sanitizeForSpeech(textToSpeak);
                             const prompt = `Let's resume the lecture where we left off. Read this segment exactly:\n\n${cleanChunk}`;
                             ws.send(JSON.stringify({
                                 clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
