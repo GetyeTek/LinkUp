@@ -54,6 +54,30 @@
 
 @keyframes mlHalo { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
 
+/* Consulting Visuals */
+.ml-avatar.consulting-mode { filter: brightness(1.2) drop-shadow(0 0 20px rgba(66, 215, 184, 0.6)); }
+
+.ml-consulting-pulse-1, .ml-consulting-pulse-2 {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 3px dashed var(--accent-teal); z-index: 1;
+    animation: consultSpin 4s linear infinite;
+    opacity: 0.6;
+}
+.ml-consulting-pulse-2 {
+    inset: -15px; border-width: 2px;
+    animation: consultSpin 6s linear infinite reverse;
+    opacity: 0.3;
+}
+
+.ml-consulting-label {
+    position: absolute; bottom: -35px; width: 200px; text-align: center;
+    color: var(--accent-teal); font-size: 0.8rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px;
+    animation: pulseDim 1.5s infinite alternate;
+}
+
+@keyframes consultSpin { 100% { transform: rotate(360deg); } }
+
     .ml-transcript-area {
         position: absolute; inset: 0; z-index: 5;
         padding: 80px 1.5rem 100px 1.5rem;
