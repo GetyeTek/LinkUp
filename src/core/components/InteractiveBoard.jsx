@@ -44,7 +44,7 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
     }, [payload]);
 
     useEffect(() => {
-        if (boardElements.length === 0 || !canvasRef.current) return;
+        if (!canvasRef.current) return;
 
         const calibrateBoard = () => {
             const canvas = canvasRef.current;
@@ -52,41 +52,55 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
             const { width: W, height: H } = canvas.getBoundingClientRect();
             viewportDims.current = { w: W, h: H };
 
-            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            if (boardElements && boardElements.length > 0) {
+                // Diagram Mode Calibration
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
 
-            boardElements.forEach(el => {
-                const cx = parseCoord(el.x, W);
-                const cy = parseCoord(el.y, H);
-                let rx = 100, ry = 100;
-                if (el.type === 'rectangle' || el.type === 'rect') { rx = 140; ry = 90; }
-                else if (el.type === 'text') { rx = 100; ry = 30; }
+                boardElements.forEach(el => {
+                    const cx = parseCoord(el.x, W);
+                    const cy = parseCoord(el.y, H);
+                    let rx = 100, ry = 100;
+                    if (el.type === 'rectangle' || el.type === 'rect') { rx = 140; ry = 90; }
+                    else if (el.type === 'text') { rx = 100; ry = 30; }
 
-                minX = Math.min(minX, cx - rx);
-                maxX = Math.max(maxX, cx + rx);
-                minY = Math.min(minY, cy - ry);
-                maxY = Math.max(maxY, cy + ry);
-            });
+                    minX = Math.min(minX, cx - rx);
+                    maxX = Math.max(maxX, cx + rx);
+                    minY = Math.min(minY, cy - ry);
+                    maxY = Math.max(maxY, cy + ry);
+                });
 
-            if (minX === Infinity) { minX = 0; maxX = W; minY = 0; maxY = H; }
-            if (maxX - minX < 100) { minX -= 50; maxX += 50; }
-            if (maxY - minY < 100) { minY -= 50; maxY += 50; }
+                if (minX === Infinity) { minX = 0; maxX = W; minY = 0; maxY = H; }
+                if (maxX - minX < 100) { minX -= 50; maxX += 50; }
+                if (maxY - minY < 100) { minY -= 50; maxY += 50; }
 
-            const spanX = maxX - minX;
-            const spanY = maxY - minY;
+                const spanX = maxX - minX;
+                const spanY = maxY - minY;
 
-            const scaleX = W / (spanX + 80);
-            const scaleY = H / (spanY + 80);
-            const idealScale = Math.min(scaleX, scaleY, 1.0);
-            const finalScale = Math.max(0.45, idealScale);
-            setBoardScale(finalScale);
+                const scaleX = W / (spanX + 80);
+                const scaleY = H / (spanY + 80);
+                const idealScale = Math.min(scaleX, scaleY, 1.0);
+                const finalScale = Math.max(0.45, idealScale);
+                setBoardScale(finalScale);
 
-            const contentCenterX = (minX + maxX) / 2;
-            const contentCenterY = (minY + maxY) / 2;
+                const contentCenterX = (minX + maxX) / 2;
+                const contentCenterY = (minY + maxY) / 2;
 
-            setPan({
-                x: (W / 2) - (contentCenterX * finalScale),
-                y: (H / 2) - (contentCenterY * finalScale)
-            });
+                setPan({
+                    x: (W / 2) - (contentCenterX * finalScale),
+                    y: (H / 2) - (contentCenterY * finalScale)
+                });
+            } else if (activeBoardBlocks && activeBoardBlocks.length > 0) {
+                // Blackboard Mode Calibration (Fuzzy matching bullet groups)
+                const idealScale = (W - 40) / 800;
+                const finalScale = Math.max(0.4, Math.min(idealScale, 1.0));
+                setBoardScale(finalScale);
+                
+                // Position at top center with comfortable vertical offset
+                setPan({
+                    x: (W / 2) - (400 * finalScale),
+                    y: 40
+                });
+            }
         };
 
         calibrateBoard();
@@ -94,7 +108,7 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
         ro.observe(canvasRef.current);
 
         return () => ro.disconnect();
-    }, [boardElements]);
+    }, [boardElements, activeBoardBlocks]);
 
     const handleCanvasPointerDown = (e) => {
         if (e.target.closest('.close-board-btn')) return;
@@ -361,8 +375,8 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
             onPointerUp={handleCanvasPointerUp}
             style={{ position: 'absolute', inset: 0, zIndex: 100 }}
         >
-            <button className="close-board-btn" onClick={onClose} title="Close Board">
-                <i className="fas fa-times"></i>
+            <button className="close-board-btn" onClick={onClose} title="Collapse Board">
+                <i className="fas fa-compress-alt"></i>
             </button>
             <div 
                 className="live-board-viewport"
