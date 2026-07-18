@@ -5,7 +5,7 @@ import ReplyFullScreen from './ReplyFullScreen.jsx';
 import './ForYouFeed.css';
 
 const ForYouFeed = () => {
-    const { sessionUser: currentUser } = usePlatform();
+    const { sessionUser: currentUser, routePayload, clearRoutePayload } = usePlatform();
     const [peerQuestions, setPeerQuestions] = useState([]);
     const [liveSessions, setLiveSessions] = useState([]);
     const [replyTarget, setReplyTarget] = useState(null);
@@ -40,6 +40,28 @@ const ForYouFeed = () => {
 
         return () => supabase.removeChannel(channel);
     }, [currentUser?.id]);
+
+    // Handle deep-link scrolling from the Home tab
+    useEffect(() => {
+        if (routePayload?.action === 'open_explore_item') {
+            if (routePayload.target_pill) setActiveFilter(routePayload.target_pill);
+            
+            if (routePayload.target_id) {
+                // Wait for the tab to paint, then seek and scroll
+                setTimeout(() => {
+                    const el = document.getElementById(`feed-item-${routePayload.target_id}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.add('highlight-feed-item');
+                        setTimeout(() => el.classList.remove('highlight-feed-item'), 3000);
+                    }
+                    clearRoutePayload();
+                }, 400); 
+            } else {
+                clearRoutePayload();
+            }
+        }
+    }, [routePayload, clearRoutePayload]);
 
     const fetchPeerQuestions = async () => {
         const { data } = await supabase.rpc('get_peer_questions');
@@ -95,7 +117,7 @@ const ForYouFeed = () => {
             <div className="activity-list-container">
                 {/* Live Study Sessions */}
                 {filteredSessions.map(session => (
-                    <div className="activity-card live-session-card" key={session.id}>
+                    <div className="activity-card live-session-card" id={`feed-item-${session.id}`} key={session.id}>
                         <div className="activity-content" style={{borderLeft: 'none'}}>
                             <div className="activity-tag" style={{color: '#ff5f5f'}}>
                                 <span className="live-pulse-dot"></span> Live Study Group
@@ -116,7 +138,7 @@ const ForYouFeed = () => {
 
                 {/* Dynamic Peer Questions Stream */}
                 {filteredQuestions.map(q => (
-                    <div className="activity-card" key={q.id}>
+                    <div className="activity-card" id={`feed-item-${q.id}`} key={q.id}>
                         <div className="activity-content" style={{ borderLeft: `4px solid ${q.asker_id === currentUser.id ? '#9b59b6' : 'var(--accent-teal)'}` }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                 <div className="activity-tag" style={{ color: q.asker_id === currentUser.id ? '#9b59b6' : 'var(--accent-teal)', marginBottom: 0 }}>
