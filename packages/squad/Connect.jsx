@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-core';
 import './Connect.css';
 import UserChat from './UserChat.jsx';
 import GroupChat from './GroupChat.jsx';
