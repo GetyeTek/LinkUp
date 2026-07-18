@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-core';
 import ChatSearchOverlay from './components/ChatSearchOverlay.jsx';
 import MessageContextMenu from './components/MessageContextMenu.jsx';
 import ChatInputDock from './components/ChatInputDock.jsx';
@@ -451,7 +451,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                     </button>
                     <div className="contact-profile" onClick={() => !isOtherUserDeleted && onOpenUser(chat.other_user_id)} style={{cursor: !isOtherUserDeleted ? 'pointer' : 'default'}}>
                         <div className="avatar-ring">
-                            <img src={chatAvatar || 'https://via.placeholder.com/150'} alt="Avatar" />
+                            <img src={chatAvatar || getAvatarFallback(chatTitle)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(chatTitle); }} alt="Avatar" />
                             {isOnline && <div className="online-dot"></div>}
                         </div>
                         <div className="contact-details">
