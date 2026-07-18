@@ -19,14 +19,16 @@ const Home = () => {
         let isMounted = true;
         
         const fetchWhatsNextData = () => {
+            console.log("[Realtime:Home] -> Fetching What's Next data...");
             Promise.all([
                 supabase.rpc('get_live_study_sessions', { req_user_id: userProfile.id }),
                 supabase.rpc('get_peer_questions')
             ]).then(([liveRes, qaRes]) => {
                 if (isMounted) {
+                    console.log("[Realtime:Home] <- Data fetched:", { liveCount: liveRes.data?.length, qaCount: qaRes.data?.length });
                     setWhatsNextData({
                         live: liveRes.data || [],
-                        qa: (qaRes.data || []).slice(0, 2), // Take top 2 hottest questions
+                        qa: (qaRes.data || []).slice(0, 2),
                         loading: false
                     });
                 }
@@ -35,12 +37,22 @@ const Home = () => {
 
         fetchWhatsNextData();
 
-        // Realtime listener for instant feed updates
         const channel = supabase.channel('home_whats_next_updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, fetchWhatsNextData)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, fetchWhatsNextData)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, fetchWhatsNextData)
-            .subscribe();
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, (payload) => {
+                console.log("[Realtime:Home] ⚡ Event: live_study_sessions", payload.eventType, payload.new);
+                fetchWhatsNextData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, (payload) => {
+                console.log("[Realtime:Home] ⚡ Event: peer_questions", payload.eventType, payload.new);
+                fetchWhatsNextData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, (payload) => {
+                console.log("[Realtime:Home] ⚡ Event: conversations", payload.eventType, payload.new?.id);
+                fetchWhatsNextData();
+            })
+            .subscribe((status, err) => {
+                console.log("[Realtime:Home] WS Status:", status, err || "");
+            });
 
         return () => {
             isMounted = false;
