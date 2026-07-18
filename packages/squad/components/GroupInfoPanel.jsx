@@ -77,7 +77,10 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             setAlertNotice({ title: "Leave Failed", msg: error.message, success: false });
             setConfirmLeave(false);
         } else {
-            onDisband(); // Close chat window completely, will trigger resync
+            if (userProfile && userProfile.class_id === conversationId) {
+                userProfile.class_id = null; // Clean local profile cache
+            }
+            onDisband(); // Closes the chat completely
         }
     };
 
