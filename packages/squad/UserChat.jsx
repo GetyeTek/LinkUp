@@ -188,7 +188,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
         clearTypingPresence();
 
         const msgText = overrideData ? overrideData.text : input;
-        const currentAttachments = overrideData ? overrideData.attachments : [...pendingAttachments];
+        const currentAttachments = overrideData ? (overrideData.attachments || []) : [...pendingAttachments];
         let currentConvId = activeConvId;
         
         setInput('');
@@ -276,7 +276,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
             setAlertNotice({ title: "Delivery Error", msg: "Message failed to send. You may lack permission." });
         } else if (data) {
             // Anti-Stutter cache injection mapping
-            if (finalAttachments.length > 0) {
+            if (finalAttachments.length > 0 && Array.isArray(data.attachments)) {
                 data.attachments = data.attachments.map(dbAtt => {
                     const localMatch = finalAttachments.find(fa => fa.name === dbAtt.name);
                     if (localMatch && localMatch.previewUrl) {
