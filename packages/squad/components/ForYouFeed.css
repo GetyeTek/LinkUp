@@ -19,6 +19,24 @@
 .activity-headline { font-family: 'Newsreader', serif; font-size: 1.25rem; font-weight: 600; color: #fff; margin-bottom: 0.5rem; line-height: 1.3; }
 .activity-snippet { font-size: 0.85rem; color: #aaa; line-height: 1.5; margin: 0; }
 
+.activity-card.live-session-card {
+    border: 1px solid var(--accent-teal);
+    box-shadow: 0 0 15px rgba(66, 215, 184, 0.2);
+    animation: liveCardPulse 2s infinite alternate;
+    background: linear-gradient(135deg, rgba(66, 215, 184, 0.05), var(--surface-dark));
+}
+
+@keyframes liveCardPulse {
+    0% { box-shadow: 0 0 10px rgba(66, 215, 184, 0.1); border-color: rgba(66, 215, 184, 0.3); }
+    100% { box-shadow: 0 0 25px rgba(66, 215, 184, 0.4); border-color: var(--accent-teal); }
+}
+
+.live-pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #ff5f5f;
+    box-shadow: 0 0 8px #ff5f5f; animation: blink 1.5s infinite;
+    display: inline-block; margin-right: 6px;
+}
+
 .claim-btn { border: none; border-radius: 10px; padding: 0.5rem 1rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s ease; }
 .claim-btn.claimable { background-color: var(--accent-teal); color: #000; }
 .claim-btn.claimable:disabled { opacity: 0.6; cursor: not-allowed; }
