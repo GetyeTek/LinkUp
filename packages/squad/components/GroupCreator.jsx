@@ -2,11 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@linkup-platform/sdk-core';
 import './GroupCreator.css';
 
-const GroupCreator = ({ currentUser, onClose, onCreated }) => {
-    const [step, setStep] = useState(1);
+const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
+    const [step, setStep] = useState(initialMode ? 2 : 1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [form, setForm] = useState({ type: '', title: '', focus: '', privacy: 'public', slug: '' });
+    const [form, setForm] = useState({ 
+        type: initialMode || '', 
+        title: '', 
+        focus: initialMode === 'class' ? 'Class' : '', 
+        privacy: 'public', 
+        slug: '' 
+    });
     const [groupCount, setGroupCount] = useState(0);
     const [loadingCount, setLoadingCount] = useState(true);
     const [slugStatus, setSlugStatus] = useState('idle');
@@ -131,7 +137,7 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
                                 ))}
                             </div>
                             <div className="gc-nav">
-                                <button className="gc-btn secondary" onClick={() => setStep(1)}>Back</button>
+                                <button className="gc-btn secondary" onClick={() => initialMode ? onClose() : setStep(1)}>Back</button>
                                 <button className="gc-btn primary" onClick={() => setStep(3)} disabled={!form.focus}>Next</button>
                             </div>
                         </div>
@@ -182,7 +188,7 @@ const GroupCreator = ({ currentUser, onClose, onCreated }) => {
                             <label className="gc-label">Class / Section Name</label>
                             <input className="gc-input" placeholder="e.g. Section B 2026" value={form.title} onChange={e => setForm({...form, title: e.target.value})} autoFocus />
                             <div className="gc-nav">
-                                <button className="gc-btn secondary" onClick={() => setStep(1)}>Back</button>
+                                <button className="gc-btn secondary" onClick={() => initialMode ? onClose() : setStep(1)}>Back</button>
                                 <button className="gc-btn primary" disabled={form.title.length < 3} onClick={() => {
                                     if (!form.slug) {
                                         setForm({...form, slug: form.title.toLowerCase().replace(/[^a-z0-9]/g, '')});
