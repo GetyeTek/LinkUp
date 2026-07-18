@@ -589,13 +589,15 @@ const Connect = () => {
             </div>
             
             {/* Standard Connect FAB */}
-            <div 
-                className="connect-fab" 
-                style={{ background: 'var(--accent-teal)', color: '#0c0c0c' }}
-                onClick={() => setShowDiscovery(true)}
-            >
-                <i className="fas fa-comment-medical"></i>
-            </div>
+            {activeView !== 'explore' && (
+                <div 
+                    className="connect-fab" 
+                    style={{ background: 'var(--accent-teal)', color: '#0c0c0c' }}
+                    onClick={() => setShowDiscovery(true)}
+                >
+                    <i className="fas fa-comment-medical"></i>
+                </div>
+            )}
 
             {showDiscovery && (
                 <DiscoveryScreen 
