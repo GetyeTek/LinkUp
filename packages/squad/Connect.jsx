@@ -121,7 +121,10 @@ const Connect = () => {
         if (rawSquadId || shortSqCode) resolveSquad();
         
         // Handle Inbound Deep Links from Notifications
-        if (routePayload && routePayload.action === 'open_chat') {
+        if (routePayload && routePayload.action === 'open_classes_tab') {
+            setActiveView('class');
+            clearRoutePayload();
+        } else if (routePayload && routePayload.action === 'open_chat') {
             setActiveView('messages');
             
             const ghostChat = {
