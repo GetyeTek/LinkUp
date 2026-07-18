@@ -10,6 +10,7 @@ import GlobalSearchOverlay from './components/GlobalSearchOverlay.jsx';
 import DiscoveryScreen from './components/DiscoveryScreen.jsx';
 import SquadsFeed from './components/SquadsFeed.jsx';
 import MessagesFeed from './components/MessagesFeed.jsx';
+import ExploreTab from './components/ExploreTab.jsx';
 
 const Connect = () => {
     const { shell, user: userProfile, sessionUser: currentUser, unreadCount, routePayload, clearRoutePayload } = usePlatform();
@@ -245,7 +246,7 @@ const Connect = () => {
     useEffect(() => {
         const handleSubSwipe = (e) => {
             const { direction } = e.detail;
-            const views = ['messages', 'squads', 'class'];
+            const views = ['messages', 'squads', 'class', 'explore'];
             const currentIndex = views.indexOf(activeView);
             
             // Intercept the global swipe if we can shift tabs internally
@@ -539,6 +540,10 @@ const Connect = () => {
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-users-rectangle"></i></div>
                                 <span className="text-label">Class</span>
                             </div>
+                            <div className={`option ${activeView === 'explore' ? 'active' : ''}`} onClick={() => { setActiveView('explore'); setIsHeaderCollapsed(false); }}>
+                                <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-compass"></i></div>
+                                <span className="text-label">Explore</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -579,6 +584,8 @@ const Connect = () => {
                     onlineUsers={onlineUsers}
                     formatTime={formatTime}
                 />
+
+                <ExploreTab activeView={activeView} />
             </div>
             
             {/* Standard Connect FAB */}
