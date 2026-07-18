@@ -30,7 +30,7 @@ const Connect = () => {
     const [mountedChats, setMountedChats] = useState({});
     const [activeChatId, setActiveChatId] = useState(null);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
-    const [isGroupCreatorOpen, setIsGroupCreatorOpen] = useState(false);
+    const [groupCreatorMode, setGroupCreatorMode] = useState(null);
     const [conversations, setConversations] = useState([]);
     const [suggestedSquads, setSuggestedSquads] = useState([]);
     const [campusClasses, setCampusClasses] = useState([]);
@@ -313,6 +313,7 @@ const Connect = () => {
 
         await fetchConversations();
         await fetchSuggestedSquads();
+        await fetchCampusClasses();
         
         setJoiningSquadId(null);
         
@@ -515,7 +516,7 @@ const Connect = () => {
                 <SquadsFeed 
                     activeView={activeView}
                     handleScroll={handleScroll}
-                    setIsGroupCreatorOpen={setIsGroupCreatorOpen}
+                    setIsGroupCreatorOpen={setGroupCreatorMode}
                     conversations={conversations}
                     suggestedSquads={suggestedSquads}
                     campusClasses={campusClasses}
@@ -594,7 +595,7 @@ const Connect = () => {
             
             {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {viewingUserId && <UserInfoPanel userId={viewingUserId} currentUser={currentUser} onClose={() => setViewingUserId(null)} />}
-            {isGroupCreatorOpen && <GroupCreator currentUser={currentUser} onClose={() => setIsGroupCreatorOpen(false)} onCreated={() => { setIsGroupCreatorOpen(false); fetchConversations(); fetchCampusClasses(); fetchSuggestedSquads(); }} />}
+            {groupCreatorMode && <GroupCreator currentUser={currentUser} initialMode={typeof groupCreatorMode === 'string' ? groupCreatorMode : null} onClose={() => setGroupCreatorMode(null)} onCreated={() => { setGroupCreatorMode(null); fetchConversations(); fetchCampusClasses(); fetchSuggestedSquads(); }} />}
             
             {toastNotice && (
                 <div className="connect-toast">
