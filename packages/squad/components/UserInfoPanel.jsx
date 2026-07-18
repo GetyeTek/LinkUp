@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from '../../../src/core/components/AvatarCropperModal.jsx';
 import './UserInfoPanel.css';
 
@@ -131,7 +131,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                 }} />
                 <div className="ui-avatar-container" onClick={() => isMe && fileInputRef.current?.click()} style={{cursor: isMe ? 'pointer' : 'default'}}>
                     <div className="ui-avatar">
-                        <img src={profile.avatar_url || 'https://via.placeholder.com/150'} alt="Avatar" />
+                        <img src={profile.avatar_url || getAvatarFallback(profile.full_name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(profile.full_name); }} alt="Avatar" />
                     </div>
                     {isMe && <div className="ui-avatar-edit"><i className="fas fa-pencil"></i></div>}
                 </div>
