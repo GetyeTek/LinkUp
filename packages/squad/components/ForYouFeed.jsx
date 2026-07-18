@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-core';
 import QAComposerModal from './QAComposerModal.jsx';
 import ReplyFullScreen from './ReplyFullScreen.jsx';
 import './ForYouFeed.css';
@@ -120,7 +120,7 @@ const ForYouFeed = () => {
                             </div>
                             <h2 className="activity-headline">{q.title}</h2>
                             <div style={{display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0'}}>
-                                <img src={q.asker_avatar || 'https://via.placeholder.com/150'} style={{width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover'}} alt="Asker" />
+                                <img src={q.asker_avatar || getAvatarFallback(q.asker_name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(q.asker_name); }} style={{width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover'}} alt="Asker" />
                                 <span style={{fontSize: '0.8rem', color: '#888'}}>
                                     {q.asker_id === currentUser.id ? 'Asked by You' : `Asked by ${q.asker_name}`} • {timeAgo(q.created_at)}
                                 </span>
