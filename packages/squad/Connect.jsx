@@ -67,6 +67,36 @@ const Connect = () => {
     }, [mountedChats, activeChatId]);
 
     useEffect(() => {
+        if (!currentUser || !routePayload) return;
+        
+        if (routePayload.action === 'open_classes_tab') {
+            setActiveView('class');
+            clearRoutePayload();
+        } else if (routePayload.action === 'open_chat') {
+            setActiveView('messages');
+            
+            const ghostChat = {
+                conversation_id: routePayload.conversation_id,
+                type: routePayload.chat_type,
+                title: 'Loading...',
+                is_preview: true
+            };
+            
+            setMountedChats(prev => ({ ...prev, [routePayload.conversation_id]: ghostChat }));
+            setActiveChatId(routePayload.conversation_id);
+            setTargetMessageId(routePayload.message_id);
+
+            supabase.rpc('get_user_conversations', { req_user_id: currentUser.id }).then(({data}) => {
+                if (data) {
+                    const c = data.find(x => x.conversation_id === routePayload.conversation_id);
+                    if (c) setMountedChats(prev => ({ ...prev, [c.conversation_id]: c }));
+                }
+            });
+            clearRoutePayload();
+        }
+    }, [routePayload, currentUser]);
+
+    useEffect(() => {
         if (!currentUser) return;
         
         // --- DEEP LINK INTERCEPTOR & SLUG RESOLVER ---
@@ -119,34 +149,6 @@ const Connect = () => {
         };
 
         if (rawSquadId || shortSqCode) resolveSquad();
-        
-        // Handle Inbound Deep Links from Notifications
-        if (routePayload && routePayload.action === 'open_classes_tab') {
-            setActiveView('class');
-            clearRoutePayload();
-        } else if (routePayload && routePayload.action === 'open_chat') {
-            setActiveView('messages');
-            
-            const ghostChat = {
-                conversation_id: routePayload.conversation_id,
-                type: routePayload.chat_type,
-                title: 'Loading...',
-                is_preview: true
-            };
-            
-            setMountedChats(prev => ({ ...prev, [routePayload.conversation_id]: ghostChat }));
-            setActiveChatId(routePayload.conversation_id);
-            setTargetMessageId(routePayload.message_id);
-
-            // Fetch true context silently
-            supabase.rpc('get_user_conversations', { req_user_id: currentUser.id }).then(({data}) => {
-                if (data) {
-                    const c = data.find(x => x.conversation_id === routePayload.conversation_id);
-                    if (c) setMountedChats(prev => ({ ...prev, [c.conversation_id]: c }));
-                }
-            });
-            clearRoutePayload();
-        }
 
         fetchConversations();
         fetchSuggestedSquads();
