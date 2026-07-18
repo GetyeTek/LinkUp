@@ -3,7 +3,7 @@ import ForYouFeed from './ForYouFeed.jsx';
 import './ExploreTab.css';
 
 const ExploreTab = ({ activeView }) => {
-    const [appsCollapsed, setAppsCollapsed] = useState(false);
+    const [appsCollapsed, setAppsCollapsed] = useState(true);
 
             return (
             <div className={`hub-view ${activeView === 'explore' ? 'active' : ''}`} id="connect-explore" style={{ overflowY: 'auto', height: '100%' }}>
