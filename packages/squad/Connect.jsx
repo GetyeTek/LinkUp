@@ -191,33 +191,27 @@ const Connect = () => {
         fetchCampusClasses();
         
         // 1. Subscribe to Realtime Messages, Read Receipts, and Conversation updates
-        const msgChannel = supabase.channel('chat_list_updates')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        let listDebounceTimer;
+        const triggerListUpdate = () => {
+            clearTimeout(listDebounceTimer);
+            listDebounceTimer = setTimeout(() => {
                 fetchConversations();
-            })
+                fetchSuggestedSquads();
+                fetchCampusClasses();
+            }, 600); // Bypasses DB transaction race conditions
+        };
+
+        const msgChannel = supabase.channel(`chat_list_${Date.now()}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, triggerListUpdate)
             .on('postgres_changes', { 
                 event: 'UPDATE', 
                 schema: 'public', 
                 table: 'conversation_members',
                 filter: `user_id=eq.${currentUser.id}` 
-            }, () => {
-                // Refresh list when I mark a chat as read to clear badges instantly
-                fetchConversations();
-            })
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'conversations'
-            }, (payload) => {
-                console.log("[Realtime:Connect] ⚡ Event: conversations", payload.eventType, payload.new?.id);
-                // Instantly update lists when a group is created, deleted, goes live, stops, or alters metadata
-                fetchConversations();
-                fetchSuggestedSquads();
-                fetchCampusClasses();
-            })
-            .subscribe((status, err) => {
-                console.log("[Realtime:Connect] WS Status:", status, err || "");
-            });
+            }, triggerListUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, triggerListUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, triggerListUpdate)
+            .subscribe();
 
         // 2. Global Presence (Who is Online?)
         const presenceChannel = supabase.channel('global_presence', {
@@ -243,6 +237,7 @@ const Connect = () => {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
             presenceChannel.untrack(); // Force drop presence
+            if (typeof listDebounceTimer !== 'undefined') clearTimeout(listDebounceTimer);
             supabase.removeChannel(msgChannel);
             supabase.removeChannel(presenceChannel);
         };
@@ -287,22 +282,14 @@ const Connect = () => {
     };
 
     const fetchSuggestedSquads = async () => {
-        console.log("[Realtime:Connect] -> Fetching Suggested Squads...");
         const { data, error } = await supabase.rpc('get_suggested_squads', { req_user_id: currentUser.id });
-        if (data) {
-            console.log("[Realtime:Connect] <- Fetched Suggested:", data.length);
-            setSuggestedSquads(data);
-        }
+        if (data) setSuggestedSquads(data);
         if (error) console.error("Error fetching suggestions:", error);
     };
 
     const fetchCampusClasses = async () => {
-        console.log("[Realtime:Connect] -> Fetching Campus Classes...");
         const { data, error } = await supabase.rpc('get_campus_classes', { req_user_id: currentUser.id });
-        if (data) {
-            console.log("[Realtime:Connect] <- Fetched Classes:", data.length);
-            setCampusClasses(data);
-        }
+        if (data) setCampusClasses(data);
         if (error) console.error("Error fetching classes:", error);
     };
 
