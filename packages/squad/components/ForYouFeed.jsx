@@ -47,10 +47,23 @@ const ForYouFeed = () => {
             if (routePayload.target_pill) setActiveFilter(routePayload.target_pill);
             
             if (routePayload.target_id) {
-                // Wait for the tab to paint, then seek and scroll
+                // Wait for the tab to paint, then seek and scroll securely
                 setTimeout(() => {
                     const el = document.getElementById(`feed-item-${routePayload.target_id}`);
-                    if (el) {
+                    const container = document.getElementById('connect-explore');
+                    
+                    if (el && container) {
+                        // Surgical math scroll (prevents the whole screen from being pushed up)
+                        const containerRect = container.getBoundingClientRect();
+                        const elRect = el.getBoundingClientRect();
+                        const offset = elRect.top - containerRect.top + container.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+                        
+                        container.scrollTo({ top: offset, behavior: 'smooth' });
+                        
+                        el.classList.add('highlight-feed-item');
+                        setTimeout(() => el.classList.remove('highlight-feed-item'), 3000);
+                    } else if (el) {
+                        // Failsafe
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         el.classList.add('highlight-feed-item');
                         setTimeout(() => el.classList.remove('highlight-feed-item'), 3000);
