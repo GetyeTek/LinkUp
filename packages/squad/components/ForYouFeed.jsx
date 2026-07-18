@@ -95,14 +95,16 @@ const ForYouFeed = () => {
             <div className="activity-list-container">
                 {/* Live Study Sessions */}
                 {filteredSessions.map(session => (
-                    <div className="activity-card" key={session.id}>
-                        <div className="activity-content" style={{borderLeft: '4px solid var(--accent-teal)'}}>
-                            <div className="activity-tag">Live Study Group</div>
-                            <h2 className="activity-headline">{session.course_name}: {session.lesson_topic}</h2>
+                    <div className="activity-card live-session-card" key={session.id}>
+                        <div className="activity-content" style={{borderLeft: 'none'}}>
+                            <div className="activity-tag" style={{color: '#ff5f5f'}}>
+                                <span className="live-pulse-dot"></span> Live Study Group
+                            </div>
+                            <h2 className="activity-headline" style={{color: 'var(--accent-teal)'}}>{session.course_name}: {session.lesson_topic}</h2>
                             <p className="activity-snippet">{session.dynamic_message}</p>
                             <button 
                                 className="claim-btn claimable" 
-                                style={{marginTop: '1rem', width: '100%'}}
+                                style={{marginTop: '1rem', width: '100%', background: 'var(--accent-teal)', color: '#000'}}
                                 onClick={(e) => handleJoinSquad(session.conversation_id, e)}
                                 disabled={joiningSquadId === session.conversation_id}
                             >
