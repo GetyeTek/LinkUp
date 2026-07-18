@@ -33,7 +33,7 @@ const ForYouFeed = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, () => {
                 fetchPeerQuestions();
             })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversations' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
                 fetchLiveSessions();
             })
             .subscribe();
