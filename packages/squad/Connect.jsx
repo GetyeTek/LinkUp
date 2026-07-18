@@ -111,7 +111,22 @@ const Connect = () => {
             if (error || !data) {
                 setGlobalNotice(error?.message || "Invalid or expired invitation link.");
             } else {
-                setPrivateInviteData({ token, info: data });
+                if (data.is_member) {
+                    // User is already a member. Skip the modal and mount the active chat instantly.
+                    const chatObj = {
+                        conversation_id: data.id,
+                        type: 'group',
+                        title: data.title,
+                        avatar_url: data.avatar_url,
+                        metadata: { focus: data.focus },
+                        is_preview: false
+                    };
+                    setMountedChats(prev => ({ ...prev, [data.id]: chatObj }));
+                    setActiveChatId(data.id);
+                } else {
+                    // Show the Join Modal
+                    setPrivateInviteData({ token, info: data });
+                }
             }
         };
 
