@@ -43,6 +43,7 @@ const Connect = () => {
     const activeChatRef = useRef(null);
     
     const [targetMessageId, setTargetMessageId] = useState(null); // Deep link scroller
+    const [privateInviteData, setPrivateInviteData] = useState(null);
     
     // Featured Events & Html Rooms
     const [featuredEvents, setFeaturedEvents] = useState([]);
@@ -103,7 +104,22 @@ const Connect = () => {
         const params = new URLSearchParams(window.location.search);
         const rawSquadId = params.get('squad');
         const shortSqCode = params.get('sq');
+        const inviteToken = params.get('invite');
         
+        const resolvePrivateInvite = async (token) => {
+            const { data, error } = await supabase.rpc('get_private_group_by_token', { req_token: token });
+            if (error || !data) {
+                setGlobalNotice(error?.message || "Invalid or expired invitation link.");
+            } else {
+                setPrivateInviteData({ token, info: data });
+            }
+        };
+
+        if (inviteToken) {
+            window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+            resolvePrivateInvite(inviteToken);
+        }
+
         const resolveSquad = async () => {
             let targetId = rawSquadId;
             
@@ -285,13 +301,13 @@ const Connect = () => {
         return `${Math.floor(hrs/24)}d ago`;
     };
 
-    const handleJoinSquad = async (squadId, e) => {
+    const handleJoinSquad = async (squadId, e, token = null) => {
         if (e) e.stopPropagation();
         setJoiningSquadId(squadId);
         
-        const joinedSquadInfo = suggestedSquads.find(s => s.conversation_id === squadId) || {};
+        const joinedSquadInfo = suggestedSquads.find(s => s.conversation_id === squadId) || (privateInviteData?.info?.id === squadId ? privateInviteData.info : {});
         
-        const { error: rpcError } = await supabase.rpc('join_study_group', { req_conversation_id: squadId, req_user_id: currentUser.id });
+        const { error: rpcError } = await supabase.rpc('join_study_group', { req_conversation_id: squadId, req_user_id: currentUser.id, req_token: token });
         
         if (rpcError) {
             setGlobalNotice(rpcError.message.toLowerCase().includes('ban') ? "You have been banned from this group and cannot rejoin." : `Cannot join: ${rpcError.message}`);
@@ -599,6 +615,38 @@ const Connect = () => {
             {viewingUserId && <UserInfoPanel userId={viewingUserId} currentUser={currentUser} onClose={() => setViewingUserId(null)} />}
             {groupCreatorMode && <GroupCreator currentUser={currentUser} initialMode={typeof groupCreatorMode === 'string' ? groupCreatorMode : null} onClose={() => setGroupCreatorMode(null)} onCreated={() => { setGroupCreatorMode(null); fetchConversations(); fetchCampusClasses(); fetchSuggestedSquads(); }} />}
             
+            {privateInviteData && (
+                <div className="custom-modal-overlay" style={{zIndex: 99999}}>
+                    <div className="custom-modal-card" style={{textAlign: 'center', padding: '2rem'}}>
+                        <img 
+                            src={privateInviteData.info.avatar_url || getAvatarFallback(privateInviteData.info.title)} 
+                            onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(privateInviteData.info.title); }} 
+                            alt="Group" 
+                            style={{width: '80px', height: '80px', borderRadius: '50%', border: '3px solid var(--accent-teal)', marginBottom: '1rem', objectFit: 'cover'}}
+                        />
+                        <h2 style={{margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.4rem'}}>{privateInviteData.info.title}</h2>
+                        <div style={{display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '1.5rem'}}>
+                            <span style={{fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', color: '#ccc', padding: '4px 8px', borderRadius: '6px', fontWeight: 600, textTransform: 'uppercase'}}>{privateInviteData.info.focus || 'General'}</span>
+                            <span style={{fontSize: '0.75rem', background: 'rgba(66, 215, 184, 0.15)', color: 'var(--accent-teal)', padding: '4px 8px', borderRadius: '6px', fontWeight: 600}}>
+                                <i className="fas fa-users"></i> {privateInviteData.info.member_count} Members
+                            </span>
+                        </div>
+                        <p style={{color: '#aaa', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: 1.5}}>You've been invited to join this private group.</p>
+                        
+                        <div style={{display: 'flex', gap: '10px'}}>
+                            <button className="cm-btn-cancel" style={{flex: 1, padding: '12px'}} onClick={() => setPrivateInviteData(null)} disabled={joiningSquadId === privateInviteData.info.id}>Cancel</button>
+                            <button className="cm-btn-primary" style={{flex: 2, padding: '12px'}} onClick={() => {
+                                handleJoinSquad(privateInviteData.info.id, null, privateInviteData.token).then(() => {
+                                    setPrivateInviteData(null);
+                                });
+                            }} disabled={joiningSquadId === privateInviteData.info.id}>
+                                {joiningSquadId === privateInviteData.info.id ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Squad'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {toastNotice && (
                 <div className="connect-toast">
                     {toastNotice}
