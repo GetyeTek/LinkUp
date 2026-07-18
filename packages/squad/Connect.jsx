@@ -205,11 +205,11 @@ const Connect = () => {
                 fetchConversations();
             })
             .on('postgres_changes', {
-                event: 'UPDATE',
+                event: '*',
                 schema: 'public',
                 table: 'conversations'
             }, () => {
-                // Instantly update lists when a group goes live, stops, or alters metadata
+                // Instantly update lists when a group is created, deleted, goes live, stops, or alters metadata
                 fetchConversations();
                 fetchSuggestedSquads();
                 fetchCampusClasses();
