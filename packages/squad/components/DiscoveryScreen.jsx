@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback } from '@linkup-platform/sdk-core';
 import './DiscoveryScreen.css';
 
 const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) => {
@@ -41,7 +41,7 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) =>
                         <h3 className="section-title" style={{marginBottom: '0.5rem'}}>Suggested Classmates</h3>
                         {suggestions.map(user => (
                             <div className="peer-card" key={user.id} onClick={() => onStartChat(user)}>
-                                <img src={user.avatar_url || 'https://via.placeholder.com/150'} className="peer-avatar" alt="Avatar" />
+                                <img src={user.avatar_url || getAvatarFallback(user.full_name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(user.full_name); }} className="peer-avatar" alt="Avatar" />
                                 <div className="peer-info">
                                     <div className="peer-name">{user.full_name}</div>
                                     <div className="peer-meta">
