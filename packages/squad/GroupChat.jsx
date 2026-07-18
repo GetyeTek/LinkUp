@@ -45,6 +45,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [showMironSetup, setShowMironSetup] = useState(false);
     const [devBoardPayload, setDevBoardPayload] = useState(null);
+    const [autoTriggerLinkFlow, setAutoTriggerLinkFlow] = useState(false);
     
     // Auto-hide success toasts on parent
     // Auto-hide success toasts on parent
@@ -768,6 +769,22 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 </div>
             )}
             
+            {localChatInfo.metadata?.focus === 'Class' && userProfile?.class_id !== chat.conversation_id && !isSearchActive && liveState === 'none' && (
+                <div className="pinned-msg-banner" style={{background: 'rgba(66, 215, 184, 0.1)', borderBottom: '1px solid rgba(66, 215, 184, 0.3)', cursor: 'default'}}>
+                    <div className="pinned-bar"></div>
+                    <div className="pinned-info">
+                        <div className="pinned-title" style={{color: '#fff', fontSize: '0.85rem'}}>Unlinked Class</div>
+                        <div className="pinned-snippet" style={{color: '#aaa', whiteSpace: 'normal', lineHeight: 1.3}}>
+                            Link this as your official class group to track deadlines and exams?
+                        </div>
+                    </div>
+                    <div className="toggle-switch off" style={{ flexShrink: 0, marginLeft: '12px' }} onClick={() => {
+                        setAutoTriggerLinkFlow(true);
+                        setIsInfoOpen(true);
+                    }}></div>
+                </div>
+            )}
+            
             {localChatInfo.metadata?.pinned_message && !isSearchActive && liveState === 'none' && (
                 <div className="pinned-msg-banner" onClick={() => scrollToMessage(localChatInfo.metadata.pinned_message.id)}>
                     <div className="pinned-bar"></div>
@@ -1015,6 +1032,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     onDisband={onClose}
                     onOpenAdminSettings={() => setShowAdminSettings(true)}
                     onOpenUser={onOpenUser}
+                    autoTriggerLinkFlow={autoTriggerLinkFlow}
+                    setAutoTriggerLinkFlow={setAutoTriggerLinkFlow}
                 />
             )}
             <FullscreenMediaGallery 
