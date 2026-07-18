@@ -19,13 +19,11 @@ const Home = () => {
         let isMounted = true;
         
         const fetchWhatsNextData = () => {
-            console.log("[Realtime:Home] -> Fetching What's Next data...");
             Promise.all([
                 supabase.rpc('get_live_study_sessions', { req_user_id: userProfile.id }),
                 supabase.rpc('get_peer_questions')
             ]).then(([liveRes, qaRes]) => {
                 if (isMounted) {
-                    console.log("[Realtime:Home] <- Data fetched:", { liveCount: liveRes.data?.length, qaCount: qaRes.data?.length });
                     setWhatsNextData({
                         live: liveRes.data || [],
                         qa: (qaRes.data || []).slice(0, 2),
@@ -37,25 +35,23 @@ const Home = () => {
 
         fetchWhatsNextData();
 
-        const channel = supabase.channel('home_whats_next_updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, (payload) => {
-                console.log("[Realtime:Home] ⚡ Event: live_study_sessions", payload.eventType, payload.new);
-                fetchWhatsNextData();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, (payload) => {
-                console.log("[Realtime:Home] ⚡ Event: peer_questions", payload.eventType, payload.new);
-                fetchWhatsNextData();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, (payload) => {
-                console.log("[Realtime:Home] ⚡ Event: conversations", payload.eventType, payload.new?.id);
-                fetchWhatsNextData();
-            })
-            .subscribe((status, err) => {
-                console.log("[Realtime:Home] WS Status:", status, err || "");
-            });
+        let debounceTimer;
+        const triggerUpdate = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                if (isMounted) fetchWhatsNextData();
+            }, 600); // 600ms debounce ensures edge functions finish writing all rows
+        };
+
+        const channel = supabase.channel(`home_whats_next_${Date.now()}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, triggerUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, triggerUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, triggerUpdate)
+            .subscribe();
 
         return () => {
             isMounted = false;
+            clearTimeout(debounceTimer);
             supabase.removeChannel(channel);
         };
     }, [userProfile?.id]);
