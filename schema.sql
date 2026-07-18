@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-18T10:28:33.461Z
+-- Date: 2026-07-18T14:09:52.782Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -1172,67 +1172,6 @@ BEGIN
 END;
 
 
--- Function: get_live_study_sessions
-
-DECLARE
-    my_uni uuid;
-    my_stream text;
-BEGIN
-    -- Get the viewer's academic profile
-    SELECT university_id, freshman_stream INTO my_uni, my_stream
-    FROM public.profiles WHERE id = req_user_id;
-
-    RETURN QUERY
-    WITH EligibleSessions AS (
-        SELECT s.id, s.conversation_id, s.course_name, s.lesson_topic, s.active_user_ids, s.last_updated_at
-        FROM public.live_study_sessions s
-        WHERE 
-        -- Only consider sessions active in the last 2 hours
-        s.last_updated_at > now() - interval '2 hours'
-        AND
-        -- Miron's Intelligent Course Routing Filter
-        CASE 
-            WHEN s.course_name ILIKE ANY(ARRAY['%Biology%', '%Chemistry%', '%Physics%']) THEN my_stream = 'Natural Science'
-            WHEN s.course_name ILIKE ANY(ARRAY['%Geography%', '%History%', '%Anthropology%']) THEN my_stream = 'Social Science'
-            ELSE TRUE -- Universal courses like Math, English, Logic
-        END
-    ),
-    SessionStats AS (
-        SELECT 
-            es.id AS sid,
-            -- Tally exact relational proximity (ignoring the viewer themselves)
-            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id = my_uni AND p.freshman_stream = my_stream) AS classmates_count,
-            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id = my_uni AND p.freshman_stream != my_stream) AS campus_mates_count,
-            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id != my_uni AND p.freshman_stream = my_stream) AS scholars_count,
-            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id) AS total_count
-        FROM EligibleSessions es
-    )
-    SELECT 
-        es.id,
-        es.conversation_id,
-        es.course_name,
-        es.lesson_topic,
-        -- The Dynamic Text Engine
-        CASE
-            WHEN ss.classmates_count > 0 THEN 
-                ss.classmates_count::text || ' classmates from your stream are studying this right now. Join and share notes!'
-            WHEN ss.campus_mates_count > 0 THEN 
-                ss.campus_mates_count::text || ' students from your campus are studying this right now. Join and share notes!'
-            WHEN ss.scholars_count > 0 THEN 
-                ss.scholars_count::text || ' freshman scholars from other universities are studying this right now.'
-            ELSE 
-                ss.total_count::text || ' students are studying this right now. Join the session!'
-        END AS dynamic_message,
-        ss.total_count::integer AS participant_count,
-        es.last_updated_at
-    FROM EligibleSessions es
-    JOIN SessionStats ss ON es.id = ss.sid
-    WHERE ss.total_count > 0
-    ORDER BY ss.classmates_count DESC, ss.total_count DESC, es.last_updated_at DESC
-    LIMIT 5;
-END;
-
-
 -- Function: get_and_rotate_gemini_key
 
 DECLARE
@@ -1286,36 +1225,6 @@ BEGIN
         NEW.sender_id := auth.uid();
     END IF;
     RETURN NEW;
-END;
-
-
--- Function: kill_live_session
-
-DECLARE
-    v_role text;
-    v_host_id text;
-BEGIN
-    -- 1. Identify who is currently hosting
-    SELECT metadata->>'live_host_id' INTO v_host_id 
-    FROM public.conversations WHERE id = conv_id;
-    
-    -- 2. Identify the rank of the person trying to kill the session
-    SELECT role INTO v_role 
-    FROM public.conversation_members 
-    WHERE conversation_id = conv_id AND user_id = auth.uid();
-
-    -- 3. The Law: You can only kill it if you are the active host, OR an Admin/Owner
-    IF auth.uid()::text != v_host_id AND (v_role IS NULL OR v_role NOT IN ('owner', 'admin')) THEN
-        RAISE EXCEPTION 'Security Violation: You are not authorized to terminate this broadcast.';
-    END IF;
-
-    -- 4. Execute the safe cleanup of metadata
-    UPDATE public.conversations 
-    SET metadata = metadata - 'is_live' - 'live_host_id' - 'live_status' - 'live_heartbeat' - 'live_started_at'
-    WHERE id = conv_id;
-
-    -- 5. CRITICAL NEW STEP: Purge the discovery engine record so it disappears from the global 'For You' feed
-    DELETE FROM public.live_study_sessions WHERE conversation_id = conv_id;
 END;
 
 
@@ -2031,6 +1940,102 @@ BEGIN
         'member_count', member_count,
         'is_member', user_is_member
     );
+END;
+
+
+-- Function: get_live_study_sessions
+
+DECLARE
+    my_uni uuid;
+    my_stream text;
+BEGIN
+    -- Get the viewer's academic profile
+    SELECT university_id, freshman_stream INTO my_uni, my_stream
+    FROM public.profiles WHERE id = req_user_id;
+
+    RETURN QUERY
+    WITH EligibleSessions AS (
+        SELECT s.id, s.conversation_id, s.course_name, s.lesson_topic, s.active_user_ids, s.last_updated_at
+        FROM public.live_study_sessions s
+        JOIN public.conversations c ON s.conversation_id = c.id
+        WHERE 
+        -- 1. Exclude Private Groups completely
+        (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
+        -- 2. Only consider sessions active in the last 2 hours
+        AND s.last_updated_at > now() - interval '2 hours'
+        AND
+        -- Miron's Intelligent Course Routing Filter
+        CASE 
+            WHEN s.course_name ILIKE ANY(ARRAY['%Biology%', '%Chemistry%', '%Physics%']) THEN my_stream = 'Natural Science'
+            WHEN s.course_name ILIKE ANY(ARRAY['%Geography%', '%History%', '%Anthropology%']) THEN my_stream = 'Social Science'
+            ELSE TRUE 
+        END
+    ),
+    SessionStats AS (
+        SELECT 
+            es.id AS sid,
+            -- Tally exact relational proximity (ignoring the viewer themselves)
+            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id = my_uni AND p.freshman_stream = my_stream) AS classmates_count,
+            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id = my_uni AND p.freshman_stream != my_stream) AS campus_mates_count,
+            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id != my_uni AND p.freshman_stream = my_stream) AS scholars_count,
+            
+            -- FIX: Count EVERYONE in total_count, including the host, so it never evaluates to 0 erroneously
+            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids)) AS total_count
+        FROM EligibleSessions es
+    )
+    SELECT 
+        es.id,
+        es.conversation_id,
+        es.course_name,
+        es.lesson_topic,
+        -- The Dynamic Text Engine
+        CASE
+            WHEN ss.classmates_count > 0 THEN 
+                ss.classmates_count::text || ' classmates from your stream are studying this right now. Join and share notes!'
+            WHEN ss.campus_mates_count > 0 THEN 
+                ss.campus_mates_count::text || ' students from your campus are studying this right now. Join and share notes!'
+            WHEN ss.scholars_count > 0 THEN 
+                ss.scholars_count::text || ' freshman scholars from other universities are studying this right now.'
+            ELSE 
+                ss.total_count::text || ' students are studying this right now. Join the session!'
+        END AS dynamic_message,
+        ss.total_count::integer AS participant_count,
+        es.last_updated_at
+    FROM EligibleSessions es
+    JOIN SessionStats ss ON es.id = ss.sid
+    WHERE ss.total_count > 0
+    ORDER BY ss.classmates_count DESC, ss.total_count DESC, es.last_updated_at DESC
+    LIMIT 5;
+END;
+
+
+-- Function: kill_live_session
+
+DECLARE
+    v_role text;
+    v_host_id text;
+BEGIN
+    -- 1. Identify who is currently hosting
+    SELECT metadata->>'live_host_id' INTO v_host_id 
+    FROM public.conversations WHERE id = conv_id;
+    
+    -- 2. Identify the rank of the person trying to kill the session
+    SELECT role INTO v_role 
+    FROM public.conversation_members 
+    WHERE conversation_id = conv_id AND user_id = auth.uid();
+
+    -- 3. The Law: You can only kill it if you are the active host, OR an Admin/Owner
+    IF auth.uid()::text != v_host_id AND (v_role IS NULL OR v_role NOT IN ('owner', 'admin')) THEN
+        RAISE EXCEPTION 'Security Violation: You are not authorized to terminate this broadcast.';
+    END IF;
+
+    -- 4. Execute the safe cleanup of metadata
+    UPDATE public.conversations 
+    SET metadata = metadata - 'is_live' - 'live_host_id' - 'live_status' - 'live_heartbeat' - 'live_started_at'
+    WHERE id = conv_id;
+
+    -- 5. CRITICAL FIX: Purge the discovery engine record so it disappears from the global 'Explore' feed instantly
+    DELETE FROM public.live_study_sessions WHERE conversation_id = conv_id;
 END;
 
 
