@@ -91,7 +91,7 @@ const SquadsFeed = ({
                                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                                         {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
                                         <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
-                                            {chat.owner_avatar ? <img src={chat.owner_avatar} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-landmark"></i>}
+                                            {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Class" /> : <i className="fas fa-users-rectangle"></i>}
                                         </div>
                                     </div>
                                     <div className="message-info">
