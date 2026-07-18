@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback } from '@linkup-platform/sdk-core';
 import './GlobalSearchOverlay.css';
 
 const GlobalSearchOverlay = ({ currentUser, onClose, onSelectUser, onSelectGroup }) => {
@@ -53,7 +53,7 @@ const GlobalSearchOverlay = ({ currentUser, onClose, onSelectUser, onSelectGroup
                         else onSelectGroup({ conversation_id: res.id, type: 'group', title: res.title, metadata: res.metadata, is_preview: !res.is_member });
                     }}>
                         {res.type === 'user' ? (
-                            <img src={res.avatar_url || 'https://via.placeholder.com/150'} className="gs-avatar" alt="Avatar" />
+                            <img src={res.avatar_url || getAvatarFallback(res.title)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(res.title); }} className="gs-avatar" alt="Avatar" />
                         ) : (
                             <div className="gs-icon-avatar"><i className="fas fa-users"></i></div>
                         )}
