@@ -23,27 +23,29 @@ const ForYouFeed = () => {
 
     useEffect(() => {
         if (!currentUser?.id) return;
+        
+        let debounceTimer;
+        const triggerUpdate = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                fetchPeerQuestions();
+                fetchLiveSessions();
+            }, 600); // Wait for multi-table transactions to settle
+        };
+
         fetchPeerQuestions();
         fetchLiveSessions();
         
-        const channel = supabase.channel('explore_feed_updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, (payload) => {
-                console.log("[Realtime:Explore] ⚡ Event: live_study_sessions", payload.eventType);
-                fetchLiveSessions();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, (payload) => {
-                console.log("[Realtime:Explore] ⚡ Event: peer_questions", payload.eventType);
-                fetchPeerQuestions();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, (payload) => {
-                console.log("[Realtime:Explore] ⚡ Event: conversations", payload.eventType);
-                fetchLiveSessions();
-            })
-            .subscribe((status, err) => {
-                console.log("[Realtime:Explore] WS Status:", status, err || "");
-            });
+        const channel = supabase.channel(`explore_feed_${Date.now()}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, triggerUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, triggerUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, triggerUpdate)
+            .subscribe();
 
-        return () => supabase.removeChannel(channel);
+        return () => {
+            clearTimeout(debounceTimer);
+            supabase.removeChannel(channel);
+        };
     }, [currentUser?.id]);
 
     // Handle deep-link scrolling from the Home tab
@@ -87,12 +89,8 @@ const ForYouFeed = () => {
     };
 
     const fetchLiveSessions = async () => {
-        console.log("[Realtime:Explore] -> Fetching Live Sessions...");
         const { data } = await supabase.rpc('get_live_study_sessions', { req_user_id: currentUser.id });
-        if (data) {
-            console.log("[Realtime:Explore] <- Fetched Sessions:", data.length);
-            setLiveSessions(data);
-        }
+        if (data) setLiveSessions(data);
     };
 
     const timeAgo = (isoString) => {
