@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 
 const Home = () => {
     const { shell, user: userProfile, unreadCount } = usePlatform();
@@ -10,6 +10,42 @@ const Home = () => {
     const avatarUrl = userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`;
     const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
     const [isFading, setIsFading] = useState(false);
+    
+    // Dynamic What's Next Data
+    const [whatsNextData, setWhatsNextData] = useState({ live: [], qa: [], loading: true });
+
+    useEffect(() => {
+        if (!userProfile?.id) return;
+        let isMounted = true;
+        
+        Promise.all([
+            supabase.rpc('get_live_study_sessions', { req_user_id: userProfile.id }),
+            supabase.rpc('get_peer_questions')
+        ]).then(([liveRes, qaRes]) => {
+            if (isMounted) {
+                setWhatsNextData({
+                    live: liveRes.data || [],
+                    qa: (qaRes.data || []).slice(0, 2), // Take top 2 hottest questions
+                    loading: false
+                });
+            }
+        });
+
+        return () => isMounted = false;
+    }, [userProfile?.id]);
+
+    const handleWnClick = (filterPill, targetId) => {
+        window.dispatchEvent(new CustomEvent('navigate-tab', { 
+            detail: { 
+                tab: 'connect', 
+                payload: { 
+                    action: 'open_explore_item', 
+                    target_pill: filterPill,
+                    target_id: targetId 
+                } 
+            } 
+        }));
+    };
 
     const tasks = [
         { icon: 'fas fa-users', title: 'Physics Study Group', category: 'Collaboration', dueIn: '5d' },
@@ -149,8 +185,45 @@ const Home = () => {
                         )}
                     </section>
 
+                    {/* NEW DYNAMIC DISCOVERY BAR */}
+                    {(!whatsNextData.loading && (whatsNextData.live.length > 0 || whatsNextData.qa.length > 0)) && (
+                        <section className="whats-next-horizontal-section">
+                            <h2 className="section-label">What's Next</h2>
+                            <div className="wn-scroller">
+                                {whatsNextData.live.length > 1 && (
+                                    <div className="wn-card live-type" onClick={() => handleWnClick('Study Groups', null)}>
+                                        <div className="wn-live-stack-wrap">
+                                            <div className="wn-orb-back"><i className="fas fa-users"></i></div>
+                                            <div className="wn-pulse-ring"></div>
+                                            <div className="wn-orb-front"><i className="fas fa-video"></i></div>
+                                        </div>
+                                        <div className="wn-badge"><span className="live-pulse-dot"></span> Live Now</div>
+                                        <div className="wn-title">{whatsNextData.live[0].course_name} & {whatsNextData.live.length - 1} others</div>
+                                    </div>
+                                )}
+                                {whatsNextData.live.length === 1 && (
+                                    <div className="wn-card live-type" onClick={() => handleWnClick('Study Groups', whatsNextData.live[0].id)}>
+                                        <div className="wn-live-stack-wrap single">
+                                            <div className="wn-pulse-ring"></div>
+                                            <div className="wn-orb-single"><i className="fas fa-video"></i></div>
+                                        </div>
+                                        <div className="wn-badge"><span className="live-pulse-dot"></span> Live Now</div>
+                                        <div className="wn-title line-clamp-2">{whatsNextData.live[0].course_name}</div>
+                                    </div>
+                                )}
+                                {whatsNextData.qa.map(q => (
+                                    <div className="wn-card qa-type" key={q.id} onClick={() => handleWnClick('Q&A Forum', q.id)}>
+                                        <div className="wn-icon-top"><i className="fas fa-fire"></i></div>
+                                        <div className="wn-badge qa-badge">Hot Q&A</div>
+                                        <div className="wn-title line-clamp-2">{q.title}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
                     <section className="whats-next-section">
-                        <h2 className="section-label">What's Next</h2>
+                        <h2 className="section-label">Up Next</h2>
                         <div className="next-task-container card-base">
                             <div id="next-task-content" className={isFading ? 'is-fading' : ''}>
                                 <div className="task-icon"><i className={currentTask.icon}></i></div>
