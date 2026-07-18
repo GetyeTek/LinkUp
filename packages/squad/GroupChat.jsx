@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-core';
 
 import LiveStageSetupModal from './components/LiveStageSetupModal.jsx';
 import ChatSearchOverlay from './components/ChatSearchOverlay.jsx';
