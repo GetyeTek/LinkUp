@@ -27,16 +27,21 @@ const ForYouFeed = () => {
         fetchLiveSessions();
         
         const channel = supabase.channel('explore_feed_updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, (payload) => {
+                console.log("[Realtime:Explore] ⚡ Event: live_study_sessions", payload.eventType);
                 fetchLiveSessions();
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, (payload) => {
+                console.log("[Realtime:Explore] ⚡ Event: peer_questions", payload.eventType);
                 fetchPeerQuestions();
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, (payload) => {
+                console.log("[Realtime:Explore] ⚡ Event: conversations", payload.eventType);
                 fetchLiveSessions();
             })
-            .subscribe();
+            .subscribe((status, err) => {
+                console.log("[Realtime:Explore] WS Status:", status, err || "");
+            });
 
         return () => supabase.removeChannel(channel);
     }, [currentUser?.id]);
@@ -82,8 +87,12 @@ const ForYouFeed = () => {
     };
 
     const fetchLiveSessions = async () => {
+        console.log("[Realtime:Explore] -> Fetching Live Sessions...");
         const { data } = await supabase.rpc('get_live_study_sessions', { req_user_id: currentUser.id });
-        if (data) setLiveSessions(data);
+        if (data) {
+            console.log("[Realtime:Explore] <- Fetched Sessions:", data.length);
+            setLiveSessions(data);
+        }
     };
 
     const timeAgo = (isoString) => {
