@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-18T14:09:52.782Z
+-- Date: 2026-07-18T15:09:00.774Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -715,37 +715,6 @@ BEGIN
 END;
 
 
--- Function: get_social_discovery
-
-DECLARE
-    my_uni UUID;
-    my_dept TEXT;
-BEGIN
-    SELECT p.university_id, p.department INTO my_uni, my_dept
-    FROM public.profiles p WHERE p.id = req_user_id;
-
-    RETURN QUERY
-    SELECT 
-        p.id, p.full_name, p.username, p.avatar_url, p.university_id, p.department,
-        CASE 
-            WHEN p.university_id = my_uni AND p.department = my_dept THEN 1
-            WHEN p.university_id = my_uni THEN 2
-            ELSE 3
-        END as tier
-    FROM public.profiles p
-    WHERE p.id != req_user_id
-    AND p.id NOT IN (
-        SELECT cm2.user_id
-        FROM public.conversation_members cm1
-        JOIN public.conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
-        JOIN public.conversations c ON cm1.conversation_id = c.id
-        WHERE cm1.user_id = req_user_id AND cm2.user_id != req_user_id AND c.type = 'dm'
-    )
-    ORDER BY tier ASC, p.last_seen_at DESC NULLS LAST
-    LIMIT 30;
-END;
-
-
 -- Function: protect_member_roles
 
 BEGIN
@@ -944,54 +913,6 @@ BEGIN
 
     DELETE FROM public.conversation_members
     WHERE conversation_id = req_conv_id AND user_id = auth.uid();
-END;
-
-
--- Function: global_network_search
-
-BEGIN
-    RETURN QUERY
-    -- 1. Search Users (Matching Name or Username)
-    SELECT 
-        p.id,
-        'user'::TEXT AS type,
-        p.full_name AS title,
-        p.username AS subtitle,
-        p.avatar_url,
-        '{}'::JSONB AS metadata,
-        EXISTS (
-            SELECT 1 FROM conversation_members cm1
-            JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
-            JOIN conversations c ON cm1.conversation_id = c.id
-            WHERE c.type = 'dm' AND cm1.user_id = req_user_id AND cm2.user_id = p.id
-        ) AS is_member
-    FROM public.profiles p
-    WHERE p.id != req_user_id
-      AND (p.full_name ILIKE ('%' || search_term || '%') OR p.username ILIKE ('%' || search_term || '%'))
-    
-    UNION ALL
-    
-    -- 2. Search Groups (Matching Group Title)
-    SELECT 
-        c.id,
-        'group'::TEXT AS type,
-        c.title,
-        COALESCE(c.metadata->>'focus', 'General') AS subtitle,
-        c.avatar_url,
-        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
-        EXISTS (
-            SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id
-        ) AS is_member
-    FROM public.conversations c
-    WHERE c.type = 'group'
-      AND c.title ILIKE ('%' || search_term || '%')
-      AND (
-          -- Include public groups, OR private groups the user is already a member of
-          (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
-          OR 
-          EXISTS (SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id)
-      )
-    LIMIT 30;
 END;
 
 
@@ -1683,68 +1604,6 @@ BEGIN
 END;
 
 
--- Function: get_campus_classes
-
-DECLARE
-    v_uni_id uuid;
-    v_dept text;
-BEGIN
-    SELECT university_id, department INTO v_uni_id, v_dept
-    FROM public.profiles WHERE id = req_user_id;
-
-    RETURN QUERY
-    SELECT 
-        c.id AS conversation_id,
-        c.title::text AS title,
-        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
-        (SELECT COUNT(*) FROM public.conversation_members cm WHERE cm.conversation_id = c.id) AS member_count,
-        p.full_name AS owner_name,
-        p.avatar_url AS owner_avatar,
-        (
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1 FROM conversation_members cm1
-                    JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
-                    JOIN conversations dm ON cm1.conversation_id = dm.id
-                    WHERE dm.type = 'dm' AND cm1.user_id = req_user_id AND cm2.user_id = c.owner_id
-                ) THEN 10 ELSE 0 
-            END
-            +
-            CASE WHEN p.department = v_dept THEN 5 ELSE 0 END
-        ) AS relevance_score,
-        EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id) AS is_member
-    FROM public.conversations c
-    JOIN public.profiles p ON c.owner_id = p.id
-    WHERE c.type = 'group'
-      AND c.metadata->>'focus' = 'Class'
-      AND (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
-      AND p.university_id = v_uni_id
-    ORDER BY relevance_score DESC, member_count DESC, c.created_at DESC;
-END;
-
-
--- Function: get_suggested_squads
-
-BEGIN
-    RETURN QUERY
-    SELECT 
-        c.id AS conversation_id,
-        c.title::text AS title,
-        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
-        (SELECT COUNT(*) FROM public.conversation_members cm WHERE cm.conversation_id = c.id) AS m_count
-    FROM public.conversations c
-    WHERE c.type::text = 'group'
-      AND (c.metadata->>'focus' IS DISTINCT FROM 'Class')
-      AND (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
-      AND NOT EXISTS (
-          SELECT 1 FROM public.conversation_members cm2 
-          WHERE cm2.conversation_id = c.id AND cm2.user_id = req_user_id
-      )
-    ORDER BY m_count DESC, c.created_at DESC
-    LIMIT 20;
-END;
-
-
 -- Function: create_study_group
 
 DECLARE
@@ -1824,6 +1683,37 @@ BEGIN
     SET class_id = NULL
     WHERE id = OLD.user_id AND class_id = OLD.conversation_id;
     RETURN OLD;
+END;
+
+
+-- Function: get_social_discovery
+
+DECLARE
+    my_uni UUID;
+    my_dept TEXT;
+BEGIN
+    SELECT p.university_id, p.department INTO my_uni, my_dept
+    FROM public.profiles p WHERE p.id = req_user_id;
+
+    RETURN QUERY
+    SELECT 
+        p.id, p.full_name, p.username, p.avatar_url, p.university_id, p.department,
+        CASE 
+            WHEN p.university_id = my_uni AND p.department = my_dept THEN 1
+            WHEN p.university_id = my_uni THEN 2
+            ELSE 3
+        END as tier
+    FROM public.profiles p
+    WHERE p.id != req_user_id
+    AND p.id NOT IN (
+        SELECT cm2.user_id
+        FROM public.conversation_members cm1
+        JOIN public.conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+        JOIN public.conversations c ON cm1.conversation_id = c.id
+        WHERE cm1.user_id = req_user_id AND cm2.user_id != req_user_id AND c.type = 'dm'
+    )
+    ORDER BY tier ASC, p.last_seen_at DESC NULLS LAST
+    LIMIT 30;
 END;
 
 
@@ -1943,6 +1833,36 @@ BEGIN
 END;
 
 
+-- Function: kill_live_session
+
+DECLARE
+    v_role text;
+    v_host_id text;
+BEGIN
+    -- 1. Identify who is currently hosting
+    SELECT metadata->>'live_host_id' INTO v_host_id 
+    FROM public.conversations WHERE id = conv_id;
+    
+    -- 2. Identify the rank of the person trying to kill the session
+    SELECT role INTO v_role 
+    FROM public.conversation_members 
+    WHERE conversation_id = conv_id AND user_id = auth.uid();
+
+    -- 3. The Law: You can only kill it if you are the active host, OR an Admin/Owner
+    IF auth.uid()::text != v_host_id AND (v_role IS NULL OR v_role NOT IN ('owner', 'admin')) THEN
+        RAISE EXCEPTION 'Security Violation: You are not authorized to terminate this broadcast.';
+    END IF;
+
+    -- 4. Execute the safe cleanup of metadata
+    UPDATE public.conversations 
+    SET metadata = metadata - 'is_live' - 'live_host_id' - 'live_status' - 'live_heartbeat' - 'live_started_at'
+    WHERE id = conv_id;
+
+    -- 5. CRITICAL FIX: Purge the discovery engine record so it disappears from the global 'Explore' feed instantly
+    DELETE FROM public.live_study_sessions WHERE conversation_id = conv_id;
+END;
+
+
 -- Function: get_live_study_sessions
 
 DECLARE
@@ -1951,7 +1871,7 @@ DECLARE
 BEGIN
     -- Get the viewer's academic profile
     SELECT university_id, freshman_stream INTO my_uni, my_stream
-    FROM public.profiles WHERE id = req_user_id;
+    FROM public.profiles WHERE profiles.id = req_user_id;
 
     RETURN QUERY
     WITH EligibleSessions AS (
@@ -1959,28 +1879,28 @@ BEGIN
         FROM public.live_study_sessions s
         JOIN public.conversations c ON s.conversation_id = c.id
         WHERE 
-        -- 1. Exclude Private Groups completely
+        -- Exclude Private Groups completely
         (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
-        -- 2. Only consider sessions active in the last 2 hours
+        -- Only consider sessions active in the last 2 hours
         AND s.last_updated_at > now() - interval '2 hours'
         AND
-        -- Miron's Intelligent Course Routing Filter
+        -- Miron's Intelligent Course Routing Filter (Safely handles NULL streams)
         CASE 
-            WHEN s.course_name ILIKE ANY(ARRAY['%Biology%', '%Chemistry%', '%Physics%']) THEN my_stream = 'Natural Science'
-            WHEN s.course_name ILIKE ANY(ARRAY['%Geography%', '%History%', '%Anthropology%']) THEN my_stream = 'Social Science'
+            WHEN s.course_name ILIKE ANY(ARRAY['%Biology%', '%Chemistry%', '%Physics%']) THEN COALESCE(my_stream, '') = 'Natural Science'
+            WHEN s.course_name ILIKE ANY(ARRAY['%Geography%', '%History%', '%Anthropology%']) THEN COALESCE(my_stream, '') = 'Social Science'
             ELSE TRUE 
         END
     ),
     SessionStats AS (
         SELECT 
             es.id AS sid,
-            -- Tally exact relational proximity (ignoring the viewer themselves)
+            -- Tally exact relational proximity 
             (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id = my_uni AND p.freshman_stream = my_stream) AS classmates_count,
             (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id = my_uni AND p.freshman_stream != my_stream) AS campus_mates_count,
             (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids) AND p.id != req_user_id AND p.university_id != my_uni AND p.freshman_stream = my_stream) AS scholars_count,
             
-            -- FIX: Count EVERYONE in total_count, including the host, so it never evaluates to 0 erroneously
-            (SELECT count(*) FROM public.profiles p WHERE p.id = ANY(es.active_user_ids)) AS total_count
+            -- FIX: Count EVERYONE using native array length so RLS doesn't block the count
+            cardinality(es.active_user_ids) AS total_count
         FROM EligibleSessions es
     )
     SELECT 
@@ -2009,33 +1929,112 @@ BEGIN
 END;
 
 
--- Function: kill_live_session
+-- Function: global_network_search
+
+BEGIN
+    RETURN QUERY
+    -- 1. Search Users
+    SELECT 
+        p.id,
+        'user'::TEXT AS type,
+        p.full_name AS title,
+        p.username AS subtitle,
+        p.avatar_url,
+        '{}'::JSONB AS metadata,
+        EXISTS (
+            SELECT 1 FROM conversation_members cm1
+            JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+            JOIN conversations c ON cm1.conversation_id = c.id
+            WHERE c.type = 'dm' AND cm1.user_id = req_user_id AND cm2.user_id = p.id
+        ) AS is_member
+    FROM public.profiles p
+    WHERE p.id != req_user_id
+      AND (p.full_name ILIKE ('%' || search_term || '%') OR p.username ILIKE ('%' || search_term || '%'))
+    
+    UNION ALL
+    
+    -- 2. Search Groups
+    SELECT 
+        c.id,
+        'group'::TEXT AS type,
+        c.title,
+        COALESCE(c.metadata->>'focus', 'General') AS subtitle,
+        c.avatar_url,
+        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
+        EXISTS (
+            SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id
+        ) AS is_member
+    FROM public.conversations c
+    WHERE c.type = 'group'
+      AND c.title ILIKE ('%' || search_term || '%')
+      AND (
+          (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
+          OR 
+          EXISTS (SELECT 1 FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id)
+      )
+    LIMIT 30;
+END;
+
+
+-- Function: get_suggested_squads
+
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id AS conversation_id,
+        c.title::text AS title,
+        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
+        (SELECT COUNT(*) FROM public.conversation_members cm WHERE cm.conversation_id = c.id)::integer AS m_count
+    FROM public.conversations c
+    WHERE c.type::text = 'group'
+      AND (c.metadata->>'focus' IS DISTINCT FROM 'Class')
+      AND (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
+      AND NOT EXISTS (
+          SELECT 1 FROM public.conversation_members cm2 
+          WHERE cm2.conversation_id = c.id AND cm2.user_id = req_user_id
+      )
+    ORDER BY m_count DESC, c.created_at DESC
+    LIMIT 20;
+END;
+
+
+-- Function: get_campus_classes
 
 DECLARE
-    v_role text;
-    v_host_id text;
+    v_uni_id uuid;
+    v_dept text;
 BEGIN
-    -- 1. Identify who is currently hosting
-    SELECT metadata->>'live_host_id' INTO v_host_id 
-    FROM public.conversations WHERE id = conv_id;
-    
-    -- 2. Identify the rank of the person trying to kill the session
-    SELECT role INTO v_role 
-    FROM public.conversation_members 
-    WHERE conversation_id = conv_id AND user_id = auth.uid();
+    SELECT university_id, department INTO v_uni_id, v_dept
+    FROM public.profiles WHERE id = req_user_id;
 
-    -- 3. The Law: You can only kill it if you are the active host, OR an Admin/Owner
-    IF auth.uid()::text != v_host_id AND (v_role IS NULL OR v_role NOT IN ('owner', 'admin')) THEN
-        RAISE EXCEPTION 'Security Violation: You are not authorized to terminate this broadcast.';
-    END IF;
-
-    -- 4. Execute the safe cleanup of metadata
-    UPDATE public.conversations 
-    SET metadata = metadata - 'is_live' - 'live_host_id' - 'live_status' - 'live_heartbeat' - 'live_started_at'
-    WHERE id = conv_id;
-
-    -- 5. CRITICAL FIX: Purge the discovery engine record so it disappears from the global 'Explore' feed instantly
-    DELETE FROM public.live_study_sessions WHERE conversation_id = conv_id;
+    RETURN QUERY
+    SELECT 
+        c.id AS conversation_id,
+        c.title::text AS title,
+        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
+        (SELECT COUNT(*) FROM public.conversation_members cm WHERE cm.conversation_id = c.id)::integer AS member_count,
+        p.full_name AS owner_name,
+        p.avatar_url AS owner_avatar,
+        (
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 FROM conversation_members cm1
+                    JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+                    JOIN conversations dm ON cm1.conversation_id = dm.id
+                    WHERE dm.type = 'dm' AND cm1.user_id = req_user_id AND cm2.user_id = c.owner_id
+                ) THEN 10 ELSE 0 
+            END
+            +
+            CASE WHEN p.department = v_dept THEN 5 ELSE 0 END
+        )::integer AS relevance_score,
+        EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id) AS is_member
+    FROM public.conversations c
+    JOIN public.profiles p ON c.owner_id = p.id
+    WHERE c.type = 'group'
+      AND c.metadata->>'focus' = 'Class'
+      AND (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
+      AND p.university_id = v_uni_id
+    ORDER BY relevance_score DESC, member_count DESC, c.created_at DESC;
 END;
 
 
