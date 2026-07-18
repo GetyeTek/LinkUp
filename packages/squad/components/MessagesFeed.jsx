@@ -1,4 +1,5 @@
 import React from 'react';
+import { getAvatarFallback } from '@linkup-platform/sdk-core';
 
 const MessagesFeed = ({
     activeView,
@@ -71,7 +72,7 @@ const MessagesFeed = ({
                             <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
                                 <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                                     {isDm ? (
-                                        <img src={avatar || 'https://via.placeholder.com/150'} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                        <img src={avatar || getAvatarFallback(title)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(title); }} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                                     ) : (
                                         <>
                                             {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring"></div>}
