@@ -48,7 +48,7 @@ const SquadsFeed = ({
                 <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
                     {activeView === 'class' ? 'Your Classes' : 'Your Groups'}
                 </h3>
-                <button style={{ background: 'var(--accent-teal)', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen(true)}>
+                <button style={{ background: 'var(--accent-teal)', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen(activeView === 'class' ? 'class' : 'academic')}>
                     <i className="fas fa-plus"></i> New {activeView === 'class' ? 'Class' : 'Group'}
                 </button>
             </div>
@@ -120,7 +120,7 @@ const SquadsFeed = ({
                         
                         <div style={{ marginTop: '2rem', textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
                             <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#aaa' }}>Can't find your class section?</p>
-                            <button style={{ background: 'transparent', color: 'var(--accent-teal)', border: '1px solid var(--accent-teal)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen(true)}>
+                            <button style={{ background: 'transparent', color: 'var(--accent-teal)', border: '1px solid var(--accent-teal)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen('class')}>
                                 Create it and invite your batchmates
                             </button>
                         </div>
