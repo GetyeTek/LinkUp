@@ -117,6 +117,13 @@ const SquadsFeed = ({
                                 No new classes available on your campus right now.
                             </div>
                         )}
+                        
+                        <div style={{ marginTop: '2rem', textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                            <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#aaa' }}>Can't find your class section?</p>
+                            <button style={{ background: 'transparent', color: 'var(--accent-teal)', border: '1px solid var(--accent-teal)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen(true)}>
+                                Create it and invite your batchmates
+                            </button>
+                        </div>
                     </>
                 ) : (
                     /* --- STUDY GROUPS VIEW PORT --- */
