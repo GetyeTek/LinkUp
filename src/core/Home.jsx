@@ -101,22 +101,20 @@ const Home = () => {
                                 <h2 className="section-label">Setup</h2>
                                 <div className="priority-scroll-wrapper">
                                     <div className="priority-track">
-                                        <div 
-                                            className="priority-card card-base" 
-                                            style={{ borderColor: 'var(--accent-teal)', cursor: 'pointer', background: 'rgba(66, 215, 184, 0.05)', width: '100%', minHeight: '130px' }}
-                                            onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'connect', payload: { action: 'open_classes_tab' } } }))}
-                                        >
-                                            <div>
-                                                <div className="card-header">
-                                                    <i className="fas fa-users-rectangle icon" style={{color: 'var(--accent-teal)'}}></i>
-                                                    <span className="category" style={{color: 'var(--accent-teal)'}}>Action Required</span>
-                                                </div>
-                                                <h3 className="title" style={{marginTop: '0.75rem'}}>Unlock Your Academic Timeline</h3>
-                                            </div>
-                                            <p style={{fontSize: '0.85rem', color: '#aaa', margin: '8px 0 0 0', lineHeight: 1.4}}>
-                                                Set up your official class section to sync deadlines, exams, and announcements.
-                                            </p>
+                                                                        <div 
+                                    className="priority-card card-base" 
+                                    style={{ borderColor: 'var(--accent-teal)', cursor: 'pointer', background: 'rgba(66, 215, 184, 0.05)' }}
+                                    onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'connect', payload: { action: 'open_classes_tab' } } }))}
+                                >
+                                    <div>
+                                        <div className="card-header">
+                                            <i className="fas fa-users-rectangle icon" style={{color: 'var(--accent-teal)'}}></i>
+                                            <span className="category" style={{color: 'var(--accent-teal)'}}>Action Required</span>
                                         </div>
+                                        <h3 className="title" style={{marginTop: '0.5rem', fontSize: '1.1rem'}}>Link Your Class</h3>
+                                    </div>
+                                    <div className="countdown" style={{ fontSize: '0.8rem', color: '#aaa', fontWeight: 500, alignSelf: 'flex-start', marginTop: 'auto' }}>Sync Deadlines</div>
+                                </div>
                                     </div>
                                 </div>
                             </>
