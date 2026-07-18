@@ -72,7 +72,7 @@ const App = () => {
   // Intercept Deep Links on Boot
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has('squad') || params.has('sq')) {
+    if (params.has('squad') || params.has('sq') || params.has('invite')) {
         setActiveTab('connect');
     }
   }, []);
