@@ -342,7 +342,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         clearTypingPresence();
 
         const msgText = overrideData ? overrideData.text : input;
-        const currentAttachments = overrideData ? overrideData.attachments : [...pendingAttachments];
+        const currentAttachments = overrideData ? (overrideData.attachments || []) : [...pendingAttachments];
         
         setInput('');
         setPendingAttachments([]);
@@ -417,7 +417,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
             setAlertNotice({ title: "Action Blocked", msg: error.message || "Message failed to send. You may lack permission.", success: false });
         } else if (data) {
-            if (finalAttachments.length > 0) {
+            if (finalAttachments.length > 0 && Array.isArray(data.attachments)) {
                 data.attachments = data.attachments.map(dbAtt => {
                     const localMatch = finalAttachments.find(fa => fa.name === dbAtt.name);
                     if (localMatch && localMatch.previewUrl) {
@@ -769,7 +769,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 </div>
             )}
             
-            {localChatInfo.metadata?.focus === 'Class' && userProfile?.class_id !== chat.conversation_id && !isSearchActive && liveState === 'none' && (
+            {isMember && localChatInfo.metadata?.focus === 'Class' && userProfile?.class_id !== chat.conversation_id && !isSearchActive && liveState === 'none' && (
                 <div className="pinned-msg-banner" style={{background: 'rgba(66, 215, 184, 0.1)', borderBottom: '1px solid rgba(66, 215, 184, 0.3)', cursor: 'default'}}>
                     <div className="pinned-bar"></div>
                     <div className="pinned-info">
