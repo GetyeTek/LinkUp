@@ -46,6 +46,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [inviteCopied, setInviteCopied] = useState(false);
     const [confirmLinkMode, setConfirmLinkMode] = useState(null); // 'link' | 'overwrite' | 'unlink'
     const [confirmLeave, setConfirmLeave] = useState(false);
+    const [confirmRevoke, setConfirmRevoke] = useState(false);
 
     useEffect(() => {
         if (autoTriggerLinkFlow) {
@@ -108,7 +109,30 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
         setTimeout(() => setInviteCopied(false), 2000);
     };
 
+    const generatePrivateLink = async () => {
+        setIsProcessing(true);
+        const { data, error } = await supabase.rpc('create_private_invite_link', { req_conv_id: conversationId });
+        setIsProcessing(false);
+        if (error) {
+            setAlertNotice({ title: "Error", msg: error.message, success: false });
+        } else {
+            onUpdateInfo({ ...chatInfo, metadata: { ...chatInfo.metadata, private_invite_token: data } });
+        }
+    };
 
+    const executeRevoke = async () => {
+        setIsProcessing(true);
+        const { error } = await supabase.rpc('revoke_private_invite_link', { req_conv_id: conversationId });
+        setIsProcessing(false);
+        if (error) {
+            setAlertNotice({ title: "Error", msg: error.message, success: false });
+        } else {
+            const newMeta = { ...chatInfo.metadata };
+            delete newMeta.private_invite_token;
+            onUpdateInfo({ ...chatInfo, metadata: newMeta });
+        }
+        setConfirmRevoke(false);
+    };
 
     const handleAvatarUpdate = async (blob) => {
         const url = URL.createObjectURL(blob);
@@ -211,6 +235,32 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         </div>
                     )}
 
+                    {!isPublic && myRole === 'owner' && (
+                        <>
+                            {chatInfo.metadata?.private_invite_token ? (
+                                <div className="si-invite-box" style={{borderColor: 'rgba(255, 95, 95, 0.3)'}}>
+                                    <div className="si-invite-url" style={{color: '#fff'}}>{cleanBase}?invite={chatInfo.metadata.private_invite_token}</div>
+                                    <div style={{display: 'flex', gap: '8px', flexShrink: 0}}>
+                                        <button className="si-invite-copy-btn" onClick={() => {
+                                            navigator.clipboard.writeText(`${cleanBase}?invite=${chatInfo.metadata.private_invite_token}`);
+                                            setInviteCopied(true);
+                                            setTimeout(() => setInviteCopied(false), 2000);
+                                        }}>
+                                            {inviteCopied ? <i className="fas fa-check"></i> : <i className="fas fa-copy"></i>}
+                                        </button>
+                                        <button className="si-invite-copy-btn" style={{background: 'transparent', color: '#ff5f5f', border: '1px solid rgba(255,95,95,0.3)'}} onClick={() => setConfirmRevoke(true)} title="Revoke Link">
+                                            <i className="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <button className="si-save-slug-btn" style={{width: '100%', maxWidth: '340px', marginTop: '10px', justifyContent: 'center'}} onClick={generatePrivateLink} disabled={isProcessing}>
+                                    {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fas fa-link"></i> Create Secret Invite Link</>}
+                                </button>
+                            )}
+                        </>
+                    )}
+
                     {isMember && chatInfo.metadata?.focus === 'Class' && (
                         <div className="si-invite-box" style={{ marginTop: '10px', background: 'transparent', border: '1px solid rgba(66, 215, 184, 0.3)' }}>
                             <div style={{ flex: 1 }}>
@@ -251,6 +301,18 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         onConfirm={executeLeave}
                         onCancel={() => setConfirmLeave(false)}
                         confirmText="Leave Group"
+                        isDanger={true}
+                        isProcessing={isProcessing}
+                    />
+                )}
+
+                {confirmRevoke && (
+                    <GenericConfirmModal
+                        title="Revoke Invitation Link"
+                        description="Are you sure you want to permanently revoke this secret link? Anyone attempting to use it will be blocked."
+                        onConfirm={executeRevoke}
+                        onCancel={() => setConfirmRevoke(false)}
+                        confirmText="Revoke Link"
                         isDanger={true}
                         isProcessing={isProcessing}
                     />
