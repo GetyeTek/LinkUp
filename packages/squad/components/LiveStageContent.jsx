@@ -58,7 +58,19 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     // LiveKit Mic Control override
     useEffect(() => {
         if (isMeHost && localParticipant) {
-            localParticipant.setMicrophoneEnabled(stageMicEnabled);
+            if (stageMicEnabled) {
+                localParticipant.setMicrophoneEnabled(true);
+            } else {
+                localParticipant.setMicrophoneEnabled(false).then(() => {
+                    // Forcefully unpublish to release the hardware mic completely and drop the green dot
+                    const audioPubs = Array.from(localParticipant.audioTrackPublications.values());
+                    audioPubs.forEach(pub => {
+                        if (pub.source === 'microphone' && pub.track) {
+                            localParticipant.unpublishTrack(pub.track, true);
+                        }
+                    });
+                }).catch(e => console.error("Mic release error:", e));
+            }
         }
     }, [stageMicEnabled, isMeHost, localParticipant]);
 
