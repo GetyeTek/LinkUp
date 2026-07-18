@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback } from '@linkup-platform/sdk-core';
 import { invokeSocial } from '../api.js';
 import GenericConfirmModal from './GenericConfirmModal.jsx';
 import PunishMemberModal from './PunishMemberModal.jsx';
@@ -13,15 +13,18 @@ const GroupMembersTab = ({
     const [confirmAddUser, setConfirmAddUser] = useState(null);
     const [confirmModal, setConfirmModal] = useState(null);
     const [punishConfig, setPunishConfig] = useState(null);
+    const [isFetchingContacts, setIsFetchingContacts] = useState(false);
 
     // Fetch DM contacts for "Add Member" screen
     useEffect(() => {
         if (showAddMember) {
+            setIsFetchingContacts(true);
             supabase.rpc('get_user_conversations', { req_user_id: currentUser.id }).then(({data}) => {
                 if (data) {
-                    const contacts = data.filter(c => c.type === 'dm' && !members[c.other_user_id]);
+                    const contacts = data.filter(c => c.type === 'dm' && !members[c.other_user_id] && c.other_user_id && c.other_user_name !== 'Deleted Account');
                     setInviteContacts(contacts);
                 }
+                setIsFetchingContacts(false);
             });
         }
     }, [showAddMember, currentUser.id, members]);
@@ -107,7 +110,7 @@ const GroupMembersTab = ({
             <div className="si-directory">
                 {Object.entries(members).filter(([_, m]) => m.is_current_member).map(([uid, m]) => (
                     <div className="si-member-row" key={uid} onClick={() => onOpenUser(uid)} style={{cursor: 'pointer'}}>
-                        <img src={m.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="si-member-avatar" />
+                        <img src={m.avatar || getAvatarFallback(m.name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(m.name); }} alt="Avatar" className="si-member-avatar" />
                         <div className="si-member-info">
                             <div className="si-member-name">
                                 {m.name} {uid === currentUser.id && <span style={{fontSize:'0.7rem', color:'#888'}}>(You)</span>}
@@ -147,7 +150,12 @@ const GroupMembersTab = ({
                         <div style={{width:'36px'}}></div>
                     </header>
                     <div className="si-fs-body">
-                        {inviteContacts.length === 0 ? (
+                        {isFetchingContacts ? (
+                            <div className="si-vault-empty">
+                                <i className="fas fa-circle-notch fa-spin"></i>
+                                <p>Loading contacts...</p>
+                            </div>
+                        ) : inviteContacts.length === 0 ? (
                             <div className="si-vault-empty">
                                 <i className="fas fa-user-slash"></i>
                                 <p>No eligible contacts found in your DMs.</p>
@@ -155,7 +163,7 @@ const GroupMembersTab = ({
                         ) : (
                             inviteContacts.map(c => (
                                 <div className="si-member-row" key={c.other_user_id} style={{cursor:'pointer'}} onClick={() => setConfirmAddUser(c)}>
-                                    <img src={c.other_user_avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="si-member-avatar" />
+                                    <img src={c.other_user_avatar || getAvatarFallback(c.other_user_name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(c.other_user_name); }} alt="Avatar" className="si-member-avatar" />
                                     <div className="si-member-info">
                                         <div className="si-member-name">{c.other_user_name}</div>
                                         <span className="si-member-role si-role-member">Contact</span>
