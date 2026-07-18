@@ -12,6 +12,7 @@ import './GroupInfoPanel.css';
 const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband, onOpenAdminSettings, onOpenUser, autoTriggerLinkFlow, setAutoTriggerLinkFlow }) => {
     const { user: userProfile } = usePlatform();
     const canSeeMembers = myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.hide_members !== true;
+    const isMember = !!members[currentUser.id]?.is_current_member;
     
     const [activeTab, setActiveTab] = useState(canSeeMembers ? 'members' : 'media');
     
@@ -193,7 +194,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         </div>
                     )}
 
-                    {chatInfo.metadata?.focus === 'Class' && (
+                    {isMember && chatInfo.metadata?.focus === 'Class' && (
                         <div className="si-invite-box" style={{ marginTop: '10px', background: 'transparent', border: '1px solid rgba(66, 215, 184, 0.3)' }}>
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600 }}>Official Class</div>
