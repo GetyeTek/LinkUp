@@ -183,12 +183,15 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
     };
 
     const handleSend = async (overrideData = null) => {
-        if (!overrideData && (!input.trim() && pendingAttachments.length === 0) && !isUploading) return;
+        const isEvent = overrideData && typeof overrideData.preventDefault === 'function';
+        const actualData = isEvent ? null : overrideData;
+
+        if (!actualData && (!input.trim() && pendingAttachments.length === 0) && !isUploading) return;
         
         clearTypingPresence();
 
-        const msgText = overrideData ? overrideData.text : input;
-        const currentAttachments = overrideData ? (overrideData.attachments || []) : [...pendingAttachments];
+        const msgText = actualData ? actualData.text : input;
+        const currentAttachments = actualData ? (actualData.attachments || []) : [...pendingAttachments];
         let currentConvId = activeConvId;
         
         setInput('');
