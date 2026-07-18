@@ -382,6 +382,8 @@ const Connect = () => {
         });
         if (activeChatId === id) setActiveChatId(null);
         fetchConversations();
+        fetchCampusClasses();
+        fetchSuggestedSquads();
     };
 
     const minimizeChat = () => {
