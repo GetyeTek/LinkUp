@@ -1061,6 +1061,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     video={false}
                     options={{
                         webAudioMix: true,
+                        stopLocalMicTrackOnMute: true,
                         publishDefaults: {
                             audioBitrate: 48000,
                             dtx: true
