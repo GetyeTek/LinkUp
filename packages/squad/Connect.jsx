@@ -95,6 +95,9 @@ const Connect = () => {
                 }
             });
             clearRoutePayload();
+        } else if (routePayload.action === 'open_explore_item') {
+            setActiveView('explore');
+            // We intentionally do NOT clear the payload here. ForYouFeed will read it, scroll, and clear it.
         }
     }, [routePayload, currentUser]);
 
