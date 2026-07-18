@@ -18,20 +18,34 @@ const Home = () => {
         if (!userProfile?.id) return;
         let isMounted = true;
         
-        Promise.all([
-            supabase.rpc('get_live_study_sessions', { req_user_id: userProfile.id }),
-            supabase.rpc('get_peer_questions')
-        ]).then(([liveRes, qaRes]) => {
-            if (isMounted) {
-                setWhatsNextData({
-                    live: liveRes.data || [],
-                    qa: (qaRes.data || []).slice(0, 2), // Take top 2 hottest questions
-                    loading: false
-                });
-            }
-        });
+        const fetchWhatsNextData = () => {
+            Promise.all([
+                supabase.rpc('get_live_study_sessions', { req_user_id: userProfile.id }),
+                supabase.rpc('get_peer_questions')
+            ]).then(([liveRes, qaRes]) => {
+                if (isMounted) {
+                    setWhatsNextData({
+                        live: liveRes.data || [],
+                        qa: (qaRes.data || []).slice(0, 2), // Take top 2 hottest questions
+                        loading: false
+                    });
+                }
+            });
+        };
 
-        return () => isMounted = false;
+        fetchWhatsNextData();
+
+        // Realtime listener for instant feed updates
+        const channel = supabase.channel('home_whats_next_updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, fetchWhatsNextData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, fetchWhatsNextData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, fetchWhatsNextData)
+            .subscribe();
+
+        return () => {
+            isMounted = false;
+            supabase.removeChannel(channel);
+        };
     }, [userProfile?.id]);
 
     const handleWnClick = (filterPill, targetId) => {
