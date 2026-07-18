@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-core';
 import './MissionControlOverlay.css';
 
 const MissionControlOverlay = ({ isActive, onClose }) => {
@@ -348,7 +348,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                 ) : (
                                     referrals.map(ref => (
                                         <div key={ref.id} className={`ref-row ${ref.status === 'completed' ? 'is-completed' : 'is-pending'}`}>
-                                            <img src={ref.referee_avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="ref-avatar" />
+                                            <img src={ref.referee_avatar || getAvatarFallback(ref.referee_name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(ref.referee_name); }} alt="Avatar" className="ref-avatar" />
                                             <div className="ref-info">
                                                 <div className="ref-name">{ref.referee_name} (@{ref.referee_username})</div>
                                                 <div className="ref-time">Joined {timeAgo(ref.created_at)}</div>
