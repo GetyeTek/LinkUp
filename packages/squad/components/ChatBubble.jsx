@@ -1,4 +1,5 @@
 import React from 'react';
+import { getAvatarFallback } from '@linkup-platform/sdk-core';
 import ChatMediaGallery from './ChatMediaGallery.jsx';
 import InteractivePoll from './InteractivePoll.jsx';
 
@@ -60,7 +61,7 @@ const ChatBubble = ({
                 <div className="forward-info">
                     <span className="forward-label">Forwarded message</span>
                     <span className="forward-from">
-                        {msg.forward_meta.original_sender_avatar && <img src={msg.forward_meta.original_sender_avatar} className="forward-avatar" alt="Avatar"/>}
+                        <img src={msg.forward_meta.original_sender_avatar || getAvatarFallback(msg.forward_meta.original_sender_name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(msg.forward_meta.original_sender_name); }} className="forward-avatar" alt="Avatar"/>
                         {msg.forward_meta.original_sender_name}
                     </span>
                 </div>
