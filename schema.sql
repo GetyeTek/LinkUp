@@ -1,125 +1,128 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-16T18:50:02.989Z
+-- Date: 2026-07-18T06:48:23.422Z
 
 -- ========================
 -- TABLES & COLUMNS
 -- ========================
 Table: api_keys
-is_active (boolean), created_at (timestamp with time zone), api_key (text), name (text), service (text), id (bigint), cooldown_until (timestamp with time zone), last_used_at (timestamp with time zone)
+id (bigint), last_used_at (timestamp with time zone), name (text), cooldown_until (timestamp with time zone), api_key (text), is_active (boolean), service (text), created_at (timestamp with time zone)
 
 Table: book_pages
-book_id (uuid), page_key (text), page_number (integer), content_json (jsonb), created_at (timestamp with time zone), id (uuid), manual_flag (text)
+page_key (text), content_json (jsonb), created_at (timestamp with time zone), id (uuid), book_id (uuid), page_number (integer), manual_flag (text)
 
 Table: book_question_links
-question_id (uuid), id (uuid), chunk_id (uuid), created_at (timestamp with time zone), similarity_score (double precision)
+id (uuid), created_at (timestamp with time zone), similarity_score (double precision), question_id (uuid), chunk_id (uuid)
 
 Table: books
-cover_url (text), author (text), category (text), title (text), id (uuid), created_at (timestamp with time zone), toc (jsonb), page_offset (integer), course_code (text)
+page_offset (integer), author (text), cover_url (text), category (text), title (text), course_code (text), toc (jsonb), created_at (timestamp with time zone), id (uuid)
 
 Table: campus_channels
-last_scraped_id (bigint), id (uuid), is_private (boolean), channel_handle (text), telegram_peer_id (bigint), created_at (timestamp with time zone), is_active (boolean)
+last_extracted_at (timestamp with time zone), members_data (jsonb), is_private (boolean), telegram_peer_id (bigint), created_at (timestamp with time zone), is_active (boolean), channel_handle (text), last_scraped_id (bigint), id (uuid)
 
 Table: campus_feed
-created_at (timestamp with time zone), metadata (jsonb), telegram_timestamp (timestamp with time zone), telegram_id (bigint), id (uuid), channel_handle (text), image_url (text), full_text (text)
+id (uuid), sender_name (text), sender_username (text), channel_handle (text), full_text (text), image_url (text), sender_id (bigint), metadata (jsonb), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), telegram_id (bigint)
 
 Table: chunks
-id (uuid), prev_chunk_id (uuid), next_chunk_id (uuid), chunk_index (integer), chunk_text (text), page_number (integer), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), document_id (uuid)
+chunk_text (text), prev_chunk_id (uuid), next_chunk_id (uuid), chunk_index (integer), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), id (uuid), page_number (integer), document_id (uuid)
 
 Table: conduit_favorites
-created_at (timestamp with time zone), target_id (text), repo_name (text), category (text), id (uuid), metadata (jsonb)
+id (uuid), metadata (jsonb), category (text), repo_name (text), target_id (text), created_at (timestamp with time zone)
 
 Table: conduit_history
-created_at (timestamp with time zone), sha (text), repo_name (text), conduit_id (integer), id (uuid), ops (jsonb), note (text), meta (text), type (text), title (text)
+created_at (timestamp with time zone), conduit_id (integer), note (text), id (uuid), meta (text), type (text), title (text), sha (text), repo_name (text), ops (jsonb)
 
 Table: conduit_logs
-type (text), repo_name (text), created_at (timestamp with time zone), data (jsonb), id (uuid)
+type (text), created_at (timestamp with time zone), data (jsonb), id (uuid), repo_name (text)
 
 Table: conversation_members
-created_at (timestamp with time zone), role (USER-DEFINED), user_id (uuid), id (uuid), conversation_id (uuid), muted_until (timestamp with time zone), last_read_at (timestamp with time zone)
+last_read_at (timestamp with time zone), muted_until (timestamp with time zone), role (USER-DEFINED), user_id (uuid), conversation_id (uuid), id (uuid), created_at (timestamp with time zone)
 
 Table: conversations
-type (USER-DEFINED), avatar_url (text), title (character varying), metadata (jsonb), owner_id (uuid), last_message_at (timestamp with time zone), created_at (timestamp with time zone), id (uuid)
+title (character varying), avatar_url (text), id (uuid), type (USER-DEFINED), created_at (timestamp with time zone), last_message_at (timestamp with time zone), owner_id (uuid), metadata (jsonb)
 
 Table: courses
-department_id (uuid), code (text), name (text), created_at (timestamp with time zone), id (uuid)
+name (text), code (text), department_id (uuid), id (uuid), created_at (timestamp with time zone)
 
 Table: departments
-created_at (timestamp with time zone), name (text), id (uuid)
+created_at (timestamp with time zone), id (uuid), name (text)
 
 Table: documents
-chunk_count (integer), user_id (uuid), created_at (timestamp with time zone), last_processed_at (timestamp with time zone), storage_path (text), page_count (integer), status (text), file_name (text), id (uuid)
+storage_path (text), file_name (text), id (uuid), page_count (integer), last_processed_at (timestamp with time zone), created_at (timestamp with time zone), status (text), chunk_count (integer), user_id (uuid)
 
 Table: embedding_progress
-page_number (integer), status (text), id (uuid), book_id (uuid), error_message (text), block_index (integer), locked_until (timestamp with time zone), updated_at (timestamp with time zone)
+updated_at (timestamp with time zone), status (text), error_message (text), id (uuid), book_id (uuid), page_number (integer), block_index (integer), locked_until (timestamp with time zone)
 
 Table: exams
-media_summary (jsonb), created_at (timestamp with time zone), general_instructions (text), program (text), course_id (uuid), exam_type (text), date (text), id (uuid), university_id (uuid), time_allowed_minutes (integer), total_marks (numeric), constants_provided (jsonb), exam_quality_notes (jsonb)
+program (text), general_instructions (text), date (text), constants_provided (jsonb), id (uuid), university_id (uuid), time_allowed_minutes (integer), total_marks (numeric), media_summary (jsonb), created_at (timestamp with time zone), course_id (uuid), exam_quality_notes (jsonb), exam_type (text)
+
+Table: extracted_events
+description (text), event_type (text), title (text), id (uuid), channel_id (uuid), event_date (timestamp with time zone), source_ids (ARRAY), is_active (boolean), created_at (timestamp with time zone)
 
 Table: featured_events
-external_url (text), id (uuid), app_route (jsonb), is_active (boolean), created_at (timestamp with time zone), metadata (jsonb), title (text), body (text), image_url (text), tag_text (text), tag_color (text), button_text (text), button_color (text), action_type (text), html_content (text)
+id (uuid), app_route (jsonb), is_active (boolean), created_at (timestamp with time zone), metadata (jsonb), title (text), body (text), image_url (text), button_text (text), button_color (text), action_type (text), html_content (text), external_url (text), tag_text (text), tag_color (text)
 
 Table: linkoin_transactions
-created_at (timestamp with time zone), idempotency_key (text), description (text), amount (integer), user_id (uuid), id (uuid), transaction_type (text)
+id (uuid), idempotency_key (text), transaction_type (text), description (text), created_at (timestamp with time zone), amount (integer), user_id (uuid)
 
 Table: live_stage_questions
-status (text), is_pinned (boolean), id (uuid), conversation_id (uuid), sender_id (uuid), created_at (timestamp with time zone), text (text)
+created_at (timestamp with time zone), sender_id (uuid), conversation_id (uuid), id (uuid), status (text), text (text), is_pinned (boolean)
 
 Table: live_study_sessions
-conversation_id (uuid), last_updated_at (timestamp with time zone), course_name (text), lecture_chunks (jsonb), compiled_answers (jsonb), layout_blueprint (jsonb), generation_state (text), raw_source_text (text), lesson_topic (text), id (uuid), active_user_ids (ARRAY)
+conversation_id (uuid), compiled_answers (jsonb), raw_source_text (text), active_user_ids (ARRAY), generation_state (text), lecture_chunks (jsonb), id (uuid), last_updated_at (timestamp with time zone), lesson_topic (text), course_name (text), layout_blueprint (jsonb)
 
 Table: messages
-sender_id (uuid), is_edited (boolean), reply_to_id (uuid), forward_meta (jsonb), conversation_id (uuid), id (uuid), text (text), attachments (jsonb), created_at (timestamp with time zone)
+forward_meta (jsonb), reply_to_id (uuid), created_at (timestamp with time zone), is_edited (boolean), sender_id (uuid), id (uuid), conversation_id (uuid), attachments (jsonb), text (text)
 
 Table: migration_progress
-page_index (text), error_message (text), id (uuid), processed_at (timestamp with time zone), remote_id (text), pdf_name (text), status (text)
+pdf_name (text), id (uuid), processed_at (timestamp with time zone), remote_id (text), page_index (text), status (text), error_message (text)
 
 Table: migration_sync_state
-current_offset (integer), last_run_at (timestamp with time zone), id (integer)
+id (integer), last_run_at (timestamp with time zone), current_offset (integer)
 
 Table: news_feed
-post_url (text), image_url (text), id (bigint), full_text (text), title (text), telegram_timestamp (timestamp with time zone), created_at (timestamp with time zone), telegram_id (bigint), snippet (text), channel (text)
+title (text), channel (text), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), telegram_id (bigint), id (bigint), post_url (text), image_url (text), full_text (text), snippet (text)
 
 Table: notifications
-icon (text), created_at (timestamp with time zone), action_data (jsonb), is_read (boolean), user_id (uuid), id (uuid), type (text), title (text), description (text), insight (text)
+id (uuid), user_id (uuid), created_at (timestamp with time zone), action_data (jsonb), is_read (boolean), title (text), type (text), insight (text), icon (text), description (text)
 
 Table: peer_questions
-id (uuid), created_at (timestamp with time zone), user_id (uuid), title (text), body (text), course_tag (text)
+course_tag (text), body (text), id (uuid), user_id (uuid), created_at (timestamp with time zone), title (text)
 
 Table: poll_votes
-user_id (uuid), created_at (timestamp with time zone), option_index (integer), message_id (uuid), id (uuid)
+message_id (uuid), user_id (uuid), created_at (timestamp with time zone), option_index (integer), id (uuid)
 
 Table: profiles
-linkoin_balance (integer), university_id (uuid), last_username_change_at (timestamp with time zone), target_department (text), full_name (text), avatar_url (text), updated_at (timestamp with time zone), last_seen_at (timestamp with time zone), id (uuid), telegram_id (bigint), registered_with_telegram (boolean), current_streak (integer), longest_streak (integer), last_streak_update (date), telegram_username (text), theme (text), bio (text), phone (text), program (text), year (text), freshman_stream (text), department (text), username (text), level (text)
+registered_with_telegram (boolean), telegram_id (bigint), last_username_change_at (timestamp with time zone), university_id (uuid), last_seen_at (timestamp with time zone), updated_at (timestamp with time zone), linkoin_balance (integer), id (uuid), full_name (text), avatar_url (text), level (text), username (text), department (text), freshman_stream (text), year (text), target_department (text), program (text), phone (text), bio (text), theme (text), telegram_username (text), class_id (uuid), last_streak_update (date), longest_streak (integer), current_streak (integer)
 
 Table: question_book_mappings
-error_message (text), is_valid (boolean), snippet (text), status (text), page_key (text), processed_at (timestamp with time zone), content_index (integer), question_id (uuid), book_id (uuid), created_at (timestamp with time zone), id (uuid)
+processed_at (timestamp with time zone), error_message (text), is_valid (boolean), status (text), page_key (text), content_index (integer), id (uuid), question_id (uuid), created_at (timestamp with time zone), snippet (text), book_id (uuid)
 
 Table: question_processing_progress
-created_at (timestamp with time zone), book_id (uuid), error_message (text), question_id (uuid), status (text), processed_at (timestamp with time zone)
+question_id (uuid), processed_at (timestamp with time zone), status (text), created_at (timestamp with time zone), error_message (text), book_id (uuid)
 
 Table: question_reports
-status (text), report_text (text), source (text), id (uuid), question_id (uuid), created_at (timestamp with time zone)
+question_id (uuid), created_at (timestamp with time zone), id (uuid), source (text), report_text (text), status (text)
 
 Table: questions
-matching_data (jsonb), transcription_quality (jsonb), created_at (timestamp with time zone), embedding_status (text), question_order (integer), options (jsonb), points (numeric), retry_count (integer), embedding (USER-DEFINED), correct_answer (jsonb), id (uuid), text (text), explanation (text), section_id (uuid), media (jsonb), question_number (text), question_type (text)
+question_type (text), embedding_status (text), correct_answer (jsonb), embedding (USER-DEFINED), retry_count (integer), explanation (text), created_at (timestamp with time zone), question_order (integer), transcription_quality (jsonb), media (jsonb), matching_data (jsonb), options (jsonb), points (numeric), section_id (uuid), id (uuid), question_number (text), text (text)
 
 Table: referrals
-created_at (timestamp with time zone), referee_id (uuid), id (uuid), referrer_id (uuid), status (text)
+referrer_id (uuid), referee_id (uuid), status (text), created_at (timestamp with time zone), id (uuid)
 
 Table: sections
-instructions (text), title (text), id (uuid), exam_id (uuid), total_points (numeric), shared_context (jsonb), section_order (integer), created_at (timestamp with time zone)
+title (text), instructions (text), id (uuid), created_at (timestamp with time zone), section_order (integer), shared_context (jsonb), total_points (numeric), exam_id (uuid)
 
 Table: squad_bans
-user_id (uuid), created_at (timestamp with time zone), banned_until (timestamp with time zone), conversation_id (uuid), id (uuid)
+banned_until (timestamp with time zone), conversation_id (uuid), created_at (timestamp with time zone), user_id (uuid), id (uuid)
 
 Table: system_config
-key (text), value (jsonb)
+value (jsonb), key (text)
 
 Table: telegram_login_tokens
-id (uuid), created_at (timestamp with time zone), telegram_id (bigint), expires_at (timestamp with time zone), token_hash (text), metadata (jsonb)
+telegram_id (bigint), token_hash (text), id (uuid), created_at (timestamp with time zone), expires_at (timestamp with time zone), metadata (jsonb)
 
 Table: universities
-created_at (timestamp with time zone), short_name (text), name (text), id (uuid)
+short_name (text), created_at (timestamp with time zone), id (uuid), name (text)
 
 -- ========================
 -- RLS POLICIES
@@ -712,28 +715,6 @@ BEGIN
 END;
 
 
--- Function: get_suggested_squads
-
-BEGIN
-    RETURN QUERY
-    SELECT 
-        c.id AS conversation_id,
-        c.title::text AS title,
-        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
-        (SELECT COUNT(*) FROM public.conversation_members cm WHERE cm.conversation_id = c.id) AS m_count
-    FROM public.conversations c
-    WHERE c.type::text = 'group'
-      AND (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
-      AND NOT EXISTS (
-          SELECT 1 FROM public.conversation_members cm2 
-          WHERE cm2.conversation_id = c.id AND cm2.user_id = req_user_id
-      )
-    -- THE ALGORITHM TWEAK: Prioritize member count, then recency
-    ORDER BY m_count DESC, c.created_at DESC
-    LIMIT 20;
-END;
-
-
 -- Function: get_social_discovery
 
 DECLARE
@@ -1084,62 +1065,6 @@ BEGIN
     INSERT INTO public.conversation_members (conversation_id, user_id, role)
     VALUES (req_conversation_id, req_user_id, 'member')
     ON CONFLICT DO NOTHING;
-END;
-
-
--- Function: create_study_group
-
-DECLARE
-  base_slug text;
-  candidate_slug text;
-  counter integer := 1;
-  new_conv_id uuid;
-  final_metadata jsonb;
-  owned_count integer;
-BEGIN
-  -- BACKEND ENFORCEMENT: Enforce limit of 3 groups owned by the user
-  SELECT count(*) INTO owned_count 
-  FROM public.conversations 
-  WHERE owner_id = auth.uid() AND type = 'group';
-  
-  IF owned_count >= 3 THEN
-      RAISE EXCEPTION 'Limit reached. You can only own up to 3 study groups.';
-  END IF;
-
-  final_metadata := COALESCE(req_metadata, '{}'::jsonb);
-
-  IF (final_metadata->>'privacy' IS NULL OR final_metadata->>'privacy' = 'public') THEN
-      base_slug := regexp_replace(lower(req_title), '[^a-z0-9]', '', 'g');
-      IF base_slug = '' THEN base_slug := 'squad'; END IF;
-      candidate_slug := base_slug;
-
-      LOOP
-        WHILE EXISTS (SELECT 1 FROM public.conversations WHERE metadata->>'slug' = candidate_slug) LOOP
-          candidate_slug := base_slug || counter::text;
-          counter := counter + 1;
-        END LOOP;
-
-        BEGIN
-          final_metadata := final_metadata || jsonb_build_object('slug', candidate_slug);
-          INSERT INTO public.conversations (type, title, metadata, owner_id)
-          VALUES ('group', req_title, final_metadata, auth.uid())
-          RETURNING id INTO new_conv_id;
-          EXIT; 
-        EXCEPTION WHEN unique_violation THEN
-          candidate_slug := base_slug || counter::text;
-          counter := counter + 1;
-        END;
-      END LOOP;
-  ELSE
-      INSERT INTO public.conversations (type, title, metadata, owner_id)
-      VALUES ('group', req_title, final_metadata, auth.uid())
-      RETURNING id INTO new_conv_id;
-  END IF;
-
-  INSERT INTO public.conversation_members (conversation_id, user_id, role)
-  VALUES (new_conv_id, auth.uid(), 'owner');
-
-  RETURN new_conv_id;
 END;
 
 
@@ -1873,6 +1798,147 @@ BEGIN
     
     UPDATE public.system_config SET value = jsonb_build_object('semester', v_old_semester + 1) WHERE key = 'academic_calendar';
     UPDATE public.profiles SET current_streak = 0, last_streak_update = NULL;
+END;
+
+
+-- Function: check_squad_slug_available
+
+BEGIN
+  RETURN NOT EXISTS (SELECT 1 FROM public.conversations WHERE metadata->>'slug' = req_slug);
+END;
+
+
+-- Function: get_campus_classes
+
+DECLARE
+    v_uni_id uuid;
+    v_dept text;
+BEGIN
+    SELECT university_id, department INTO v_uni_id, v_dept
+    FROM public.profiles WHERE id = req_user_id;
+
+    RETURN QUERY
+    SELECT 
+        c.id AS conversation_id,
+        c.title::text AS title,
+        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
+        (SELECT COUNT(*) FROM public.conversation_members cm WHERE cm.conversation_id = c.id) AS member_count,
+        p.full_name AS owner_name,
+        p.avatar_url AS owner_avatar,
+        (
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 FROM conversation_members cm1
+                    JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+                    JOIN conversations dm ON cm1.conversation_id = dm.id
+                    WHERE dm.type = 'dm' AND cm1.user_id = req_user_id AND cm2.user_id = c.owner_id
+                ) THEN 10 ELSE 0 
+            END
+            +
+            CASE WHEN p.department = v_dept THEN 5 ELSE 0 END
+        ) AS relevance_score,
+        EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id = req_user_id) AS is_member
+    FROM public.conversations c
+    JOIN public.profiles p ON c.owner_id = p.id
+    WHERE c.type = 'group'
+      AND c.metadata->>'focus' = 'Class'
+      AND (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
+      AND p.university_id = v_uni_id
+    ORDER BY relevance_score DESC, member_count DESC, c.created_at DESC;
+END;
+
+
+-- Function: get_suggested_squads
+
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id AS conversation_id,
+        c.title::text AS title,
+        COALESCE(c.metadata, '{}'::jsonb) AS metadata,
+        (SELECT COUNT(*) FROM public.conversation_members cm WHERE cm.conversation_id = c.id) AS m_count
+    FROM public.conversations c
+    WHERE c.type::text = 'group'
+      AND (c.metadata->>'focus' IS DISTINCT FROM 'Class')
+      AND (c.metadata->>'privacy' = 'public' OR c.metadata->>'privacy' IS NULL)
+      AND NOT EXISTS (
+          SELECT 1 FROM public.conversation_members cm2 
+          WHERE cm2.conversation_id = c.id AND cm2.user_id = req_user_id
+      )
+    ORDER BY m_count DESC, c.created_at DESC
+    LIMIT 20;
+END;
+
+
+-- Function: create_study_group
+
+DECLARE
+  base_slug text;
+  candidate_slug text;
+  counter integer := 1;
+  new_conv_id uuid;
+  final_metadata jsonb;
+  owned_count integer;
+BEGIN
+  SELECT count(*) INTO owned_count 
+  FROM public.conversations 
+  WHERE owner_id = auth.uid() AND type = 'group';
+  
+  IF owned_count >= 3 THEN
+      RAISE EXCEPTION 'Limit reached. You can only own up to 3 study groups/classes.';
+  END IF;
+
+  final_metadata := COALESCE(req_metadata, '{}'::jsonb);
+
+  IF (final_metadata->>'privacy' IS NULL OR final_metadata->>'privacy' = 'public') THEN
+      IF final_metadata ? 'slug' AND final_metadata->>'slug' != '' THEN
+          base_slug := final_metadata->>'slug';
+      ELSE
+          base_slug := regexp_replace(lower(req_title), '[^a-z0-9]', '', 'g');
+          IF base_slug = '' THEN base_slug := 'squad'; END IF;
+      END IF;
+      candidate_slug := base_slug;
+      LOOP
+        WHILE EXISTS (SELECT 1 FROM public.conversations WHERE metadata->>'slug' = candidate_slug) LOOP
+          candidate_slug := base_slug || counter::text;
+          counter := counter + 1;
+        END LOOP;
+        BEGIN
+          final_metadata := final_metadata || jsonb_build_object('slug', candidate_slug);
+          INSERT INTO public.conversations (type, title, metadata, owner_id)
+          VALUES ('group', req_title, final_metadata, auth.uid())
+          RETURNING id INTO new_conv_id;
+          EXIT; 
+        EXCEPTION WHEN unique_violation THEN
+          candidate_slug := base_slug || counter::text;
+          counter := counter + 1;
+        END;
+      END LOOP;
+  ELSE
+      INSERT INTO public.conversations (type, title, metadata, owner_id)
+      VALUES ('group', req_title, final_metadata, auth.uid())
+      RETURNING id INTO new_conv_id;
+  END IF;
+
+  INSERT INTO public.conversation_members (conversation_id, user_id, role)
+  VALUES (new_conv_id, auth.uid(), 'owner');
+
+  RETURN new_conv_id;
+END;
+
+
+-- Function: check_profile_class_membership
+
+BEGIN
+    IF NEW.class_id IS NOT NULL THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM public.conversation_members 
+            WHERE conversation_id = NEW.class_id AND user_id = NEW.id
+        ) THEN
+            RAISE EXCEPTION 'You must join the class group before linking it to your profile.';
+        END IF;
+    END IF;
+    RETURN NEW;
 END;
 
 
