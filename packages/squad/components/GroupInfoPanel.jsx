@@ -45,6 +45,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [activeMemberMenu, setActiveMemberMenu] = useState(null);
     const [inviteCopied, setInviteCopied] = useState(false);
     const [confirmLinkMode, setConfirmLinkMode] = useState(null); // 'link' | 'overwrite' | 'unlink'
+    const [confirmLeave, setConfirmLeave] = useState(false);
 
     useEffect(() => {
         if (autoTriggerLinkFlow) {
@@ -66,6 +67,18 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
             setAlertNotice({ title: "Sync Successful", msg: "Dashboard updated.", success: true });
         }
         setConfirmLinkMode(null);
+    };
+
+    const executeLeave = async () => {
+        setIsProcessing(true);
+        const { error } = await supabase.rpc('leave_squad', { req_conv_id: conversationId });
+        setIsProcessing(false);
+        if (error) {
+            setAlertNotice({ title: "Leave Failed", msg: error.message, success: false });
+            setConfirmLeave(false);
+        } else {
+            onDisband(); // Close chat window completely, will trigger resync
+        }
     };
 
     // Strict DB truth. No front-end guessing.
@@ -144,17 +157,16 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                 <i className="fas fa-key"></i>
                             </button>
                         )}
-                        {(myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.members_can_add !== false) && (
-                            <>
-                                <button className="si-options" onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); setActiveMemberMenu(null); }}>
-                                    <i className="fas fa-ellipsis-v"></i>
-                                </button>
-                                {showOptions && (
-                                    <div className="si-dropdown-menu" style={{top: '40px', right: '0'}}>
-                                        <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> Add Members</button>
-                                    </div>
+                        <button className="si-options" onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); setActiveMemberMenu(null); }}>
+                            <i className="fas fa-ellipsis-v"></i>
+                        </button>
+                        {showOptions && (
+                            <div className="si-dropdown-menu" style={{top: '40px', right: '0'}}>
+                                {(myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.members_can_add !== false) && (
+                                    <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> Add Members</button>
                                 )}
-                            </>
+                                <button className="danger" onClick={() => { setShowOptions(false); setConfirmLeave(true); }}><i className="fas fa-sign-out-alt"></i> Leave Group</button>
+                            </div>
                         )}
                     </div>
 
@@ -223,6 +235,18 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         onCancel={() => setConfirmLinkMode(null)}
                         confirmText={confirmLinkMode === 'unlink' ? "Unlink" : "Link Class"}
                         isDanger={confirmLinkMode === 'unlink'}
+                        isProcessing={isProcessing}
+                    />
+                )}
+
+                {confirmLeave && (
+                    <GenericConfirmModal
+                        title="Leave Group"
+                        description="Are you sure you want to leave this group? You will no longer receive messages or notifications."
+                        onConfirm={executeLeave}
+                        onCancel={() => setConfirmLeave(false)}
+                        confirmText="Leave Group"
+                        isDanger={true}
                         isProcessing={isProcessing}
                     />
                 )}
