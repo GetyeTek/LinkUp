@@ -88,7 +88,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
     };
 
     const membersCanPost = localChatInfo.metadata?.members_can_post !== false;
-    const canPost = myRole === 'owner' || myRole === 'admin' || membersCanPost;
+    const isMemberSafe = !!members[currentUser.id]?.is_current_member;
+    const canPost = isMemberSafe && (myRole === 'owner' || myRole === 'admin' || membersCanPost);
 
     // Search State
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -186,9 +187,13 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         avatar: prof?.avatar_url || '' 
                     };
                     
-                    if (uid === currentUser.id && memData) {
-                        setMyRole(memData.role);
-                        setMyMutedUntil(memData.muted_until);
+                    if (uid === currentUser.id) {
+                        if (memData) {
+                            setMyRole(memData.role);
+                            setMyMutedUntil(memData.muted_until);
+                        } else {
+                            setMyRole(null);
+                        }
                     }
                 });
                 setMembers(memMap);
@@ -596,7 +601,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
     };
 
-    const isMember = !!members[currentUser.id];
+    const isMember = !!members[currentUser.id]?.is_current_member;
 
             const handleBack = () => {
             if (liveState !== 'none') onMinimize();
