@@ -134,7 +134,7 @@ const ChatInputDock = ({
                                 <span className="prog-text">{uploadProgress}%</span>
                             </div>
                         ) : (
-                            <button className="unified-send-btn" onClick={handleSend} disabled={!input.trim() && pendingAttachments.length === 0}>
+                            <button className="unified-send-btn" onClick={() => handleSend()} disabled={!input.trim() && pendingAttachments.length === 0}>
                                 <i className={`fa-solid ${editingMessage ? 'fa-check' : 'fa-arrow-up'}`}></i>
                             </button>
                         )}
