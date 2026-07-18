@@ -33,6 +33,9 @@ const ForYouFeed = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, () => {
                 fetchPeerQuestions();
             })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversations' }, () => {
+                fetchLiveSessions();
+            })
             .subscribe();
 
         return () => supabase.removeChannel(channel);
@@ -92,7 +95,7 @@ const ForYouFeed = () => {
             <div className="activity-list-container">
                 {/* Live Study Sessions */}
                 {filteredSessions.map(session => (
-                    <div className="activity-card" key={session.id || session.session_id || session.conversation_id}>
+                    <div className="activity-card" key={session.id}>
                         <div className="activity-content" style={{borderLeft: '4px solid var(--accent-teal)'}}>
                             <div className="activity-tag">Live Study Group</div>
                             <h2 className="activity-headline">{session.course_name}: {session.lesson_topic}</h2>
@@ -135,26 +138,7 @@ const ForYouFeed = () => {
                     </div>
                 ))}
 
-                <div className="squads-delimiter"><span>Campus Highlights</span></div>
 
-                {/* Dynamic Live Study Sessions computed via Miron & Proximity RPC */}
-                {liveSessions.map(session => (
-                    <div className="activity-card" key={session.session_id}>
-                        <div className="activity-content" style={{borderLeft: '4px solid var(--accent-teal)'}}>
-                            <div className="activity-tag">Live Study Group</div>
-                            <h2 className="activity-headline">{session.course_name}: {session.lesson_topic}</h2>
-                            <p className="activity-snippet">{session.dynamic_message}</p>
-                            <button 
-                                className="claim-btn claimable" 
-                                style={{marginTop: '1rem', width: '100%'}}
-                                onClick={(e) => handleJoinSquad(session.conversation_id, e)}
-                                disabled={joiningSquadId === session.conversation_id}
-                            >
-                                {joiningSquadId === session.conversation_id ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Session'}
-                            </button>
-                        </div>
-                    </div>
-                ))}
 
                 {filteredSessions.length === 0 && filteredQuestions.length === 0 && (
                     <div style={{textAlign: 'center', color: '#666', padding: '2rem 1rem', fontStyle: 'italic', fontSize: '0.85rem'}}>
