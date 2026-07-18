@@ -165,7 +165,9 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                 {(myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.members_can_add !== false) && (
                                     <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> Add Members</button>
                                 )}
-                                <button className="danger" onClick={() => { setShowOptions(false); setConfirmLeave(true); }}><i className="fas fa-sign-out-alt"></i> Leave Group</button>
+                                {myRole !== 'owner' && (
+                                    <button className="danger" onClick={() => { setShowOptions(false); setConfirmLeave(true); }}><i className="fas fa-sign-out-alt"></i> Leave Group</button>
+                                )}
                             </div>
                         )}
                     </div>
