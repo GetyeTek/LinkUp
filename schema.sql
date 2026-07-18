@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-07-18T06:48:23.422Z
+-- Date: 2026-07-18T10:28:33.461Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -891,14 +891,6 @@ BEGIN
 END;
 
 
--- Function: leave_squad
-
-BEGIN
-    DELETE FROM public.conversation_members
-    WHERE conversation_id = req_conv_id AND user_id = auth.uid();
-END;
-
-
 -- Function: enforce_squad_message_rules
 
 DECLARE
@@ -935,6 +927,23 @@ BEGIN
     END IF;
 
     RETURN NEW;
+END;
+
+
+-- Function: leave_squad
+
+DECLARE
+    v_role text;
+BEGIN
+    SELECT role INTO v_role FROM public.conversation_members
+    WHERE conversation_id = req_conv_id AND user_id = auth.uid();
+    
+    IF v_role = 'owner' THEN
+        RAISE EXCEPTION 'Owners cannot leave their own group. You must delete the group instead.';
+    END IF;
+
+    DELETE FROM public.conversation_members
+    WHERE conversation_id = req_conv_id AND user_id = auth.uid();
 END;
 
 
@@ -1022,49 +1031,6 @@ BEGIN
       END IF;
    END IF;
    RETURN NEW;
-END;
-
-
--- Function: join_study_group
-
-DECLARE
-    ban_record RECORD;
-    conv_privacy text;
-BEGIN
-    -- 1. Enforce executor rights
-    IF req_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Access Denied: You cannot force another user to join a group.';
-    END IF;
-
-    -- 2. CRITICAL FIX: Check if the user is ALREADY an active member first.
-    -- If they are, they are allowed inside regardless of privacy configurations!
-    IF EXISTS (
-        SELECT 1 FROM public.conversation_members 
-        WHERE conversation_id = req_conversation_id AND user_id = req_user_id
-    ) THEN
-        RETURN;
-    END IF;
-
-    -- 3. Evaluate privacy blocks for new joins
-    SELECT metadata->>'privacy' INTO conv_privacy FROM public.conversations WHERE id = req_conversation_id;
-    IF conv_privacy = 'private' THEN
-        RAISE EXCEPTION 'Access Denied: This group is private.';
-    END IF;
-
-    -- 4. Evaluate ban records
-    SELECT banned_until INTO ban_record FROM public.squad_bans WHERE conversation_id = req_conversation_id AND user_id = req_user_id;
-    IF FOUND THEN
-        IF ban_record.banned_until IS NULL OR ban_record.banned_until > now() THEN
-            RAISE EXCEPTION 'Access Denied: You are banned from this group.';
-        ELSE
-            DELETE FROM public.squad_bans WHERE conversation_id = req_conversation_id AND user_id = req_user_id;
-        END IF;
-    END IF;
-
-    -- 5. Insert new member
-    INSERT INTO public.conversation_members (conversation_id, user_id, role)
-    VALUES (req_conversation_id, req_user_id, 'member')
-    ON CONFLICT DO NOTHING;
 END;
 
 
@@ -1939,6 +1905,132 @@ BEGIN
         END IF;
     END IF;
     RETURN NEW;
+END;
+
+
+-- Function: handle_member_leave_or_kick
+
+BEGIN
+    UPDATE public.profiles
+    SET class_id = NULL
+    WHERE id = OLD.user_id AND class_id = OLD.conversation_id;
+    RETURN OLD;
+END;
+
+
+-- Function: join_study_group
+
+DECLARE
+    ban_record RECORD;
+    conv_privacy text;
+    db_token text;
+BEGIN
+    IF req_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Access Denied: You cannot force another user to join a group.';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM public.conversation_members 
+        WHERE conversation_id = req_conversation_id AND user_id = req_user_id
+    ) THEN
+        RETURN;
+    END IF;
+
+    -- Privacy verification block
+    SELECT metadata->>'privacy', metadata->>'private_invite_token' INTO conv_privacy, db_token 
+    FROM public.conversations WHERE id = req_conversation_id;
+    
+    IF conv_privacy = 'private' THEN
+        IF req_token IS NULL OR req_token != db_token THEN
+            RAISE EXCEPTION 'Access Denied: This group is private or the invite link is invalid.';
+        END IF;
+    END IF;
+
+    SELECT banned_until INTO ban_record FROM public.squad_bans WHERE conversation_id = req_conversation_id AND user_id = req_user_id;
+    IF FOUND THEN
+        IF ban_record.banned_until IS NULL OR ban_record.banned_until > now() THEN
+            RAISE EXCEPTION 'Access Denied: You are banned from this group.';
+        ELSE
+            DELETE FROM public.squad_bans WHERE conversation_id = req_conversation_id AND user_id = req_user_id;
+        END IF;
+    END IF;
+
+    INSERT INTO public.conversation_members (conversation_id, user_id, role)
+    VALUES (req_conversation_id, req_user_id, 'member')
+    ON CONFLICT DO NOTHING;
+END;
+
+
+-- Function: create_private_invite_link
+
+DECLARE
+    v_role text;
+    new_token text;
+    current_meta jsonb;
+BEGIN
+    SELECT role INTO v_role FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = auth.uid();
+    IF v_role != 'owner' THEN
+        RAISE EXCEPTION 'Access Denied: Only the owner can generate an invite link.';
+    END IF;
+
+    new_token := substring(md5(random()::text), 1, 16);
+    
+    SELECT metadata INTO current_meta FROM public.conversations WHERE id = req_conv_id;
+    current_meta := jsonb_set(COALESCE(current_meta, '{}'::jsonb), '{private_invite_token}', to_jsonb(new_token));
+
+    UPDATE public.conversations SET metadata = current_meta WHERE id = req_conv_id;
+    RETURN new_token;
+END;
+
+
+-- Function: revoke_private_invite_link
+
+DECLARE
+    v_role text;
+    current_meta jsonb;
+BEGIN
+    SELECT role INTO v_role FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = auth.uid();
+    IF v_role != 'owner' THEN
+        RAISE EXCEPTION 'Access Denied: Only the owner can revoke an invite link.';
+    END IF;
+    
+    SELECT metadata INTO current_meta FROM public.conversations WHERE id = req_conv_id;
+    current_meta := current_meta - 'private_invite_token';
+
+    UPDATE public.conversations SET metadata = current_meta WHERE id = req_conv_id;
+END;
+
+
+-- Function: get_private_group_by_token
+
+DECLARE
+    group_record record;
+    member_count int;
+    user_is_member boolean;
+BEGIN
+    SELECT id, title, avatar_url, metadata
+    INTO group_record
+    FROM public.conversations
+    WHERE metadata->>'private_invite_token' = req_token AND type = 'group';
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Invalid or expired invitation link.';
+    END IF;
+
+    -- Tally the current roster
+    SELECT count(*) INTO member_count FROM public.conversation_members WHERE conversation_id = group_record.id;
+    
+    -- Evaluate the requester's membership silently
+    SELECT EXISTS(SELECT 1 FROM public.conversation_members WHERE conversation_id = group_record.id AND user_id = auth.uid()) INTO user_is_member;
+
+    RETURN jsonb_build_object(
+        'id', group_record.id,
+        'title', group_record.title,
+        'avatar_url', group_record.avatar_url,
+        'focus', group_record.metadata->>'focus',
+        'member_count', member_count,
+        'is_member', user_is_member
+    );
 END;
 
 
