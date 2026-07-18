@@ -208,13 +208,16 @@ const Connect = () => {
                 event: '*',
                 schema: 'public',
                 table: 'conversations'
-            }, () => {
+            }, (payload) => {
+                console.log("[Realtime:Connect] ⚡ Event: conversations", payload.eventType, payload.new?.id);
                 // Instantly update lists when a group is created, deleted, goes live, stops, or alters metadata
                 fetchConversations();
                 fetchSuggestedSquads();
                 fetchCampusClasses();
             })
-            .subscribe();
+            .subscribe((status, err) => {
+                console.log("[Realtime:Connect] WS Status:", status, err || "");
+            });
 
         // 2. Global Presence (Who is Online?)
         const presenceChannel = supabase.channel('global_presence', {
@@ -284,14 +287,22 @@ const Connect = () => {
     };
 
     const fetchSuggestedSquads = async () => {
+        console.log("[Realtime:Connect] -> Fetching Suggested Squads...");
         const { data, error } = await supabase.rpc('get_suggested_squads', { req_user_id: currentUser.id });
-        if (data) setSuggestedSquads(data);
+        if (data) {
+            console.log("[Realtime:Connect] <- Fetched Suggested:", data.length);
+            setSuggestedSquads(data);
+        }
         if (error) console.error("Error fetching suggestions:", error);
     };
 
     const fetchCampusClasses = async () => {
+        console.log("[Realtime:Connect] -> Fetching Campus Classes...");
         const { data, error } = await supabase.rpc('get_campus_classes', { req_user_id: currentUser.id });
-        if (data) setCampusClasses(data);
+        if (data) {
+            console.log("[Realtime:Connect] <- Fetched Classes:", data.length);
+            setCampusClasses(data);
+        }
         if (error) console.error("Error fetching classes:", error);
     };
 
