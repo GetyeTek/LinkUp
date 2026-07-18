@@ -4,10 +4,13 @@ import AvatarCropperModal from '../../../src/core/components/AvatarCropperModal.
 import GroupMembersTab from './GroupMembersTab.jsx';
 import GroupMediaTab from './GroupMediaTab.jsx';
 import GroupSettingsTab from './GroupSettingsTab.jsx';
+import GenericConfirmModal from './GenericConfirmModal.jsx';
 import { invokeSocial } from '../api.js';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './GroupInfoPanel.css';
 
-const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband, onOpenAdminSettings, onOpenUser }) => {
+const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband, onOpenAdminSettings, onOpenUser, autoTriggerLinkFlow, setAutoTriggerLinkFlow }) => {
+    const { user: userProfile } = usePlatform();
     const canSeeMembers = myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.hide_members !== true;
     
     const [activeTab, setActiveTab] = useState(canSeeMembers ? 'members' : 'media');
@@ -40,6 +43,29 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
     const [showAddMember, setShowAddMember] = useState(false);
     const [activeMemberMenu, setActiveMemberMenu] = useState(null);
     const [inviteCopied, setInviteCopied] = useState(false);
+    const [confirmLinkMode, setConfirmLinkMode] = useState(null); // 'link' | 'overwrite' | 'unlink'
+
+    useEffect(() => {
+        if (autoTriggerLinkFlow) {
+            setConfirmLinkMode(userProfile?.class_id ? 'overwrite' : 'link');
+            if (setAutoTriggerLinkFlow) setAutoTriggerLinkFlow(false);
+        }
+    }, [autoTriggerLinkFlow, userProfile, setAutoTriggerLinkFlow]);
+
+    const executeLinkToggle = async () => {
+        setIsProcessing(true);
+        const newClassId = confirmLinkMode === 'unlink' ? null : conversationId;
+        const { error } = await supabase.from('profiles').update({ class_id: newClassId }).eq('id', userProfile.id);
+        setIsProcessing(false);
+        if (error) {
+            setAlertNotice({ title: "Sync Failed", msg: error.message, success: false });
+        } else {
+            // Optimistically update the context object to reflect immediately locally
+            if (userProfile) userProfile.class_id = newClassId;
+            setAlertNotice({ title: "Sync Successful", msg: "Dashboard updated.", success: true });
+        }
+        setConfirmLinkMode(null);
+    };
 
     // Strict DB truth. No front-end guessing.
     const squadHandle = chatInfo.metadata?.slug;
@@ -166,7 +192,39 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                             </button>
                         </div>
                     )}
+
+                    {chatInfo.metadata?.focus === 'Class' && (
+                        <div className="si-invite-box" style={{ marginTop: '10px', background: 'transparent', border: '1px solid rgba(66, 215, 184, 0.3)' }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600 }}>Official Class</div>
+                                <div style={{ fontSize: '0.7rem', color: '#aaa' }}>Sync deadlines to dashboard</div>
+                            </div>
+                            <div className={`toggle-switch ${userProfile?.class_id === conversationId ? 'on' : 'off'}`} onClick={() => {
+                                if (userProfile?.class_id === conversationId) {
+                                    setConfirmLinkMode('unlink');
+                                } else {
+                                    setConfirmLinkMode(userProfile?.class_id ? 'overwrite' : 'link');
+                                }
+                            }}></div>
+                        </div>
+                    )}
                 </div>
+
+                {confirmLinkMode && (
+                    <GenericConfirmModal
+                        title={confirmLinkMode === 'unlink' ? "Unlink Class" : "Link Official Class"}
+                        description={
+                            confirmLinkMode === 'unlink' ? "Are you sure you want to unlink this class? Your dashboard will no longer receive timeline deadlines and exam alerts from this group." :
+                            confirmLinkMode === 'overwrite' ? "You are currently linked to another class. Linking to this one will unsubscribe you from the previous class, and all your countdowns and announcements will be rerouted here. Proceed?" :
+                            `Link ${chatInfo.title} to your profile? This will synchronize all timeline deadlines, calendars, and exam alerts to your dashboard.`
+                        }
+                        onConfirm={executeLinkToggle}
+                        onCancel={() => setConfirmLinkMode(null)}
+                        confirmText={confirmLinkMode === 'unlink' ? "Unlink" : "Link Class"}
+                        isDanger={confirmLinkMode === 'unlink'}
+                        isProcessing={isProcessing}
+                    />
+                )}
 
                 <div className="si-tabs">
                     {canSeeMembers && <div className={`si-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>Members</div>}
