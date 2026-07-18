@@ -96,31 +96,59 @@ const Home = () => {
                 
                 <div className="page-content">
                     <section className="priority-section">
-                        <h2 className="section-label">Urgent</h2>
-                        <div className="priority-scroll-wrapper">
-                            <div className="priority-track">
-                                <a href="#" className="priority-card card-base is-urgent">
-                                    <div>
-                                        <div className="card-header">
-                                            <i className="fas fa-file-signature icon"></i>
-                                            <span className="category">Exam</span>
+                        {!userProfile?.class_id ? (
+                            <>
+                                <h2 className="section-label">Setup</h2>
+                                <div className="priority-scroll-wrapper">
+                                    <div className="priority-track">
+                                        <div 
+                                            className="priority-card card-base" 
+                                            style={{ borderColor: 'var(--accent-teal)', cursor: 'pointer', background: 'rgba(66, 215, 184, 0.05)', width: '100%', minHeight: '130px' }}
+                                            onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'connect', payload: { action: 'open_classes_tab' } } }))}
+                                        >
+                                            <div>
+                                                <div className="card-header">
+                                                    <i className="fas fa-users-rectangle icon" style={{color: 'var(--accent-teal)'}}></i>
+                                                    <span className="category" style={{color: 'var(--accent-teal)'}}>Action Required</span>
+                                                </div>
+                                                <h3 className="title" style={{marginTop: '0.75rem'}}>Unlock Your Academic Timeline</h3>
+                                            </div>
+                                            <p style={{fontSize: '0.85rem', color: '#aaa', margin: '8px 0 0 0', lineHeight: 1.4}}>
+                                                Set up your official class section to sync deadlines, exams, and announcements.
+                                            </p>
                                         </div>
-                                        <h3 className="title">Thermodynamics</h3>
                                     </div>
-                                    <div className="countdown is-urgent-text">3<span className="label">days</span></div>
-                                </a>
-                                <a href="#" className="priority-card card-base">
-                                    <div>
-                                        <div className="card-header">
-                                            <i className="fas fa-clipboard-list icon"></i>
-                                            <span className="category">Assignment</span>
-                                        </div>
-                                        <h3 className="title">Problem Set 5 Due</h3>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <h2 className="section-label">Urgent</h2>
+                                <div className="priority-scroll-wrapper">
+                                    <div className="priority-track">
+                                        <a href="#" className="priority-card card-base is-urgent">
+                                            <div>
+                                                <div className="card-header">
+                                                    <i className="fas fa-file-signature icon"></i>
+                                                    <span className="category">Exam</span>
+                                                </div>
+                                                <h3 className="title">Thermodynamics</h3>
+                                            </div>
+                                            <div className="countdown is-urgent-text">3<span className="label">days</span></div>
+                                        </a>
+                                        <a href="#" className="priority-card card-base">
+                                            <div>
+                                                <div className="card-header">
+                                                    <i className="fas fa-clipboard-list icon"></i>
+                                                    <span className="category">Assignment</span>
+                                                </div>
+                                                <h3 className="title">Problem Set 5 Due</h3>
+                                            </div>
+                                            <div className="countdown">7<span className="label">days</span></div>
+                                        </a>
                                     </div>
-                                    <div className="countdown">7<span className="label">days</span></div>
-                                </a>
-                            </div>
-                        </div>
+                                </div>
+                            </>
+                        )}
                     </section>
 
                     <section className="whats-next-section">
