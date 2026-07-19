@@ -33,6 +33,19 @@ const App = () => {
       const [theme, setTheme] = useState(localStorage.getItem('linkup_theme') || 'dark');
       const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
+      // --- VIDEO TOUR STATE ---
+      const [isVideoTourActive, setIsVideoTourActive] = useState(false);
+      const [isVideoLoading, setIsVideoLoading] = useState(false);
+
+      useEffect(() => {
+          const handlePlayVideo = () => {
+              setIsVideoTourActive(true);
+              setIsVideoLoading(true);
+          };
+          window.addEventListener('tour:play-video', handlePlayVideo);
+          return () => window.removeEventListener('tour:play-video', handlePlayVideo);
+      }, []);
+
       useEffect(() => {
           document.documentElement.className = `theme-${theme}`;
       }, [theme]);
@@ -342,6 +355,34 @@ const App = () => {
 
   return (
     <div className="app-container">
+      {/* VIDEO TOUR OVERLAY */}
+      {isVideoTourActive && (
+          <div className="video-tour-overlay">
+              {isVideoLoading && (
+                  <div className="video-tour-loader">
+                      <i className="fas fa-circle-notch fa-spin"></i>
+                      <p style={{fontWeight: 600}}>Loading Tour...</p>
+                  </div>
+              )}
+              <button className="video-tour-skip" onClick={() => setIsVideoTourActive(false)}>
+                  <i className="fas fa-times" style={{marginRight: '6px'}}></i>Skip
+              </button>
+              <video 
+                  className="video-tour-player"
+                  src="https://ryaxynjczfwqyqvpmorl.supabase.co/storage/v1/object/public/public_assets/LinkUp.mp4"
+                  autoPlay
+                  playsInline
+                  disablePictureInPicture
+                  onCanPlay={() => setIsVideoLoading(false)}
+                  onEnded={() => setIsVideoTourActive(false)}
+                  onError={() => { 
+                      alert('Failed to load video tour. Ensure LinkUp.mp4 is uploaded to public_assets.'); 
+                      setIsVideoTourActive(false); 
+                  }}
+              />
+          </div>
+      )}
+
       {showOfflineBanner && (
           <div className={`global-offline-banner ${!isOffline ? 'restored' : ''}`}>
               {isOffline ? (
