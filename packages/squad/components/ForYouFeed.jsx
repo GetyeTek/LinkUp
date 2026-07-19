@@ -136,32 +136,7 @@ const ForYouFeed = ({ featuredEvents, handleFeaturedAction }) => {
             </div>
 
             <div className="activity-list-container">
-                {/* Featured Events & Announcements */}
-                {filteredAnnouncements.map(ev => (
-                    <div className="activity-card" id={`feed-item-${ev.id}`} key={ev.id} onClick={() => handleFeaturedAction && handleFeaturedAction(ev)}>
-                        {ev.image_url ? (
-                            <img src={ev.image_url} alt="Cover" className="activity-image" style={{height: '200px'}} />
-                        ) : (
-                            <div className="stars-canvas" style={{ height: '200px', background: 'radial-gradient(ellipse at 50% 30%, #1a2c3a 0%, #0f1012 80%)' }}></div>
-                        )}
-                        <div className="activity-content" style={{borderLeft: `4px solid ${ev.tag_color || 'var(--accent-teal)'}`}}>
-                            {ev.tag_text && (
-                                <div className="activity-tag" style={{ color: ev.tag_color || 'var(--accent-teal)' }}>
-                                    {ev.tag_text}
-                                </div>
-                            )}
-                            <h2 className="activity-headline">{ev.title}</h2>
-                            {ev.body && <p className="activity-snippet" style={{ marginTop: '8px' }}>{ev.body}</p>}
-                            {ev.button_text && (
-                                <button className="claim-btn claimable" style={{marginTop: '1rem', width: '100%', background: 'rgba(255,255,255,0.08)', color: '#fff', border: `1px solid ${ev.button_color || 'rgba(255,255,255,0.2)'}`}}>
-                                    {ev.button_text} <i className="fas fa-arrow-right" style={{marginLeft: '6px'}}></i>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                ))}
-
-                {/* Live Study Sessions */}
+                {/* Live Study Sessions (PRIORITY TOP) */}
                 {filteredSessions.map(session => (
                     <div className="activity-card live-session-card" id={`feed-item-${session.id}`} key={session.id}>
                         <div className="activity-content" style={{borderLeft: 'none'}}>
@@ -178,6 +153,31 @@ const ForYouFeed = ({ featuredEvents, handleFeaturedAction }) => {
                             >
                                 {joiningSquadId === session.conversation_id ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Session'}
                             </button>
+                        </div>
+                    </div>
+                ))}
+
+                {/* Featured Events & Announcements */}
+                {filteredAnnouncements.map(ev => (
+                    <div className="activity-card" id={`feed-item-${ev.id}`} key={ev.id} onClick={() => handleFeaturedAction && handleFeaturedAction(ev)}>
+                        {ev.image_url ? (
+                            <img src={ev.image_url} alt="Cover" className="activity-image" style={{height: '200px'}} />
+                        ) : (
+                            <div style={{ height: '200px', width: '100%', background: 'radial-gradient(ellipse at 50% 30%, #1a2c3a 0%, #0f1012 80%)' }}></div>
+                        )}
+                        <div className="activity-content" style={{borderLeft: `4px solid ${ev.tag_color || 'var(--accent-teal)'}`}}>
+                            {ev.tag_text && (
+                                <div className="activity-tag" style={{ color: ev.tag_color || 'var(--accent-teal)' }}>
+                                    {ev.tag_text}
+                                </div>
+                            )}
+                            <h2 className="activity-headline">{ev.title}</h2>
+                            {ev.body && <p className="activity-snippet" style={{ marginTop: '8px' }}>{ev.body}</p>}
+                            {ev.button_text && (
+                                <button className="claim-btn claimable" style={{marginTop: '1rem', width: '100%', background: 'rgba(255,255,255,0.08)', color: '#fff', border: `1px solid ${ev.button_color || 'rgba(255,255,255,0.2)'}`}}>
+                                    {ev.button_text} <i className="fas fa-arrow-right" style={{marginLeft: '6px'}}></i>
+                                </button>
+                            )}
                         </div>
                     </div>
                 ))}
