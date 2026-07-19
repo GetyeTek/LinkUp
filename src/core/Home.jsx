@@ -175,57 +175,24 @@ const Home = () => {
                 
                 <div className="page-content">
                     <section className="priority-section">
-                        {!userProfile?.class_id ? (
-                            <>
-                                <h2 className="section-label">Setup</h2>
-                                <div className="priority-scroll-wrapper">
-                                    <div className="priority-track">
-                                                                        <div 
+                        <h2 className="section-label">Academy Guide</h2>
+                        <div className="priority-scroll-wrapper">
+                            <div className="priority-track">
+                                <div 
                                     className="priority-card card-base" 
-                                    style={{ borderColor: 'var(--accent-teal)', cursor: 'pointer', background: 'rgba(66, 215, 184, 0.05)' }}
-                                    onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'connect', payload: { action: 'open_classes_tab' } } }))}
+                                    onClick={() => window.dispatchEvent(new CustomEvent('tour:play-video'))} 
+                                    style={{ borderColor: 'var(--accent-teal)', cursor: 'pointer', background: 'linear-gradient(135deg, rgba(66, 215, 184, 0.05) 0%, rgba(20, 20, 22, 0.8) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', animation: 'pulse-glow-border 3s infinite alternate' }}
                                 >
-                                    <div>
-                                        <div className="card-header">
-                                            <i className="fas fa-users-rectangle icon" style={{color: 'var(--accent-teal)'}}></i>
-                                            <span className="category" style={{color: 'var(--accent-teal)'}}>Action Required</span>
+                                    <div className="card-header" style={{ marginBottom: '10px', justifyContent: 'center' }}>
+                                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(66, 215, 184, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-teal)', fontSize: '1.4rem', boxShadow: '0 0 20px rgba(66, 215, 184, 0.3)' }}>
+                                            <i className="fas fa-play"></i>
                                         </div>
-                                        <h3 className="title" style={{marginTop: '0.5rem', fontSize: '1.1rem'}}>Link Your Class</h3>
                                     </div>
-                                    <div className="countdown" style={{ fontSize: '0.8rem', color: '#aaa', fontWeight: 500, alignSelf: 'flex-start', marginTop: 'auto' }}>Sync Deadlines</div>
+                                    <h3 className="title" style={{marginTop: '0', fontSize: '1.2rem', color: 'var(--text-primary-dark)'}}>Learn LinkUp</h3>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary-dark)', fontWeight: 500, marginTop: '8px', lineHeight: 1.4 }}>Watch a quick guided tour of the platform's features.</div>
                                 </div>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <h2 className="section-label">Urgent</h2>
-                                <div className="priority-scroll-wrapper">
-                                    <div className="priority-track">
-                                        <a href="#" className="priority-card card-base is-urgent">
-                                            <div>
-                                                <div className="card-header">
-                                                    <i className="fas fa-file-signature icon"></i>
-                                                    <span className="category">Exam</span>
-                                                </div>
-                                                <h3 className="title">Thermodynamics</h3>
-                                            </div>
-                                            <div className="countdown is-urgent-text">3<span className="label">days</span></div>
-                                        </a>
-                                        <a href="#" className="priority-card card-base">
-                                            <div>
-                                                <div className="card-header">
-                                                    <i className="fas fa-clipboard-list icon"></i>
-                                                    <span className="category">Assignment</span>
-                                                </div>
-                                                <h3 className="title">Problem Set 5 Due</h3>
-                                            </div>
-                                            <div className="countdown">7<span className="label">days</span></div>
-                                        </a>
-                                    </div>
-                                </div>
-                            </>
-                        )}
+                            </div>
+                        </div>
                     </section>
 
                     {/* OVERHAULED HIGH-FIDELITY DISCOVERY BAR */}
