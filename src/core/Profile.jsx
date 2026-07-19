@@ -23,6 +23,13 @@ const Profile = () => {
         return () => window.removeEventListener('open-profile-editor', handleOpenEditor);
     }, []);
 
+    // Global Listener to open Mission Control externally
+    useEffect(() => {
+        const handleOpenMission = () => toggleOverlay('mission', true);
+        window.addEventListener('open-mission-control', handleOpenMission);
+        return () => window.removeEventListener('open-mission-control', handleOpenMission);
+    }, []);
+
     // Helper to toggle overlays
     const toggleOverlay = (name, isOpen) => {
         setOverlays(prev => ({ ...prev, [name]: isOpen }));
