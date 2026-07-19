@@ -243,26 +243,7 @@ const Home = () => {
                             </div>
 
                             <div className="discovery-scroll-container">
-                                {/* Featured Announcements */}
-                                {whatsNextData.events.map(ev => (
-                                    <div key={ev.id} className="premium-announcement-card" onClick={() => handleFeaturedAction(ev)}>
-                                        {ev.image_url ? (
-                                            <div className="pac-bg" style={{ backgroundImage: `url(${ev.image_url})` }}></div>
-                                        ) : (
-                                            <div className="pac-bg stars-canvas" style={{ background: 'radial-gradient(ellipse at 50% 30%, #1a2c3a 0%, #0f1012 80%)' }}></div>
-                                        )}
-                                        <div className="pac-overlay">
-                                            {ev.tag_text && <span className="pac-tag" style={{ color: ev.tag_color || 'var(--accent-teal)' }}>{ev.tag_text}</span>}
-                                            <h3 className="pac-title">{ev.title}</h3>
-                                            <div className="pac-footer">
-                                                <span>{ev.button_text || 'View'}</span>
-                                                <i className="fas fa-arrow-right"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {/* The Live Orb */}
+                                {/* The Live Orb (PRIORITY TOP) */}
                                 {whatsNextData.live.length > 0 && (
                                     <div 
                                         className="live-orb-wrapper" 
@@ -288,6 +269,25 @@ const Home = () => {
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Featured Announcements */}
+                                {whatsNextData.events.map(ev => (
+                                    <div key={ev.id} className="premium-announcement-card" onClick={() => handleFeaturedAction(ev)}>
+                                        {ev.image_url ? (
+                                            <div className="pac-bg" style={{ backgroundImage: `url(${ev.image_url})` }}></div>
+                                        ) : (
+                                            <div className="pac-bg" style={{ background: 'radial-gradient(ellipse at 50% 30%, #1a2c3a 0%, #0f1012 80%)' }}></div>
+                                        )}
+                                        <div className="pac-overlay">
+                                            {ev.tag_text && <span className="pac-tag" style={{ color: ev.tag_color || 'var(--accent-teal)' }}>{ev.tag_text}</span>}
+                                            <h3 className="pac-title">{ev.title}</h3>
+                                            <div className="pac-footer">
+                                                <span>{ev.button_text || 'View'}</span>
+                                                <i className="fas fa-arrow-right"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
 
                                 {/* Premium Q&A Glass Cards */}
                                 {whatsNextData.qa.map((q, idx) => {
