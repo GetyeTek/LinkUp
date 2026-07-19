@@ -586,7 +586,11 @@ const Connect = () => {
                     formatTime={formatTime}
                 />
 
-                <ExploreTab activeView={activeView} />
+                <ExploreTab 
+                    activeView={activeView} 
+                    featuredEvents={featuredEvents}
+                    handleFeaturedAction={handleFeaturedAction}
+                />
             </div>
             
             {/* Standard Connect FAB */}
