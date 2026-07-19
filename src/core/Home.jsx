@@ -9,13 +9,6 @@ const timeAgo = (isoString) => {
     return `${Math.floor(hrs/24)}d ago`;
 };
 
-const getDeterministicReplyCount = (id) => {
-    if (!id) return 0;
-    let sum = 0;
-    for(let i=0; i<id.length; i++) sum += id.charCodeAt(i);
-    return (sum % 14) + 1; // Generates a consistent 1 to 14 replies
-};
-
 const Home = () => {
     const { shell, user: userProfile, unreadCount } = usePlatform();
     const onOpenActivity = shell.openActivity;
@@ -267,7 +260,7 @@ const Home = () => {
                                 {/* Premium Q&A Glass Cards */}
                                 {whatsNextData.qa.map((q, idx) => {
                                     const isTeal = idx % 2 !== 0;
-                                    const replyCount = getDeterministicReplyCount(q.id);
+                                    const replyCount = q.replies_count || 0;
                                     return (
                                         <div 
                                             key={q.id} 
