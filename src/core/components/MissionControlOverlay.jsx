@@ -196,7 +196,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
     };
 
     const referralLink = userProfile?.username ? `${getBaseUrl()}?ref=${userProfile.username}` : '';
-    const shareMessage = `Yo! Join me on LinkUp for freshman prep, exam pavilion files, and study sessions with Miron AI. Use my link to get a free +100 coin welcome boost:\n`;
+    const shareMessage = `Yo! Join me on LinkUp for freshman prep, exam pavilion files, and study sessions with Miron AI. Use my link to get a free +100 Credits welcome boost:\n`;
 
     const handleCopyLink = () => {
         navigator.clipboard.writeText(referralLink);
@@ -319,7 +319,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                         <h3>Invite Friends, Earn Together</h3>
                                     </div>
                                     <div className="ic-body">
-                                        Earn <strong>+30 Linkoins</strong> for every classmate who joins and verifies their phone. They get a <strong>+100 welcome boost</strong> too!
+                                        Earn <strong>+30 Credits</strong> for every classmate who joins and verifies their phone. They get a <strong>+100 welcome boost</strong> too!
                                     </div>
                                     <div className="ic-link-box">
                                         <div className="ic-link-text">{referralLink || 'Loading link...'}</div>
