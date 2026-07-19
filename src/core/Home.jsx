@@ -175,21 +175,25 @@ const Home = () => {
                 
                 <div className="page-content">
                     <section className="priority-section">
-                        <h2 className="section-label">Academy Guide</h2>
+                        <h2 className="section-label">Coming Up</h2>
                         <div className="priority-scroll-wrapper">
                             <div className="priority-track">
-                                <div 
-                                    className="priority-card card-base" 
-                                    onClick={() => window.dispatchEvent(new CustomEvent('tour:play-video'))} 
-                                    style={{ borderColor: 'var(--accent-teal)', cursor: 'pointer', background: 'linear-gradient(135deg, rgba(66, 215, 184, 0.05) 0%, rgba(20, 20, 22, 0.8) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', animation: 'pulse-glow-border 3s infinite alternate' }}
-                                >
-                                    <div className="card-header" style={{ marginBottom: '10px', justifyContent: 'center' }}>
-                                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(66, 215, 184, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-teal)', fontSize: '1.4rem', boxShadow: '0 0 20px rgba(66, 215, 184, 0.3)' }}>
-                                            <i className="fas fa-play"></i>
-                                        </div>
+                                <div className="promo-card video-tour" onClick={() => window.dispatchEvent(new CustomEvent('tour:play-video'))}>
+                                    <div className="promo-icon-wrap"><i className="fas fa-play"></i></div>
+                                    <div>
+                                        <h3 className="promo-title">Learn LinkUp</h3>
+                                        <div className="promo-desc">Watch a quick guided tour of the platform's features.</div>
                                     </div>
-                                    <h3 className="title" style={{marginTop: '0', fontSize: '1.2rem', color: 'var(--text-primary-dark)'}}>Learn LinkUp</h3>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary-dark)', fontWeight: 500, marginTop: '8px', lineHeight: 1.4 }}>Watch a quick guided tour of the platform's features.</div>
+                                </div>
+                                <div className="promo-card credits-mission" onClick={() => {
+                                    window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }));
+                                    setTimeout(() => window.dispatchEvent(new CustomEvent('open-mission-control')), 100);
+                                }}>
+                                    <div className="promo-icon-wrap"><i className="fas fa-coins"></i></div>
+                                    <div>
+                                        <h3 className="promo-title">Earn Credits</h3>
+                                        <div className="promo-desc">Complete daily missions to collect Credits and unlock perks.</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
