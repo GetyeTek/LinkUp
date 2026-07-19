@@ -36,6 +36,7 @@ const App = () => {
       // --- VIDEO TOUR STATE ---
       const [isVideoTourActive, setIsVideoTourActive] = useState(false);
       const [isVideoLoading, setIsVideoLoading] = useState(false);
+      const [videoError, setVideoError] = useState(false);
 
       useEffect(() => {
           const handlePlayVideo = () => {
@@ -376,10 +377,25 @@ const App = () => {
                   onCanPlay={() => setIsVideoLoading(false)}
                   onEnded={() => setIsVideoTourActive(false)}
                   onError={() => { 
-                      alert('Failed to load video tour. Ensure LinkUp.mp4 is uploaded to public_assets.'); 
                       setIsVideoTourActive(false); 
+                      setVideoError(true);
                   }}
               />
+          </div>
+      )}
+
+      {/* VIDEO ERROR MODAL */}
+      {videoError && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
+              <div style={{ background: 'var(--surface-dark)', border: '1px solid var(--border-color)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+                  <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#ffab40', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <i className="fas fa-exclamation-triangle"></i> Media Unavailable
+                  </h3>
+                  <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>The video tour could not be loaded at this time. Please check your connection or try again later.</p>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, fontFamily: 'Poppins, sans-serif', cursor: 'pointer', border: 'none', fontSize: '0.9rem', background: 'var(--accent-teal)', color: '#000' }} onClick={() => setVideoError(false)}>Okay</button>
+                  </div>
+              </div>
           </div>
       )}
 
