@@ -325,7 +325,7 @@ const Auth = () => {
                     <div className="ref-avatar-icon"><i className="fas fa-gift"></i></div>
                     <div className="ref-content">
                         <h3>👋 You've been invited by @{referrerSlug}!</h3>
-                        <p>Complete your registration to claim your free +100 Linkoin welcome boost!</p>
+                        <p>Complete your registration to claim your free +100 Credits welcome boost!</p>
                     </div>
                 </div>
             )}
