@@ -4,7 +4,7 @@ import QAComposerModal from './QAComposerModal.jsx';
 import ReplyFullScreen from './ReplyFullScreen.jsx';
 import './ForYouFeed.css';
 
-const ForYouFeed = () => {
+const ForYouFeed = ({ featuredEvents, handleFeaturedAction }) => {
     const { sessionUser: currentUser, routePayload, clearRoutePayload } = usePlatform();
     const [peerQuestions, setPeerQuestions] = useState([]);
     const [liveSessions, setLiveSessions] = useState([]);
@@ -123,18 +123,44 @@ const ForYouFeed = () => {
 
     const filteredQuestions = peerQuestions.filter(q => activeFilter === 'All' || activeFilter === 'Q&A Forum');
     const filteredSessions = liveSessions.filter(s => activeFilter === 'All' || activeFilter === 'Study Groups');
+    const filteredAnnouncements = (featuredEvents || []).filter(ev => activeFilter === 'All' || activeFilter === 'Announcements');
 
     return (
         <div className="explore-feed-section">
             <div className="filter-pills-container explore-pills">
                 <div className="filter-pills">
-                    {['All', 'Study Groups', 'Q&A Forum', 'Miron Tips'].map(f => (
+                    {['All', 'Announcements', 'Study Groups', 'Q&A Forum', 'Miron Tips'].map(f => (
                         <div key={f} className={`chip ${activeFilter === f ? 'active' : ''}`} onClick={() => setActiveFilter(f)}>{f}</div>
                     ))}
                 </div>
             </div>
 
             <div className="activity-list-container">
+                {/* Featured Events & Announcements */}
+                {filteredAnnouncements.map(ev => (
+                    <div className="activity-card" id={`feed-item-${ev.id}`} key={ev.id} onClick={() => handleFeaturedAction && handleFeaturedAction(ev)}>
+                        {ev.image_url ? (
+                            <img src={ev.image_url} alt="Cover" className="activity-image" style={{height: '200px'}} />
+                        ) : (
+                            <div className="stars-canvas" style={{ height: '200px', background: 'radial-gradient(ellipse at 50% 30%, #1a2c3a 0%, #0f1012 80%)' }}></div>
+                        )}
+                        <div className="activity-content" style={{borderLeft: `4px solid ${ev.tag_color || 'var(--accent-teal)'}`}}>
+                            {ev.tag_text && (
+                                <div className="activity-tag" style={{ color: ev.tag_color || 'var(--accent-teal)' }}>
+                                    {ev.tag_text}
+                                </div>
+                            )}
+                            <h2 className="activity-headline">{ev.title}</h2>
+                            {ev.body && <p className="activity-snippet" style={{ marginTop: '8px' }}>{ev.body}</p>}
+                            {ev.button_text && (
+                                <button className="claim-btn claimable" style={{marginTop: '1rem', width: '100%', background: 'rgba(255,255,255,0.08)', color: '#fff', border: `1px solid ${ev.button_color || 'rgba(255,255,255,0.2)'}`}}>
+                                    {ev.button_text} <i className="fas fa-arrow-right" style={{marginLeft: '6px'}}></i>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ))}
+
                 {/* Live Study Sessions */}
                 {filteredSessions.map(session => (
                     <div className="activity-card live-session-card" id={`feed-item-${session.id}`} key={session.id}>
