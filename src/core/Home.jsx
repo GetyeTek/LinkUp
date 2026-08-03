@@ -20,8 +20,15 @@ const Home = () => {
     const [isFading, setIsFading] = useState(false);
     
     // Dynamic What's Next Data
-    const [whatsNextData, setWhatsNextData] = useState({ live: [], qa: [], events: [], loading: true });
-    const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
+      const [whatsNextData, setWhatsNextData] = useState({
+    live: [],
+    qa: [],
+    events: [],
+    loading: true
+  });
+  const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
+  const [showPremiumNotice, setShowPremiumNotice] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
 
     const handleFeaturedAction = (event) => {
         if (event.action_type === 'html_room' && event.html_content) {
@@ -185,19 +192,67 @@ const Home = () => {
                                         <div className="promo-desc">Watch a quick guided tour of the platform's features.</div>
                                     </div>
                                 </div>
-                                <div className="promo-card credits-mission" onClick={() => {
-                                    window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }));
-                                    setTimeout(() => window.dispatchEvent(new CustomEvent('open-mission-control')), 100);
-                                }}>
-                                    <div className="promo-icon-wrap"><i className="fas fa-coins"></i></div>
-                                    <div>
-                                        <h3 className="promo-title">Earn Credits</h3>
-                                        <div className="promo-desc">Complete daily missions to collect Credits and unlock perks.</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+                                                  <div
+                    className="promo-card credits-mission"
+                    onClick={() => {
+                      window.dispatchEvent(
+                        new CustomEvent('navigate-tab', {
+                          detail: { tab: 'profile' }
+                        })
+                      );
+                      setTimeout(
+                        () =>
+                          window.dispatchEvent(
+                            new CustomEvent('open-mission-control')
+                          ),
+                        100
+                      );
+                    }}
+                  >
+                    <div className="promo-icon-wrap">
+                      <i className="fas fa-coins"></i>
+                    </div>
+                    <div>
+                      <h3 className="promo-title">Earn Credits</h3>
+                      <div className="promo-desc">
+                        Complete daily missions to collect Credits and unlock perks.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="promo-card buy-premium"
+                    onClick={() => setShowPremiumNotice(true)}
+                  >
+                    <span className="premium-badge">PRO</span>
+                    <div className="promo-icon-wrap">
+                      <i className="fas fa-crown"></i>
+                    </div>
+                    <div>
+                      <h3 className="promo-title">LinkUp Gold</h3>
+                      <div className="promo-desc">
+                        Unlock unlimited Miron AI, full Exam Pavilion archives, & priority Audio Stages.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="promo-card about-us"
+                    onClick={() => setShowAboutModal(true)}
+                  >
+                    <div className="promo-icon-wrap">
+                      <i className="fas fa-shield-heart"></i>
+                    </div>
+                    <div>
+                      <h3 className="promo-title">Learn About Us</h3>
+                      <div className="promo-desc">
+                        Built by scholars, for scholars. Discover the team & mission behind LinkUp.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
 
                     {/* OVERHAULED HIGH-FIDELITY DISCOVERY BAR */}
                     {(!whatsNextData.loading && (whatsNextData.live.length > 0 || whatsNextData.qa.length > 0 || whatsNextData.events.length > 0)) && (
@@ -311,25 +366,167 @@ const Home = () => {
             </div>
 
             {/* Sandbox Render Modal */}
-            {activeHtmlRoom && (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#0c0c0c', display: 'flex', flexDirection: 'column', animation: 'fadeInModal 0.3s ease-out' }}>
-                    <header style={{ padding: '0.8rem 1.2rem', background: '#0c0c0c', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center' }}>
-                        <button 
-                            onClick={() => setActiveHtmlRoom(null)} 
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer', padding: '5px' }}
-                        >
-                            <i className="fas fa-chevron-left"></i>
-                        </button>
-                        <span style={{ marginLeft: '1rem', fontSize: '0.9rem', color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px' }}>Platform Activity</span>
-                    </header>
-                    <iframe 
-                        srcDoc={activeHtmlRoom} 
-                        sandbox="allow-scripts allow-forms" 
-                        style={{ flex: 1, width: '100%', border: 'none' }} 
-                        title="LinkUp Sandbox Environment"
-                    />
+                      {activeHtmlRoom && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 99999,
+                background: '#0c0c0c',
+                display: 'flex',
+                flexDirection: 'column',
+                animation: 'fadeInModal 0.3s ease-out'
+              }}
+            >
+              <header
+                style={{
+                  padding: '0.8rem 1.2rem',
+                  background: '#0c0c0c',
+                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <button
+                  onClick={() => setActiveHtmlRoom(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: '1.2rem',
+                    cursor: 'pointer',
+                    padding: '5px'
+                  }}
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+                <span
+                  style={{
+                    marginLeft: '1rem',
+                    fontSize: '0.9rem',
+                    color: '#888',
+                    fontWeight: 500,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px'
+                  }}
+                >
+                  Platform Activity
+                </span>
+              </header>
+              <iframe
+                srcDoc={activeHtmlRoom}
+                sandbox="allow-scripts allow-forms"
+                style={{ flex: 1, width: '100%', border: 'none' }}
+                title="LinkUp Sandbox Environment"
+              />
+            </div>
+          )}
+
+          {showPremiumNotice && (
+            <div className="custom-modal-overlay" style={{ zIndex: 99999 }}>
+              <div
+                className="custom-modal-card"
+                style={{ textAlign: 'center', padding: '2rem' }}
+              >
+                <div
+                  style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: 'rgba(255,215,0,0.15)',
+                    color: 'var(--linkoin-gold)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '2rem',
+                    margin: '0 auto 1rem',
+                    boxShadow: '0 0 25px rgba(255,215,0,0.4)'
+                  }}
+                >
+                  <i className="fas fa-crown"></i>
                 </div>
-            )}
+                <h2
+                  style={{
+                    margin: '0 0 0.5rem 0',
+                    color: '#fff',
+                    fontSize: '1.4rem'
+                  }}
+                >
+                  LinkUp Gold Premium
+                </h2>
+                <p
+                  style={{
+                    color: '#aaa',
+                    fontSize: '0.9rem',
+                    marginBottom: '1.5rem',
+                    lineHeight: 1.5
+                  }}
+                >
+                  Full Premium Membership subscription and payment gateway integration are coming soon! Stay tuned.
+                </p>
+                <button
+                  className="cm-btn-primary"
+                  style={{ width: '100%', padding: '12px' }}
+                  onClick={() => setShowPremiumNotice(false)}
+                >
+                  Got It
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showAboutModal && (
+            <div className="custom-modal-overlay" style={{ zIndex: 99999 }}>
+              <div
+                className="custom-modal-card"
+                style={{ textAlign: 'center', padding: '2rem' }}
+              >
+                <div
+                  style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: 'rgba(0,240,255,0.15)',
+                    color: '#00f0ff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '2rem',
+                    margin: '0 auto 1rem',
+                    boxShadow: '0 0 25px rgba(0,240,255,0.4)'
+                  }}
+                >
+                  <i className="fas fa-shield-heart"></i>
+                </div>
+                <h2
+                  style={{
+                    margin: '0 0 0.5rem 0',
+                    color: '#fff',
+                    fontSize: '1.4rem'
+                  }}
+                >
+                  Learn About Us
+                </h2>
+                <p
+                  style={{
+                    color: '#aaa',
+                    fontSize: '0.9rem',
+                    marginBottom: '1.5rem',
+                    lineHeight: 1.6
+                  }}
+                >
+                  LinkUp is an enterprise academic & social ecosystem built to empower university students across Ethiopia with real-time study stages, past exam pavilion archives, and Miron AI tutoring.
+                </p>
+                <button
+                  className="cm-btn-primary"
+                  style={{ width: '100%', padding: '12px' }}
+                  onClick={() => setShowAboutModal(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
         </div>
     );
 };
