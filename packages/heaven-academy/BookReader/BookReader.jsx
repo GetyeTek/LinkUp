@@ -14,7 +14,7 @@ import TableOfContents from './components/TableOfContents.jsx';
 import PageQuestionsBlock from './components/PageQuestionsBlock.jsx';
 import MiniMironOverlay from './components/MiniMironOverlay.jsx';
 import BookReaderUI from './components/BookReaderUI.jsx';
-import { usePlatform } from '@linkup-platform/sdk-core';
+import { usePlatform, telemetry } from '@linkup-platform/sdk-core';
 
 const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexOverride }) => {
     const [loading, setLoading] = useState(true);
@@ -59,6 +59,12 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const swipeRef = useRef({ startX: 0, startY: 0 });
     
     const pinchState = usePinchToZoom(viewportRef, scrollContainerRef, layerRef, currentScale, minScale, cachedDocHeight, baseCanvasWidth, setContextMenu);
+
+    // Telemetry Dwell-Time Tracking
+    useEffect(() => {
+        telemetry.switchFeature('books');
+        return () => telemetry.restorePreviousFeature();
+    }, []);
 
     // 1. Fetch Pages
     useEffect(() => {
