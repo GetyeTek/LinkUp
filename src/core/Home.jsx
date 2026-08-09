@@ -27,7 +27,6 @@ const Home = () => {
     loading: true
   });
   const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
-  const [showPremiumNotice, setShowPremiumNotice] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
 
     const handleFeaturedAction = (event) => {
@@ -222,7 +221,7 @@ const Home = () => {
 
                   <div
                     className="promo-card buy-premium"
-                    onClick={() => setShowPremiumNotice(true)}
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
                   >
                     <span className="premium-badge">PRO</span>
                     <div className="promo-icon-wrap">
@@ -419,59 +418,6 @@ const Home = () => {
                 style={{ flex: 1, width: '100%', border: 'none' }}
                 title="LinkUp Sandbox Environment"
               />
-            </div>
-          )}
-
-          {showPremiumNotice && (
-            <div className="custom-modal-overlay" style={{ zIndex: 99999 }}>
-              <div
-                className="custom-modal-card"
-                style={{ textAlign: 'center', padding: '2rem' }}
-              >
-                <div
-                  style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
-                    background: 'rgba(255,215,0,0.15)',
-                    color: 'var(--linkoin-gold)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '2rem',
-                    margin: '0 auto 1rem',
-                    boxShadow: '0 0 25px rgba(255,215,0,0.4)'
-                  }}
-                >
-                  <i className="fas fa-crown"></i>
-                </div>
-                <h2
-                  style={{
-                    margin: '0 0 0.5rem 0',
-                    color: '#fff',
-                    fontSize: '1.4rem'
-                  }}
-                >
-                  LinkUp Gold Premium
-                </h2>
-                <p
-                  style={{
-                    color: '#aaa',
-                    fontSize: '0.9rem',
-                    marginBottom: '1.5rem',
-                    lineHeight: 1.5
-                  }}
-                >
-                  Full Premium Membership subscription and payment gateway integration are coming soon! Stay tuned.
-                </p>
-                <button
-                  className="cm-btn-primary"
-                  style={{ width: '100%', padding: '12px' }}
-                  onClick={() => setShowPremiumNotice(false)}
-                >
-                  Got It
-                </button>
-              </div>
             </div>
           )}
 
