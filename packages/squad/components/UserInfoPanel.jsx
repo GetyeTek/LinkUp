@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, getAvatarFallback } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from '../../../src/core/components/AvatarCropperModal.jsx';
 import './UserInfoPanel.css';
 
@@ -135,31 +135,44 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                     </div>
                     {isMe && <div className="ui-avatar-edit"><i className="fas fa-pencil"></i></div>}
                 </div>
+                
+                {!isMe && (
+                    <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+                        <h2 style={{ fontSize: '1.4rem', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {profile.full_name} {profile.is_pro && <GoldBadge size="md" />}
+                        </h2>
+                        <div style={{ color: 'var(--accent-teal)', fontSize: '0.95rem', marginTop: '4px' }}>@{profile.username}</div>
+                    </div>
+                )}
             </div>
             <div className="ui-body">
-                <div className="ui-input-group">
-                    <label>Full Name</label>
-                    <input 
-                        type="text" 
-                        className="ui-input" 
-                        value={isMe ? editForm.name : profile.full_name} 
-                        onChange={e => setEditForm({...editForm, name: e.target.value})} 
-                        disabled={!isMe || isSaving} 
-                    />
-                </div>
-                <div className="ui-input-group">
-                    <label>Username</label>
-                    <div className="handle-input-wrapper status-idle" style={{background: !isMe ? 'transparent' : '', borderColor: !isMe ? 'transparent' : '', paddingLeft: !isMe ? '0' : ''}}>
-                        <span className="handle-prefix">@</span>
-                        <input 
-                            type="text" 
-                            value={isMe ? editForm.username : profile.username} 
-                            onChange={e => setEditForm({...editForm, username: e.target.value})} 
-                            disabled={!isMe || isSaving} 
-                            style={{background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', padding: '12px 8px', fontSize: isMe ? '1rem' : '1.1rem', fontWeight: !isMe ? '500' : 'normal'}}
-                        />
-                    </div>
-                </div>
+                {isMe && (
+                    <>
+                        <div className="ui-input-group">
+                            <label>Full Name</label>
+                            <input 
+                                type="text" 
+                                className="ui-input" 
+                                value={editForm.name} 
+                                onChange={e => setEditForm({...editForm, name: e.target.value})} 
+                                disabled={isSaving} 
+                            />
+                        </div>
+                        <div className="ui-input-group">
+                            <label>Username</label>
+                            <div className="handle-input-wrapper status-idle">
+                                <span className="handle-prefix">@</span>
+                                <input 
+                                    type="text" 
+                                    value={editForm.username} 
+                                    onChange={e => setEditForm({...editForm, username: e.target.value})} 
+                                    disabled={isSaving} 
+                                    style={{background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', padding: '12px 8px', fontSize: '1rem'}}
+                                />
+                            </div>
+                        </div>
+                    </>
+                )}
 
                 <div className="ui-input-group">
                     <label>About</label>
