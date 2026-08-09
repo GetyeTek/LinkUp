@@ -1,0 +1,15 @@
+.linkup-gold-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    background: linear-gradient(135deg, #fff099 0%, #f1c40f 45%, #b78a08 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 6px rgba(241, 196, 15, 0.45));
+    vertical-align: middle;
+}
+
+.linkup-gold-badge.sm { font-size: 0.85em; margin-left: 4px; filter: drop-shadow(0 1px 4px rgba(241, 196, 15, 0.4)); }
+.linkup-gold-badge.md { font-size: 1em; }
+.linkup-gold-badge.lg { font-size: 1.25em; margin-left: 8px; filter: drop-shadow(0 3px 8px rgba(241, 196, 15, 0.5)); }
