@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import { invokeMiron } from '../config/api.js';
-import { getComponent, usePlatform } from '@linkup-platform/sdk-core';
+import { getComponent, usePlatform, telemetry } from '@linkup-platform/sdk-core';
 import DOMPurify from 'dompurify';
 import InteractiveBoard from './components/InteractiveBoard.jsx';
 import InlineBoardTrigger from './components/InlineBoardTrigger.jsx';
