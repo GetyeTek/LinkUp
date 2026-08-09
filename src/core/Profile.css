@@ -1,0 +1,69 @@
+/* --- PROFILE TAB --- */
+.profile-hero { position: relative; padding-top: 80px; }
+.profile-banner { position: absolute; top: 0; left: 0; right: 0; height: 120px; background-image: url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=800&q=80'); background-size: cover; background-position: center; }
+.profile-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, var(--bg-dark) 0%, rgba(12, 12, 12, 0) 100%); }
+.hero-content { position: relative; z-index: 2; display: flex; align-items: flex-end; padding: 0 1.5rem; margin-bottom: 1.5rem; }
+.profile-avatar-wrapper { position: relative; width: 100px; height: 100px; margin-right: 1rem; flex-shrink: 0; }
+.profile-avatar-large { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-teal); box-shadow: 0 0 20px rgba(66, 215, 184, 0.4); }
+.user-info { flex-grow: 1; }
+.profile-name { font-size: 1.5rem; font-weight: 700; }
+.profile-level { font-size: 0.9rem; color: var(--text-secondary-dark); }
+.linkoin-balance-hero { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; background: rgba(30,30,30,0.7); backdrop-filter: blur(5px); border-radius: 99px; padding: 0.25rem 0.75rem; font-size: 0.8rem; width: fit-content; border: 1px solid var(--border-color); }
+.linkoin-balance-hero .linkoin-icon-sm { color: var(--linkoin-gold); }
+.portal-cards-container { display: flex; flex-direction: column; gap: 1.5rem; }
+.portal-card { display: flex; align-items: center; gap: 1.5rem; background: rgba(30, 30, 30, 0.6); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: 20px; padding: 1.25rem; cursor: pointer; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.portal-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
+.portal-card::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; background: linear-gradient(135deg, var(--accent-teal), var(--purple-glow)); z-index: -1; mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: exclude; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; opacity: 0.6; transition: opacity 0.3s ease; }
+.portal-card:hover::before { opacity: 1; }
+#mission-portal-card::before { background: linear-gradient(135deg, var(--linkoin-gold), #e67e22); }
+.portal-window { width: 100px; height: 100px; border-radius: 50%; flex-shrink: 0; position: relative; background: radial-gradient(circle, var(--surface-dark), var(--bg-dark)); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+.plexus-canvas { position: absolute; inset: 0; }
+.portal-content { flex-grow: 1; }
+.portal-title { font-size: 1.25rem; font-weight: 600; }
+.portal-subtitle { font-size: 0.9rem; color: var(--text-secondary-dark); }
+.settings-group { margin-top: 2.5rem; }
+.settings-list { background-color: var(--surface-dark); border-radius: 16px; overflow: hidden; }
+.list-item { display: flex; align-items: center; padding: 1rem 1.25rem; text-decoration: none; color: var(--text-primary-dark); }
+.list-item:not(:last-child) { border-bottom: 1px solid var(--border-color); }
+.list-item-icon { font-size: 1.1rem; color: var(--text-secondary-dark); width: 30px; text-align: center; margin-right: 1rem; }
+.list-item-text { flex-grow: 1; font-weight: 500; }
+.list-item-chevron { margin-left: auto; font-size: 0.9rem; color: var(--text-secondary-dark); }
+
+/* --- PREMIUM GOLD PORTAL CARD --- */
+.premium-portal-card {
+    background: linear-gradient(135deg, rgba(35, 22, 5, 0.95) 0%, rgba(20, 10, 35, 0.98) 100%) !important;
+    border: 1px solid rgba(241, 196, 15, 0.3) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(241, 196, 15, 0.05) !important;
+    overflow: hidden;
+    position: relative;
+}
+
+.premium-portal-card::before {
+    content: ''; position: absolute; inset: -1px; border-radius: inherit;
+    background: linear-gradient(135deg, #f1c40f, #e67e22, #9b59b6);
+    z-index: -1; mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor;
+    opacity: 0.8; transition: opacity 0.3s ease;
+}
+
+.premium-shimmer {
+    position: absolute; top: -50%; left: -150%; width: 100%; height: 200%;
+    background: linear-gradient(90deg, transparent, rgba(241, 196, 15, 0.15), transparent);
+    transform: rotate(25deg); animation: premiumLaser 4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+@keyframes premiumLaser { 0% { left: -150%; } 30%, 100% { left: 200%; } }
+
+.premium-portal-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 25px rgba(241, 196, 15, 0.2) !important; }
+.premium-portal-card .portal-window { background: radial-gradient(circle, rgba(241, 196, 15, 0.15), transparent) !important; border: 1px solid rgba(241, 196, 15, 0.2); }
+
+
+/* --- DESKTOP ADJUSTMENTS FOR PROFILE TAB --- */
+@media (min-width: 900px) {
+    #profile-content .scrollable-content { overflow-y: auto; height: 100%; }
+    .profile-hero { height: 300px; display: flex; align-items: flex-end; padding-bottom: 2rem; }
+    .portal-cards-container { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+    .settings-group { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; padding-bottom: 4rem; }
+    .premium-portal-card { grid-column: 1 / -1; }
+}
