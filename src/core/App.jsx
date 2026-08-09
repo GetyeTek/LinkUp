@@ -11,7 +11,7 @@ import UpdatePasswordGate from './components/UpdatePasswordGate.jsx';
 import MironChat from './MironChat.jsx';
 import MironLiveSession from './components/MironLiveSession.jsx';
 import BottomNavigation from './components/BottomNavigation.jsx';
-import { useGlobalSwipe } from '@linkup-platform/sdk-core';
+import { useGlobalSwipe, telemetry } from '@linkup-platform/sdk-core';
 
 const Discover = lazy(() => import('@linkup/gibi-news'));
 const Study = lazy(() => import('@linkup/heaven-academy'));
@@ -95,6 +95,7 @@ const App = () => {
   useEffect(() => {
     const handleNav = (e) => {
         setActiveTab(e.detail.tab);
+        telemetry.switchFeature(e.detail.tab);
         if (e.detail.payload) setRoutePayload(e.detail.payload);
     };
     window.addEventListener('navigate-tab', handleNav);
@@ -213,6 +214,7 @@ const App = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
+        telemetry.init();
         resolveReferralStorage(session);
         fetchProfile(session.user.id);
         updateLastSeen();
