@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, GoldBadge } from '@linkup-platform/sdk-core';
 import ProfileEditor from './components/ProfileEditor.jsx';
 import ObservatoryOverlay from './components/ObservatoryOverlay.jsx';
 import MissionControlOverlay from './components/MissionControlOverlay.jsx';
@@ -93,7 +93,10 @@ const Profile = () => {
                             <img src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar-large" />
                         </div>
                         <div className="user-info">
-                            <h1 className="profile-name">{userProfile?.full_name || 'Scholar'}</h1>
+                            <h1 className="profile-name" style={{ display: 'flex', alignItems: 'center' }}>
+                                {userProfile?.full_name || 'Scholar'}
+                                {userProfile?.is_pro && <GoldBadge size="lg" />}
+                            </h1>
                             <p className="profile-level">{userProfile?.level || 'Division I'}</p>
                             <div className="linkoin-balance-hero">
                                 <i className="fas fa-coins linkoin-icon-sm"></i>
