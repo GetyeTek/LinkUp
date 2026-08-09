@@ -5,6 +5,7 @@ export { useGeminiAudio } from './hooks/useGeminiAudio.js';
 export { useGlobalSwipe } from './hooks/useGlobalSwipe.js';
 export { logQuestionAttempt } from './tracking.js';
 export { telemetry } from './telemetry.js';
+export { GoldBadge } from './components/GoldBadge.jsx';
 
 export const getAvatarFallback = (name) => {
     if (!name || name === 'Deleted Account' || name === 'Unknown User') {
