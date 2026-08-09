@@ -184,7 +184,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         role: memData ? memData.role : null, 
                         is_current_member: !!memData,
                         name: prof?.full_name || 'Unknown User', 
-                        avatar: prof?.avatar_url || '' 
+                        avatar: prof?.avatar_url || '',
+                        is_pro: prof?.is_pro || false
                     };
                     
                     if (uid === currentUser.id) {
