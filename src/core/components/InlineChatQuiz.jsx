@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { usePlatform, logQuestionAttempt } from '@linkup-platform/sdk-core';
 import './InlineChatQuiz.css';
 
 const InlineChatQuiz = ({ quiz, onSubmit }) => {
+    const { sessionUser } = usePlatform();
     const [answers, setAnswers] = useState({});
     const [submitted, setSubmitted] = useState(false);
 
@@ -13,6 +15,34 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
         setSubmitted(true);
         const summary = quiz.questions.map((q, i) => `Q${i+1}: ${answers[q.id] || 'Skipped'}`).join('\n');
         onSubmit(`[Quiz Submission: ${quiz.title}]\n${summary}\n\nPlease evaluate my answers.`);
+
+        if (sessionUser?.id) {
+            quiz.questions.forEach(q => {
+                const ans = answers[q.id];
+                let isCorrect = null; // AI will evaluate, but we track the attempt
+                
+                if (q.correct_answer !== undefined) {
+                    const qType = (q.question_type || '').toLowerCase();
+                    if (qType === 'true_false') {
+                        isCorrect = (ans === 'True' && q.correct_answer === true) || (ans === 'False' && q.correct_answer === false) || (ans === q.correct_answer);
+                    } else {
+                        isCorrect = ans === q.correct_answer;
+                    }
+                }
+
+                logQuestionAttempt({
+                    userId: sessionUser.id,
+                    questionId: q.id || null,
+                    courseCode: quiz.course_code || 'Miron Chat',
+                    topicTag: quiz.title || 'AI Quiz',
+                    sourceType: 'miron_quiz',
+                    sourceId: null,
+                    questionSnapshot: { text: q.text, options: q.options, type: q.question_type },
+                    userAnswer: ans,
+                    isCorrect: !!isCorrect
+                });
+            });
+        }
     };
 
     return (
