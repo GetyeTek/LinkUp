@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { usePlatform, logQuestionAttempt } from '@linkup-platform/sdk-core';
 import './PageQuestionsBlock.css';
 
 const getNormalizedMatchingData = (q) => {
@@ -38,7 +39,26 @@ const getNormalizedMatchingData = (q) => {
 };
 
 const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onReport }) => {
+    const { sessionUser } = usePlatform();
+    const loggedQsRef = useRef(new Set());
     const [qIndex, setQIndex] = useState(0);
+    
+    const trackAttempt = (val, isCorrectFlag, currentQ) => {
+        if (!sessionUser?.id || loggedQsRef.current.has(currentQ.id)) return;
+        loggedQsRef.current.add(currentQ.id);
+
+        logQuestionAttempt({
+            userId: sessionUser.id,
+            questionId: currentQ.id,
+            courseCode: currentQ.exam_meta?.course_code || 'Unknown',
+            topicTag: currentQ.topic_tag || 'Book Review',
+            sourceType: 'book_checkpoint',
+            sourceId: pageKey,
+            questionSnapshot: { text: currentQ.text, options: currentQ.options, type: currentQ.question_type },
+            userAnswer: val,
+            isCorrect: isCorrectFlag
+        });
+    };
     const [answers, setAnswers] = useState({});
     const [activeMatch, setActiveMatch] = useState({});
     const [gradedQs, setGradedQs] = useState({});
@@ -56,12 +76,53 @@ const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onRepor
 
     const checkAnswer = () => {
         setGradedQs(prev => ({...prev, [q.id]: true}));
+        
+        let isCorrect = false;
+        const val = answers[q.id];
+        const qType = (q.question_type || '').toLowerCase();
+        
+        if (qType === 'fill_in_the_blank') {
+            if (Array.isArray(q.correct_answer) && val) {
+                isCorrect = true;
+                for (let i = 0; i < q.correct_answer.length; i++) {
+                    if ((val[i] || '').toLowerCase().trim() !== (q.correct_answer[i] || '').toLowerCase().trim()) isCorrect = false;
+                }
+            }
+        } else if (qType === 'matching') {
+            if (q.correct_answer && val) {
+                isCorrect = true;
+                for (let k of Object.keys(q.correct_answer)) {
+                    if (val[k] !== q.correct_answer[k]) isCorrect = false;
+                }
+                if (Object.keys(val).length !== Object.keys(q.correct_answer).length) isCorrect = false;
+            }
+        } else {
+            isCorrect = true;
+        }
+
+        trackAttempt(val, isCorrect, q);
     };
 
     const handleLocalSelect = (newAns) => {
         setAnswers({...answers, [q.id]: newAns});
         if (q.question_type === 'multiple_choice' || q.question_type === 'true_false' || q.question_type === 'reading_comprehension') {
             setGradedQs(prev => ({...prev, [q.id]: true}));
+            
+            let isCorrect = false;
+            const qType = (q.question_type || '').toLowerCase();
+            if (qType === 'true_false') {
+                const boolAns = newAns === 'True' || newAns?.text === 'True';
+                isCorrect = boolAns === q.correct_answer;
+            } else {
+                let selectedIdx = -1;
+                q.options?.forEach((opt, idx) => {
+                    if ((opt.text || opt) === (newAns?.text || newAns)) selectedIdx = idx;
+                });
+                const correctIdx = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
+                isCorrect = selectedIdx === correctIdx;
+            }
+
+            trackAttempt(newAns, isCorrect, q);
         }
     };
 
