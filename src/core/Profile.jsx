@@ -3,11 +3,12 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import ProfileEditor from './components/ProfileEditor.jsx';
 import ObservatoryOverlay from './components/ObservatoryOverlay.jsx';
 import MissionControlOverlay from './components/MissionControlOverlay.jsx';
+import PremiumUpgradeOverlay from './components/PremiumUpgradeOverlay.jsx';
 import './Profile.css';
 
 const Profile = () => {
     const { user: userProfile, sessionUser, theme, toggleTheme } = usePlatform();
-    const [overlays, setOverlays] = useState({ observatory: false, mission: false });
+    const [overlays, setOverlays] = useState({ observatory: false, mission: false, premium: false });
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     
     const handleLogout = async () => {
@@ -28,6 +29,13 @@ const Profile = () => {
         const handleOpenMission = () => toggleOverlay('mission', true);
         window.addEventListener('open-mission-control', handleOpenMission);
         return () => window.removeEventListener('open-mission-control', handleOpenMission);
+    }, []);
+
+    // Global Listener to open Premium Overlay externally
+    useEffect(() => {
+        const handleOpenPremium = () => toggleOverlay('premium', true);
+        window.addEventListener('open-premium-modal', handleOpenPremium);
+        return () => window.removeEventListener('open-premium-modal', handleOpenPremium);
     }, []);
 
     // Helper to toggle overlays
@@ -113,6 +121,17 @@ const Profile = () => {
                                 <p className="portal-subtitle">Earn rewards and level up</p>
                             </div>
                         </div>
+                        
+                        <div className="portal-card premium-portal-card" onClick={() => toggleOverlay('premium', true)}>
+                            <div className="premium-shimmer"></div>
+                            <div className="portal-window" style={{ color: '#f1c40f' }}>
+                                <i className="fa-solid fa-crown"></i>
+                            </div>
+                            <div className="portal-content">
+                                <h2 className="portal-title" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f1c40f 60%, #d4ac0d 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: '"Newsreader", serif', fontWeight: 600 }}>LinkUp Gold</h2>
+                                <p className="portal-subtitle">Upgrade to unlimited AI & Archives</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="settings-group">
@@ -144,6 +163,8 @@ const Profile = () => {
             />
 
             <MissionControlOverlay isActive={overlays.mission} onClose={() => toggleOverlay('mission', false)} />
+            
+            <PremiumUpgradeOverlay isActive={overlays.premium} onClose={() => toggleOverlay('premium', false)} />
         </div>
     );
 };
