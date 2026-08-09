@@ -1,5 +1,5 @@
 import React from 'react';
-import { getAvatarFallback } from '@linkup-platform/sdk-core';
+import { getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
 import ChatMediaGallery from './ChatMediaGallery.jsx';
 import InteractivePoll from './InteractivePoll.jsx';
 
@@ -146,7 +146,8 @@ const ChatBubble = ({
                     {!isMine && (
                         <div className="squad-sender-name">
                             {sender.name}
-                            {sender.role === 'owner' && <i className="fas fa-crown admin-crown"></i>}
+                            {sender.is_pro && <GoldBadge size="sm" />}
+                            {sender.role === 'owner' && <i className="fas fa-crown admin-crown" style={{marginLeft: '4px'}}></i>}
                         </div>
                     )}
                     {renderBubbleContent('squad-bubble')}
