@@ -3,7 +3,7 @@ import { invokeBookReader } from './api.js';
 import BookReader from './BookReader/BookReader.jsx';
 import ReportModal from './components/ReportModal.jsx';
 import ExamQuestionCard from './components/ExamQuestionCard.jsx';
-import { usePlatform, logQuestionAttempt } from '@linkup-platform/sdk-core';
+import { usePlatform, logQuestionAttempt, telemetry } from '@linkup-platform/sdk-core';
 import './ExamSession.css';
 
 const typeOrder = {
@@ -68,6 +68,11 @@ const ExamSession = ({ exam, onClose }) => {
     const [dontShowAgain, setDontShowAgain] = useState(false);
     const [evaluatedQs, setEvaluatedQs] = useState({});
     const [showResultsModal, setShowResultsModal] = useState(false);
+
+    useEffect(() => {
+        telemetry.switchFeature('exam');
+        return () => telemetry.restorePreviousFeature();
+    }, []);
 
     useEffect(() => {
         const savedMode = localStorage.getItem('linkup_exam_grading_mode');
