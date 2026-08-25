@@ -61,6 +61,7 @@ const DiagnosticImage = ({ src, alt, className, style, fallbackSvg, bookTitle })
 export const renderBookBlock = (block, idx, actions) => {
     const style = resolveStyles(block);
     const bType = block.type || 'paragraph';
+    const bookTitle = actions?.bookTitle || block.bookTitle || block.book_title || '';
 
     // 1. Backward compatibility for legacy Logic engine blocks
     if (bType.startsWith('logic-')) {
@@ -92,7 +93,7 @@ export const renderBookBlock = (block, idx, actions) => {
                 {block.svgCode ? (
                     <div dangerouslySetInnerHTML={{ __html: block.svgCode }} />
                 ) : (
-                    <DiagnosticImage src={imgUrl} alt={block.caption || block.title || ""} className="univ-graphic-img" />
+                    <DiagnosticImage src={imgUrl} alt={block.caption || block.title || ""} className="univ-graphic-img" bookTitle={bookTitle} />
                 )}
                 {block.caption && <div className="univ-graphic-caption">{formatText(block.caption)}</div>}
                 {block.title && !block.caption && <div className="univ-graphic-caption">{formatText(block.title)}</div>}
@@ -150,7 +151,7 @@ export const renderBookBlock = (block, idx, actions) => {
             <div key={idx} className={`${boxClass} ${bType} ${block.className || ''}`} style={style}>
                 {!block.hideIcon && (
                     <div className="anthro-callout-icon">
-                        <DiagnosticImage src={iconFilename} alt="Callout Icon" fallbackSvg={fallbackSvg} />
+                        <DiagnosticImage src={iconFilename} alt="Callout Icon" fallbackSvg={fallbackSvg} bookTitle={bookTitle} />
                     </div>
                 )}
                 <div className="anthro-callout-content" style={{ width: '100%' }}>
@@ -198,7 +199,7 @@ export const renderBookBlock = (block, idx, actions) => {
                 {(block.items || []).map((txt, bIdx) => (
                     <div key={bIdx} className="anthro-list-item">
                         {bulletIcon ? (
-                            <DiagnosticImage src={bulletIcon} alt="bullet" className="anthro-bullet-img" fallbackSvg={fallbackSvg} />
+                            <DiagnosticImage src={bulletIcon} alt="bullet" className="anthro-bullet-img" fallbackSvg={fallbackSvg} bookTitle={bookTitle} />
                         ) : (
                             <div className="anthro-bullet-char">{bChar}</div>
                         )}
