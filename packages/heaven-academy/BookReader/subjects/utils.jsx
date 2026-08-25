@@ -18,7 +18,7 @@ if (typeof window !== 'undefined') {
     };
 }
 
-export const resolveAssetUrl = (url, bookTitle = 'Anthropology') => {
+export const resolveAssetUrl = (url, bookTitle = '') => {
     if (!url) return '';
     let clean = String(url).trim();
     const epoch = (typeof localStorage !== 'undefined' && localStorage.getItem('linkup_asset_epoch')) || '1';
@@ -35,10 +35,11 @@ export const resolveAssetUrl = (url, bookTitle = 'Anthropology') => {
         return clean.includes('?') ? `${clean}&v=${epoch}` : `${clean}?v=${epoch}`;
     }
 
-    // 3. Resolve relative paths (e.g. 'assets/page_13_img_1.png' or 'icon-books.png')
+    // 3. Resolve relative paths using the current book's actual title folder
     const filename = clean.replace(/^(\.\/|\/)?assets\//i, '').replace(/^(\.\/|\/)/, '');
-    const targetTitle = (bookTitle || 'Anthropology').replace(/\.pdf$/i, '');
-    const base = `${GATEWAY_BASE}/storage/v1/object/public/book-assets/${encodeURIComponent(targetTitle)}.pdf/${filename}`;
+    const cleanBookTitle = (bookTitle || '').replace(/\.pdf$/i, '').trim();
+    const folderPart = cleanBookTitle ? `${encodeURIComponent(cleanBookTitle)}.pdf/` : '';
+    const base = `${GATEWAY_BASE}/storage/v1/object/public/book-assets/${folderPart}${filename}`;
     return `${base}?v=${epoch}`;
 };
 
