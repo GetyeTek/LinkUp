@@ -90,6 +90,34 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                     setPages(data.pages);
                     if (data.toc) setTocData(data.toc);
                     if (data.page_offset) setPageOffset(data.page_offset);
+
+                    // --- ASSET DIAGNOSTIC AUDIT LOG ---
+                    console.group(`%c[BookReader:Audit] 📚 Opened: ${book.title || data.title} (${data.course_code || 'No Code'})`, 'color: #42d7b8; font-size: 13px; font-weight: bold;');
+                    console.log('Book ID:', book.id);
+                    console.log('Custom CSS Present:', !!data.custom_css, `(${data.custom_css?.length || 0} chars)`);
+                    console.log('Total Pages Received:', data.pages.length);
+                    console.log('Page Offset:', data.page_offset);
+
+                    const assetInventory = [];
+                    data.pages.forEach(p => {
+                        (p.content_json || []).forEach((b, bIdx) => {
+                            const imgUrl = b.url || b.src || b.imageUrl || b.iconUrl || b.img;
+                            const isFig = b.type && (b.type.includes('figure') || b.type.includes('graphic') || b.type.includes('image'));
+                            if (imgUrl || isFig) {
+                                assetInventory.push({
+                                    page: p.page_number,
+                                    block_idx: bIdx,
+                                    type: b.type,
+                                    url: imgUrl || 'MISSING_URL_FIELD',
+                                    caption: b.caption || b.title || null
+                                });
+                            }
+                        });
+                    });
+
+                    console.log(`🖼️ Discovered ${assetInventory.length} image/figure assets:`, assetInventory);
+                    console.groupEnd();
+
                 } else {
                     setPages([{ id: 'mock-1', page_key: 'page-1', content_json: [
                         { type: 'title-page', main: book.title || "Untitled Document", sub: "Rendered via JSON Engine" },
