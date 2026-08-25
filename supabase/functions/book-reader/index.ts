@@ -39,7 +39,7 @@ serve(async (req) => {
 
       const [pagesResp, bookResp] = await Promise.all([
         supabase.from('book_pages').select('*').eq('book_id', book_id).order('page_number', { ascending: true }),
-        supabase.from('books').select('toc, page_offset').eq('id', book_id).single()
+        supabase.from('books').select('toc, page_offset, custom_css').eq('id', book_id).single()
       ]);
 
       if (pagesResp.error) throw pagesResp.error;
@@ -47,7 +47,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         pages: pagesResp.data, 
         toc: bookResp.data?.toc || [],
-        page_offset: bookResp.data?.page_offset || 0
+        page_offset: bookResp.data?.page_offset || 0,
+        custom_css: bookResp.data?.custom_css || null
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
