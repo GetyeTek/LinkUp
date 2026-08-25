@@ -1,9 +1,61 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { resolveStyles, formatText, renderAIExtension } from './utils.jsx';
 import { renderLogicBlock } from './Logic/LogicBlocks.jsx';
 import { renderCoreBlock } from './Core/CoreBlocks.jsx';
 
 const bulletCharMap = { 'arrow': '➢', 'diamond': '❖', 'check': '✓', 'dot': '•', 'star': '★', 'square': '▪', 'default': '•' };
+
+const DiagnosticImage = ({ src, alt, className, style }) => {
+    const [hasError, setHasError] = useState(false);
+
+    if (!src) {
+        return (
+            <div style={{ padding: '8px 12px', background: 'rgba(255, 171, 64, 0.1)', border: '1px dashed #ffab40', borderRadius: '6px', color: '#ffab40', fontSize: '11px', fontFamily: 'monospace', margin: '6px 0' }}>
+                ⚠ Block missing image URL
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', width: '100%' }}>
+            <img 
+                src={src} 
+                alt={alt || ""} 
+                className={className} 
+                style={{ ...style, display: hasError ? 'none' : (style?.display || 'block') }}
+                onLoad={() => {
+                    console.log(`%c[Image ✅ Loaded] ${src}`, 'color: #42d7b8;');
+                }}
+                onError={(e) => {
+                    console.error(`%c[Image ❌ Failed] ${src}`, 'color: #ff5f5f; font-weight: bold;', {
+                        attemptedUrl: src,
+                        target: e.target
+                    });
+                    setHasError(true);
+                }}
+            />
+            {hasError && (
+                <div style={{
+                    padding: '10px 14px',
+                    background: 'rgba(255, 95, 95, 0.1)',
+                    border: '1px dashed #ff5f5f',
+                    borderRadius: '8px',
+                    color: '#ff5f5f',
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    margin: '8px 0',
+                    textAlign: 'center'
+                }}>
+                    <i className="fas fa-triangle-exclamation" style={{ marginRight: '6px' }}></i>
+                    <strong>Image Load Failed</strong>
+                    <div style={{ wordBreak: 'break-all', opacity: 0.85, marginTop: '4px', fontSize: '10px' }}>
+                        {src}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export const renderBookBlock = (block, idx, actions) => {
     const style = resolveStyles(block);
@@ -29,6 +81,23 @@ export const renderBookBlock = (block, idx, actions) => {
 
     if (bType === 'footer') {
         return <div key={idx} className="univ-footer" style={style}>{formatText(block.val || block.page || '')}</div>;
+    }
+
+    // 2b. Graphics, Figures & Images
+    if (bType === 'graphic' || bType === 'figure' || bType.includes('figure') || bType.includes('image')) {
+        const imgUrl = block.url || block.src || block.imageUrl || block.img;
+        return (
+            <div key={idx} className={`univ-graphic-container ${bType} ${block.className || ''}`} style={style}>
+                {block.svgCode ? (
+                    <div dangerouslySetInnerHTML={{ __html: block.svgCode }} />
+                ) : (
+                    <DiagnosticImage src={imgUrl} alt={block.caption || block.title || ""} className="univ-graphic-img" />
+                )}
+                {block.caption && <div className="univ-graphic-caption">{formatText(block.caption)}</div>}
+                {block.title && !block.caption && <div className="univ-graphic-caption">{formatText(block.title)}</div>}
+                {renderAIExtension(block, actions)}
+            </div>
+        );
     }
 
     // 3. Unit & Chapter Headers
