@@ -396,6 +396,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                                     {page.manual_flag && <div className="manual-flag">{page.manual_flag}</div>}
                                     {(page.content_json || []).map((block, idx) => {
                                         const blockActions = {
+                                            bookTitle: book?.title || '',
                                             onAIExplore: () => handleAIExplore(pageIdx, idx)
                                         };
                                         const expKey = `${page.page_key}_${idx}`;
