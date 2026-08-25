@@ -5,51 +5,52 @@ import { renderCoreBlock } from './Core/CoreBlocks.jsx';
 
 const bulletCharMap = { 'arrow': '➢', 'diamond': '❖', 'check': '✓', 'dot': '•', 'star': '★', 'square': '▪', 'default': '•' };
 
-const DiagnosticImage = ({ src, alt, className, style }) => {
-    const [hasError, setHasError] = useState(false);
+import { resolveAssetUrl } from './utils.jsx';
 
-    if (!src) {
-        return (
-            <div style={{ padding: '8px 12px', background: 'rgba(255, 171, 64, 0.1)', border: '1px dashed #ffab40', borderRadius: '6px', color: '#ffab40', fontSize: '11px', fontFamily: 'monospace', margin: '6px 0' }}>
-                ⚠ Block missing image URL
-            </div>
-        );
+const DiagnosticImage = ({ src, alt, className, style, fallbackSvg, bookTitle }) => {
+    const [hasError, setHasError] = useState(false);
+    const resolvedUrl = resolveAssetUrl(src, bookTitle);
+
+    if (!resolvedUrl && !fallbackSvg) {
+        return null;
+    }
+
+    if (hasError && fallbackSvg) {
+        return <div className={className} dangerouslySetInnerHTML={{ __html: fallbackSvg }} />;
     }
 
     return (
-        <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', width: '100%' }}>
+        <div style={{ position: 'relative', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', maxWidth: '100%' }}>
             <img 
-                src={src} 
+                src={resolvedUrl} 
                 alt={alt || ""} 
                 className={className} 
+                decoding="async"
                 style={{ ...style, display: hasError ? 'none' : (style?.display || 'block') }}
                 onLoad={() => {
-                    console.log(`%c[Image ✅ Loaded] ${src}`, 'color: #42d7b8;');
+                    console.log(`%c[Image ✅ Loaded] ${resolvedUrl}`, 'color: #42d7b8;');
                 }}
                 onError={(e) => {
-                    console.error(`%c[Image ❌ Failed] ${src}`, 'color: #ff5f5f; font-weight: bold;', {
-                        attemptedUrl: src,
-                        target: e.target
-                    });
+                    console.error(`%c[Image ❌ Failed] ${resolvedUrl}`, 'color: #ff5f5f; font-weight: bold;');
                     setHasError(true);
                 }}
             />
-            {hasError && (
+            {hasError && !fallbackSvg && (
                 <div style={{
-                    padding: '10px 14px',
-                    background: 'rgba(255, 95, 95, 0.1)',
+                    padding: '8px 12px',
+                    background: 'rgba(255, 95, 95, 0.08)',
                     border: '1px dashed #ff5f5f',
                     borderRadius: '8px',
                     color: '#ff5f5f',
                     fontSize: '11px',
                     fontFamily: 'monospace',
-                    margin: '8px 0',
+                    margin: '6px 0',
                     textAlign: 'center'
                 }}>
                     <i className="fas fa-triangle-exclamation" style={{ marginRight: '6px' }}></i>
                     <strong>Image Load Failed</strong>
-                    <div style={{ wordBreak: 'break-all', opacity: 0.85, marginTop: '4px', fontSize: '10px' }}>
-                        {src}
+                    <div style={{ wordBreak: 'break-all', opacity: 0.8, marginTop: '3px', fontSize: '10px' }}>
+                        {resolvedUrl}
                     </div>
                 </div>
             )}
@@ -134,14 +135,24 @@ export const renderBookBlock = (block, idx, actions) => {
         );
     }
 
-    // 5. Callouts, Reflection & Reading Boxes
+    // 5. Callouts, Reflection & Reading Boxes with Icon Columns
     if (bType === 'callout-box' || bType === 'reflection-box' || bType === 'reading-box' || bType === 'reflection' || bType === 'prompt-box' || bType === 'case-box') {
         const defaultTitle = bType.includes('reflection') ? 'Reflect your views on the following questions.' : (bType.includes('reading') ? 'Reading & Discussion' : '');
         const boxClass = bType.includes('reflection') ? 'anthro-reflection-box' : (bType.includes('reading') ? 'anthro-reading-box' : 'anthro-callout');
         const titleClass = bType.includes('reflection') ? 'anthro-reflection-title' : (bType.includes('reading') ? 'anthro-reading-title' : 'anthro-callout-title');
+        const isReading = bType.includes('reading') || block.icon === 'books' || block.icon === 'reading';
+        const iconFilename = block.iconUrl || (isReading ? 'icon-books.png' : 'icon-question-man.png');
+        const fallbackSvg = isReading 
+            ? `<svg width="45" height="45" viewBox="0 0 24 24" fill="none" stroke="#2b579a" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`
+            : `<svg width="45" height="45" viewBox="0 0 24 24" fill="none" stroke="#2b579a" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
         
         return (
             <div key={idx} className={`${boxClass} ${bType} ${block.className || ''}`} style={style}>
+                {!block.hideIcon && (
+                    <div className="anthro-callout-icon">
+                        <DiagnosticImage src={iconFilename} alt="Callout Icon" fallbackSvg={fallbackSvg} />
+                    </div>
+                )}
                 <div className="anthro-callout-content" style={{ width: '100%' }}>
                     {(block.label || block.title || defaultTitle) && (
                         <span className={titleClass}>{formatText(block.label || block.title || defaultTitle)}</span>
@@ -163,14 +174,34 @@ export const renderBookBlock = (block, idx, actions) => {
         );
     }
 
-    // 6. Bullet & Numbered Lists
+    // 6. Bullet & Numbered Lists with Image Bullets & Fallbacks
     if (bType === 'bullet-list' || bType.endsWith('-bullet-list') || bType === 'anthro-list') {
-        const bChar = bulletCharMap[block.bullet] || bulletCharMap['default'];
+        const bulletType = block.bullet || 'swirl';
+        let bulletIcon = null;
+        let fallbackSvg = null;
+
+        if (bulletType === 'spark' || bulletType === 'diamond' || bulletType === 'star') {
+            bulletIcon = 'bullet-spark.png';
+            fallbackSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="#007bff"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>`;
+        } else if (bulletType === 'check' || bulletType === 'checkmark') {
+            bulletIcon = 'bullet-check.png';
+            fallbackSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="3"><path d="M20 6L9 17L4 12"/></svg>`;
+        } else if (bulletType !== 'square' && bulletType !== 'dot') {
+            bulletIcon = 'bullet-swirl.png';
+            fallbackSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#007bff" stroke-width="2" fill="#e8f0fe"/><path d="M12 7v5l3 3" stroke="#007bff" stroke-width="2"/></svg>`;
+        }
+
+        const bChar = bulletCharMap[bulletType] || bulletCharMap['default'];
+
         return (
             <div key={idx} className={`anthro-list ${bType} ${block.className || ''}`} style={style}>
                 {(block.items || []).map((txt, bIdx) => (
                     <div key={bIdx} className="anthro-list-item">
-                        <div className="anthro-bullet-char">{bChar}</div>
+                        {bulletIcon ? (
+                            <DiagnosticImage src={bulletIcon} alt="bullet" className="anthro-bullet-img" fallbackSvg={fallbackSvg} />
+                        ) : (
+                            <div className="anthro-bullet-char">{bChar}</div>
+                        )}
                         <div>{formatText(typeof txt === 'object' ? txt.text : txt)}</div>
                     </div>
                 ))}
