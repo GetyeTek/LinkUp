@@ -20,11 +20,49 @@
 .book-group:hover .book-immersive.is-stack { transform: scale(1.02); }
 
 /* Overlays & Previews */
-.info-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); padding: 1rem; color: white; opacity: 0; transform: translateY(10px); transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1); }
+.info-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.95), transparent); padding: 0.75rem 0.5rem; color: white; opacity: 0; transform: translateY(10px); transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1); }
 .book-group:hover .info-overlay { opacity: 1; transform: translateY(0); }
-.info-overlay .title { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.progress-bar { height: 4px; background-color: rgba(255,255,255,0.3); border-radius: 2px; margin-top: 0.5rem; }
+.info-overlay .title { font-family: 'Poppins', sans-serif; font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.progress-bar { height: 3px; background-color: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 0.4rem; }
 .progress { height: 100%; background-color: var(--accent-teal); border-radius: 2px; }
+
+/* Always-Visible Under-Book Nameplate */
+.book-label-plate {
+    width: 100%;
+    margin-top: 10px;
+    padding: 0 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.book-plate-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #f0f0f0;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+}
+
+.book-plate-code {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--accent-teal);
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+    text-transform: uppercase;
+}
 
 /* Preview Modifiers */
 .book-immersive.preview-mode { display: flex; align-items: flex-end; padding: 10px; }
