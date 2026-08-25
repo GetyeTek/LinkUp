@@ -188,6 +188,16 @@ export default {
       responseHeaders.set('Access-Control-Allow-Credentials', 'true');
       responseHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range, content-length, x-supabase-api-version');
 
+      // High-Performance Immutable Caching with Instant Purge Trigger for Book Assets
+      if (url.pathname.startsWith('/storage/v1/object/public/book-assets/')) {
+        const hasBypassParam = url.searchParams.has('nocache') || url.searchParams.has('cb') || url.searchParams.has('purge');
+        if (hasBypassParam) {
+          responseHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else {
+          responseHeaders.set('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
+        }
+      }
+
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
