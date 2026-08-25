@@ -49,7 +49,7 @@ const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigge
     return (
         <div className="bookshelf-perspective">
             {rows.map((row, rowIndex) => (
-                <div key={rowIndex} style={{ marginBottom: '1.5rem' }}>
+                <div key={rowIndex} style={{ marginBottom: '2rem' }}>
                     <div className="book-container">
                         {row.map((item, index) => (
                             <div className="book-group" key={index}>
@@ -59,6 +59,14 @@ const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigge
                                     isExamTrigger={item.isExamTrigger}
                                     onClick={() => handleAction(item)}
                                 />
+                                <div className="book-label-plate" onClick={() => handleAction(item)}>
+                                    <span className="book-plate-title">
+                                        {item.isExamTrigger ? 'Past Exams & Tests' : (item.title || item.name)}
+                                    </span>
+                                    {!isUniversity && !item.isExamTrigger && item.course_code && (
+                                        <span className="book-plate-code">{item.course_code}</span>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
