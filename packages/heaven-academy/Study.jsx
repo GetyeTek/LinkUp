@@ -19,6 +19,10 @@ const Study = () => {
     const [universities, setUniversities] = useState([]);
     const [shelfLevel, setShelfLevel] = useState('main'); // 'main' or 'universities'
     const [selectedUniversity, setSelectedUniversity] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearchActive, setIsSearchActive] = useState(false);
+    const [activeCategory, setActiveCategory] = useState('All');
+    const searchInputRef = useRef(null);
     const wavePathRef = useRef(null);
 
     useEffect(() => {
@@ -26,7 +30,6 @@ const Study = () => {
         invokeBookReader({ action: 'list_books' })
         .then(data => {
             if(data.books) {
-                // Inject a special 'Exam' book at the start
                 const examBook = { 
                     id: "exam-trigger-001",
                     title: "Exams", 
@@ -43,6 +46,12 @@ const Study = () => {
         .then(data => { if(data.universities) setUniversities(data.universities); })
         .catch(err => console.error(err));
     }, []);
+
+    useEffect(() => {
+        if (isSearchActive && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    }, [isSearchActive]);
 
 
 
@@ -188,39 +197,102 @@ const Study = () => {
                     <header className="fullscreen-header">
                         <div className="header-main-row">
                             <button className="icon-button" onClick={() => {
-                                if (shelfLevel === 'universities') {
+                                if (isSearchActive) {
+                                    setIsSearchActive(false);
+                                    setSearchQuery('');
+                                } else if (shelfLevel === 'universities') {
                                     setShelfLevel('main');
                                 } else {
                                     setIsLibraryOpen(false);
                                 }
                             }}>
-                                <span className="material-symbols-outlined">{shelfLevel === 'universities' ? 'arrow_back_ios' : 'arrow_back'}</span>
+                                <span className="material-symbols-outlined">{isSearchActive ? 'close' : shelfLevel === 'universities' ? 'arrow_back_ios' : 'arrow_back'}</span>
                             </button>
-                            <div 
-                                className={`header-title-wrapper ${isHeaderExpanded ? 'expanded' : ''}`} 
-                                onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
-                            >
-                                <h2>{shelfLevel === 'main' ? 'My Library' : 'Select University'}</h2>
-                                <span className="material-symbols-outlined chevron-icon">expand_more</span>
-                            </div>
-                            <button className="icon-button"><span className="material-symbols-outlined">search</span></button>
+                            
+                            {isSearchActive ? (
+                                <div className="library-search-dock">
+                                    <input 
+                                        ref={searchInputRef}
+                                        type="text" 
+                                        placeholder={shelfLevel === 'main' ? "Search books or code (e.g. PHYS 1011)..." : "Search universities..."}
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    {searchQuery && (
+                                        <button className="clear-search-btn" onClick={() => setSearchQuery('')}>
+                                            <i className="fas fa-times"></i>
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    <div 
+                                        className={`header-title-wrapper ${isHeaderExpanded ? 'expanded' : ''}`} 
+                                        onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                                    >
+                                        <h2>{shelfLevel === 'main' ? 'My Library' : 'Select University'}</h2>
+                                        <span className="material-symbols-outlined chevron-icon">expand_more</span>
+                                    </div>
+                                    <button className="icon-button" onClick={() => setIsSearchActive(true)}>
+                                        <span className="material-symbols-outlined">search</span>
+                                    </button>
+                                </>
+                            )}
                         </div>
-                        <div className={`filter-pills-container ${isHeaderExpanded ? 'expanded' : ''}`}>
+                        
+                        <div className={`filter-pills-container ${isHeaderExpanded && !isSearchActive ? 'expanded' : ''}`}>
                             <div className="filter-pills library-filters">
-                                <div className="chip active">All Books</div><div className="chip">Textbooks</div><div className="chip">Reference</div><div className="chip">Exams</div>
+                                <div className={`chip ${activeCategory === 'All' ? 'active' : ''}`} onClick={() => setActiveCategory('All')}>All Books</div>
+                                <div className={`chip ${activeCategory === 'Textbooks' ? 'active' : ''}`} onClick={() => setActiveCategory('Textbooks')}>Textbooks</div>
+                                <div className={`chip ${activeCategory === 'Exams' ? 'active' : ''}`} onClick={() => {
+                                    setActiveCategory('Exams');
+                                    setShelfLevel('universities');
+                                }}>Exams</div>
                             </div>
                         </div>
                     </header>
                     <div className="flex-grow overflow-y-auto py-4 vignette-bg" style={{ flexGrow: 1, overflowY: 'auto', padding: '1rem', position: 'relative' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: 'auto', paddingBottom: '2rem' }}>
-                                <BookShelf 
-                                    items={shelfLevel === 'main' ? books : universities} 
-                                    isUniversity={shelfLevel === 'universities'}
-                                    onBookClick={setActiveBook}
-                                    onUniversityClick={setSelectedUniversity}
-                                    onExamTrigger={() => setShelfLevel('universities')}
-                                />
+                                {(() => {
+                                    let currentList = shelfLevel === 'main' ? books : universities;
+                                    
+                                    // Category filter
+                                    if (shelfLevel === 'main') {
+                                        if (activeCategory === 'Textbooks') {
+                                            currentList = currentList.filter(b => !b.isExamTrigger);
+                                        }
+                                    }
+
+                                    // Search filter
+                                    if (searchQuery.trim()) {
+                                        const query = searchQuery.toLowerCase().trim();
+                                        currentList = currentList.filter(item => {
+                                            const titleMatch = (item.title || item.name || '').toLowerCase().includes(query);
+                                            const codeMatch = (item.course_code || '').toLowerCase().includes(query);
+                                            return titleMatch || codeMatch;
+                                        });
+                                    }
+
+                                    if (currentList.length === 0) {
+                                        return (
+                                            <div className="library-search-empty">
+                                                <i className="fas fa-search"></i>
+                                                <p>No materials found matching "{searchQuery}".</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <BookShelf 
+                                            items={currentList} 
+                                            isUniversity={shelfLevel === 'universities'}
+                                            onBookClick={setActiveBook}
+                                            onUniversityClick={setSelectedUniversity}
+                                            onExamTrigger={() => setShelfLevel('universities')}
+                                        />
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
