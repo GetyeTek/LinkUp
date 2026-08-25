@@ -32,24 +32,21 @@ serve(async (req) => {
       return new Response(JSON.stringify({ books }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 2. GET STRUCTURED JSON PAGES & TOC
+    // 2. GET STRUCTURED JSON PAGES & TOC (Master Atomic RPC)
     if (action === "get_book_pages") {
       const { book_id } = body;
-      console.log(`[FETCH] Loading native pages and TOC for book ID: ${book_id}`);
+      console.log(`[FETCH] Loading master atomic payload for book ID: ${book_id}`);
 
-      const [pagesResp, bookResp] = await Promise.all([
-        supabase.from('book_pages').select('*').eq('book_id', book_id).order('page_number', { ascending: true }),
-        supabase.from('books').select('toc, page_offset, custom_css').eq('id', book_id).single()
-      ]);
+      const { data, error } = await supabase.rpc('get_book_reader_payload', { 
+        p_book_id: book_id 
+      });
 
-      if (pagesResp.error) throw pagesResp.error;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
-      return new Response(JSON.stringify({ 
-        pages: pagesResp.data, 
-        toc: bookResp.data?.toc || [],
-        page_offset: bookResp.data?.page_offset || 0,
-        custom_css: bookResp.data?.custom_css || null
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(data), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
     }
 
     // 3. LEGACY LIST UNIVERSITIES
