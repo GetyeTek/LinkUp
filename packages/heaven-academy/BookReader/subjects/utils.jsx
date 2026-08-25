@@ -26,7 +26,73 @@ export const resolveStyles = (item) => {
 
 export const formatText = (text) => {
     if (!text) return null;
-    return <span dangerouslySetInnerHTML={{__html: text.replace(/\^\{(.*?)\}/g, '<sup>$1</sup>').replace(/_\{(.*?)\}/g, '<sub>$1</sub>')}} />;
+    let cleaned = String(text)
+        .replace(//g, '➢')
+        .replace(//g, '✓')
+        .replace(//g, '▪')
+        .replace(//g, '❖')
+        .replace(//g, '•')
+        .replace(//g, '☞')
+        .replace(//g, '✍')
+        .replace(//g, '➔')
+        .replace(//g, '★')
+        .replace(//g, '☑')
+        .replace(/\\Delta/g, 'Δ')
+        .replace(/\\alpha/g, 'α')
+        .replace(/\\beta/g, 'β')
+        .replace(/\\theta/g, 'θ')
+        .replace(/\\phi/g, 'ϕ')
+        .replace(/\\omega/g, 'ω')
+        .replace(/\\Omega/g, 'Ω')
+        .replace(/\\nu/g, 'ν')
+        .replace(/\\lambda/g, 'λ')
+        .replace(/\\mu/g, 'µ')
+        .replace(/\\rho/g, 'ρ')
+        .replace(/\\sigma/g, 'σ')
+        .replace(/\\tau/g, 'τ')
+        .replace(/\\epsilon_0|\\varepsilon_0/g, 'ε₀')
+        .replace(/\\epsilon|\\varepsilon/g, 'ε')
+        .replace(/\\pi/g, 'π')
+        .replace(/\\sum/g, '∑')
+        .replace(/\\times/g, '×')
+        .replace(/\\cdot/g, '·')
+        .replace(/\\pm/g, '±')
+        .replace(/\\approx/g, '≈')
+        .replace(/\\propto/g, '∝')
+        .replace(/\\le(q)?/g, '≤')
+        .replace(/\\ge(q)?/g, '≥')
+        .replace(/\\neq/g, '≠')
+        .replace(/\\infty/g, '∞')
+        .replace(/\\deg(ree)?/g, '°')
+        .replace(/\\partial/g, '∂')
+        .replace(/\\to/g, '→')
+        .replace(/\\leftrightarrow/g, '↔')
+        .replace(/\\Rightarrow/g, '⇒')
+        .replace(/\\Pi/g, '∏')
+        .replace(/\[iso:\s*([^:]+)\s*:\s*([^:]+)\s*:\s*([^\]]+)\s*\]/g, '<span class="chem-isotope"><span class="iso-sub">$2</span><span class="iso-super">$1</span></span>$3')
+        .replace(/\^\{([^{}]+)\}_\{([^{}]+)\}([A-Za-z0-9\(\)]+)/g, '<span class="chem-isotope"><span class="iso-sub">$2</span><span class="iso-super">$1</span></span>$3')
+        .replace(/\[vec:\s*([^\]]+)\s*\]/g, '<span class="math-vec"><span class="vec-arrow">→</span><span class="vec-base">$1</span></span>')
+        .replace(/\\vec\{([^{}]+)\}/g, '<span class="math-vec"><span class="vec-arrow">→</span><span class="vec-base">$1</span></span>')
+        .replace(/\[hat:\s*([^\]]+)\s*\]/g, '<span class="math-hat"><span class="hat-accent">^</span><span class="hat-base">$1</span></span>')
+        .replace(/\\hat\{([^{}]+)\}/g, '<span class="math-hat"><span class="hat-accent">^</span><span class="hat-base">$1</span></span>')
+        .replace(/\[sqrt:\s*([^\]]+)\s*\]/g, '<span class="math-sqrt"><span class="sqrt-radical">√</span><span class="sqrt-stem">$1</span></span>')
+        .replace(/\\sqrt\{([^{}]+)\}/g, '<span class="math-sqrt"><span class="sqrt-radical">√</span><span class="sqrt-stem">$1</span></span>')
+        .replace(/\[frac:\s*([^|\]]+)\s*\|\s*([^\]]+)\s*\]/g, '<span class="math-fraction"><span class="numerator">$1</span><span class="denominator">$2</span></span>')
+        .replace(/\[cancel:\s*([^\]]+)\s*\]/g, '<span class="chem-cancel">$1</span>')
+        .replace(/\[arrow:\s*([^\]]+)\s*\]/g, '<span class="chem-arrow-wrap"><span class="chem-arrow-cond">$1</span><span class="chem-arrow-symbol">⟶</span></span>')
+        .replace(/\[arrow\]/g, '<span class="chem-arrow-symbol">⟶</span>')
+        .replace(/\[rev-arrow:\s*([^\]]+)\s*\]/g, '<span class="chem-arrow-wrap"><span class="chem-arrow-cond">$1</span><span class="chem-arrow-symbol">⇌</span></span>')
+        .replace(/\[rev-arrow\]/g, '<span class="chem-arrow-symbol">⇌</span>')
+        .replace(/\^\{(.*?)\}/g, '<sup>$1</sup>')
+        .replace(/_\{(.*?)\}/g, '<sub>$1</sub>');
+
+    let prev;
+    do {
+        prev = cleaned;
+        cleaned = cleaned.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '<span class="math-fraction"><span class="numerator">$1</span><span class="denominator">$2</span></span>');
+    } while (cleaned !== prev);
+
+    return <span dangerouslySetInnerHTML={{ __html: cleaned }} />;
 };
 
 export const renderAIExtension = (b, actions) => {
