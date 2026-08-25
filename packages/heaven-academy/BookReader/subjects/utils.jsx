@@ -1,5 +1,47 @@
 import React from 'react';
 
+const GATEWAY_BASE = 'https://linkup-gateway.getyeteklu2.workers.dev';
+
+// One-Tap Cache Purger for Eruda / Dev Console
+if (typeof window !== 'undefined') {
+    window.purgeBookCache = async () => {
+        if ('caches' in window) {
+            try {
+                const keys = await window.caches.keys();
+                await Promise.all(keys.map(k => window.caches.delete(k)));
+            } catch (e) {}
+        }
+        const newEpoch = Date.now().toString();
+        localStorage.setItem('linkup_asset_epoch', newEpoch);
+        console.log(`%c[LinkUp:Cache] 🧹 All book asset caches purged! Asset epoch set to: ${newEpoch}. Reloading...`, 'color: #42d7b8; font-weight: bold;');
+        window.location.reload();
+    };
+}
+
+export const resolveAssetUrl = (url, bookTitle = 'Anthropology') => {
+    if (!url) return '';
+    let clean = String(url).trim();
+    const epoch = (typeof localStorage !== 'undefined' && localStorage.getItem('linkup_asset_epoch')) || '1';
+
+    // 1. Scrub leaked raw Supabase URLs and repair double-prefix corruption
+    if (clean.includes('supabase.co')) {
+        clean = clean.replace(/https:\/\/[^/]+\.supabase\.co/gi, GATEWAY_BASE);
+        clean = clean.replace(/.*?book-(https:\/\/)/i, '$1');
+        return clean.includes('?') ? `${clean}&v=${epoch}` : `${clean}?v=${epoch}`;
+    }
+
+    // 2. If already routed through Gateway, return with active cache epoch
+    if (clean.startsWith(GATEWAY_BASE)) {
+        return clean.includes('?') ? `${clean}&v=${epoch}` : `${clean}?v=${epoch}`;
+    }
+
+    // 3. Resolve relative paths (e.g. 'assets/page_13_img_1.png' or 'icon-books.png')
+    const filename = clean.replace(/^(\.\/|\/)?assets\//i, '').replace(/^(\.\/|\/)/, '');
+    const targetTitle = (bookTitle || 'Anthropology').replace(/\.pdf$/i, '');
+    const base = `${GATEWAY_BASE}/storage/v1/object/public/book-assets/${encodeURIComponent(targetTitle)}.pdf/${filename}`;
+    return `${base}?v=${epoch}`;
+};
+
 export const resolveStyles = (item) => {
     const rawStyle = item.style || {};
     const resolved = { ...rawStyle };
