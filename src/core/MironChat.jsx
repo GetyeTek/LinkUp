@@ -242,7 +242,7 @@ const MironChat = ({ onClose, initialContext }) => {
                                             <div className="snapshot-content">
                                                 {snap.blocks.map((b, i) => {
                                                     const Renderer = getComponent('book-block-renderer');
-                                                    if (Renderer) return Renderer(b, i, {});
+                                                    if (Renderer) return Renderer(b, i, { bookTitle: snap.book_title || snap.course_code });
                                                     return <div key={i} style={{color: 'red'}}>[Rendering Engine Disconnected]</div>;
                                                 })}
                                             </div>
