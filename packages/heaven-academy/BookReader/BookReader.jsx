@@ -66,12 +66,26 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
         return () => telemetry.restorePreviousFeature();
     }, []);
 
-    // 1. Fetch Pages
+    // 1. Fetch Pages and Mount Dynamic Custom CSS
     useEffect(() => {
+        let styleTag = null;
+
         const fetchPages = async () => {
             try {
                 setLoading(true);
                 const data = await invokeBookReader({ action: 'get_book_pages', book_id: book.id });
+                
+                if (data.custom_css) {
+                    const styleId = `dynamic-book-style-${book.id}`;
+                    styleTag = document.getElementById(styleId);
+                    if (!styleTag) {
+                        styleTag = document.createElement('style');
+                        styleTag.id = styleId;
+                        document.head.appendChild(styleTag);
+                    }
+                    styleTag.textContent = data.custom_css;
+                }
+
                 if (data.pages && data.pages.length > 0) {
                     setPages(data.pages);
                     if (data.toc) setTocData(data.toc);
@@ -102,6 +116,11 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
             }
         };
         if (book?.id) fetchPages();
+
+        return () => {
+            const el = document.getElementById(`dynamic-book-style-${book?.id}`);
+            if (el) el.remove();
+        };
     }, [book?.id]);
 
     // 2. Initial Setup & Adapting to Screen Size
