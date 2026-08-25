@@ -63,9 +63,6 @@ const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigge
                                     <span className="book-plate-title">
                                         {item.isExamTrigger ? 'Past Exams & Tests' : (item.title || item.name)}
                                     </span>
-                                    {!isUniversity && !item.isExamTrigger && item.course_code && (
-                                        <span className="book-plate-code">{item.course_code}</span>
-                                    )}
                                 </div>
                             </div>
                         ))}
