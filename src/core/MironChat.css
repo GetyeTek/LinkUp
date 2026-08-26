@@ -91,6 +91,25 @@
 }
 .athena-close:hover { background: rgba(255, 255, 255, 0.1); }
 
+.athena-sidebar-toggle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--surface-dark);
+    border: none;
+    color: var(--accent-teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+}
+.athena-sidebar-toggle:hover {
+    background: rgba(66, 215, 184, 0.15);
+    transform: scale(1.05);
+}
+
 .athena-live-btn {
     box-shadow: 0 4px 15px rgba(0,0,0,0.6);
     border-radius: 10px;
