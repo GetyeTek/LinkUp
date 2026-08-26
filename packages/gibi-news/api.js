@@ -26,6 +26,7 @@ export const fetchLiveNewsFeed = async (page = 0, limit = 15, channel = null) =>
     let query = supabase
         .from('news_feed')
         .select('*')
+        .eq('is_ad', false)
         .order('telegram_timestamp', { ascending: false })
         .range(start, end);
 
