@@ -20,22 +20,27 @@ export const invokeNewsSync = async (payload = {}) => {
 };
 
 export const fetchLiveNewsFeed = async (page = 0, limit = 15, channel = null) => {
-    const start = page * limit;
-    const end = start + limit - 1;
+    const { data: { session } } = await supabase.auth.getSession();
     
-    let query = supabase
-        .from('news_feed')
-        .select('*')
-        .eq('is_ad', false)
-        .order('telegram_timestamp', { ascending: false })
-        .range(start, end);
+    const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...(channel ? { channel: channel.replace(/^@/, '').trim().toLowerCase() } : {})
+    });
 
-    if (channel) {
-        query = query.eq('channel', channel.replace(/^@/, '').trim().toLowerCase());
+    const response = await fetch(`${NEWS_GATEWAY}/functions/v1/news-feed?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'apikey': DUMMY_KEY,
+            'x-linkup-client': 'linkup-secure-client-2026',
+            ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch news feed (HTTP ${response.status})`);
     }
-        
-    const { data, error } = await query;
-        
-    if (error) throw error;
-    return { news: data || [] };
+
+    return response.json();
 };
