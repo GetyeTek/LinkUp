@@ -12,21 +12,37 @@ serve(async (req) => {
   }
 
   try {
+    const url = new URL(req.url);
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    
+    const page = Math.max(0, parseInt(body.page || url.searchParams.get("page") || "0", 10));
+    const limit = Math.min(50, Math.max(1, parseInt(body.limit || url.searchParams.get("limit") || "15", 10)));
+    const rawChannel = body.channel || url.searchParams.get("channel") || "";
+    const channel = rawChannel.replace(/^@/, '').trim().toLowerCase();
+
+    const start = page * limit;
+    const end = start + limit - 1;
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch the 20 newest posts
-    const { data, error } = await supabase
+    let query = supabase
       .from("news_feed")
       .select("*")
       .order("telegram_timestamp", { ascending: false })
-      .limit(20);
+      .range(start, end);
+
+    if (channel) {
+      query = query.eq("channel", channel);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
-    return new Response(JSON.stringify({ news: data }), {
+    return new Response(JSON.stringify({ news: data || [] }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
