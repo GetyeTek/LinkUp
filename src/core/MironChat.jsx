@@ -1,46 +1,174 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import { invokeMiron } from '../config/api.js';
-import { getComponent, usePlatform, telemetry } from '@linkup-platform/sdk-core';
+import { supabase, getComponent, usePlatform, telemetry } from '@linkup-platform/sdk-core';
 import DOMPurify from 'dompurify';
 import InteractiveBoard from './components/InteractiveBoard.jsx';
 import InlineBoardTrigger from './components/InlineBoardTrigger.jsx';
+import InlineChatQuiz from './components/InlineChatQuiz.jsx';
+import MironThreadSidebar from './components/MironThreadSidebar.jsx';
 import './MironChat.css';
 
-import InlineChatQuiz from './components/InlineChatQuiz.jsx';
-
 const MironChat = ({ onClose, initialContext }) => {
+    const { sessionUser } = usePlatform();
     const [avatarError, setAvatarError] = useState(false);
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
-    const [messages, setMessages] = useState(() => {
-        const base = [];
-        if (initialContext) {
-            base.push({
-                id: 2,
-                side: 'user',
-                text: `Regarding this passage: "${initialContext}"`
-            });
-            base.push({
-                id: 3,
-                side: 'miron',
-                thought: "Analyzing literature node...",
-                text: "Ah, yes. This relation contains a deep thermodynamic constraint. Let's dissect the mathematical properties together."
-            });
-        }
-        return base;
-    });
+    // Multi-Thread States
+    const [threads, setThreads] = useState([]);
+    const [activeThread, setActiveThread] = useState(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(true);
     const [activeBoardPayload, setActiveBoardPayload] = useState(null);
     const flowRef = useRef(null);
 
-    const mironThoughts = [
-        "Synthesizing knowledge nodes...",
-        "Tracing cognitive patterns...",
-        "Formulating elegant solutions..."
-    ];
+    // Track Dwell Time in Telemetry
+    useEffect(() => {
+        telemetry.switchFeature('miron');
+        return () => telemetry.restorePreviousFeature();
+    }, []);
 
+    // 1. Fetch Threads on Mount
+    useEffect(() => {
+        if (!sessionUser?.id) return;
+
+        const initThreads = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('miron_threads')
+                    .select('*')
+                    .eq('user_id', sessionUser.id)
+                    .order('is_pinned', { ascending: false })
+                    .order('last_message_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    setThreads(data);
+                    
+                    if (initialContext) {
+                        // If opened with a specific passage, create/switch to a contextual thread
+                        await createNewThread("Passage Review", null, initialContext);
+                    } else {
+                        // Default to the most recent thread
+                        selectThread(data[0]);
+                    }
+                } else {
+                    // First time user: Create default session
+                    await createNewThread("General Study Session", null, initialContext || null);
+                }
+            } catch (err) {
+                console.error("[MironChat] Thread init error:", err);
+                setIsLoadingMessages(false);
+            }
+        };
+
+        initThreads();
+    }, [sessionUser?.id]);
+
+    // 2. Load Messages for Active Thread
+    const selectThread = async (thread) => {
+        setActiveThread(thread);
+        setIsLoadingMessages(true);
+        try {
+            const { data, error } = await supabase
+                .from('miron_messages')
+                .select('*')
+                .eq('thread_id', thread.id)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+            setMessages((data || []).map(m => ({
+                id: m.id,
+                side: m.role,
+                text: m.text,
+                thought: m.thought_process,
+                snapshots: m.snapshots,
+                quizzes: m.quizzes,
+                ui_command: m.ui_command
+            })));
+        } catch (err) {
+            console.error("[MironChat] Messages fetch error:", err);
+        } finally {
+            setIsLoadingMessages(false);
+        }
+    };
+
+    // 3. Create New Thread Action
+    const createNewThread = async (title = "New Conversation", courseCode = null, passage = null) => {
+        if (!sessionUser?.id) return;
+        setIsLoadingMessages(true);
+        try {
+            const { data, error } = await supabase
+                .from('miron_threads')
+                .insert({
+                    user_id: sessionUser.id,
+                    title,
+                    course_code: courseCode,
+                    context_passage: passage
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setThreads(prev => [data, ...prev]);
+            setActiveThread(data);
+            
+            const initialMessages = [];
+            if (passage) {
+                const userInitialText = `Regarding this passage: "${passage}"`;
+                const { data: initialMsg } = await supabase
+                    .from('miron_messages')
+                    .insert({
+                        thread_id: data.id,
+                        user_id: sessionUser.id,
+                        role: 'user',
+                        text: userInitialText
+                    })
+                    .select()
+                    .single();
+
+                if (initialMsg) {
+                    initialMessages.push({
+                        id: initialMsg.id,
+                        side: 'user',
+                        text: userInitialText
+                    });
+                }
+            }
+            setMessages(initialMessages);
+        } catch (err) {
+            console.error("[MironChat] Create thread error:", err);
+        } finally {
+            setIsLoadingMessages(false);
+        }
+    };
+
+    // 4. Delete Thread Action
+    const deleteThread = async (threadId) => {
+        try {
+            await supabase.from('miron_threads').delete().eq('id', threadId);
+            setThreads(prev => {
+                const filtered = prev.filter(t => t.id !== threadId);
+                if (activeThread?.id === threadId) {
+                    if (filtered.length > 0) {
+                        selectThread(filtered[0]);
+                    } else {
+                        createNewThread();
+                    }
+                }
+                return filtered;
+            });
+        } catch (err) {
+            console.error("[MironChat] Delete thread error:", err);
+        }
+    };
+
+    // Auto-Scroll to Bottom
     useEffect(() => {
         if (flowRef.current) {
             flowRef.current.scrollTo({
@@ -51,49 +179,108 @@ const MironChat = ({ onClose, initialContext }) => {
     }, [messages, isTyping]);
 
     const sendMessage = async (textToSend) => {
-        if (!textToSend.trim()) return;
+        if (!textToSend.trim() || !activeThread || isTyping) return;
 
-        const userMsg = { id: Date.now(), side: 'user', text: textToSend };
-        const currentHistory = [...messages];
+        const currentThreadId = activeThread.id;
+        const tempId = `temp-${Date.now()}`;
+        const userMsg = { id: tempId, side: 'user', text: textToSend };
         
+        // Optimistic UI Append
         setMessages(prev => [...prev, userMsg]);
         setIsTyping(true);
 
+        // 1. Insert User Message to Database
+        let dbUserMsgId = tempId;
+        try {
+            const { data: savedUserMsg } = await supabase
+                .from('miron_messages')
+                .insert({
+                    thread_id: currentThreadId,
+                    user_id: sessionUser.id,
+                    role: 'user',
+                    text: textToSend
+                })
+                .select()
+                .single();
+            if (savedUserMsg) dbUserMsgId = savedUserMsg.id;
+        } catch (e) {
+            console.error("Failed to persist user message:", e);
+        }
+
+        // 2. Auto-Title "New Conversation" if first message
+        if (activeThread.title === 'New Conversation' || activeThread.title === 'General Study Session') {
+            const dynamicTitle = textToSend.length > 35 ? textToSend.slice(0, 35).trim() + '...' : textToSend;
+            supabase.from('miron_threads')
+                .update({ title: dynamicTitle, last_message_at: new Date().toISOString() })
+                .eq('id', currentThreadId)
+                .then(() => {
+                    setActiveThread(prev => ({ ...prev, title: dynamicTitle }));
+                    setThreads(prev => prev.map(t => t.id === currentThreadId ? { ...t, title: dynamicTitle } : t));
+                });
+        } else {
+            supabase.from('miron_threads')
+                .update({ last_message_at: new Date().toISOString() })
+                .eq('id', currentThreadId);
+        }
+
+        // 3. Call Miron Edge Function
         try {
             const data = await invokeMiron({
                 prompt: textToSend,
-                history: currentHistory,
-                context: initialContext
+                history: messages.slice(-10),
+                context: activeThread.context_passage || initialContext
             });
 
             const thoughtText = data.thoughts && data.thoughts.length > 0 
                 ? data.thoughts.join(" | ") 
                 : "Synthesizing response...";
 
-            setMessages(prev => [...prev, {
-                id: Date.now() + 1,
-                side: 'miron',
-                thought: thoughtText,
+            const mironMsgPayload = {
+                thread_id: currentThreadId,
+                user_id: sessionUser.id,
+                role: 'miron',
                 text: data.response,
-                snapshots: data.snapshots,
-                quizzes: data.quizzes
-            }]);
+                thought_process: thoughtText,
+                snapshots: data.snapshots || null,
+                quizzes: data.quizzes || null,
+                ui_command: data.ui_command || null
+            };
 
-            if (data.ui_command && data.ui_command.action === 'open_page') {
-                console.log("Miron instructed UI to open page:", data.ui_command);
-            }
+            // 4. Save AI Response in Database
+            const { data: savedAiMsg } = await supabase
+                .from('miron_messages')
+                .insert(mironMsgPayload)
+                .select()
+                .single();
+
+            setMessages(prev => [
+                ...prev.map(m => m.id === tempId ? { ...m, id: dbUserMsgId } : m),
+                {
+                    id: savedAiMsg?.id || Date.now() + 1,
+                    side: 'miron',
+                    thought: thoughtText,
+                    text: data.response,
+                    snapshots: data.snapshots,
+                    quizzes: data.quizzes,
+                    ui_command: data.ui_command
+                }
+            ]);
+
             if (data.ui_command && (data.ui_command.action === 'draw_flow' || data.ui_command.action === 'draw')) {
                 setActiveBoardPayload(data.ui_command);
             }
 
         } catch (error) {
             console.error("Miron Communication Error:", error);
-            setMessages(prev => [...prev, {
-                id: Date.now() + 1,
-                side: 'miron',
-                thought: "Connection error...",
-                text: "I apologize, but I am currently having trouble processing your request. Please try asking again in a moment."
-            }]);
+            setMessages(prev => [
+                ...prev.map(m => m.id === tempId ? { ...m, id: dbUserMsgId } : m),
+                {
+                    id: Date.now() + 1,
+                    side: 'miron',
+                    thought: "Connection error...",
+                    text: "I apologize, but I am currently having trouble processing your request. Please try asking again in a moment."
+                }
+            ]);
         } finally {
             setIsTyping(false);
         }
@@ -108,10 +295,23 @@ const MironChat = ({ onClose, initialContext }) => {
         <div className="miron-chat-overlay">
             <div className="athena-bg"></div>
 
+            <MironThreadSidebar 
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+                threads={threads}
+                activeThreadId={activeThread?.id}
+                onSelectThread={selectThread}
+                onNewThread={() => createNewThread()}
+                onDeleteThread={deleteThread}
+            />
+
             <header className="athena-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <button className="athena-close" onClick={onClose} style={{ background: 'transparent' }}>
                         <i className="fas fa-chevron-left"></i>
+                    </button>
+                    <button className="athena-sidebar-toggle" onClick={() => setIsSidebarOpen(true)} title="Chat History">
+                        <i className="fas fa-bars-staggered"></i>
                     </button>
                     <div className="athena-brand">
                         <div className="athena-orb" style={{ overflow: 'hidden' }}>
@@ -126,7 +326,7 @@ const MironChat = ({ onClose, initialContext }) => {
                                 <i className="fa-solid fa-sparkles" style={{fontSize: '0.8rem'}}></i>
                             )}
                         </div>
-                        <h1 className="athena-title">Miron</h1>
+                        <h1 className="athena-title">{activeThread?.title || 'Miron'}</h1>
                     </div>
                 </div>
                 
@@ -166,25 +366,18 @@ const MironChat = ({ onClose, initialContext }) => {
                         </filter>
                       </defs>
 
-                      {/* Button Container (Squircle) */}
                       <rect x="2" y="2" width="96" height="96" rx="26" fill="url(#miron-live-pulse-bg)" stroke="#1e293b" strokeWidth="2.5" />
 
-                      {/* Background Chat Bubble Frame (Subtle outline) */}
                       <path d="M 22,50 C 22,34.5 34.5,22 50,22 C 65.5,22 78,34.5 78,50 C 78,65.5 65.5,78 50,78 C 45,78 40,76.5 36,74 L 18,78 L 22,64 C 20.7,60 22,55 22,50 Z" 
                             fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
 
-                      {/* Glow effect duplicate for EKG line (creates the base ambient light) */}
                       <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
                             fill="none" stroke="#00f0ff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" filter="url(#miron-neon-glow)" />
 
-                      {/* Crisp Main ECG Heartbeat Line (Zigzag) */}
                       <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
                             fill="none" stroke="url(#miron-neon-cyan-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
 
-                      {/* Active "LIVE" Red Status Indicator Dot */}
                       <circle cx="35" cy="37" r="3.5" fill="#ef4444" filter="url(#miron-red-dot-glow)" />
-
-                      {/* Modern bold status text */}
                       <text x="57" y="41" fill="#ffffff" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="12" letterSpacing="1" textAnchor="middle">LIVE</text>
                     </svg>
                 </button>
@@ -198,7 +391,11 @@ const MironChat = ({ onClose, initialContext }) => {
             )}
 
             <main className="athena-flow" ref={flowRef}>
-                {messages.length === 0 && (
+                {isLoadingMessages ? (
+                    <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--accent-teal)' }}>
+                        <i className="fas fa-circle-notch fa-spin fa-2x"></i>
+                    </div>
+                ) : messages.length === 0 ? (
                     <div className="athena-welcome-container">
                         <div className="athena-welcome-logo">
                             <i className="fa-solid fa-sparkles"></i>
@@ -206,63 +403,63 @@ const MironChat = ({ onClose, initialContext }) => {
                         <h2>How can I help you with your courses?</h2>
                         <p>Ask Miron about formulas, textbook concepts, or assignments.</p>
                     </div>
-                )}
-                {messages.map(m => (
-                                        <div key={m.id} className={`chat-node ${m.side}`}>
-                        {m.side === 'miron' && m.thought && (
-                            <span className="miron-thought">{m.thought}</span>
-                        )}
-                        <div className="athena-bubble">
-                            {m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\])/g).map((part, idx) => {
-                                const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
-                                if (boardMatch) {
-                                    return <InlineBoardTrigger key={idx} boardId={boardMatch[1]} onOpen={setActiveBoardPayload} />;
-                                }
+                ) : (
+                    messages.map(m => (
+                        <div key={m.id} className={`chat-node ${m.side}`}>
+                            {m.side === 'miron' && m.thought && (
+                                <span className="miron-thought">{m.thought}</span>
+                            )}
+                            <div className="athena-bubble">
+                                {m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\])/g).map((part, idx) => {
+                                    const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
+                                    if (boardMatch) {
+                                        return <InlineBoardTrigger key={idx} boardId={boardMatch[1]} onOpen={setActiveBoardPayload} />;
+                                    }
 
-                                const quizMatch = part.match(/\[QUIZ_(\d+)\]/);
-                                if (quizMatch) {
-                                    const quizId = parseInt(quizMatch[1], 10);
-                                    const quiz = m.quizzes?.find(q => q.id === quizId);
-                                    if (!quiz) return <span key={idx} style={{color:'red'}}>[Quiz Error]</span>;
-                                    return <InlineChatQuiz key={idx} quiz={quiz} onSubmit={sendMessage} />;
-                                }
+                                    const quizMatch = part.match(/\[QUIZ_(\d+)\]/);
+                                    if (quizMatch) {
+                                        const quizId = parseInt(quizMatch[1], 10);
+                                        const quiz = m.quizzes?.find(q => q.id === quizId);
+                                        if (!quiz) return <span key={idx} style={{color:'red'}}>[Quiz Error]</span>;
+                                        return <InlineChatQuiz key={idx} quiz={quiz} onSubmit={sendMessage} />;
+                                    }
 
-                                const snapMatch = part.match(/\[SNAPSHOT_(\d+)\]/);
-                                if (snapMatch) {
-                                    const snapId = parseInt(snapMatch[1], 10);
-                                    const snap = m.snapshots?.find(s => s.id === snapId);
-                                    if (!snap) return null;
+                                    const snapMatch = part.match(/\[SNAPSHOT_(\d+)\]/);
+                                    if (snapMatch) {
+                                        const snapId = parseInt(snapMatch[1], 10);
+                                        const snap = m.snapshots?.find(s => s.id === snapId);
+                                        if (!snap) return null;
+                                        
+                                        return (
+                                            <div key={idx} className="inline-chat-snapshot">
+                                                <div className="snapshot-topbar">
+                                                    <span><i className="fas fa-file-pdf"></i> {snap.book_title || snap.course_code}</span>
+                                                    <span>Page {snap.page_number}</span>
+                                                </div>
+                                                <div className="snapshot-content">
+                                                    {snap.blocks.map((b, i) => {
+                                                        const Renderer = getComponent('book-block-renderer');
+                                                        if (Renderer) return Renderer(b, i, { bookTitle: snap.book_title || snap.course_code });
+                                                        return <div key={i} style={{color: 'red'}}>[Rendering Engine Disconnected]</div>;
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
                                     
+                                    if (!part.trim()) return null;
                                     return (
-                                        <div key={idx} className="inline-chat-snapshot">
-                                            <div className="snapshot-topbar">
-                                                <span><i className="fas fa-file-pdf"></i> {snap.book_title || snap.course_code}</span>
-                                                <span>Page {snap.page_number}</span>
-                                            </div>
-                                            <div className="snapshot-content">
-                                                {snap.blocks.map((b, i) => {
-                                                    const Renderer = getComponent('book-block-renderer');
-                                                    if (Renderer) return Renderer(b, i, { bookTitle: snap.book_title || snap.course_code });
-                                                    return <div key={i} style={{color: 'red'}}>[Rendering Engine Disconnected]</div>;
-                                                })}
-                                            </div>
-                                        </div>
+                                        <div 
+                                            key={idx} 
+                                            className="miron-markdown-chunk"
+                                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(part)) }} 
+                                        />
                                     );
-                                }
-                                
-                                // Render Markdown Text safely via Marked.js
-                                if (!part.trim()) return null;
-                                return (
-                                    <div 
-                                        key={idx} 
-                                        className="miron-markdown-chunk"
-                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(part)) }} 
-                                    />
-                                );
-                            })}
+                                })}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                )}
                 
                 {isTyping && (
                     <div className="chat-node miron">
