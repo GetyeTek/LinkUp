@@ -340,8 +340,8 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     {/* CBE Bank Card */}
                                     {accounts.cbe?.account_number && (
                                         <div className="pu-account-card cbe-theme">
-                                            <div className="pu-acc-header">
-                                                <span className="pu-acc-title">
+                                            <div className="pu-acc-top">
+                                                <div className="pu-logo-badge">
                                                     {accounts.cbe.icon_url ? (
                                                         <img 
                                                             src={accounts.cbe.icon_url} 
@@ -350,14 +350,23 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                                             onError={(e) => { e.target.style.display = 'none'; }}
                                                         />
                                                     ) : (
-                                                        <i className="fa-solid fa-building-columns"></i>
+                                                        <i className="fa-solid fa-building-columns" style={{ color: '#8e44ad', fontSize: '1.4rem' }}></i>
                                                     )}
-                                                    {accounts.cbe.bank_name || 'CBE'}
-                                                </span>
-                                                <span className="pu-acc-name">{accounts.cbe.account_name}</span>
+                                                </div>
+                                                <div className="pu-acc-meta">
+                                                    <h3 className="pu-channel-name">{accounts.cbe.bank_name || 'Commercial Bank of Ethiopia'}</h3>
+                                                    <div className="pu-acc-holder-row">
+                                                        <span className="pu-holder-tag">Account Holder:</span>
+                                                        <strong className="pu-holder-val">{accounts.cbe.account_name || 'LinkUp'}</strong>
+                                                    </div>
+                                                </div>
                                             </div>
+
                                             <div className="pu-acc-box">
-                                                <span className="pu-acc-number">{accounts.cbe.account_number}</span>
+                                                <div className="pu-number-col">
+                                                    <span className="pu-num-tag">ACCOUNT NUMBER</span>
+                                                    <span className="pu-acc-number">{accounts.cbe.account_number}</span>
+                                                </div>
                                                 <button 
                                                     className={`pu-copy-btn ${copiedKey === 'cbe' ? 'copied' : ''}`}
                                                     onClick={() => copyToClipboard(accounts.cbe.account_number, 'cbe')}
@@ -372,8 +381,8 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     {/* Telebirr Card */}
                                     {accounts.telebirr?.phone_number && (
                                         <div className="pu-account-card telebirr-theme">
-                                            <div className="pu-acc-header">
-                                                <span className="pu-acc-title">
+                                            <div className="pu-acc-top">
+                                                <div className="pu-logo-badge">
                                                     {accounts.telebirr.icon_url ? (
                                                         <img 
                                                             src={accounts.telebirr.icon_url} 
@@ -382,14 +391,23 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                                             onError={(e) => { e.target.style.display = 'none'; }}
                                                         />
                                                     ) : (
-                                                        <i className="fa-solid fa-mobile-screen-button"></i>
+                                                        <i className="fa-solid fa-mobile-screen-button" style={{ color: '#2980b9', fontSize: '1.4rem' }}></i>
                                                     )}
-                                                    Telebirr
-                                                </span>
-                                                <span className="pu-acc-name">{accounts.telebirr.account_name}</span>
+                                                </div>
+                                                <div className="pu-acc-meta">
+                                                    <h3 className="pu-channel-name">Telebirr SuperApp</h3>
+                                                    <div className="pu-acc-holder-row">
+                                                        <span className="pu-holder-tag">Receiver Name:</span>
+                                                        <strong className="pu-holder-val">{accounts.telebirr.account_name || 'LinkUp'}</strong>
+                                                    </div>
+                                                </div>
                                             </div>
+
                                             <div className="pu-acc-box">
-                                                <span className="pu-acc-number">{accounts.telebirr.phone_number}</span>
+                                                <div className="pu-number-col">
+                                                    <span className="pu-num-tag">PHONE NUMBER</span>
+                                                    <span className="pu-acc-number">{accounts.telebirr.phone_number}</span>
+                                                </div>
                                                 <button 
                                                     className={`pu-copy-btn ${copiedKey === 'telebirr' ? 'copied' : ''}`}
                                                     onClick={() => copyToClipboard(accounts.telebirr.phone_number, 'telebirr')}
