@@ -6,6 +6,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function decodeTelegramHtml(rawHtml: string): string {
+  if (!rawHtml) return "";
+  return rawHtml
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|div)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;?/gi, " ")
+    .replace(/&#160;/gi, " ")
+    .replace(/&#8203;/gi, "")
+    .replace(/&zwnj;|&zwj;/gi, "")
+    .replace(/"/gi, '"')
+    .replace(/&apos;|'/gi, "'")
+    .replace(/&ldquo;|&rdquo;|&#8220;|&#8221;/gi, '"')
+    .replace(/&lsquo;|&rsquo;|&#8216;|&#8217;/gi, "'")
+    .replace(/&mdash;|&#8212;/gi, "—")
+    .replace(/&ndash;|&#8211;/gi, "–")
+    .replace(/&bull;|&#8226;/gi, "•")
+    .replace(/&hellip;|&#8230;/gi, "…")
+    .replace(/</gi, "<")
+    .replace(/>/gi, ">")
+    .replace(/&#(\d+);/g, (_, dec) => {
+      try { return String.fromCodePoint(parseInt(dec, 10)); } catch { return ""; }
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      try { return String.fromCodePoint(parseInt(hex, 16)); } catch { return ""; }
+    })
+    .replace(/&/gi, "&")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s+\n/g, "\n\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 serve(async (req) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -67,15 +100,9 @@ serve(async (req) => {
                         foundNewInPage = true;
                         if (postId > currentHighestId) currentHighestId = postId;
 
-                        // Extract Clean Text
+                        // Extract Clean Text with comprehensive entity decoding
                         const textMatch = /<div class="tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/.exec(blockHtml);
-                        let cleanText = null;
-                        if (textMatch) {
-                            cleanText = textMatch[1]
-                                .replace(/<br\s*\/?>/gi, '\n') // Preserve line breaks
-                                .replace(/<[^>]+>/g, '') // Strip remaining HTML
-                                .trim();
-                        }
+                        let cleanText = textMatch ? decodeTelegramHtml(textMatch[1]) : null;
 
                         // Extract Image (if attached)
                         const imgMatch = /background-image:url\(['"]?([^'"]+)['"]?\)/.exec(blockHtml);
