@@ -31,6 +31,7 @@ serve(async (req) => {
     let query = supabase
       .from("news_feed")
       .select("*")
+      .eq("is_ad", false)
       .order("telegram_timestamp", { ascending: false })
       .range(start, end);
 
