@@ -110,6 +110,50 @@
     transform: scale(1.05);
 }
 
+/* Bubble Action Row & Copy Button */
+.athena-bubble-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.chat-node.miron .athena-bubble-actions {
+    padding: 0 1.2rem;
+    justify-content: flex-start;
+}
+
+.chat-node.user .athena-bubble-actions {
+    justify-content: flex-end;
+    padding: 0 1rem;
+}
+
+.athena-copy-btn {
+    background: transparent;
+    border: none;
+    color: #777;
+    font-size: 0.75rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.athena-copy-btn:hover {
+    color: var(--text-primary-dark);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.athena-copy-btn.copied {
+    color: var(--accent-teal);
+    background: rgba(66, 215, 184, 0.1);
+}
+
 .athena-live-btn {
     box-shadow: 0 4px 15px rgba(0,0,0,0.6);
     border-radius: 10px;
