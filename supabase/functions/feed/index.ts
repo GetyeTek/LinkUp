@@ -17,14 +17,25 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log("[Sync] Checking database for the latest processed post ID...");
+    const url = new URL(req.url);
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    
+    // Support dynamic channel handles via parameter or body, default to 'tikvahuniversity'
+    const rawChannel = body.channel || url.searchParams.get("channel") || "tikvahuniversity";
+    const targetChannel = rawChannel
+      .replace(/^@/, '')
+      .replace(/https?:\/\/t\.me\/(?:s\/)?/i, '')
+      .trim()
+      .toLowerCase();
 
-    // 1. Fetch the maximum sequential Telegram ID currently in our database
+    console.log(`[Sync] Checking database for the latest processed post ID in channel: ${targetChannel}...`);
+
+    // 1. Fetch the maximum sequential Telegram ID currently in our database for this channel
     let lastId: number | null = null;
     const { data: maxRecord, error: fetchError } = await supabase
       .from("news_feed")
       .select("telegram_id")
-      .eq("channel", "tikvahuniversity")
+      .eq("channel", targetChannel)
       .order("telegram_id", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -33,12 +44,12 @@ serve(async (req) => {
 
     if (maxRecord) {
       lastId = Number(maxRecord.telegram_id);
-      console.log(`[Sync] Found last processed ID in DB: ${lastId}. Running incremental update.`);
+      console.log(`[Sync] Found last processed ID in DB: ${lastId} for ${targetChannel}. Running incremental update.`);
     } else {
-      console.log("[Sync] No records found. Triggering first-run (fetching 100 historical posts).");
+      console.log(`[Sync] No records found for ${targetChannel}. Triggering first-run (fetching 100 historical posts).`);
     }
 
-    let currentUrl = `https://t.me/s/tikvahuniversity`;
+    let currentUrl = `https://t.me/s/${targetChannel}`;
     let allCollected: any[] = [];
     let page = 1;
     let keepScraping = true;
@@ -55,7 +66,7 @@ serve(async (req) => {
       });
 
       if (!response.ok) {
-        throw new Error(`Telegram returned status code ${response.status}`);
+        throw new Error(`Telegram channel '${targetChannel}' returned status code ${response.status}`);
       }
 
       const html = await response.text();
@@ -64,7 +75,7 @@ serve(async (req) => {
       // Discard header metadata
       const blocks = messageBlocks.slice(1);
       if (blocks.length === 0) {
-        console.log("[Sync] No message containers found.");
+        console.log(`[Sync] No message containers found for ${targetChannel}.`);
         break;
       }
 
@@ -91,9 +102,9 @@ serve(async (req) => {
         fullText = fullText
           .replace(/<br\s*\/?>/gi, "\n")
           .replace(/<[^>]+>/g, "")
-          .replace(/&amp;/g, "&")
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
+          .replace(/&/g, "&")
+          .replace(/</g, "<")
+          .replace(/>/g, ">")
           .trim();
 
         // Extract ISO 8601 Timestamp
@@ -107,13 +118,13 @@ serve(async (req) => {
         // Create news object if the post has text or an image
         if (fullText || imageUrl) {
           pagePosts.push({
-            channel: "tikvahuniversity",
+            channel: targetChannel,
             telegram_id: telegramId,
             title: fullText ? fullText.split("\n")[0].substring(0, 60) : "Image Announcement",
             snippet: fullText ? fullText.substring(0, 160) + "..." : "Attached Image Announcement",
             full_text: fullText,
             image_url: imageUrl,
-            post_url: `https://t.me/tikvahuniversity/${telegramId}`,
+            post_url: `https://t.me/${targetChannel}/${telegramId}`,
             telegram_timestamp: timestamp || new Date().toISOString()
           });
         }
@@ -129,7 +140,7 @@ serve(async (req) => {
         if (lastId && smallestId <= lastId) {
           keepScraping = false;
         } else {
-          currentUrl = `https://t.me/s/tikvahuniversity?before=${smallestId}`;
+          currentUrl = `https://t.me/s/${targetChannel}?before=${smallestId}`;
           page++;
           // Sleep for 500ms to be a polite scraper
           await new Promise(resolve => setTimeout(resolve, 500));
