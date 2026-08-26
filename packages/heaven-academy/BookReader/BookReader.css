@@ -94,6 +94,170 @@
     color: inherit !important;
 }
 
+/* --- UNIVERSAL HEADLESS DOCUMENT PRIMITIVES --- */
+.book-block {
+    width: 100%;
+    margin-bottom: 12px;
+    line-height: 1.5;
+    text-align: justify;
+    font-size: 15.5px;
+    hyphens: auto;
+}
+
+.book-block-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 18px 0 8px 0;
+    font-family: 'Poppins', sans-serif;
+    color: var(--text-color);
+}
+
+.book-block-label {
+    font-weight: 700;
+    margin-right: 8px;
+    color: var(--accent);
+}
+
+.book-graphic-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 16px 0;
+}
+
+.book-graphic-img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+.book-graphic-caption {
+    font-size: 13px;
+    font-style: italic;
+    margin-top: 8px;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.book-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 14px 0;
+    padding-left: 12px;
+}
+
+.book-list-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    line-height: 1.5;
+    font-size: 15px;
+}
+
+.book-bullet-char {
+    flex-shrink: 0;
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.book-bullet-img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.book-table-wrapper {
+    width: 100%;
+    margin: 16px 0;
+    overflow-x: auto;
+}
+
+.book-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.book-table th, .book-table td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+}
+
+.book-table th {
+    background: rgba(255, 255, 255, 0.05);
+    font-weight: 700;
+}
+
+.book-argument-block {
+    margin: 18px auto;
+    width: fit-content;
+    min-width: 260px;
+    text-align: left;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.book-argument-premise {
+    width: 100%;
+    padding: 0 10px;
+}
+
+.book-argument-line {
+    border: none;
+    border-top: 1px solid var(--text-color);
+    margin: 6px 0;
+    width: 100%;
+    opacity: 0.8;
+}
+
+.book-argument-conclusion {
+    width: 100%;
+    padding: 0 10px;
+    font-weight: 600;
+}
+
+.book-footer {
+    margin-top: auto;
+    padding-top: 20px;
+    height: 40px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.ai-btn-inline {
+    display: inline-block;
+    width: auto;
+    background: rgba(66, 215, 184, 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 12px;
+    color: var(--accent);
+    font-family: 'Poppins', sans-serif;
+    font-weight: bold;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    z-index: 50;
+    position: relative;
+}
+
+.ai-btn-inline:active {
+    transform: scale(0.92);
+}
+
 /* --- DEEP LINK HIGHLIGHTING --- */
 @keyframes highlightFlash {
     0% { background-color: rgba(66, 215, 184, 0); box-shadow: 0 0 0px rgba(66,215,184,0); }
