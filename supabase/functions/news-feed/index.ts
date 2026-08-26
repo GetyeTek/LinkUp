@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, accept-encoding",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, accept-encoding, x-linkup-client",
 };
 
 serve(async (req) => {
@@ -30,7 +30,7 @@ serve(async (req) => {
 
     let query = supabase
       .from("news_feed")
-      .select("*")
+      .select("id, channel, telegram_id, title, snippet, full_text, image_url, post_url, telegram_timestamp")
       .eq("is_ad", false)
       .order("telegram_timestamp", { ascending: false })
       .range(start, end);
