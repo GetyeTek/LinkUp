@@ -6,6 +6,120 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, accept-encoding",
 };
 
+const GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
+
+async function getGeminiKey(supabase: any) {
+  const { data: keyData, error: keyErr } = await supabase.rpc('lease_gemini_api_key');
+  if (keyErr || !keyData || keyData.length === 0) {
+    throw new Error("No active Gemini API keys available in key pool.");
+  }
+  return keyData[0];
+}
+
+async function cooldownKey(supabase: any, keyId: number, apiKey: string) {
+  try {
+    await supabase.rpc('cooldown_api_key', { p_key_id: keyId });
+  } catch {
+    await supabase.rpc('cooldown_gemini_key', { expired_key: apiKey });
+  }
+}
+
+async function filterAndCategorizePosts(supabase: any, posts: any[]) {
+  if (!posts || posts.length === 0) return posts;
+
+  const systemPrompt = `You are an elite academic news filter and classifier for Ethiopian university students.
+Analyze the provided batch of Telegram posts from university channels and determine if each post is an advertisement/spam or legitimate university/academic news.
+
+CLASSIFICATION RULES:
+- Set "is_ad": true for:
+  * Commercial advertisements, private course/training sales (e.g. photography, graphic design, programming bootcamps with fee/phone numbers).
+  * Product/equipment sales (laptops, phones, SIM cards, stores, electronics).
+  * Betting/casino/crypto/forex promotions.
+  * Cross-promotional channel links or unrelated bot links.
+  * Spam, scams, or non-educational marketing.
+- Set "is_ad": false for:
+  * University announcements, entrance exams, remedial exams, ministry (MoE/HERQA) updates.
+  * Legitimate academic scholarships, university student placements, dormitory/campus notices, graduation updates.
+  * Official university student union or educational events.
+
+OUTPUT FORMAT:
+Respond with ONLY a valid JSON array of objects with the exact schema (no markdown wrappers):
+[
+  {
+    "telegram_id": number,
+    "is_ad": boolean,
+    "category": "academic" | "announcement" | "scholarship" | "exam" | "ad" | "spam",
+    "clean_title": "Short title in original language (Amharic/English)"
+  }
+]`;
+
+  const userContent = JSON.stringify(posts.map(p => ({
+    telegram_id: p.telegram_id,
+    channel: p.channel,
+    title: p.title,
+    text: p.full_text?.substring(0, 600) || p.snippet || ""
+  })), null, 2);
+
+  let attempts = 0;
+  while (attempts < 3) {
+    try {
+      const keyRecord = await getGeminiKey(supabase);
+      const apiKey = keyRecord.api_key;
+      const keyId = keyRecord.id;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: userContent }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
+        })
+      });
+
+      if (res.status === 429) {
+        console.warn(`[Filter] Gemini 429 rate limit. Cooling down key ${keyId}...`);
+        await cooldownKey(supabase, keyId, apiKey);
+        attempts++;
+        continue;
+      }
+
+      if (!res.ok) {
+        throw new Error(`Gemini API Error: ${res.status} ${await res.text()}`);
+      }
+
+      const data = await res.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) throw new Error("Empty response from Gemini.");
+
+      const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      const classifications: any[] = JSON.parse(cleaned);
+
+      const classMap = new Map(classifications.map((c: any) => [c.telegram_id, c]));
+
+      return posts.map(p => {
+        const match = classMap.get(p.telegram_id);
+        return {
+          ...p,
+          is_ad: match ? Boolean(match.is_ad) : false,
+          category: match?.category || "academic",
+          title: match?.clean_title || p.title
+        };
+      });
+
+    } catch (err: any) {
+      console.error(`[Filter Attempt ${attempts + 1}] Error:`, err.message);
+      attempts++;
+      if (attempts >= 3) {
+        console.warn("[Filter] Fallback engaged: saving posts with default flags.");
+        return posts.map(p => ({ ...p, is_ad: false, category: "academic" }));
+      }
+    }
+  }
+  return posts.map(p => ({ ...p, is_ad: false, category: "academic" }));
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -160,9 +274,13 @@ serve(async (req) => {
       allCollected = allCollected.slice(-100);
     }
 
-    console.log(`[Sync] Attempting database upsert for ${allCollected.length} collected records.`);
-
     if (allCollected.length > 0) {
+      console.log(`[Sync] Filtering and classifying ${allCollected.length} collected records via Gemini AI...`);
+      allCollected = await filterAndCategorizePosts(supabase, allCollected);
+
+      const adsCount = allCollected.filter((p: any) => p.is_ad).length;
+      console.log(`[Sync] Classification complete: ${allCollected.length - adsCount} academic posts, ${adsCount} ads flagged.`);
+
       const { error: upsertError } = await supabase
         .from("news_feed")
         .upsert(allCollected, { onConflict: "channel,telegram_id" });
