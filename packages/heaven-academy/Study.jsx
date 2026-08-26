@@ -5,6 +5,7 @@ import BookShelf from './components/BookShelf.jsx';
 import BookCard from './components/BookCard.jsx';
 import ExamPavilion from './ExamPavilion.jsx';
 import ExamSession from './ExamSession.jsx';
+import PlanMyDayModal from './components/PlanMyDayModal.jsx';
 import { usePlatform } from '@linkup-platform/sdk-core';
 import './Study.css';
 
@@ -22,6 +23,10 @@ const Study = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchActive, setIsSearchActive] = useState(false);
     const [activeCategory, setActiveCategory] = useState('All');
+    const [pacingData, setPacingData] = useState(null);
+    const [targetPage, setTargetPage] = useState(undefined);
+    const [showAllPacing, setShowAllPacing] = useState(false);
+    const [isPlannerOpen, setIsPlannerOpen] = useState(false);
     const searchInputRef = useRef(null);
     const wavePathRef = useRef(null);
 
@@ -134,7 +139,7 @@ const Study = () => {
 
                     <div className="study-section">
                         {/* AI Planner Trigger */}
-                        <div className="compact-trigger">
+                        <div className="compact-trigger" onClick={() => setIsPlannerOpen(true)}>
                             <div className="compact-orb"><span className="material-symbols-outlined">auto_awesome</span></div>
                             <div className="compact-text-content">
                                 <h3 className="compact-title">Plan My Day</h3>
@@ -298,9 +303,33 @@ const Study = () => {
                     </div>
                 </div>
             </div>
-            {activeBook && <BookReader book={activeBook} onClose={() => setActiveBook(null)} />}
+            {activeBook && (
+                <BookReader 
+                    book={activeBook} 
+                    onClose={() => { setActiveBook(null); setTargetPage(undefined); }} 
+                    targetPageNumber={targetPage}
+                />
+            )}
             {selectedUniversity && <ExamPavilion university={selectedUniversity} onClose={() => setSelectedUniversity(null)} />}
             {activeExamFromBook && <ExamSession exam={activeExamFromBook} onClose={() => setActiveExamFromBook(null)} />}
+            
+            <PlanMyDayModal 
+                isOpen={isPlannerOpen}
+                onClose={() => setIsPlannerOpen(false)}
+                onExecuteTask={(taskBlock) => {
+                    if (taskBlock?.action?.type === 'open_book' || taskBlock?.task_type === 'read' || taskBlock?.task_type === 'catch_up') {
+                        setTargetPage(taskBlock.action?.page_number || 1);
+                        setActiveBook({
+                            id: taskBlock.action?.book_id || taskBlock.book_id,
+                            title: taskBlock.course_title,
+                            course_code: taskBlock.course_code
+                        });
+                    } else if (taskBlock?.action?.type === 'open_exam' || taskBlock?.task_type === 'drill') {
+                        setIsLibraryOpen(true);
+                        setShelfLevel('universities');
+                    }
+                }}
+            />
         </div>
     );
 };
