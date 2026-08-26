@@ -33,7 +33,18 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
             const { data, error } = await supabase.rpc('get_payment_methods');
             if (error) throw error;
             if (data && (data.cbe?.account_number || data.telebirr?.phone_number)) {
-                setAccounts(data);
+                const enriched = {
+                    ...data,
+                    cbe: {
+                        ...data.cbe,
+                        icon_url: data.cbe?.icon_url || 'https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/cbe_logo.png'
+                    },
+                    telebirr: {
+                        ...data.telebirr,
+                        icon_url: data.telebirr?.icon_url || 'https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/telebirr_logo.png'
+                    }
+                };
+                setAccounts(enriched);
             } else {
                 throw new Error("Payment channels are currently offline. Official recipient numbers could not be verified.");
             }
@@ -331,7 +342,17 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                         <div className="pu-account-card cbe-theme">
                                             <div className="pu-acc-header">
                                                 <span className="pu-acc-title">
-                                                    <i className="fa-solid fa-building-columns"></i> {accounts.cbe.bank_name || 'CBE'}
+                                                    {accounts.cbe.icon_url ? (
+                                                        <img 
+                                                            src={accounts.cbe.icon_url} 
+                                                            alt="CBE" 
+                                                            className="pu-brand-logo" 
+                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                        />
+                                                    ) : (
+                                                        <i className="fa-solid fa-building-columns"></i>
+                                                    )}
+                                                    {accounts.cbe.bank_name || 'CBE'}
                                                 </span>
                                                 <span className="pu-acc-name">{accounts.cbe.account_name}</span>
                                             </div>
@@ -353,7 +374,17 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                         <div className="pu-account-card telebirr-theme">
                                             <div className="pu-acc-header">
                                                 <span className="pu-acc-title">
-                                                    <i className="fa-solid fa-mobile-screen-button"></i> Telebirr
+                                                    {accounts.telebirr.icon_url ? (
+                                                        <img 
+                                                            src={accounts.telebirr.icon_url} 
+                                                            alt="Telebirr" 
+                                                            className="pu-brand-logo" 
+                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                        />
+                                                    ) : (
+                                                        <i className="fa-solid fa-mobile-screen-button"></i>
+                                                    )}
+                                                    Telebirr
                                                 </span>
                                                 <span className="pu-acc-name">{accounts.telebirr.account_name}</span>
                                             </div>
@@ -405,13 +436,23 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                         className={`pu-method-tab ${selectedMethod === 'cbe' ? 'active' : ''}`}
                                         onClick={() => setSelectedMethod('cbe')}
                                     >
-                                        <i className="fa-solid fa-building-columns"></i> Paid with CBE
+                                        {accounts?.cbe?.icon_url ? (
+                                            <img src={accounts.cbe.icon_url} alt="CBE" className="pu-tab-logo" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ) : (
+                                            <i className="fa-solid fa-building-columns"></i>
+                                        )}
+                                        Paid with CBE
                                     </button>
                                     <button 
                                         className={`pu-method-tab ${selectedMethod === 'telebirr' ? 'active' : ''}`}
                                         onClick={() => setSelectedMethod('telebirr')}
                                     >
-                                        <i className="fa-solid fa-mobile-screen-button"></i> Paid with Telebirr
+                                        {accounts?.telebirr?.icon_url ? (
+                                            <img src={accounts.telebirr.icon_url} alt="Telebirr" className="pu-tab-logo" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ) : (
+                                            <i className="fa-solid fa-mobile-screen-button"></i>
+                                        )}
+                                        Paid with Telebirr
                                     </button>
                                 </div>
 
