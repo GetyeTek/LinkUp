@@ -21,12 +21,30 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     const [plan, setPlan] = useState('annual'); // 'semester' (199) | 'annual' (299)
     const [selectedMethod, setSelectedMethod] = useState('cbe'); // 'cbe' | 'telebirr'
     
-    // Accounts loaded from backend
-    const [accounts, setAccounts] = useState({
-        cbe: { bank_name: 'Commercial Bank of Ethiopia (CBE)', account_name: 'LinkUp Technologies', account_number: '1000123456789' },
-        telebirr: { account_name: 'LinkUp Technologies', phone_number: '0911223344' },
-        support_contact: '@getyetek'
-    });
+    // Accounts loaded strictly from backend (Zero hardcoded fallbacks to prevent misrouted funds)
+    const [accounts, setAccounts] = useState(null);
+    const [accountsLoading, setAccountsLoading] = useState(true);
+    const [accountsError, setAccountsError] = useState(null);
+
+    const fetchPaymentAccounts = async () => {
+        setAccountsLoading(true);
+        setAccountsError(null);
+        try {
+            const { data, error } = await supabase.rpc('get_payment_methods');
+            if (error) throw error;
+            if (data && (data.cbe?.account_number || data.telebirr?.phone_number)) {
+                setAccounts(data);
+            } else {
+                throw new Error("Payment channels are currently offline. Official recipient numbers could not be verified.");
+            }
+        } catch (err) {
+            console.error("Failed to load payment accounts:", err);
+            setAccountsError(err.message || "Failed to load payment accounts from server.");
+            setAccounts(null);
+        } finally {
+            setAccountsLoading(false);
+        }
+    };
 
     // Verification Form States
     const [smsText, setSmsText] = useState('');
@@ -52,12 +70,8 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     useEffect(() => {
         if (!isActive || !sessionUser?.id) return;
 
-        // 1. Fetch Dynamic Payment Accounts from RPC
-        supabase.rpc('get_payment_methods').then(({ data }) => {
-            if (data && (data.cbe || data.telebirr)) {
-                setAccounts(prev => ({ ...prev, ...data }));
-            }
-        });
+        // 1. Fetch Dynamic Payment Accounts from RPC strictly
+        fetchPaymentAccounts();
 
         // 2. Check Pro Status
         if (userProfile?.is_pro) {
@@ -283,7 +297,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                     )}
 
                     {/* ====================================================================
-                        2. PAYMENT METHODS SCREEN (CBE & TELEBIRR)
+                        2. PAYMENT METHODS SCREEN (STRICT SERVER-VERIFIED)
                         ==================================================================== */}
                     {view === 'methods' && (
                         <>
@@ -294,51 +308,81 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                             <h1 className="pu-modal-title" style={{ fontSize: '1.9rem' }}>Pay {amountDue} ETB</h1>
                             <p className="pu-modal-subtitle">Transfer the exact amount to either account below, then submit your confirmation text or receipt.</p>
 
-                            <div className="pu-accounts-container">
-                                {/* CBE Bank Card */}
-                                <div className="pu-account-card cbe-theme">
-                                    <div className="pu-acc-header">
-                                        <span className="pu-acc-title"><i className="fa-solid fa-building-columns"></i> {accounts.cbe.bank_name}</span>
-                                        <span className="pu-acc-name">{accounts.cbe.account_name}</span>
-                                    </div>
-                                    <div className="pu-acc-box">
-                                        <span className="pu-acc-number">{accounts.cbe.account_number}</span>
-                                        <button 
-                                            className={`pu-copy-btn ${copiedKey === 'cbe' ? 'copied' : ''}`}
-                                            onClick={() => copyToClipboard(accounts.cbe.account_number, 'cbe')}
-                                        >
-                                            <i className={`fa-solid ${copiedKey === 'cbe' ? 'fa-check' : 'fa-copy'}`}></i>
-                                            <span>{copiedKey === 'cbe' ? 'Copied' : 'Copy'}</span>
-                                        </button>
-                                    </div>
+                            {accountsLoading ? (
+                                <div className="pu-accounts-loading">
+                                    <i className="fa-solid fa-shield-halved fa-spin" style={{ fontSize: '2rem', color: 'var(--gold-main)', marginBottom: '10px' }}></i>
+                                    <p>Verifying official banking channels...</p>
                                 </div>
-
-                                {/* Telebirr Card */}
-                                <div className="pu-account-card telebirr-theme">
-                                    <div className="pu-acc-header">
-                                        <span className="pu-acc-title"><i className="fa-solid fa-mobile-screen-button"></i> Telebirr</span>
-                                        <span className="pu-acc-name">{accounts.telebirr.account_name}</span>
-                                    </div>
-                                    <div className="pu-acc-box">
-                                        <span className="pu-acc-number">{accounts.telebirr.phone_number}</span>
-                                        <button 
-                                            className={`pu-copy-btn ${copiedKey === 'telebirr' ? 'copied' : ''}`}
-                                            onClick={() => copyToClipboard(accounts.telebirr.phone_number, 'telebirr')}
-                                        >
-                                            <i className={`fa-solid ${copiedKey === 'telebirr' ? 'fa-check' : 'fa-copy'}`}></i>
-                                            <span>{copiedKey === 'telebirr' ? 'Copied' : 'Copy'}</span>
-                                        </button>
-                                    </div>
+                            ) : accountsError || !accounts ? (
+                                <div className="pu-accounts-error">
+                                    <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '2rem', color: '#ff5f5f', marginBottom: '8px' }}></i>
+                                    <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '6px' }}>Payment Channels Unavailable</h3>
+                                    <p style={{ fontSize: '0.8rem', color: '#aaa', lineHeight: 1.4, margin: '0 0 12px 0' }}>
+                                        {accountsError || "Could not retrieve verified recipient accounts from the server."}
+                                    </p>
+                                    <button className="pu-retry-btn" onClick={fetchPaymentAccounts}>
+                                        <i className="fa-solid fa-rotate-right"></i> Retry Connection
+                                    </button>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="pu-accounts-container">
+                                    {/* CBE Bank Card */}
+                                    {accounts.cbe?.account_number && (
+                                        <div className="pu-account-card cbe-theme">
+                                            <div className="pu-acc-header">
+                                                <span className="pu-acc-title">
+                                                    <i className="fa-solid fa-building-columns"></i> {accounts.cbe.bank_name || 'CBE'}
+                                                </span>
+                                                <span className="pu-acc-name">{accounts.cbe.account_name}</span>
+                                            </div>
+                                            <div className="pu-acc-box">
+                                                <span className="pu-acc-number">{accounts.cbe.account_number}</span>
+                                                <button 
+                                                    className={`pu-copy-btn ${copiedKey === 'cbe' ? 'copied' : ''}`}
+                                                    onClick={() => copyToClipboard(accounts.cbe.account_number, 'cbe')}
+                                                >
+                                                    <i className={`fa-solid ${copiedKey === 'cbe' ? 'fa-check' : 'fa-copy'}`}></i>
+                                                    <span>{copiedKey === 'cbe' ? 'Copied' : 'Copy'}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
 
-                            <button className="pu-cta-gold-btn" onClick={() => setView('verify')}>
+                                    {/* Telebirr Card */}
+                                    {accounts.telebirr?.phone_number && (
+                                        <div className="pu-account-card telebirr-theme">
+                                            <div className="pu-acc-header">
+                                                <span className="pu-acc-title">
+                                                    <i className="fa-solid fa-mobile-screen-button"></i> Telebirr
+                                                </span>
+                                                <span className="pu-acc-name">{accounts.telebirr.account_name}</span>
+                                            </div>
+                                            <div className="pu-acc-box">
+                                                <span className="pu-acc-number">{accounts.telebirr.phone_number}</span>
+                                                <button 
+                                                    className={`pu-copy-btn ${copiedKey === 'telebirr' ? 'copied' : ''}`}
+                                                    onClick={() => copyToClipboard(accounts.telebirr.phone_number, 'telebirr')}
+                                                >
+                                                    <i className={`fa-solid ${copiedKey === 'telebirr' ? 'fa-check' : 'fa-copy'}`}></i>
+                                                    <span>{copiedKey === 'telebirr' ? 'Copied' : 'Copy'}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <button 
+                                className="pu-cta-gold-btn" 
+                                onClick={() => setView('verify')} 
+                                disabled={accountsLoading || !accounts || !!accountsError}
+                            >
                                 <span>Already Paid? Verify Payment</span>
                                 <i className="fa-solid fa-check-double"></i>
                             </button>
 
                             <div className="pu-trust-footer">
-                                <span>Questions? Contact support {accounts.support_contact}</span>
+                                <span>Questions? Contact support {accounts?.support_contact || '@getyetek'}</span>
                             </div>
                         </>
                     )}
@@ -466,7 +510,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 )}
                                 <div style={{ marginTop: '4px' }}><strong>Status:</strong> <span style={{ color: 'var(--gold-main)', fontWeight: 600 }}>Under Review</span></div>
                                 <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#888' }}>
-                                    If not approved within 24 hours, please contact support {accounts.support_contact}.
+                                    If not approved within 24 hours, please contact support {accounts?.support_contact || '@getyetek'}.
                                 </div>
                             </div>
 
