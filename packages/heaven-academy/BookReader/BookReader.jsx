@@ -60,11 +60,64 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     
     const pinchState = usePinchToZoom(viewportRef, scrollContainerRef, layerRef, currentScale, minScale, cachedDocHeight, baseCanvasWidth, setContextMenu);
 
-    // Telemetry Dwell-Time Tracking
+    // Semantic TOC Resolver: Maps current page number to Chapter and Sub-Section titles
+    const resolveTocSection = (toc, pageNum) => {
+        if (!toc || !Array.isArray(toc) || toc.length === 0 || !pageNum) {
+            return { chapterTitle: null, sectionTitle: null };
+        }
+
+        let currentChapter = null;
+        let currentSection = null;
+
+        const traverse = (nodes, parentChapter = null) => {
+            for (const node of nodes) {
+                const nodePage = node.page || 0;
+                if (nodePage <= pageNum) {
+                    if (!parentChapter) {
+                        currentChapter = node.title;
+                        currentSection = null;
+                    } else {
+                        currentSection = node.title;
+                    }
+                    if (node.children && node.children.length > 0) {
+                        traverse(node.children, currentChapter || node.title);
+                    }
+                }
+            }
+        };
+
+        traverse(toc);
+        return { chapterTitle: currentChapter, sectionTitle: currentSection };
+    };
+
+    // Telemetry Dwell-Time Tracking & Lifecycle Hook
     useEffect(() => {
         telemetry.switchFeature('books');
-        return () => telemetry.restorePreviousFeature();
+        return () => {
+            telemetry.flush();
+            telemetry.clearBookContext();
+            telemetry.restorePreviousFeature();
+        };
     }, []);
+
+    // Course Progress Telemetry Sync with Dwell Debounce (2.5s threshold)
+    useEffect(() => {
+        if (!book?.id || pages.length === 0) return;
+
+        const timer = setTimeout(() => {
+            const { chapterTitle, sectionTitle } = resolveTocSection(tocData, currentDisplayPage);
+            telemetry.setBookContext({
+                book_id: book.id,
+                course_code: book.course_code || null,
+                current_page: currentDisplayPage,
+                chapter_title: chapterTitle,
+                section_title: sectionTitle,
+                total_pages: pages.length
+            });
+        }, 2500);
+
+        return () => clearTimeout(timer);
+    }, [currentDisplayPage, tocData, book?.id, book?.course_code, pages.length]);
 
     // 1. Fetch Pages and Mount Dynamic Custom CSS
     useEffect(() => {
