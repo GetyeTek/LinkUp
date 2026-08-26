@@ -1,0 +1,415 @@
+/* --- UNBOXED FULL-SCREEN STEP-CHAIN ITINERARY --- */
+.pmd-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    background: var(--bg-dark, #07080c);
+    display: flex;
+    justify-content: center;
+    height: 100dvh;
+    overflow: hidden;
+    animation: pmdFadeIn 0.3s ease-out;
+    font-family: 'Poppins', sans-serif;
+    color: #f5f5f7;
+}
+
+@keyframes pmdFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Ambient Backlight Aura */
+.pmd-ambient-canvas {
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(circle at 50% 0%, rgba(66, 215, 184, 0.08) 0%, transparent 60%),
+        radial-gradient(circle at 10% 90%, rgba(241, 196, 15, 0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Viewport Frame Container */
+.pmd-viewport-frame {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 680px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Top Minimal Header */
+.pmd-top-header {
+    padding: 1.5rem 1.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 20;
+}
+
+.pmd-miron-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pmd-miron-avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--accent-teal, #42d7b8);
+    box-shadow: 0 0 15px rgba(66, 215, 184, 0.35);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.pmd-miron-avatar-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pmd-miron-tag-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent-teal, #42d7b8);
+    font-weight: 700;
+}
+
+.pmd-close-screen-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #aaa;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.pmd-close-screen-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Scrollable Canvas Body */
+.pmd-canvas-scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+}
+
+.pmd-canvas-scroll-area::-webkit-scrollbar { display: none; }
+
+/* Direct Canvas Hero Briefing (Unboxed) */
+.pmd-hero-briefing-unboxed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pmd-hero-greeting {
+    font-family: 'Newsreader', serif;
+    font-size: 2.4rem;
+    font-weight: 600;
+    line-height: 1.15;
+    color: #fff;
+    letter-spacing: -0.5px;
+}
+
+.pmd-hero-speech {
+    font-size: 0.95rem;
+    color: #c4bcc9;
+    line-height: 1.6;
+    margin-top: 4px;
+}
+
+.pmd-hero-stats-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.78rem;
+    color: #8e8e9f;
+    margin-top: 6px;
+}
+
+.pmd-vibe-pill {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+   INTEGRATED VERTICAL STEP-CHAIN RAIL
+   ========================================================================== */
+.pmd-step-chain-rail {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    padding-left: 20px;
+    margin-top: 0.5rem;
+}
+
+/* The Continuous Vertical Line */
+.pmd-step-chain-rail::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    bottom: 20px;
+    width: 2px;
+    background: linear-gradient(180deg, var(--accent-teal, #42d7b8) 0%, rgba(66, 215, 184, 0.2) 60%, rgba(255, 255, 255, 0.08) 100%);
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+/* Step Node Item */
+.pmd-step-item {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 22px;
+    z-index: 2;
+    transition: opacity 0.3s ease;
+}
+
+/* Number Circle Embedded Directly On the Line */
+.pmd-node-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--bg-dark, #07080c);
+    border: 2px solid var(--accent-teal, #42d7b8);
+    color: var(--accent-teal, #42d7b8);
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 16px rgba(66, 215, 184, 0.4);
+    margin-left: -19px;
+    transition: all 0.3s ease;
+}
+
+/* Step Content (Direct on Canvas) */
+.pmd-step-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    padding-top: 4px;
+}
+
+.pmd-step-phase-tag {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent-teal, #42d7b8);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.pmd-step-topic-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.25;
+}
+
+.pmd-step-subject-sub {
+    font-size: 0.8rem;
+    color: #f1c40f;
+    font-weight: 500;
+}
+
+.pmd-step-instructions {
+    font-size: 0.85rem;
+    color: #a8a29e;
+    line-height: 1.5;
+    margin-top: 2px;
+}
+
+.pmd-step-action-row {
+    margin-top: 10px;
+}
+
+.pmd-step-start-btn {
+    background: rgba(66, 215, 184, 0.15);
+    border: 1px solid var(--accent-teal, #42d7b8);
+    color: var(--accent-teal, #42d7b8);
+    padding: 9px 20px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.pmd-step-start-btn:hover {
+    background: var(--accent-teal, #42d7b8);
+    color: #050508;
+    box-shadow: 0 0 20px rgba(66, 215, 184, 0.4);
+    transform: translateY(-1px);
+}
+
+.pmd-step-start-btn:active {
+    transform: scale(0.97);
+}
+
+/* ==========================================================================
+   LOCKED / SUBTLE GREYED-OUT STEPS
+   ========================================================================== */
+.pmd-step-item.is-locked {
+    opacity: 0.55;
+}
+
+.pmd-step-item.is-locked .pmd-node-circle {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #888;
+    box-shadow: none;
+    background: #10121a;
+}
+
+.pmd-step-item.is-locked .pmd-step-phase-tag {
+    color: #777;
+}
+
+.pmd-step-item.is-locked .pmd-step-subject-sub {
+    color: #888;
+}
+
+.pmd-step-item.is-locked .pmd-step-topic-title {
+    color: #d5d5df;
+}
+
+.pmd-step-item.is-locked .pmd-step-instructions {
+    color: #777;
+}
+
+.pmd-step-item.is-locked .pmd-step-start-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #777;
+    cursor: not-allowed;
+}
+
+.pmd-step-item.is-locked .pmd-step-start-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: #777;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Loading & Error States */
+.pmd-loading-state, .pmd-error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6rem 1.5rem;
+    text-align: center;
+    gap: 1rem;
+}
+
+.pmd-orb-pulse {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff3a8 0%, #f1c40f 45%, #1a9c8b 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #0c0805;
+    box-shadow: 0 0 30px rgba(66, 215, 184, 0.5);
+    animation: pmdOrbBounce 2s infinite ease-in-out;
+}
+
+@keyframes pmdOrbBounce {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 25px rgba(66, 215, 184, 0.4); }
+    50% { transform: scale(1.1); box-shadow: 0 0 45px rgba(241, 196, 15, 0.6); }
+}
+
+/* Bottom Floating Launch HUD */
+.pmd-bottom-hud {
+    padding: 1.25rem 1.5rem calc(1.25rem + env(safe-area-inset-bottom, 10px));
+    background: linear-gradient(180deg, transparent 0%, rgba(7, 8, 12, 0.95) 40%, #07080c 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 20;
+}
+
+.pmd-hud-summary {
+    display: flex;
+    flex-direction: column;
+}
+
+.pmd-hud-lbl {
+    font-size: 0.65rem;
+    color: #777;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.pmd-hud-val {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.pmd-master-launch-btn {
+    flex: 1;
+    max-width: 320px;
+    padding: 15px 24px;
+    border-radius: 16px;
+    border: none;
+    background: linear-gradient(135deg, #fff3a8 0%, #f1c40f 45%, #b78a08 100%);
+    color: #07070a;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 8px 25px rgba(241, 196, 15, 0.35);
+    transition: all 0.25s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.pmd-master-launch-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(241, 196, 15, 0.5);
+}
+
+.pmd-master-launch-btn:active {
+    transform: scale(0.98);
+}
