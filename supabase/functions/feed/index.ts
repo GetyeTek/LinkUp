@@ -8,6 +8,39 @@ const corsHeaders = {
 
 const GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
 
+function decodeTelegramHtml(rawHtml: string): string {
+  if (!rawHtml) return "";
+  return rawHtml
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|div)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;?/gi, " ")
+    .replace(/&#160;/gi, " ")
+    .replace(/&#8203;/gi, "")
+    .replace(/&zwnj;|&zwj;/gi, "")
+    .replace(/"/gi, '"')
+    .replace(/&apos;|'/gi, "'")
+    .replace(/&ldquo;|&rdquo;|&#8220;|&#8221;/gi, '"')
+    .replace(/&lsquo;|&rsquo;|&#8216;|&#8217;/gi, "'")
+    .replace(/&mdash;|&#8212;/gi, "—")
+    .replace(/&ndash;|&#8211;/gi, "–")
+    .replace(/&bull;|&#8226;/gi, "•")
+    .replace(/&hellip;|&#8230;/gi, "…")
+    .replace(/</gi, "<")
+    .replace(/>/gi, ">")
+    .replace(/&#(\d+);/g, (_, dec) => {
+      try { return String.fromCodePoint(parseInt(dec, 10)); } catch { return ""; }
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      try { return String.fromCodePoint(parseInt(hex, 16)); } catch { return ""; }
+    })
+    .replace(/&/gi, "&")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s+\n/g, "\n\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 async function getGeminiKey(supabase: any) {
   const { data: keyData, error: keyErr } = await supabase.rpc('lease_gemini_api_key');
   if (keyErr || !keyData || keyData.length === 0) {
@@ -210,16 +243,9 @@ serve(async (req) => {
           continue;
         }
 
-        // Extract raw Amharic/English text content
+        // Extract raw Amharic/English text content with comprehensive entity decoding
         const textMatch = block.match(/<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/);
-        let fullText = textMatch ? textMatch[1] : "";
-        fullText = fullText
-          .replace(/<br\s*\/?>/gi, "\n")
-          .replace(/<[^>]+>/g, "")
-          .replace(/&/g, "&")
-          .replace(/</g, "<")
-          .replace(/>/g, ">")
-          .trim();
+        let fullText = textMatch ? decodeTelegramHtml(textMatch[1]) : "";
 
         // Extract ISO 8601 Timestamp
         const timeMatch = block.match(/<time\s+datetime="([^"]+)"/);
