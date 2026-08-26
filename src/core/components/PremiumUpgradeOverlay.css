@@ -475,6 +475,27 @@
 .pu-account-card.cbe-theme { border-left: 4px solid #8e44ad; }
 .pu-account-card.telebirr-theme { border-left: 4px solid #2980b9; }
 
+.pu-brand-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    object-fit: contain;
+    background: #ffffff;
+    padding: 2px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+}
+
+.pu-tab-logo {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    object-fit: contain;
+    background: #ffffff;
+    padding: 1px;
+    flex-shrink: 0;
+}
+
 .pu-acc-header {
     display: flex;
     justify-content: space-between;
@@ -487,7 +508,7 @@
     color: #fff;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .pu-acc-name {
