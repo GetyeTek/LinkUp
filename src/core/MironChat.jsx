@@ -31,7 +31,9 @@ const MironChat = ({ onClose, initialContext }) => {
         return () => telemetry.restorePreviousFeature();
     }, []);
 
-    // 1. Fetch Threads on Mount
+    const [copiedId, setCopiedId] = useState(null);
+
+    // 1. Fetch Threads on Mount (Greets on Clean Canvas by Default)
     useEffect(() => {
         if (!sessionUser?.id) return;
 
@@ -45,20 +47,16 @@ const MironChat = ({ onClose, initialContext }) => {
                     .order('last_message_at', { ascending: false });
 
                 if (error) throw error;
+                if (data) setThreads(data);
 
-                if (data && data.length > 0) {
-                    setThreads(data);
-                    
-                    if (initialContext) {
-                        // If opened with a specific passage, create/switch to a contextual thread
-                        await createNewThread("Passage Review", null, initialContext);
-                    } else {
-                        // Default to the most recent thread
-                        selectThread(data[0]);
-                    }
+                if (initialContext) {
+                    // If explicitly opened with a textbook highlight, start a contextual session
+                    await createNewThread("Passage Review", null, initialContext);
                 } else {
-                    // First time user: Create default session
-                    await createNewThread("General Study Session", null, initialContext || null);
+                    // Mount directly onto the fresh greeting canvas
+                    setActiveThread(null);
+                    setMessages([]);
+                    setIsLoadingMessages(false);
                 }
             } catch (err) {
                 console.error("[MironChat] Thread init error:", err);
@@ -68,6 +66,20 @@ const MironChat = ({ onClose, initialContext }) => {
 
         initThreads();
     }, [sessionUser?.id]);
+
+    const handleCopyMessage = (msgId, rawText) => {
+        if (!rawText) return;
+        const cleanText = rawText
+            .replace(/\[SNAPSHOT_\d+\]/gi, '')
+            .replace(/\[QUIZ_\d+\]/gi, '')
+            .replace(/\[BOARD_[a-zA-Z0-9_\-]+\]/gi, '')
+            .trim();
+
+        navigator.clipboard.writeText(cleanText);
+        setCopiedId(msgId);
+        if (navigator.vibrate) navigator.vibrate(20);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
 
     // 2. Load Messages for Active Thread
     const selectThread = async (thread) => {
@@ -179,9 +191,9 @@ const MironChat = ({ onClose, initialContext }) => {
     }, [messages, isTyping]);
 
     const sendMessage = async (textToSend) => {
-        if (!textToSend.trim() || !activeThread || isTyping) return;
+        if (!textToSend.trim() || isTyping) return;
 
-        const currentThreadId = activeThread.id;
+        let currentThread = activeThread;
         const tempId = `temp-${Date.now()}`;
         const userMsg = { id: tempId, side: 'user', text: textToSend };
         
@@ -189,69 +201,87 @@ const MironChat = ({ onClose, initialContext }) => {
         setMessages(prev => [...prev, userMsg]);
         setIsTyping(true);
 
-        // 1. Insert User Message to Database
-        let dbUserMsgId = tempId;
-        try {
-            const { data: savedUserMsg } = await supabase
-                .from('miron_messages')
-                .insert({
-                    thread_id: currentThreadId,
-                    user_id: sessionUser.id,
-                    role: 'user',
-                    text: textToSend
-                })
-                .select()
-                .single();
-            if (savedUserMsg) dbUserMsgId = savedUserMsg.id;
-        } catch (e) {
-            console.error("Failed to persist user message:", e);
-        }
-
-        // 2. Auto-Title "New Conversation" if first message
-        if (activeThread.title === 'New Conversation' || activeThread.title === 'General Study Session') {
+        // Lazy Thread Creation on first message send
+        if (!currentThread) {
             const dynamicTitle = textToSend.length > 35 ? textToSend.slice(0, 35).trim() + '...' : textToSend;
-            supabase.from('miron_threads')
-                .update({ title: dynamicTitle, last_message_at: new Date().toISOString() })
-                .eq('id', currentThreadId)
-                .then(() => {
-                    setActiveThread(prev => ({ ...prev, title: dynamicTitle }));
-                    setThreads(prev => prev.map(t => t.id === currentThreadId ? { ...t, title: dynamicTitle } : t));
-                });
+            try {
+                const { data: newThread, error: threadErr } = await supabase
+                    .from('miron_threads')
+                    .insert({
+                        user_id: sessionUser.id,
+                        title: dynamicTitle,
+                        context_passage: initialContext || null
+                    })
+                    .select()
+                    .single();
+
+                if (threadErr) throw threadErr;
+                currentThread = newThread;
+                setActiveThread(newThread);
+                setThreads(prev => [newThread, ...prev]);
+            } catch (e) {
+                console.error("[MironChat] Failed to lazily create thread:", e);
+            }
         } else {
             supabase.from('miron_threads')
                 .update({ last_message_at: new Date().toISOString() })
-                .eq('id', currentThreadId);
+                .eq('id', currentThread.id);
         }
 
-        // 3. Call Miron Edge Function
+        const currentThreadId = currentThread?.id;
+
+        // 1. Insert User Message to Database
+        let dbUserMsgId = tempId;
+        if (currentThreadId) {
+            try {
+                const { data: savedUserMsg } = await supabase
+                    .from('miron_messages')
+                    .insert({
+                        thread_id: currentThreadId,
+                        user_id: sessionUser.id,
+                        role: 'user',
+                        text: textToSend
+                    })
+                    .select()
+                    .single();
+                if (savedUserMsg) dbUserMsgId = savedUserMsg.id;
+            } catch (e) {
+                console.error("Failed to persist user message:", e);
+            }
+        }
+
+        // 2. Call Miron Edge Function
         try {
             const data = await invokeMiron({
                 prompt: textToSend,
                 history: messages.slice(-10),
-                context: activeThread.context_passage || initialContext
+                context: currentThread?.context_passage || initialContext
             });
 
             const thoughtText = data.thoughts && data.thoughts.length > 0 
                 ? data.thoughts.join(" | ") 
                 : "Synthesizing response...";
 
-            const mironMsgPayload = {
-                thread_id: currentThreadId,
-                user_id: sessionUser.id,
-                role: 'miron',
-                text: data.response,
-                thought_process: thoughtText,
-                snapshots: data.snapshots || null,
-                quizzes: data.quizzes || null,
-                ui_command: data.ui_command || null
-            };
+            let savedAiMsg = null;
+            if (currentThreadId) {
+                const mironMsgPayload = {
+                    thread_id: currentThreadId,
+                    user_id: sessionUser.id,
+                    role: 'miron',
+                    text: data.response,
+                    thought_process: thoughtText,
+                    snapshots: data.snapshots || null,
+                    quizzes: data.quizzes || null,
+                    ui_command: data.ui_command || null
+                };
 
-            // 4. Save AI Response in Database
-            const { data: savedAiMsg } = await supabase
-                .from('miron_messages')
-                .insert(mironMsgPayload)
-                .select()
-                .single();
+                const { data: aiMsgData } = await supabase
+                    .from('miron_messages')
+                    .insert(mironMsgPayload)
+                    .select()
+                    .single();
+                savedAiMsg = aiMsgData;
+            }
 
             setMessages(prev => [
                 ...prev.map(m => m.id === tempId ? { ...m, id: dbUserMsgId } : m),
@@ -301,7 +331,11 @@ const MironChat = ({ onClose, initialContext }) => {
                 threads={threads}
                 activeThreadId={activeThread?.id}
                 onSelectThread={selectThread}
-                onNewThread={() => createNewThread()}
+                onNewThread={() => {
+                    setActiveThread(null);
+                    setMessages([]);
+                    setIsLoadingMessages(false);
+                }}
                 onDeleteThread={deleteThread}
             />
 
@@ -456,6 +490,16 @@ const MironChat = ({ onClose, initialContext }) => {
                                         />
                                     );
                                 })}
+                            </div>
+                            <div className="athena-bubble-actions">
+                                <button 
+                                    className={`athena-copy-btn ${copiedId === m.id ? 'copied' : ''}`}
+                                    onClick={() => handleCopyMessage(m.id, m.text)}
+                                    title="Copy message"
+                                >
+                                    <i className={`fa-${copiedId === m.id ? 'solid fa-check' : 'regular fa-copy'}`}></i>
+                                    <span>{copiedId === m.id ? 'Copied' : 'Copy'}</span>
+                                </button>
                             </div>
                         </div>
                     ))
