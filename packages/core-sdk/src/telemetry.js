@@ -8,6 +8,7 @@ class TelemetryEngine {
         this.pendingInteractions = 0;
         this.flushInterval = null;
         this.initialized = false;
+        this.bookContext = null;
     }
 
     init() {
@@ -29,6 +30,14 @@ class TelemetryEngine {
         window.addEventListener('beforeunload', () => {
             this.flush();
         });
+    }
+
+    setBookContext(context) {
+        this.bookContext = context;
+    }
+
+    clearBookContext() {
+        this.bookContext = null;
     }
 
     switchFeature(newFeature) {
@@ -53,18 +62,20 @@ class TelemetryEngine {
         const durationSec = Math.floor((now - this.startTime) / 1000);
         const interactions = this.pendingInteractions;
 
-        if (durationSec <= 0 && interactions === 0) return;
+        if (durationSec <= 0 && interactions === 0 && !this.bookContext) return;
 
         // Reset timer and counter for next window
         this.startTime = now;
         this.pendingInteractions = 0;
 
         const feature = this.currentFeature;
+        const bookCtx = this.bookContext ? { ...this.bookContext } : null;
 
         supabase.rpc('record_telemetry_flush', {
             p_feature: feature,
             p_duration_seconds: durationSec,
-            p_interactions: interactions
+            p_interactions: interactions,
+            p_book_context: bookCtx
         }).then(({ error }) => {
             if (error) console.error("[Telemetry] Flush Error:", error.message);
         });
