@@ -40,3 +40,22 @@ export const invokePlanMyDay = async (payload = {}) => {
     }
     return response.json();
 };
+
+export const invokePlanMyDay = async (payload = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${ACADEMY_GATEWAY}/functions/v1/plan-my-day`, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'apikey': DUMMY_KEY,
+            'x-linkup-client': 'linkup-secure-client-2026',
+            ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        },
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Plan My Day Error: ${response.status} ${errText}`);
+    }
+    return response.json();
+};
