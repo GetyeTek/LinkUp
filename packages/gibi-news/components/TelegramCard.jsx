@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TelegramCard.css';
 
+const formatChannelName = (channel) => {
+    if (!channel) return 'Campus Feed';
+    if (channel.toLowerCase() === 'tikvahuniversity') return 'Tikvah University';
+    return channel.replace(/^@/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+};
+
 const TelegramCard = ({ post }) => {
     const [expanded, setExpanded] = useState(false);
     const cardRef = useRef(null);
@@ -50,7 +56,7 @@ const TelegramCard = ({ post }) => {
                 <div className="tc-footer">
                     <div className="tc-reference">
                         <i className="fa-solid fa-quote-left" style={{fontSize: '0.6rem'}}></i>
-                        Ref: {post.channel === 'tikvahuniversity' ? 'Tikvah University' : post.channel}
+                        Ref: {formatChannelName(post.channel)}
                     </div>
                     <div className="tc-footer-bottom">
                         <a href={post.post_url} target="_blank" rel="noreferrer" className="tc-link">
