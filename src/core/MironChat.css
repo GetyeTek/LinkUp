@@ -276,6 +276,23 @@
     margin: 10px 0;
     border: 1px solid rgba(255,255,255,0.1);
 }
+
+/* KaTeX & Equation Presentation */
+.athena-bubble .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 10px 0;
+    margin: 12px 0;
+    scrollbar-width: none;
+}
+.athena-bubble .katex-display::-webkit-scrollbar { display: none; }
+.athena-bubble .katex {
+    font-size: 1.08em;
+    text-rendering: geometricPrecision;
+}
+.athena-bubble .katex-html {
+    color: inherit;
+}
 .athena-bubble blockquote {
     border-left: 3px solid var(--accent-teal);
     padding-left: 15px;
