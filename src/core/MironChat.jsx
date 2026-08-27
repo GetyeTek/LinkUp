@@ -258,10 +258,6 @@ const MironChat = ({ onClose, initialContext }) => {
                 context: currentThread?.context_passage || initialContext
             });
 
-            const thoughtText = data.thoughts && data.thoughts.length > 0 
-                ? data.thoughts.join(" | ") 
-                : "Synthesizing response...";
-
             let savedAiMsg = null;
             if (currentThreadId) {
                 const mironMsgPayload = {
@@ -269,7 +265,7 @@ const MironChat = ({ onClose, initialContext }) => {
                     user_id: sessionUser.id,
                     role: 'miron',
                     text: data.response,
-                    thought_process: thoughtText,
+                    thought_process: null,
                     snapshots: data.snapshots || null,
                     quizzes: data.quizzes || null,
                     ui_command: data.ui_command || null
@@ -288,7 +284,6 @@ const MironChat = ({ onClose, initialContext }) => {
                 {
                     id: savedAiMsg?.id || Date.now() + 1,
                     side: 'miron',
-                    thought: thoughtText,
                     text: data.response,
                     snapshots: data.snapshots,
                     quizzes: data.quizzes,
@@ -307,7 +302,6 @@ const MironChat = ({ onClose, initialContext }) => {
                 {
                     id: Date.now() + 1,
                     side: 'miron',
-                    thought: "Connection error...",
                     text: "I apologize, but I am currently having trouble processing your request. Please try asking again in a moment."
                 }
             ]);
@@ -440,9 +434,6 @@ const MironChat = ({ onClose, initialContext }) => {
                 ) : (
                     messages.map(m => (
                         <div key={m.id} className={`chat-node ${m.side}`}>
-                            {m.side === 'miron' && m.thought && (
-                                <span className="miron-thought">{m.thought}</span>
-                            )}
                             <div className="athena-bubble">
                                 {m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\])/g).map((part, idx) => {
                                     const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
