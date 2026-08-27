@@ -512,7 +512,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 setIsTocOpen={setIsTocOpen} 
                 tocData={tocData} 
                 onNavigate={(tocPage) => {
-                    const targetIndex = Math.max(1, tocPage - pageOffset);
+                    const targetIndex = Math.max(1, tocPage + pageOffset);
                     jumpToPage(targetIndex);
                 }} 
             />
