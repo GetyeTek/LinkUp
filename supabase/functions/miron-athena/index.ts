@@ -161,6 +161,159 @@ const toolsDefinition = {
   ]
 };
 
+const GENERIC_STOP_WORDS = new Set([
+  'chapter', 'section', 'unit', 'module', 'part', 'topic', 'lesson',
+  'overview', 'introduction', 'summary', 'review', 'exercises', 'questions',
+  'problems', 'references', 'appendix', 'the', 'and', 'of', 'in', 'to',
+  'for', 'a', 'an', 'on', 'with', 'by', 'about'
+]);
+
+const NUMBER_WORD_MAP: Record<string, string> = {
+  'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+  'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+  'eleven': '11', 'twelve': '12', 'thirteen': '13', 'fourteen': '14', 'fifteen': '15',
+  'sixteen': '16', 'seventeen': '17', 'eighteen': '18', 'nineteen': '19', 'twenty': '20',
+  'i': '1', 'ii': '2', 'iii': '3', 'iv': '4', 'v': '5',
+  'vi': '6', 'vii': '7', 'viii': '8', 'ix': '9', 'x': '10',
+  'xi': '11', 'xii': '12', 'xiii': '13', 'xiv': '14', 'xv': '15',
+  'xvi': '16', 'xvii': '17', 'xviii': '18', 'xix': '19', 'xx': '20'
+};
+
+function normalizeTextTokens(str: string): string[] {
+  if (!str) return [];
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(t => NUMBER_WORD_MAP[t] || t);
+}
+
+function calculateStringSimilarity(s1: string, s2: string): number {
+  if (s1 === s2) return 1.0;
+  if (!s1 || !s2) return 0.0;
+  const l1 = s1.length, l2 = s2.length;
+  const matrix: number[][] = Array.from({ length: l1 + 1 }, () => new Array(l2 + 1).fill(0));
+  for (let i = 0; i <= l1; i++) matrix[i][0] = i;
+  for (let j = 0; j <= l2; j++) matrix[0][j] = j;
+  for (let i = 1; i <= l1; i++) {
+    for (let j = 1; j <= l2; j++) {
+      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return 1.0 - (matrix[l1][l2] / Math.max(l1, l2));
+}
+
+function findBestMatchingTocNode(tocTree: any[], rawQuery: string, confidenceThreshold = 0.80) {
+  if (!tocTree || !Array.isArray(tocTree) || !rawQuery) return null;
+
+  const flatList: any[] = [];
+  function flatten(nodes: any[], parentTitle: string | null = null, chapterNum: any = null) {
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      const currChapter = parentTitle ? chapterNum : (i + 1);
+      const breadcrumb = parentTitle ? `${parentTitle} > ${n.title}` : n.title;
+      flatList.push({
+        node: n,
+        originalIndex: flatList.length,
+        title: n.title,
+        page: n.page,
+        chapterNum: currChapter,
+        breadcrumb
+      });
+      if (n.children && Array.isArray(n.children)) {
+        flatten(n.children, n.title, currChapter);
+      }
+    }
+  }
+  flatten(tocTree);
+
+  if (flatList.length === 0) return null;
+
+  const queryTokens = normalizeTextTokens(rawQuery);
+  const queryMeaningful = queryTokens.filter(t => !GENERIC_STOP_WORDS.has(t));
+  const queryNumber = queryTokens.find(t => /^\d+$/.test(t));
+  const normalizedQueryStr = queryTokens.join(' ');
+
+  const scored: any[] = [];
+
+  for (const item of flatList) {
+    const itemTitleTokens = normalizeTextTokens(item.title);
+    const itemBreadcrumbTokens = normalizeTextTokens(item.breadcrumb);
+    const itemTitleStr = itemTitleTokens.join(' ');
+    const itemBreadcrumbStr = itemBreadcrumbTokens.join(' ');
+
+    if (itemTitleStr === normalizedQueryStr || itemBreadcrumbStr === normalizedQueryStr) {
+      scored.push({ item, score: 1.0 });
+      continue;
+    }
+
+    if (itemTitleStr.includes(normalizedQueryStr) || normalizedQueryStr.includes(itemTitleStr)) {
+      scored.push({ item, score: 0.95 });
+      continue;
+    }
+
+    const itemMeaningful = new Set(itemTitleTokens.filter(t => !GENERIC_STOP_WORDS.has(t)));
+    const itemBreadcrumbMeaningful = new Set(itemBreadcrumbTokens.filter(t => !GENERIC_STOP_WORDS.has(t)));
+    const targetMeaningful = itemMeaningful.size > 0 ? itemMeaningful : itemBreadcrumbMeaningful;
+
+    if (queryMeaningful.length === 0 || targetMeaningful.size === 0) continue;
+
+    let tokenMatches = 0;
+    for (const qToken of queryMeaningful) {
+      let bestTokenSim = 0;
+      for (const iToken of targetMeaningful) {
+        const sim = calculateStringSimilarity(qToken, iToken);
+        if (sim > bestTokenSim) bestTokenSim = sim;
+      }
+      if (bestTokenSim >= 0.80) {
+        tokenMatches += bestTokenSim;
+      }
+    }
+
+    let tokenScore = tokenMatches / Math.max(queryMeaningful.length, 1);
+
+    if (queryNumber) {
+      const itemHasNumber = itemTitleTokens.includes(queryNumber) || String(item.chapterNum) === queryNumber;
+      if (itemHasNumber) {
+        tokenScore = Math.min(1.0, tokenScore + 0.15);
+      } else {
+        tokenScore = tokenScore * 0.4;
+      }
+    }
+
+    const strSim = Math.max(
+      calculateStringSimilarity(normalizedQueryStr, itemTitleStr),
+      calculateStringSimilarity(normalizedQueryStr, itemBreadcrumbStr)
+    );
+
+    const compositeScore = Math.max(tokenScore, strSim);
+    if (compositeScore >= confidenceThreshold) {
+      scored.push({ item, score: compositeScore });
+    }
+  }
+
+  if (scored.length === 0) return null;
+
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored[0];
+  if (top.score < confidenceThreshold) return null;
+
+  if (scored.length > 1) {
+    const second = scored[1];
+    if (top.score - second.score < 0.10 && top.item.page !== second.item.page) {
+      return null;
+    }
+  }
+
+  return { matchedItem: top.item, flatList };
+}
+
 // Helper to flatten UI JSON blocks into readable text for the LLM
 function extractTextFromBlockArray(blocks: any[]) {
   return blocks.map(b => {
@@ -390,25 +543,17 @@ serve(async (req) => {
               }
               const { data: book } = await query.single();
               
-              if (book) {
-                const flatToc: any[] = [];
-                function flatten(nodes: any[]) {
-                  for (const n of nodes) {
-                    flatToc.push(n);
-                    if (n.children) flatten(n.children);
-                  }
-                }
-                flatten(book.toc || []);
-
-                const targetIdx = flatToc.findIndex((n: any) => n.title.toLowerCase().includes(args.section_title.toLowerCase()));
+              if (book && book.toc) {
+                const matchResult = findBestMatchingTocNode(book.toc, args.section_title, 0.80);
                 
-                if (targetIdx !== -1) {
-                  const startPage = flatToc[targetIdx].page;
+                if (matchResult) {
+                  const { matchedItem, flatList } = matchResult;
+                  const startPage = matchedItem.page;
                   let endPage = 99999;
                   
-                  for (let i = targetIdx + 1; i < flatToc.length; i++) {
-                    if (flatToc[i].page && flatToc[i].page > startPage) {
-                      endPage = flatToc[i].page;
+                  for (let i = matchedItem.originalIndex + 1; i < flatList.length; i++) {
+                    if (flatList[i].page && flatList[i].page > startPage) {
+                      endPage = flatList[i].page;
                       break;
                     }
                   }
@@ -429,9 +574,14 @@ serve(async (req) => {
                   if (pages) {
                     sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
                   }
-                  toolResult = { status: "success", text: sectionText || "Section is empty." };
+                  toolResult = { 
+                    status: "success", 
+                    matched_section: matchedItem.title, 
+                    breadcrumb: matchedItem.breadcrumb,
+                    text: sectionText || "Section is empty." 
+                  };
                 } else {
-                  toolResult = { status: "error", message: "Section not found in TOC." };
+                  toolResult = { status: "error", message: `Section "${args.section_title}" not found in TOC with sufficient confidence (>=80%).` };
                 }
               } else {
                 toolResult = { status: "error", message: "Book not found." };
