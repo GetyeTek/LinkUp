@@ -414,8 +414,8 @@ serve(async (req) => {
                   }
 
                   const offset = book.page_offset || 0;
-                  const physicalStartPage = Math.max(1, startPage - offset);
-                  const physicalEndPage = endPage === 99999 ? 99999 : Math.max(1, endPage - offset);
+                  const physicalStartPage = Math.max(1, startPage + offset);
+                  const physicalEndPage = endPage === 99999 ? 99999 : Math.max(1, endPage + offset);
 
                   const { data: pages } = await supabase.from('book_pages')
                     .select('page_number, content_json')
@@ -448,7 +448,7 @@ serve(async (req) => {
                   offset = b.page_offset || 0;
                 }
               }
-              const physicalPage = Math.max(1, args.page_number - offset);
+              const physicalPage = Math.max(1, args.page_number + offset);
               executedTools.push(`Navigating to ${code || bookId}, Page ${physicalPage}`);
               uiCommand = { action: 'open_page', book_id: bookId, page_number: physicalPage };
               toolResult = { status: "success", message: "User is being navigated to the page." };
@@ -459,7 +459,7 @@ serve(async (req) => {
               
               if (book) {
                 const offset = book.page_offset || 0;
-                const physicalPage = Math.max(1, args.page_number - offset);
+                const physicalPage = Math.max(1, args.page_number + offset);
                 executedTools.push(`Prepared visual snapshot for ${code}, Page ${physicalPage}`);
 
                 const { data: page } = await supabase.from('book_pages')
