@@ -754,7 +754,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       response: finalText,
-      thoughts: executedTools,
+      thoughts: [],
       ui_command: uiCommand,
       snapshots: inlineSnapshots,
       quizzes: inlineQuizzes
