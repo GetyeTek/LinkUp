@@ -74,7 +74,7 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
                     </div>
                 ))}
                 <button className="mq-submit-btn" disabled={submitted} onClick={handleSubmit}>
-                    {submitted ? 'Submitted for Grading' : 'Submit to Miron'} <i className="fas fa-paper-plane"></i>
+                    {submitted ? 'Submitted' : 'Submit'} <i className="fas fa-check"></i>
                 </button>
             </div>
         </div>
