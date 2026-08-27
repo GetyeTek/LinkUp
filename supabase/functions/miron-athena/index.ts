@@ -34,16 +34,18 @@ AVAILABLE COURSE CATALOG:
 "PSYC 1011" - "GENERAL PSYCHOLOGY"
 "SPSC 1011" - "PHYSICAL EDUCATION"
 
-DUAL-ENGINE RETRIEVAL INSTRUCTIONS:
+DUAL-ENGINE RETRIEVAL & TOOL BUDGET INSTRUCTIONS:
 When a user asks an academic question, you MUST execute a dual-retrieval strategy in parallel during your FIRST turn:
 1. Call "search_textbook_material" to perform a semantic vector search.
-   - IMPORTANT: Distill the user's conversational text into a highly optimized, dense keyword query. (e.g., "What is the formula for kinetic energy?" -> "kinetic energy formula physics velocity mass").
-   - If you know the course the user is referring to, provide the course code or name. If not, leave it empty to search across all books.
-2. Call "get_book_toc" using the course name/code to understand the structural context of the subject.
+   - IMPORTANT: Distill the user's conversational text into a highly optimized, dense keyword query.
+   - If you know the course the user is referring to, provide the course code. If not, leave it empty to search globally across all books.
+2. Call "get_book_toc" using the course code to understand the structural context of the subject.
 
-After executing BOTH tools simultaneously, evaluate the results:
-- If "search_textbook_material" returns highly relevant snippets, synthesize your answer immediately and explicitly cite the book and page number provided in the metadata.
-- If the semantic snippets are insufficient, use the TOC you retrieved to identify the exact chapter/section title where the answer likely resides, and call "read_book_section" to read the entire chunk.
+TARGETED RETRIEVAL & SINGLE-HOP RULES:
+- You have the complete Table of Contents tree. You can directly request ANY specific section or sub-section title (e.g., "1.1.2 SI Units" or "Chapter 2: Kinematics").
+- When you request a parent section (e.g., "1.1"), the system automatically returns the ENTIRE topic including all sub-sections under it up to the next major section.
+- NEVER call tools sequentially to "step down" through a hierarchy. One targeted call to "read_book_section" retrieves the entire section and all sub-items.
+- STRICT TOOL BUDGET: You are allowed a maximum of ONE tool-gathering step. Once textbook data or TOC is returned, you MUST immediately synthesize your final response in the following turn.
 - If the user's message is a simple greeting or non-academic, do not call any tools.
 
 VISUAL SNAPSHOT CAPABILITY:
@@ -213,7 +215,7 @@ function findBestMatchingTocNode(tocTree: any[], rawQuery: string, confidenceThr
   if (!tocTree || !Array.isArray(tocTree) || !rawQuery) return null;
 
   const flatList: any[] = [];
-  function flatten(nodes: any[], parentTitle: string | null = null, chapterNum: any = null) {
+  function flatten(nodes: any[], parentTitle: string | null = null, chapterNum: any = null, depth = 0) {
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
       const currChapter = parentTitle ? chapterNum : (i + 1);
@@ -224,10 +226,11 @@ function findBestMatchingTocNode(tocTree: any[], rawQuery: string, confidenceThr
         title: n.title,
         page: n.page,
         chapterNum: currChapter,
+        depth: depth,
         breadcrumb
       });
       if (n.children && Array.isArray(n.children)) {
-        flatten(n.children, n.title, currChapter);
+        flatten(n.children, n.title, currChapter, depth + 1);
       }
     }
   }
@@ -449,8 +452,8 @@ serve(async (req) => {
     let inlineSnapshots: any[] = [];
     let inlineQuizzes: any[] = [];
 
-    // 4. The Agentic Loop with Parallel Execution
-    while (isToolCall && loopCount < 5) {
+    // 4. The Agentic Loop with Parallel Execution & Safety Net
+    while (isToolCall && loopCount < 4) {
       const geminiResponse = await callGemini(messages, [toolsDefinition], MIRON_SYSTEM_PROMPT);
       const candidate = geminiResponse.candidates?.[0];
 
@@ -459,7 +462,6 @@ serve(async (req) => {
       if (functionCallParts.length > 0) {
         console.log(`[MIRON LOOP ${loopCount}] Executing ${functionCallParts.length} tool(s) in parallel.`);
         
-        // Map all function calls to Promises and execute concurrently
         const toolExecutionPromises = functionCallParts.map(async (part: any) => {
           const { name, args } = part.functionCall;
           console.log(`  -> Running Tool: ${name}`, args);
@@ -474,18 +476,13 @@ serve(async (req) => {
 
               let targetNamespaces: string[] = [];
               if (args.course_code) {
-                // EXACT MATCH via NEW course_code column
                 const { data } = await supabase.from('books').select('id').eq('course_code', args.course_code.toUpperCase().trim()).single();
-                if (data) {
-                    targetNamespaces.push(data.id);
-                    executedTools.push(`Targeted vector search: ${args.course_code}`);
-                }
+                if (data) targetNamespaces.push(data.id);
               }
 
               if (targetNamespaces.length === 0) {
                 const { data } = await supabase.from('books').select('id');
                 if (data) targetNamespaces = data.map(b => b.id);
-                executedTools.push(`Global vector search across all books`);
               }
 
               const searchPromises = targetNamespaces.map(async (namespace) => {
@@ -503,21 +500,15 @@ serve(async (req) => {
               const allMatches = resultsArray.flat();
               allMatches.sort((a: any, b: any) => b.score - a.score);
               const topFive = allMatches.slice(0, 5);
-              
-              // [PIPELINE DEBUG] Detailed Pinecone Inspector
-              console.log(`\n--- [PIPELINE DIAGNOSTIC: PINECONE] ---`);
-              console.log(`Query: "${args.optimized_query}"`);
-              topFive.forEach((m, i) => {
-                console.log(`Result ${i+1} [Score: ${m.score.toFixed(4)}] [Source: ${m.metadata.book_title} P.${m.metadata.page_number}]`);
-                console.log(`Snippet: "${m.metadata.text_snippet.substring(0, 150)}..."`);
-              });
-              console.log(`---------------------------------------\n`);
 
-              toolResult = { status: "success", matches: topFive.map(m => m.metadata) };
+              toolResult = { 
+                status: "success", 
+                matches: topFive.map(m => m.metadata),
+                directive: "Relevant textbook snippets retrieved. Synthesize your final answer to the student now."
+              };
             }
             else if (name === "get_book_toc") {
               const code = (args.course_code || args.query || "").toUpperCase().trim();
-              executedTools.push(`Consulting TOC for: ${code}`);
               
               const { data, error } = await supabase.from('books')
                 .select('id, title, toc, page_offset')
@@ -525,15 +516,21 @@ serve(async (req) => {
                 .single();
 
               if (data) {
-                toolResult = { status: "success", book_id: data.id, title: data.title, course_code: code, page_offset: data.page_offset || 0, toc: data.toc };
+                toolResult = { 
+                  status: "success", 
+                  book_id: data.id, 
+                  title: data.title, 
+                  course_code: code, 
+                  page_offset: data.page_offset || 0, 
+                  toc: data.toc,
+                  directive: "TOC structure retrieved. You can directly request any specific section or sub-section title in read_book_section without stepping down."
+                };
               } else {
-                console.warn(`[TOC ERROR] No book found for code: ${code}`);
                 toolResult = { status: "error", message: `Book with course code ${code} not found.` };
               }
             } 
             else if (name === "read_book_section") {
               const code = (args.course_code || "").toUpperCase().trim();
-              executedTools.push(`Reading material: "${args.section_title}" (${code || args.book_id})`);
               
               let query = supabase.from('books').select('id, title, toc, page_offset');
               if (code) {
@@ -549,11 +546,14 @@ serve(async (req) => {
                 if (matchResult) {
                   const { matchedItem, flatList } = matchResult;
                   const startPage = matchedItem.page;
+                  const targetDepth = matchedItem.depth;
                   let endPage = 99999;
                   
+                  // Sibling-aware / Depth-aware slice: ignore children, stop only at same depth or higher level parent
                   for (let i = matchedItem.originalIndex + 1; i < flatList.length; i++) {
-                    if (flatList[i].page && flatList[i].page > startPage) {
-                      endPage = flatList[i].page;
+                    const candidateNode = flatList[i];
+                    if (candidateNode.depth <= targetDepth && candidateNode.page && candidateNode.page > startPage) {
+                      endPage = candidateNode.page;
                       break;
                     }
                   }
@@ -568,7 +568,7 @@ serve(async (req) => {
                     .gte('page_number', physicalStartPage)
                     .lt('page_number', physicalEndPage)
                     .order('page_number', { ascending: true })
-                    .limit(10);
+                    .limit(20);
 
                   let sectionText = "";
                   if (pages) {
@@ -578,6 +578,7 @@ serve(async (req) => {
                     status: "success", 
                     matched_section: matchedItem.title, 
                     breadcrumb: matchedItem.breadcrumb,
+                    directive: "Section material loaded including all sub-sections. You have all context. Synthesize and write your comprehensive response to the student immediately.",
                     text: sectionText || "Section is empty." 
                   };
                 } else {
@@ -599,7 +600,6 @@ serve(async (req) => {
                 }
               }
               const physicalPage = Math.max(1, args.page_number + offset);
-              executedTools.push(`Navigating to ${code || bookId}, Page ${physicalPage}`);
               uiCommand = { action: 'open_page', book_id: bookId, page_number: physicalPage };
               toolResult = { status: "success", message: "User is being navigated to the page." };
             }
@@ -610,7 +610,6 @@ serve(async (req) => {
               if (book) {
                 const offset = book.page_offset || 0;
                 const physicalPage = Math.max(1, args.page_number + offset);
-                executedTools.push(`Prepared visual snapshot for ${code}, Page ${physicalPage}`);
 
                 const { data: page } = await supabase.from('book_pages')
                   .select('content_json')
@@ -646,9 +645,11 @@ serve(async (req) => {
               if (book) {
                 const { data: boards } = await supabase.from('board_drawings').select('id, toc_node_title, description').eq('book_id', book.id);
                 if (boards && boards.length > 0) {
-                  toolResult = { status: "success", boards: boards.map(b => ({ id: b.id, topic: b.toc_node_title, description: b.description })) };
-                  executedTools.push(`Found ${boards.length} visual boards for ${args.course_code}`);
-                  toolResult.instruction = "You can render these instantly by inserting the tag [BOARD_asset_id] directly in your response text.";
+                  toolResult = { 
+                    status: "success", 
+                    boards: boards.map(b => ({ id: b.id, topic: b.toc_node_title, description: b.description })),
+                    instruction: "You can render these instantly by inserting the tag [BOARD_asset_id] directly in your response text."
+                  };
                 } else {
                   toolResult = { status: "success", message: "No pre-built boards found for this course." };
                 }
@@ -657,7 +658,6 @@ serve(async (req) => {
               }
             }
             else if (name === "render_quiz") {
-              executedTools.push(`Rendering Quiz (Mode: ${args.mode})`);
               let qList = [];
               let quizTitle = args.section_title ? `Knowledge Check: ${args.section_title}` : "Interactive Knowledge Check";
 
@@ -717,18 +717,6 @@ serve(async (req) => {
 
         const toolResponses = await Promise.all(toolExecutionPromises);
 
-        // [SURGICAL LOG] Pipeline Feed Verification
-        console.log(`\n--- [PIPELINE DIAGNOSTIC: FEEDBACK] ---`);
-        toolResponses.forEach(r => {
-            const size = JSON.stringify(r.content).length;
-            console.log(`Tool "${r.name}" output successfully mapped to history. Payload Size: ${size} chars.`);
-            if (r.name === 'search_textbook_material' && r.content.matches) {
-                executedTools.push(`Successfully fed ${r.content.matches.length} semantic chunks to Miron's reasoning engine.`);
-            }
-        });
-        console.log(`---------------------------------------\n`);
-
-        // Push Miron's request and our Tool Responses into the history to keep the loop going
         messages.push(candidate.content);
         messages.push({
           role: "user",
@@ -742,14 +730,24 @@ serve(async (req) => {
 
         loopCount++;
       } else {
-        // Miron chose to reply with standard text instead of calling a tool. Break the loop.
         isToolCall = false;
         finalText = candidate?.content?.parts?.[0]?.text || "My cognitive link was interrupted. Please try again.";
       }
     }
 
-    if (loopCount >= 5) {
-      finalText = "I had to abort my analysis—the thought process exceeded optimal boundaries. Please narrow your question.";
+    // Safety Net: If loop ended while still seeking tools, force final answer with tools disabled
+    if (isToolCall && !finalText) {
+      console.log(`[MIRON SAFETY NET] Tool iterations reached (${loopCount}). Compelling forced synthesis...`);
+      messages.push({
+        role: "user",
+        parts: [{ text: "Tool budget completed. Synthesize and write your complete, final explanation to the student now using all the textbook context gathered above." }]
+      });
+      try {
+        const forcedResponse = await callGemini(messages, [], MIRON_SYSTEM_PROMPT);
+        finalText = forcedResponse.candidates?.[0]?.content?.parts?.[0]?.text || "Here is the summary based on the textbook material analyzed above.";
+      } catch (e) {
+        finalText = "Here is the explanation based on the textbook material reviewed above.";
+      }
     }
 
     return new Response(JSON.stringify({ 
