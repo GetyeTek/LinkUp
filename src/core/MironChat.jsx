@@ -478,7 +478,7 @@ const MironChat = ({ onClose, initialContext }) => {
                         <p>Ask Miron about formulas, textbook concepts, or assignments.</p>
                     </div>
                 ) : (
-                    messages.map(m => (
+                    messages.filter(m => !m.text?.startsWith('[Quiz Submission:')).map(m => (
                         <div key={m.id} className={`chat-node ${m.side}`}>
                             <div className="athena-bubble">
                                 {m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\])/g).map((part, idx) => {
