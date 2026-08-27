@@ -668,22 +668,30 @@ serve(async (req) => {
               let quizTitle = args.section_title ? `Knowledge Check: ${args.section_title}` : "Interactive Knowledge Check";
 
               if (args.mode === 'database') {
-                const { data: book } = await supabase.from('books').select('id, toc').eq('course_code', args.course_code.toUpperCase().trim()).single();
-                if (book) {
-                  const flatToc: any[] = [];
-                  const flatten = (nodes: any[]) => { for(const n of nodes) { flatToc.push(n); if(n.children) flatten(n.children); } };
-                  flatten(book.toc || []);
-
-                  let startPage = 0; let endPage = 99999;
+                const code = (args.course_code || "").toUpperCase().trim();
+                const { data: book } = await supabase.from('books').select('id, toc, page_offset').eq('course_code', code).single();
+                if (book && book.toc) {
+                  let startPage = 0;
+                  let endPage = 99999;
                   if (args.section_title) {
-                    const idx = flatToc.findIndex(n => n.title.toLowerCase().includes(args.section_title.toLowerCase()));
-                    if (idx !== -1) {
-                      startPage = flatToc[idx].page;
-                      for (let i = idx + 1; i < flatToc.length; i++) {
-                        if (flatToc[i].page > startPage) { endPage = flatToc[i].page; break; }
+                    const matchResult = findBestMatchingTocNode(book.toc, args.section_title, 0.80);
+                    if (matchResult) {
+                      const { matchedItem, flatList } = matchResult;
+                      startPage = matchedItem.page;
+                      const targetDepth = matchedItem.depth;
+                      for (let i = matchedItem.originalIndex + 1; i < flatList.length; i++) {
+                        const candidateNode = flatList[i];
+                        if (candidateNode.depth <= targetDepth && candidateNode.page && candidateNode.page > startPage) {
+                          endPage = candidateNode.page;
+                          break;
+                        }
                       }
                     }
                   }
+
+                  const offset = book.page_offset || 0;
+                  const physicalStartPage = Math.max(1, startPage + offset);
+                  const physicalEndPage = endPage === 99999 ? 99999 : Math.max(1, endPage + offset);
 
                   const { data: mappings } = await supabase.from('question_book_mappings')
                     .select('question_id, page_key')
@@ -692,13 +700,13 @@ serve(async (req) => {
 
                   const validQIds = (mappings || [])
                     .filter(m => {
-                      const p = parseInt(m.page_key.split('-')[1]);
-                      return p >= startPage && p < endPage;
+                      const p = parseInt(m.page_key.replace('page-', ''), 10);
+                      return p >= physicalStartPage && p < physicalEndPage;
                     })
                     .map(m => m.question_id);
 
                   if (validQIds.length > 0) {
-                    const { data: dbQs } = await supabase.from('questions').select('id, text, question_type, options').in('id', validQIds).limit(args.limit || 3);
+                    const { data: dbQs } = await supabase.from('questions').select('id, text, question_type, options, correct_answer').in('id', validQIds).limit(args.limit || 3);
                     qList = dbQs || [];
                   }
                 }
