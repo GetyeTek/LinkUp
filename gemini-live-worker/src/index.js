@@ -675,21 +675,22 @@ TOOL USAGE & GROUNDING (CRITICAL):
                         try {
                             if (name === "get_book_toc") {
                                 const code = args.course_code.toUpperCase().trim();
-                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,title,toc`, { headers: authHeaders });
+                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,title,toc,page_offset`, { headers: authHeaders });
                                 const json = await res.json();
                                 if (json && json.length > 0) {
-                                    result = { status: "success", book_id: json[0].id, title: json[0].title, toc: json[0].toc };
+                                    result = { status: "success", book_id: json[0].id, title: json[0].title, page_offset: json[0].page_offset || 0, toc: json[0].toc };
                                 } else {
                                     result = { status: "error", message: `Book for course ${code} not found.` };
                                 }
                             } 
                             else if (name === "read_book_section") {
                                 const code = args.course_code.toUpperCase().trim();
-                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,toc`, { headers: authHeaders });
+                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,toc,page_offset`, { headers: authHeaders });
                                 const json = await res.json();
                                 
                                 if (json && json.length > 0) {
                                     const bookId = json[0].id;
+                                    const offset = json[0].page_offset || 0;
                                     const flatToc = [];
                                     const flatten = (nodes) => {
                                         for (const n of nodes) {
@@ -710,7 +711,10 @@ TOOL USAGE & GROUNDING (CRITICAL):
                                             }
                                         }
 
-                                        const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${startPage}&page_number=lt.${endPage}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
+                                        const physicalStart = Math.max(1, startPage - offset);
+                                        const physicalEnd = endPage === 99999 ? 99999 : Math.max(1, endPage - offset);
+
+                                        const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${physicalStart}&page_number=lt.${physicalEnd}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
                                         const pages = await pageRes.json();
                                         
                                         const sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
@@ -727,12 +731,16 @@ TOOL USAGE & GROUNDING (CRITICAL):
                                 const start = args.start_page;
                                 const end = args.end_page || (start + 1);
 
-                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id`, { headers: authHeaders });
+                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,page_offset`, { headers: authHeaders });
                                 const json = await res.json();
 
                                 if (json && json.length > 0) {
                                     const bookId = json[0].id;
-                                    const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${start}&page_number=lte.${end}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
+                                    const offset = json[0].page_offset || 0;
+                                    const physicalStart = Math.max(1, start - offset);
+                                    const physicalEnd = Math.max(1, end - offset);
+
+                                    const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${physicalStart}&page_number=lte.${physicalEnd}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
                                     const pages = await pageRes.json();
 
                                     const sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
