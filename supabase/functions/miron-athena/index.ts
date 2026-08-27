@@ -61,9 +61,9 @@ If you are explaining a specific paragraph, formula, or concept and you believe 
 
 INTERACTIVE QUIZ CAPABILITY (TUTOR MODE):
 If you want to test the student's knowledge on the topic you just explained, call the "render_quiz" tool.
-- You can pull real exam questions from the database by specifying the course code and section title, OR you can generate "custom" questions yourself.
-- The tool will return a placeholder tag (e.g., [QUIZ_0]). Insert this tag in your response where you want the UI to render.
-- The user will interact with the UI, click "Submit", and their answers will automatically be sent back to you as a new message. You should then evaluate their answers and provide feedback.`;
+- You can pull real exam questions from the database by specifying the course code and section title, OR you can generate "custom" questions yourself in the tool call arguments.
+- CRITICAL QUIZ RULE: You MUST NEVER type '[QUIZ_0]' or any quiz tag directly in your response on your own. If you want to quiz the student, you MUST execute the 'render_quiz' tool call. You can ONLY insert a quiz tag into your response text if the tool call was actually executed and returned that tag to you in the tool response.
+- The user will interact with the UI, click "Submit", and their answers will automatically be sent back to you as a new message for you to evaluate.`;
 
 // Define the Tools (Function Calling)
 const toolsDefinition = {
@@ -762,6 +762,14 @@ serve(async (req) => {
       } catch (e) {
         finalText = "Here is the explanation based on the textbook material reviewed above.";
       }
+    }
+
+    // Clean up hallucinated orphan tags if tools were not executed
+    if (inlineQuizzes.length === 0) {
+      finalText = finalText.replace(/\[QUIZ_\d+\]/g, '').trim();
+    }
+    if (inlineSnapshots.length === 0) {
+      finalText = finalText.replace(/\[SNAPSHOT_\d+\]/g, '').trim();
     }
 
     return new Response(JSON.stringify({ 
