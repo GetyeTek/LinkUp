@@ -130,3 +130,22 @@
     color: #888;
     cursor: not-allowed;
 }
+
+/* Force Marked.js paragraphs inside interactive quiz content to flow correctly */
+.mq-q-content p, .mq-opt-content p {
+    margin: 0;
+    display: inline;
+}
+
+/* Gracefully handle block-rendered KaTex elements to prevent UI tearing */
+.mq-q-content .katex-display, .mq-opt-content .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 10px 0;
+    margin: 12px 0;
+    scrollbar-width: none;
+}
+
+.mq-q-content .katex-display::-webkit-scrollbar, .mq-opt-content .katex-display::-webkit-scrollbar {
+    display: none;
+}
