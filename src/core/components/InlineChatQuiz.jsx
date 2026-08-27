@@ -5,12 +5,8 @@ import DOMPurify from 'dompurify';
 import { usePlatform, logQuestionAttempt } from '@linkup-platform/sdk-core';
 import './InlineChatQuiz.css';
 
-const renderMathText = (content, identifier = "QuizItem") => {
+const renderMathText = (content) => {
     if (!content) return "";
-    
-    console.group(`[InlineChatQuiz Debug] Rendering: ${identifier}`);
-    console.log("1. Original Content:", content);
-    
     let str = String(content);
     const mathMap = new Map();
     let counter = 0;
@@ -24,7 +20,6 @@ const renderMathText = (content, identifier = "QuizItem") => {
             mathMap.set(key, html);
             return key;
         } catch (e) {
-            console.error("KaTeX Display Render Error:", e);
             return match;
         }
     });
@@ -38,41 +33,26 @@ const renderMathText = (content, identifier = "QuizItem") => {
             mathMap.set(key, html);
             return key;
         } catch (e) {
-            console.error("KaTeX Inline Render Error:", e);
             return match;
         }
     });
 
-    console.log("2. After KaTeX Extraction:", str);
-    console.log("Extracted Math Map:", Object.fromEntries(mathMap));
-
     // Parse Markdown to match the MironChat.jsx pipeline and safely handle HTML entities
     let html = marked.parse(str);
-    console.log("3. After marked.parse():", html);
 
     mathMap.forEach((katexHtml, key) => {
         html = html.split(key).join(katexHtml);
     });
-    console.log("4. After KaTeX Re-injection:", html);
 
-    const finalHtml = DOMPurify.sanitize(html, {
+    return DOMPurify.sanitize(html, {
         USE_PROFILES: { html: true, mathMl: true, svg: true }
     });
-    
-    console.log("5. After DOMPurify (Final):", finalHtml);
-    console.groupEnd();
-
-    return finalHtml;
 };
 
 const InlineChatQuiz = ({ quiz, onSubmit }) => {
     const { sessionUser } = usePlatform();
     const [answers, setAnswers] = useState({});
     const [submitted, setSubmitted] = useState(false);
-
-    React.useEffect(() => {
-        console.log("[InlineChatQuiz Debug] Mounted with Quiz Prop:", quiz);
-    }, [quiz]);
 
     const handleSelect = (qId, val) => {
         if (!submitted) setAnswers(prev => ({...prev, [qId]: val}));
@@ -122,7 +102,7 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
                     <div key={q.id || i} className="mq-question">
                         <div className="mq-q-text">
                             <span className="mq-q-num">{i+1}. </span>
-                            <div className="mq-q-content" style={{ display: 'inline' }} dangerouslySetInnerHTML={{ __html: renderMathText(q.text, `Question ${i+1}`) }} />
+                            <div className="mq-q-content" style={{ display: 'inline' }} dangerouslySetInnerHTML={{ __html: renderMathText(q.text) }} />
                         </div>
                         
                         {q.question_type === 'true_false' ? (
@@ -137,7 +117,7 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
                                     return (
                                         <button key={oIdx} className={`mq-opt-btn ${answers[q.id] === optText ? 'active' : ''}`} onClick={() => handleSelect(q.id, optText)}>
                                             <div className="mq-opt-ind"></div>
-                                            <div className="mq-opt-content" style={{ flex: 1, textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: renderMathText(optText, `Option ${oIdx + 1} (Q${i+1})`) }} />
+                                            <div className="mq-opt-content" style={{ flex: 1, textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: renderMathText(optText) }} />
                                         </button>
                                     );
                                 })}
