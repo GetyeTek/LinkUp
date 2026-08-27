@@ -78,21 +78,21 @@ const toolsDefinition = {
       parameters: {
         type: "OBJECT",
         properties: {
-          query: { type: "STRING", description: "The exact course NAME or CODE (e.g., 'GENERAL BIOLOGY' or 'BIOL 1012')" }
+          course_code: { type: "STRING", description: "The course code (e.g., 'PHYS 1011' or 'BIOL 1012')" }
         },
-        required: ["query"]
+        required: ["course_code"]
       }
     },
     {
       name: "read_book_section",
-      description: "Read the full text of a specific chapter or section. Use the exact section_title obtained from the TOC.",
+      description: "Read the full text of a specific chapter or section using the exact section_title from the TOC.",
       parameters: {
         type: "OBJECT",
         properties: {
-          book_id: { type: "STRING", description: "The exact book_id returned from get_book_toc" },
+          course_code: { type: "STRING", description: "The course code (e.g., 'PHYS 1011')" },
           section_title: { type: "STRING", description: "Exact title of the section from the TOC" }
         },
-        required: ["book_id", "section_title"]
+        required: ["course_code", "section_title"]
       }
     },
     {
@@ -101,10 +101,10 @@ const toolsDefinition = {
       parameters: {
         type: "OBJECT",
         properties: {
-          book_id: { type: "STRING" },
-          page_number: { type: "INTEGER" }
+          course_code: { type: "STRING", description: "The course code (e.g., 'PHYS 1011')" },
+          page_number: { type: "INTEGER", description: "The page number to open" }
         },
-        required: ["book_id", "page_number"]
+        required: ["course_code", "page_number"]
       }
     },
     {
@@ -363,33 +363,34 @@ serve(async (req) => {
               toolResult = { status: "success", matches: topFive.map(m => m.metadata) };
             }
             else if (name === "get_book_toc") {
-              const code = args.query.toUpperCase().trim();
+              const code = (args.course_code || args.query || "").toUpperCase().trim();
               executedTools.push(`Consulting TOC for: ${code}`);
               
               const { data, error } = await supabase.from('books')
-                .select('id, title, toc')
+                .select('id, title, toc, page_offset')
                 .eq('course_code', code)
                 .single();
 
               if (data) {
-                const tocString = JSON.stringify(data.toc);
-                console.log(`\n--- [PIPELINE DIAGNOSTIC: TOC] ---`);
-                console.log(`Book: ${data.title} (${code})`);
-                console.log(`TOC Size: ${tocString.length} chars`);
-                console.log(`TOC Snippet: ${tocString.substring(0, 200)}...`);
-                console.log(`----------------------------------\n`);
-                
-                toolResult = { status: "success", book_id: data.id, title: data.title, toc: data.toc };
+                toolResult = { status: "success", book_id: data.id, title: data.title, course_code: code, page_offset: data.page_offset || 0, toc: data.toc };
               } else {
                 console.warn(`[TOC ERROR] No book found for code: ${code}`);
                 toolResult = { status: "error", message: `Book with course code ${code} not found.` };
               }
             } 
             else if (name === "read_book_section") {
-              executedTools.push(`Reading material: "${args.section_title}"`);
-              const { data: books } = await supabase.from('books').select('id, toc').eq('id', args.book_id).single();
+              const code = (args.course_code || "").toUpperCase().trim();
+              executedTools.push(`Reading material: "${args.section_title}" (${code || args.book_id})`);
               
-              if (books) {
+              let query = supabase.from('books').select('id, title, toc, page_offset');
+              if (code) {
+                query = query.eq('course_code', code);
+              } else if (args.book_id) {
+                query = query.eq('id', args.book_id);
+              }
+              const { data: book } = await query.single();
+              
+              if (book) {
                 const flatToc: any[] = [];
                 function flatten(nodes: any[]) {
                   for (const n of nodes) {
@@ -397,7 +398,7 @@ serve(async (req) => {
                     if (n.children) flatten(n.children);
                   }
                 }
-                flatten(books.toc || []);
+                flatten(book.toc || []);
 
                 const targetIdx = flatToc.findIndex((n: any) => n.title.toLowerCase().includes(args.section_title.toLowerCase()));
                 
@@ -412,11 +413,15 @@ serve(async (req) => {
                     }
                   }
 
+                  const offset = book.page_offset || 0;
+                  const physicalStartPage = Math.max(1, startPage - offset);
+                  const physicalEndPage = endPage === 99999 ? 99999 : Math.max(1, endPage - offset);
+
                   const { data: pages } = await supabase.from('book_pages')
                     .select('page_number, content_json')
-                    .eq('book_id', args.book_id)
-                    .gte('page_number', startPage)
-                    .lt('page_number', endPage)
+                    .eq('book_id', book.id)
+                    .gte('page_number', physicalStartPage)
+                    .lt('page_number', physicalEndPage)
                     .order('page_number', { ascending: true })
                     .limit(10);
 
@@ -429,23 +434,38 @@ serve(async (req) => {
                   toolResult = { status: "error", message: "Section not found in TOC." };
                 }
               } else {
-                toolResult = { status: "error", message: "Book ID invalid." };
+                toolResult = { status: "error", message: "Book not found." };
               }
             }
             else if (name === "open_page") {
-              executedTools.push(`Located anchor at Book ${args.book_id}, Page ${args.page_number}`);
-              uiCommand = { action: 'open_page', book_id: args.book_id, page_number: args.page_number };
+              const code = (args.course_code || "").toUpperCase().trim();
+              let bookId = args.book_id;
+              let offset = 0;
+              if (code) {
+                const { data: b } = await supabase.from('books').select('id, page_offset').eq('course_code', code).single();
+                if (b) {
+                  bookId = b.id;
+                  offset = b.page_offset || 0;
+                }
+              }
+              const physicalPage = Math.max(1, args.page_number - offset);
+              executedTools.push(`Navigating to ${code || bookId}, Page ${physicalPage}`);
+              uiCommand = { action: 'open_page', book_id: bookId, page_number: physicalPage };
               toolResult = { status: "success", message: "User is being navigated to the page." };
             }
             else if (name === "render_book_snapshot") {
-              executedTools.push(`Prepared visual snapshot for ${args.course_code}, Page ${args.page_number}`);
-              const { data: book } = await supabase.from('books').select('id, title').eq('course_code', args.course_code.toUpperCase().trim()).single();
+              const code = args.course_code.toUpperCase().trim();
+              const { data: book } = await supabase.from('books').select('id, title, page_offset').eq('course_code', code).single();
               
               if (book) {
+                const offset = book.page_offset || 0;
+                const physicalPage = Math.max(1, args.page_number - offset);
+                executedTools.push(`Prepared visual snapshot for ${code}, Page ${physicalPage}`);
+
                 const { data: page } = await supabase.from('book_pages')
                   .select('content_json')
                   .eq('book_id', book.id)
-                  .eq('page_number', args.page_number)
+                  .eq('page_number', physicalPage)
                   .single();
                   
                 if (page && page.content_json) {
@@ -459,13 +479,13 @@ serve(async (req) => {
                     id: snapId,
                     course_code: args.course_code,
                     book_title: book.title,
-                    page_number: args.page_number,
+                    page_number: physicalPage,
                     blocks: blocksToRender
                   });
                   
                   toolResult = { status: "success", instruction: `Snapshot ready. Insert [SNAPSHOT_${snapId}] to render.` };
                 } else {
-                  toolResult = { status: "error", message: "Page content not found." };
+                  toolResult = { status: "error", message: `Page ${physicalPage} content not found.` };
                 }
               } else {
                 toolResult = { status: "error", message: "Course code not found." };
