@@ -1,6 +1,50 @@
 import React, { useState } from 'react';
+import katex from 'https://esm.sh/katex@0.16.11';
+import DOMPurify from 'dompurify';
 import { usePlatform, logQuestionAttempt } from '@linkup-platform/sdk-core';
 import './InlineChatQuiz.css';
+
+const renderMathText = (content) => {
+    if (!content) return "";
+    let str = String(content);
+    const mathMap = new Map();
+    let counter = 0;
+
+    // 1. Display Equations ($...$ and \[...\])
+    str = str.replace(/\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]/g, (match, p1, p2) => {
+        const math = p1 || p2;
+        const key = `@@@QUIZ_MATH_DISP_${counter++}@@@`;
+        try {
+            const html = katex.renderToString(math.trim(), { displayMode: true, throwOnError: false, strict: false });
+            mathMap.set(key, html);
+            return key;
+        } catch (e) {
+            return match;
+        }
+    });
+
+    // 2. Inline Math ($...$ and \(...\))
+    str = str.replace(/(?<!\\)\$([^\$\n]+?)(?<!\\)\$|\\\(([\s\S]+?)\\\)/g, (match, p1, p2) => {
+        const math = p1 || p2;
+        const key = `@@@QUIZ_MATH_INL_${counter++}@@@`;
+        try {
+            const html = katex.renderToString(math.trim(), { displayMode: false, throwOnError: false, strict: false });
+            mathMap.set(key, html);
+            return key;
+        } catch (e) {
+            return match;
+        }
+    });
+
+    let html = str;
+    mathMap.forEach((katexHtml, key) => {
+        html = html.split(key).join(katexHtml);
+    });
+
+    return DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true, mathMl: true, svg: true }
+    });
+};
 
 const InlineChatQuiz = ({ quiz, onSubmit }) => {
     const { sessionUser } = usePlatform();
@@ -30,9 +74,11 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
                     }
                 }
 
+                const isUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
                 logQuestionAttempt({
                     userId: sessionUser.id,
-                    questionId: q.id || null,
+                    questionId: isUuid(q.id) ? q.id : null,
                     courseCode: quiz.course_code || 'Miron Chat',
                     topicTag: quiz.title || 'AI Quiz',
                     sourceType: 'miron_quiz',
@@ -51,7 +97,10 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
             <div className="mq-body">
                 {quiz.questions.map((q, i) => (
                     <div key={q.id || i} className="mq-question">
-                        <div className="mq-q-text"><span className="mq-q-num">{i+1}.</span> {q.text}</div>
+                        <div className="mq-q-text">
+                            <span className="mq-q-num">{i+1}.</span>
+                            <span dangerouslySetInnerHTML={{ __html: renderMathText(q.text) }} />
+                        </div>
                         
                         {q.question_type === 'true_false' ? (
                             <div className="mq-tf-pad">
@@ -65,7 +114,7 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
                                     return (
                                         <button key={oIdx} className={`mq-opt-btn ${answers[q.id] === optText ? 'active' : ''}`} onClick={() => handleSelect(q.id, optText)}>
                                             <div className="mq-opt-ind"></div>
-                                            <span>{optText}</span>
+                                            <span dangerouslySetInnerHTML={{ __html: renderMathText(optText) }} />
                                         </button>
                                     );
                                 })}
