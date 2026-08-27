@@ -59,7 +59,7 @@ function findBestMatchingTocNode(tocTree, rawQuery, confidenceThreshold = 0.80) 
   if (!tocTree || !Array.isArray(tocTree) || !rawQuery) return null;
 
   const flatList = [];
-  function flatten(nodes, parentTitle = null, chapterNum = null) {
+  function flatten(nodes, parentTitle = null, chapterNum = null, depth = 0) {
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
       const currChapter = parentTitle ? chapterNum : (i + 1);
@@ -70,10 +70,11 @@ function findBestMatchingTocNode(tocTree, rawQuery, confidenceThreshold = 0.80) 
         title: n.title,
         page: n.page,
         chapterNum: currChapter,
+        depth: depth,
         breadcrumb
       });
       if (n.children && Array.isArray(n.children)) {
-        flatten(n.children, n.title, currChapter);
+        flatten(n.children, n.title, currChapter, depth + 1);
       }
     }
   }
@@ -691,8 +692,8 @@ You have access to textbooks for the following courses:
 TOOL USAGE & GROUNDING (CRITICAL):
 - When asked a conceptual or factual question regarding these courses, you MUST ground your answer in the textbook.
 - Step 1: Call "get_book_toc" using the course code to find where the topic lives.
-- Step 2: STRONGLY PREFERRED - Call "read_book_section" passing the EXACT identical section title from the TOC. This prevents you from having to guess page ranges and lets the system pull the whole topic.
-- Use "read_book_page" ONLY if the student explicitly asks about a specific page number or a specific page range (e.g., "what does page 34 to 37 talk about").
+- Step 2: Call "read_book_section" passing the exact section title or sub-section title from the TOC. Requesting a parent topic (e.g. "1.1") automatically delivers all its sub-sections in one call. Do not step down child by child.
+- Use "read_book_page" ONLY if the student explicitly asks about a specific page number or page range.
 - When you answer, make sure to naturally reference the book and the page number as a framework (e.g., "As written on page 73 of your book..."). Do not overdo it; make it sound organic.`
               }]
           };
@@ -849,10 +850,12 @@ TOOL USAGE & GROUNDING (CRITICAL):
                                     if (matchResult) {
                                         const { matchedItem, flatList } = matchResult;
                                         const startPage = matchedItem.page;
+                                        const targetDepth = matchedItem.depth;
                                         let endPage = 99999;
                                         for (let i = matchedItem.originalIndex + 1; i < flatList.length; i++) {
-                                            if (flatList[i].page && flatList[i].page > startPage) {
-                                                endPage = flatList[i].page;
+                                            const candidate = flatList[i];
+                                            if (candidate.depth <= targetDepth && candidate.page && candidate.page > startPage) {
+                                                endPage = candidate.page;
                                                 break;
                                             }
                                         }
