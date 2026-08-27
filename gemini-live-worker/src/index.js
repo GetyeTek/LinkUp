@@ -711,8 +711,8 @@ TOOL USAGE & GROUNDING (CRITICAL):
                                             }
                                         }
 
-                                        const physicalStart = Math.max(1, startPage - offset);
-                                        const physicalEnd = endPage === 99999 ? 99999 : Math.max(1, endPage - offset);
+                                        const physicalStart = Math.max(1, startPage + offset);
+                                        const physicalEnd = endPage === 99999 ? 99999 : Math.max(1, endPage + offset);
 
                                         const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${physicalStart}&page_number=lt.${physicalEnd}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
                                         const pages = await pageRes.json();
@@ -737,8 +737,8 @@ TOOL USAGE & GROUNDING (CRITICAL):
                                 if (json && json.length > 0) {
                                     const bookId = json[0].id;
                                     const offset = json[0].page_offset || 0;
-                                    const physicalStart = Math.max(1, start - offset);
-                                    const physicalEnd = Math.max(1, end - offset);
+                                    const physicalStart = Math.max(1, start + offset);
+                                    const physicalEnd = Math.max(1, end + offset);
 
                                     const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${physicalStart}&page_number=lte.${physicalEnd}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
                                     const pages = await pageRes.json();
