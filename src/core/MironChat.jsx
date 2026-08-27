@@ -15,7 +15,7 @@ const renderMironMarkdown = (content) => {
         const math = p1 || p2;
         const key = `@@@MATH_DISP_${counter++}@@@`;
         try {
-            const html = katex.renderToString(math.trim(), { displayMode: true, throwOnError: false });
+            const html = katex.renderToString(math.trim(), { displayMode: true, throwOnError: false, strict: false });
             mathMap.set(key, html);
             return key;
         } catch (e) {
@@ -28,7 +28,7 @@ const renderMironMarkdown = (content) => {
         const math = p1 || p2;
         const key = `@@@MATH_INL_${counter++}@@@`;
         try {
-            const html = katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+            const html = katex.renderToString(math.trim(), { displayMode: false, throwOnError: false, strict: false });
             mathMap.set(key, html);
             return key;
         } catch (e) {
@@ -491,7 +491,7 @@ const MironChat = ({ onClose, initialContext }) => {
                                     if (quizMatch) {
                                         const quizId = parseInt(quizMatch[1], 10);
                                         const quiz = m.quizzes?.find(q => q.id === quizId);
-                                        if (!quiz) return <span key={idx} style={{color:'red'}}>[Quiz Error]</span>;
+                                        if (!quiz) return null;
                                         return <InlineChatQuiz key={idx} quiz={quiz} onSubmit={sendMessage} />;
                                     }
 
