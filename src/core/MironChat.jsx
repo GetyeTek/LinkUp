@@ -1,8 +1,54 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'https://esm.sh/marked';
+import katex from 'https://esm.sh/katex@0.16.11';
 import { invokeMiron } from '../config/api.js';
 import { supabase, getComponent, usePlatform, telemetry } from '@linkup-platform/sdk-core';
 import DOMPurify from 'dompurify';
+
+const renderMironMarkdown = (content) => {
+    if (!content) return "";
+    const mathMap = new Map();
+    let counter = 0;
+
+    // 1. Extract and render Display Equations ($...$ and \[...\])
+    let processed = content.replace(/\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]/g, (match, p1, p2) => {
+        const math = p1 || p2;
+        const key = `@@@MATH_DISP_${counter++}@@@`;
+        try {
+            const html = katex.renderToString(math.trim(), { displayMode: true, throwOnError: false });
+            mathMap.set(key, html);
+            return key;
+        } catch (e) {
+            return match;
+        }
+    });
+
+    // 2. Extract and render Inline Math ($...$ and \(...\))
+    processed = processed.replace(/(?<!\\)\$([^\$\n]+?)(?<!\\)\$|\\\(([\s\S]+?)\\\)/g, (match, p1, p2) => {
+        const math = p1 || p2;
+        const key = `@@@MATH_INL_${counter++}@@@`;
+        try {
+            const html = katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+            mathMap.set(key, html);
+            return key;
+        } catch (e) {
+            return match;
+        }
+    });
+
+    // 3. Convert Markdown to HTML
+    let html = marked.parse(processed);
+
+    // 4. Inject rendered KaTeX HTML equations back
+    mathMap.forEach((katexHtml, key) => {
+        html = html.split(key).join(katexHtml);
+    });
+
+    // 5. Sanitize HTML
+    return DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true, mathMl: true, svg: true }
+    });
+};
 import InteractiveBoard from './components/InteractiveBoard.jsx';
 import InlineBoardTrigger from './components/InlineBoardTrigger.jsx';
 import InlineChatQuiz from './components/InlineChatQuiz.jsx';
@@ -477,7 +523,7 @@ const MironChat = ({ onClose, initialContext }) => {
                                         <div 
                                             key={idx} 
                                             className="miron-markdown-chunk"
-                                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(part)) }} 
+                                            dangerouslySetInnerHTML={{ __html: renderMironMarkdown(part) }} 
                                         />
                                     );
                                 })}
