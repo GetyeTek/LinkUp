@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { marked } from 'https://esm.sh/marked';
 import katex from 'https://esm.sh/katex@0.16.11';
 import DOMPurify from 'dompurify';
 import { usePlatform, logQuestionAttempt } from '@linkup-platform/sdk-core';
@@ -36,7 +37,9 @@ const renderMathText = (content) => {
         }
     });
 
-    let html = str;
+    // Parse Markdown to match the MironChat.jsx pipeline and safely handle HTML entities
+    let html = marked.parse(str);
+
     mathMap.forEach((katexHtml, key) => {
         html = html.split(key).join(katexHtml);
     });
@@ -98,8 +101,8 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
                 {quiz.questions.map((q, i) => (
                     <div key={q.id || i} className="mq-question">
                         <div className="mq-q-text">
-                            <span className="mq-q-num">{i+1}.</span>
-                            <span dangerouslySetInnerHTML={{ __html: renderMathText(q.text) }} />
+                            <span className="mq-q-num">{i+1}. </span>
+                            <div className="mq-q-content" style={{ display: 'inline' }} dangerouslySetInnerHTML={{ __html: renderMathText(q.text) }} />
                         </div>
                         
                         {q.question_type === 'true_false' ? (
@@ -114,7 +117,7 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
                                     return (
                                         <button key={oIdx} className={`mq-opt-btn ${answers[q.id] === optText ? 'active' : ''}`} onClick={() => handleSelect(q.id, optText)}>
                                             <div className="mq-opt-ind"></div>
-                                            <span dangerouslySetInnerHTML={{ __html: renderMathText(optText) }} />
+                                            <div className="mq-opt-content" style={{ flex: 1, textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: renderMathText(optText) }} />
                                         </button>
                                     );
                                 })}
