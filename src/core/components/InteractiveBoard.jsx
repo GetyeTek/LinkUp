@@ -376,20 +376,17 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
         );
     };
 
-    return (
-        <div 
-            className="live-board-canvas"
-            ref={canvasRef}
-            onPointerDown={handleCanvasPointerDown}
-            onPointerMove={handleCanvasPointerMove}
-            onPointerUp={handleCanvasPointerUp}
-            style={{ position: 'absolute', inset: 0, zIndex: 100 }}
-        >
-            <button className="close-board-btn" onClick={onClose} title="Collapse Board">
-                <i className="fas fa-compress-alt"></i>
-            </button>
+            return (
             <div 
-                className="live-board-viewport"
+                className="live-board-canvas"
+                ref={canvasRef}
+                onPointerDown={handleCanvasPointerDown}
+                onPointerMove={handleCanvasPointerMove}
+                onPointerUp={handleCanvasPointerUp}
+                style={{ position: 'absolute', inset: 0, zIndex: 100 }}
+            >
+                <div 
+                    className="live-board-viewport"
                 style={{ 
                     transformOrigin: '0 0',
                     transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${boardScale})`,
