@@ -15,6 +15,12 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
     const dragStartOffset = useRef({ x: 0, y: 0 });
     const canvasRef = useRef(null);
     const viewportDims = useRef({ w: 400, h: 800 });
+    const scaleRef = useRef(boardScale);
+    const hasInitialCalibrated = useRef(false);
+
+    useEffect(() => {
+        scaleRef.current = boardScale;
+    }, [boardScale]);
 
     const parseCoord = (val, max) => {
         if (val === undefined || val === null) return max / 2;
@@ -29,6 +35,7 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
 
     useEffect(() => {
         if (payload) {
+            hasInitialCalibrated.current = false;
             if (payload.action === 'draw_flow' || payload.action === 'draw') {
                 const { elements, edges } = computeFlowLayout(payload);
                 setBoardElements(elements);
@@ -44,71 +51,86 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
     }, [payload]);
 
     useEffect(() => {
-        if (!canvasRef.current) return;
+        if (!canvasRef.current || !boardElements || boardElements.length === 0) return;
 
-        const calibrateBoard = () => {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-            const { width: W, height: H } = canvas.getBoundingClientRect();
-            viewportDims.current = { w: W, h: H };
+        const canvas = canvasRef.current;
+        const { width: W, height: H } = canvas.getBoundingClientRect();
+        viewportDims.current = { w: W, h: H };
 
-            if (boardElements && boardElements.length > 0) {
-                // Diagram Mode Calibration
-                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
 
-                boardElements.forEach(el => {
-                    const cx = parseCoord(el.x, W);
-                    const cy = parseCoord(el.y, H);
-                    let rx = 100, ry = 100;
-                    if (el.type === 'rectangle' || el.type === 'rect') { rx = 140; ry = 90; }
-                    else if (el.type === 'text') { rx = 100; ry = 30; }
+        boardElements.forEach(el => {
+            const cx = parseCoord(el.x, W);
+            const cy = parseCoord(el.y, H);
+            let rx = 100, ry = 100;
+            if (el.type === 'rectangle' || el.type === 'rect') { rx = 140; ry = 90; }
+            else if (el.type === 'text') { rx = 100; ry = 30; }
 
-                    minX = Math.min(minX, cx - rx);
-                    maxX = Math.max(maxX, cx + rx);
-                    minY = Math.min(minY, cy - ry);
-                    maxY = Math.max(maxY, cy + ry);
-                });
+            minX = Math.min(minX, cx - rx);
+            maxX = Math.max(maxX, cx + rx);
+            minY = Math.min(minY, cy - ry);
+            maxY = Math.max(maxY, cy + ry);
+        });
 
-                if (minX === Infinity) { minX = 0; maxX = W; minY = 0; maxY = H; }
-                if (maxX - minX < 100) { minX -= 50; maxX += 50; }
-                if (maxY - minY < 100) { minY -= 50; maxY += 50; }
+        if (minX === Infinity) { minX = 0; maxX = W; minY = 0; maxY = H; }
+        if (maxX - minX < 100) { minX -= 50; maxX += 50; }
+        if (maxY - minY < 100) { minY -= 50; maxY += 50; }
 
-                const spanX = maxX - minX;
-                const spanY = maxY - minY;
+        const spanX = maxX - minX;
+        const spanY = maxY - minY;
 
-                const scaleX = W / (spanX + 80);
-                const scaleY = H / (spanY + 80);
-                const idealScale = Math.min(scaleX, scaleY, 1.0);
-                const finalScale = Math.max(0.45, idealScale);
-                setBoardScale(finalScale);
+        const scaleX = W / (spanX + 80);
+        const scaleY = H / (spanY + 80);
+        const idealScale = Math.min(scaleX, scaleY, 1.0);
+        const finalScale = Math.max(0.45, idealScale);
+        setBoardScale(finalScale);
 
-                const contentCenterX = (minX + maxX) / 2;
-                const contentCenterY = (minY + maxY) / 2;
+        const contentCenterX = (minX + maxX) / 2;
+        const contentCenterY = (minY + maxY) / 2;
 
-                setPan({
-                    x: (W / 2) - (contentCenterX * finalScale),
-                    y: (H / 2) - (contentCenterY * finalScale)
-                });
-            } else if (activeBoardBlocks && activeBoardBlocks.length > 0) {
-                // Blackboard Mode Calibration (Fuzzy matching bullet groups)
-                const idealScale = (W - 40) / 800;
-                const finalScale = Math.max(0.4, Math.min(idealScale, 1.0));
-                setBoardScale(finalScale);
-                
-                // Position at top center with comfortable vertical offset
-                setPan({
-                    x: (W / 2) - (400 * finalScale),
-                    y: 40
-                });
+        setPan({
+            x: (W / 2) - (contentCenterX * finalScale),
+            y: (H / 2) - (contentCenterY * finalScale)
+        });
+    }, [boardElements]);
+
+    // Dedicated Blackboard Initial Calibration & Smooth Y-Following
+    useEffect(() => {
+        if (!activeBoardBlocks || activeBoardBlocks.length === 0 || !canvasRef.current) return;
+        const canvas = canvasRef.current;
+        const { width: W, height: H } = canvas.getBoundingClientRect();
+        viewportDims.current = { w: W, h: H };
+
+        // Initial center calibration (only runs once when blackboard starts)
+        if (!hasInitialCalibrated.current && (!boardElements || boardElements.length === 0)) {
+            const idealScale = Math.min((W - 32) / 800, 1.0);
+            const finalScale = Math.max(0.4, idealScale);
+            setBoardScale(finalScale);
+            setPan({
+                x: (W - (800 * finalScale)) / 2,
+                y: 40
+            });
+            hasInitialCalibrated.current = true;
+            return;
+        }
+
+        // Smooth vertical tracking when new content is added
+        const timer = setTimeout(() => {
+            if (groupsContainerRef.current) {
+                const contentHeight = groupsContainerRef.current.offsetHeight;
+                const viewportH = viewportDims.current.h;
+                const currentScale = scaleRef.current;
+                const scaledHeight = contentHeight * currentScale;
+
+                if (scaledHeight > viewportH * 0.65) {
+                    const targetY = (viewportH * 0.75) - scaledHeight;
+                    setPan(prev => ({ ...prev, y: Math.min(40, targetY) }));
+                }
             }
-        };
+        }, 60);
 
-        calibrateBoard();
-        const ro = new ResizeObserver(() => calibrateBoard());
-        ro.observe(canvasRef.current);
-
-        return () => ro.disconnect();
-    }, [boardElements, activeBoardBlocks]);
+        return () => clearTimeout(timer);
+    }, [activeBoardBlocks, boardElements]);
 
     const handleCanvasPointerDown = (e) => {
         if (e.target.closest('.close-board-btn')) return;
@@ -274,20 +296,8 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
                 }
             }
 
-            // Trigger pan side-effect only when bullet count increases
-            if (currentBulletCount > prevBulletCount.current) {
+            if (currentBulletCount !== prevBulletCount.current) {
                 prevBulletCount.current = currentBulletCount;
-                setTimeout(() => {
-                    if (groupsContainerRef.current) {
-                        const contentHeight = groupsContainerRef.current.offsetHeight;
-                        const viewportH = viewportDims.current.h;
-                        // Set pan so the bottom of the content sits comfortably near the bottom of the viewport
-                        const targetY = (viewportH * 0.7) - (contentHeight * boardScale);
-                        setPan(p => ({ ...p, y: targetY }));
-                    }
-                }, 50);
-            } else if (currentBulletCount < prevBulletCount.current) {
-                prevBulletCount.current = currentBulletCount; // Handle clear
             }
             
             return (
