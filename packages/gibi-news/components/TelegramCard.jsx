@@ -9,6 +9,7 @@ const formatChannelName = (channel) => {
 
 const TelegramCard = ({ post }) => {
     const [expanded, setExpanded] = useState(false);
+    const [imgError, setImgError] = useState(false);
     const cardRef = useRef(null);
 
     // Auto-collapse logic via Intersection Observer
@@ -32,12 +33,13 @@ const TelegramCard = ({ post }) => {
     
     return (
         <div className="telegram-card" ref={cardRef}>
-            {proxyImgUrl && (
+            {proxyImgUrl && !imgError && (
                 <img 
                     src={proxyImgUrl} 
                     alt="News Media" 
                     className="tc-image" 
                     referrerPolicy="no-referrer" 
+                    onError={() => setImgError(true)}
                 />
             )}
             <div className="tc-content">
