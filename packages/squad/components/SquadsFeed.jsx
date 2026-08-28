@@ -19,8 +19,13 @@ const SquadsFeed = ({
     joiningSquadId
 }) => {
     
-    const myClasses = conversations.filter(c => c.type === 'group' && c.metadata?.focus === 'Class');
-    const mySquads = conversations.filter(c => c.type === 'group' && c.metadata?.focus !== 'Class');
+    const myClasses = conversations
+        .filter(c => c.type === 'group' && c.metadata?.focus === 'Class')
+        .sort((a, b) => new Date(b.last_message_at || b.created_at || 0) - new Date(a.last_message_at || a.created_at || 0));
+
+    const mySquads = conversations
+        .filter(c => c.type === 'group' && c.metadata?.focus !== 'Class')
+        .sort((a, b) => new Date(b.last_message_at || b.created_at || 0) - new Date(a.last_message_at || a.created_at || 0));
 
     const handlePreviewJoin = (chat) => {
         if (forwardTargetMsg) {
