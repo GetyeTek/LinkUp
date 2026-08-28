@@ -53,9 +53,7 @@ const MessagesFeed = ({
                             {(() => {
                                 const note = conversations.find(c => c.type === 'notes');
                                 if (!note) return 'Save thoughts, files, or links here...';
-                                if (note.last_message_text?.trim()) return note.last_message_text;
-                                if (note.last_message_at) return '📎 Note Attachment';
-                                return 'Save thoughts, files, or links here...';
+                                return note.last_message_text?.trim() || 'Save thoughts, files, or links here...';
                             })()}
                         </div>
                     </div>
@@ -97,9 +95,7 @@ const MessagesFeed = ({
                                     <div className="last-message">
                                         {chat.last_message_text?.trim() 
                                             ? chat.last_message_text 
-                                            : (chat.last_message_at 
-                                                ? '📎 Photo or File' 
-                                                : (isDm ? 'No messages yet' : 'Group established'))
+                                            : (isDm ? 'No messages yet' : 'Group established')
                                         }
                                     </div>
                                 </div>
