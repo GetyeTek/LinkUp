@@ -332,12 +332,12 @@
     flex-direction: column;
     gap: 3.5rem;
     width: 800px;
-    padding: 4rem;
+    padding: 4rem 2rem;
     position: absolute;
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
     pointer-events: none;
+    box-sizing: border-box;
 }
 
 .board-group {
