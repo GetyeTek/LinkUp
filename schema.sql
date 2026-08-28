@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-08-26T16:01:33.824Z
+-- Date: 2026-08-28T12:17:45.131Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -496,16 +496,6 @@ BEGIN
 END;
 
 
--- Function: update_conv_last_message
-
-BEGIN
-  UPDATE public.conversations 
-  SET last_message_at = NEW.created_at 
-  WHERE id = NEW.conversation_id;
-  RETURN NEW;
-END;
-
-
 -- Function: is_member_of
 
 BEGIN
@@ -513,6 +503,16 @@ BEGIN
     SELECT 1 FROM public.conversation_members
     WHERE conversation_id = conv_id AND user_id = auth.uid()
   );
+END;
+
+
+-- Function: update_conv_last_message
+
+BEGIN
+  UPDATE public.conversations 
+  SET last_message_at = NEW.created_at 
+  WHERE id = NEW.conversation_id;
+  RETURN NEW;
 END;
 
 
@@ -1220,70 +1220,6 @@ BEGIN
     ELSE
         INSERT INTO public.poll_votes (message_id, user_id, option_index) VALUES (req_message_id, auth.uid(), req_option_index);
     END IF;
-END;
-
-
--- Function: get_user_conversations
-
-BEGIN
-  RETURN QUERY
-  SELECT 
-    c.id as conversation_id,
-    c.type::text,
-    c.title,
-    c.avatar_url,
-    c.last_message_at,
-    (
-        SELECT CASE 
-                 WHEN COALESCE(m.text, '') != '' THEN m.text 
-                 WHEN m.attachments IS NOT NULL AND jsonb_typeof(m.attachments) = 'array' AND jsonb_array_length(m.attachments) > 0 AND m.attachments->0->>'type' = 'poll' THEN '📊 Poll' 
-                 ELSE '' 
-               END 
-        FROM public.messages m 
-        WHERE m.conversation_id = c.id 
-        ORDER BY m.created_at DESC 
-        LIMIT 1
-    ) as last_message_text,
-    (
-        SELECT count(*) 
-        FROM public.messages m2 
-        WHERE m2.conversation_id = c.id 
-          AND m2.sender_id != req_user_id 
-          AND m2.created_at > cm.last_read_at
-    ) as unread_count,
-    (
-        SELECT p.full_name 
-        FROM public.conversation_members cm2 
-        JOIN public.profiles p ON p.id = cm2.user_id 
-        WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id 
-        LIMIT 1
-    ) as other_user_name,
-    (
-        SELECT p.avatar_url 
-        FROM public.conversation_members cm2 
-        JOIN public.profiles p ON p.id = cm2.user_id 
-        WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id 
-        LIMIT 1
-    ) as other_user_avatar,
-    (
-        SELECT p.id 
-        FROM public.conversation_members cm2 
-        JOIN public.profiles p ON p.id = cm2.user_id 
-        WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id 
-        LIMIT 1
-    ) as other_user_id,
-    (
-        SELECT p.last_seen_at 
-        FROM public.conversation_members cm2 
-        JOIN public.profiles p ON p.id = cm2.user_id 
-        WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id 
-        LIMIT 1
-    ) as other_user_last_seen,
-    COALESCE(c.metadata, '{}'::jsonb) as metadata
-  FROM public.conversations c
-  JOIN public.conversation_members cm ON c.id = cm.conversation_id
-  WHERE cm.user_id = req_user_id
-  ORDER BY c.last_message_at DESC;
 END;
 
 
@@ -2653,6 +2589,70 @@ BEGIN
         'progress_ratio', v_ratio,
         'courses', v_courses
     );
+END;
+
+
+-- Function: get_user_conversations
+
+BEGIN
+  RETURN QUERY
+  SELECT 
+    c.id as conversation_id,
+    c.type::text,
+    c.title,
+    c.avatar_url,
+    COALESCE(c.last_message_at, c.created_at) as last_message_at,
+    (
+        SELECT CASE 
+                 WHEN COALESCE(m.text, '') != '' THEN m.text 
+                 WHEN m.attachments IS NOT NULL AND jsonb_typeof(m.attachments) = 'array' AND jsonb_array_length(m.attachments) > 0 AND m.attachments->0->>'type' = 'poll' THEN '📊 Poll' 
+                 ELSE '' 
+               END 
+        FROM public.messages m 
+        WHERE m.conversation_id = c.id 
+        ORDER BY m.created_at DESC 
+        LIMIT 1
+    ) as last_message_text,
+    (
+        SELECT count(*) 
+        FROM public.messages m2 
+        WHERE m2.conversation_id = c.id 
+          AND m2.sender_id != req_user_id 
+          AND m2.created_at > cm.last_read_at
+    ) as unread_count,
+    (
+        SELECT p.full_name 
+        FROM public.conversation_members cm2 
+        JOIN public.profiles p ON p.id = cm2.user_id 
+        WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id 
+        LIMIT 1
+    ) as other_user_name,
+    (
+        SELECT p.avatar_url 
+        FROM public.conversation_members cm2 
+        JOIN public.profiles p ON p.id = cm2.user_id 
+        WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id 
+        LIMIT 1
+    ) as other_user_avatar,
+    (
+        SELECT p.id 
+        FROM public.conversation_members cm2 
+        JOIN public.profiles p ON p.id = cm2.user_id 
+        WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id 
+        LIMIT 1
+    ) as other_user_id,
+    (
+        SELECT p.last_seen_at 
+        FROM public.conversation_members cm2 
+        JOIN public.profiles p ON p.id = cm2.user_id 
+        WHERE cm2.conversation_id = c.id AND cm2.user_id != req_user_id 
+        LIMIT 1
+    ) as other_user_last_seen,
+    COALESCE(c.metadata, '{}'::jsonb) as metadata
+  FROM public.conversations c
+  JOIN public.conversation_members cm ON c.id = cm.conversation_id
+  WHERE cm.user_id = req_user_id
+  ORDER BY COALESCE(c.last_message_at, c.created_at) DESC NULLS LAST;
 END;
 
 
