@@ -10,29 +10,54 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
     }, [isMicActive]);
 
     const playAudioChunk = (base64Data) => {
+        if (!base64Data) return;
+
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
         }
         const ctx = audioContextRef.current;
         if (ctx.state === 'suspended') ctx.resume();
-        
-        const rawString = atob(base64Data);
-        const array = new Uint8Array(new ArrayBuffer(rawString.length));
-        for (let i = 0; i < rawString.length; i++) array[i] = rawString.charCodeAt(i);
-        const pcm16 = new Int16Array(array.buffer);
-        const float32 = new Float32Array(pcm16.length);
-        for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768.0;
 
-        const buffer = ctx.createBuffer(1, float32.length, 24000);
+        // 1. Fast PCM16 to Float32 Conversion
+        const rawString = atob(base64Data);
+        const len = rawString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) bytes[i] = rawString.charCodeAt(i);
+
+        const pcm16 = new Int16Array(bytes.buffer);
+        const sampleCount = pcm16.length;
+        if (sampleCount === 0) return;
+
+        const float32 = new Float32Array(sampleCount);
+        for (let i = 0; i < sampleCount; i++) {
+            float32[i] = pcm16[i] / 32768.0;
+        }
+
+        // 2. Micro Edge Smoothing (Anti-Pop / Click Eliminator at 24kHz)
+        const fadeSamples = Math.min(36, Math.floor(sampleCount / 4)); // ~1.5ms
+        for (let i = 0; i < fadeSamples; i++) {
+            const factor = i / fadeSamples;
+            float32[i] *= factor;
+            float32[sampleCount - 1 - i] *= factor;
+        }
+
+        // 3. Audio Buffer Allocation & Source Creation
+        const buffer = ctx.createBuffer(1, sampleCount, 24000);
         buffer.getChannelData(0).set(float32);
-        
+
         const source = ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(ctx.destination);
-        
-        const currTime = ctx.currentTime;
-        if (nextStartTimeRef.current < currTime) nextStartTimeRef.current = currTime;
-        
+
+        // 4. Adaptive Jitter Buffer Scheduling (120ms Pre-Roll Safety Cushion)
+        const currentTime = ctx.currentTime;
+        const INITIAL_BUFFER_OFFSET = 0.12; // 120ms lookahead absorbs packet latency variations
+
+        if (nextStartTimeRef.current < currentTime) {
+            // Buffer starved or idle: inject lookahead cushion
+            nextStartTimeRef.current = currentTime + INITIAL_BUFFER_OFFSET;
+        }
+
         source.start(nextStartTimeRef.current);
         nextStartTimeRef.current += buffer.duration;
     };
