@@ -63,7 +63,7 @@ const MessagesFeed = ({
 
                 {conversations
                     .filter(c => c.type === 'dm' || c.type === 'group')
-                    .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at))
+                    .sort((a, b) => new Date(b.last_message_at || b.created_at || 0) - new Date(a.last_message_at || a.created_at || 0))
                     .map(chat => {
                         const isDm = chat.type === 'dm';
                         const title = isDm ? chat.other_user_name : chat.title;
