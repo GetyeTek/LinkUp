@@ -93,7 +93,15 @@ const MironChat = ({ onClose, initialContext }) => {
                     .order('last_message_at', { ascending: false });
 
                 if (error) throw error;
-                if (data) setThreads(data);
+                if (data) {
+                    const sortedData = data.sort((a, b) => {
+                        if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+                        const timeA = new Date(a.last_message_at || a.created_at).getTime();
+                        const timeB = new Date(b.last_message_at || b.created_at).getTime();
+                        return timeB - timeA;
+                    });
+                    setThreads(sortedData);
+                }
 
                 if (initialContext) {
                     // If explicitly opened with a textbook highlight, start a contextual session
@@ -269,9 +277,24 @@ const MironChat = ({ onClose, initialContext }) => {
                 console.error("[MironChat] Failed to lazily create thread:", e);
             }
         } else {
+            const nowIso = new Date().toISOString();
+            
             supabase.from('miron_threads')
-                .update({ last_message_at: new Date().toISOString() })
-                .eq('id', currentThread.id);
+                .update({ last_message_at: nowIso })
+                .eq('id', currentThread.id)
+                .then(({ error }) => {
+                    if (error) console.error("Thread update failed:", error);
+                });
+            
+            setThreads(prev => {
+                const updated = prev.map(t => t.id === currentThread.id ? { ...t, last_message_at: nowIso } : t);
+                return updated.sort((a, b) => {
+                    if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+                    const timeA = new Date(a.last_message_at || a.created_at).getTime();
+                    const timeB = new Date(b.last_message_at || b.created_at).getTime();
+                    return timeB - timeA;
+                });
+            });
         }
 
         const currentThreadId = currentThread?.id;
