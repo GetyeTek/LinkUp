@@ -60,8 +60,12 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
 
     const handleSubmit = () => {
         setSubmitted(true);
-        const summary = quiz.questions.map((q, i) => `Q${i+1}: ${answers[q.id] || 'Skipped'}`).join('\n');
-        onSubmit(`[Quiz Submission: ${quiz.title}]\n${summary}\n\nPlease evaluate my answers.`);
+        const summary = quiz.questions.map((q, i) => {
+            const userAns = answers[q.id] || 'Skipped';
+            return `Question ${i + 1}: "${q.text}"\nMy Selected Answer: ${userAns}`;
+        }).join('\n\n');
+
+        onSubmit(`[Quiz Submission: ${quiz.title}]\n\n${summary}\n\nPlease evaluate my answers, score them, and explain any mistakes in your informal peer tone.`);
 
         if (sessionUser?.id) {
             quiz.questions.forEach(q => {
