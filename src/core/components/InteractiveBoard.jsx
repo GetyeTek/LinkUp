@@ -385,6 +385,9 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
                 onPointerUp={handleCanvasPointerUp}
                 style={{ position: 'absolute', inset: 0, zIndex: 100 }}
             >
+                <button className="close-board-btn" onClick={onClose} title="Collapse Board">
+                    <i className="fas fa-compress-alt"></i>
+                </button>
                 <div 
                     className="live-board-viewport"
                 style={{ 
