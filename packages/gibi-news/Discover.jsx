@@ -16,6 +16,26 @@ const Discover = () => {
     const [hasMore, setHasMore] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
 
+    const handleRefresh = async () => {
+        setNewsLoading(true);
+        setHasMore(true);
+        try {
+            const data = await fetchLiveNewsFeed(0, 15);
+            if (data.news && data.news.length > 0) {
+                setLiveNews(data.news);
+                if (data.news.length < 15) setHasMore(false);
+            } else {
+                setLiveNews([]);
+                setHasMore(false);
+            }
+        } catch (err) {
+            console.error("Failed to refresh feed:", err);
+        } finally {
+            setNewsLoading(false);
+            if (page !== 0) setPage(0);
+        }
+    };
+
     // Smooth Intersection Observer (Fires 600px BEFORE reaching the bottom)
     const observer = useRef();
     const lastElementRef = useCallback(node => {
@@ -121,10 +141,34 @@ const Discover = () => {
                             )}
                         </>
                     ) : (
-                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#888' }}>
-                            <i className="fas fa-satellite-dish" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}></i>
-                            <p>Scanning frequencies...</p>
-                            <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>No live updates found. Make sure the sync worker has run.</p>
+                        <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: '#aaa', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', marginBottom: '0.5rem', boxShadow: '0 0 20px rgba(66, 215, 184, 0.15)' }}>
+                                <i className="fas fa-sparkles"></i>
+                            </div>
+                            <h3 style={{ color: '#fff', fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>You're all caught up!</h3>
+                            <p style={{ fontSize: '0.85rem', color: '#888', maxWidth: '300px', lineHeight: 1.5, margin: '4px 0 1rem 0' }}>
+                                No new posts right now. We'll bring you the latest campus announcements as soon as they drop.
+                            </p>
+                            <button 
+                                onClick={handleRefresh}
+                                style={{
+                                    background: 'rgba(66, 215, 184, 0.1)',
+                                    border: '1px solid var(--accent-teal)',
+                                    color: 'var(--accent-teal)',
+                                    padding: '10px 22px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    transition: 'all 0.2s ease',
+                                    fontFamily: 'Poppins, sans-serif'
+                                }}
+                            >
+                                <i className="fas fa-rotate-right"></i> Check for Updates
+                            </button>
                         </div>
                     )
                 )}
