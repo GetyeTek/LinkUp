@@ -480,10 +480,15 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         <button 
                             className="minimize-stage-btn" 
                             onClick={() => setBoardMode(!boardMode)}
-                            title={boardMode ? "Collapse Board" : "Expand Board"}
-                            style={{ color: boardMode ? 'var(--accent-teal)' : '#fff' }}
+                            title={boardMode ? "Return to Stage" : "View Blackboard"}
+                            style={{ 
+                                color: boardMode ? '#000' : 'var(--accent-teal)',
+                                background: boardMode ? 'var(--accent-teal)' : 'rgba(66, 215, 184, 0.1)',
+                                border: '1px solid var(--accent-teal)',
+                                boxShadow: boardMode ? '0 0 12px rgba(66, 215, 184, 0.4)' : 'none'
+                            }}
                         >
-                            <i className={boardMode ? "fas fa-compress-alt" : "fas fa-expand-alt"}></i>
+                            <i className="fas fa-chalkboard"></i>
                         </button>
                     )}
                     {isMeHost && (
@@ -512,13 +517,18 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                             </div>
                         </button>
                     )}
-                    <button className="minimize-stage-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}>
-                        <i className="fas fa-compress-alt"></i>
+                    <button 
+                        className="minimize-stage-btn" 
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}
+                        title="Minimize to Floating Orb"
+                    >
+                        <i className="fas fa-chevron-down"></i>
                     </button>
                     <button 
                         className="minimize-stage-btn" 
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); isMeHost ? setShowEndConfirm(true) : onLeave(); }} 
                         style={{color: '#ff5f5f'}}
+                        title={isMeHost ? "End Session" : "Leave Stage"}
                     >
                         <i className="fas fa-phone-slash"></i>
                     </button>
