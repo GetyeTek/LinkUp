@@ -476,16 +476,15 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 </div>
                 
                 <div className="header-right-cluster">
-                    {activeBoardBlocks.length > 0 && (
+                    {activeBoardBlocks.length > 0 && !boardMode && (
                         <button 
                             className="minimize-stage-btn" 
-                            onClick={() => setBoardMode(!boardMode)}
-                            title={boardMode ? "Return to Stage" : "View Blackboard"}
+                            onClick={() => setBoardMode(true)}
+                            title="View Blackboard"
                             style={{ 
-                                color: boardMode ? '#000' : 'var(--accent-teal)',
-                                background: boardMode ? 'var(--accent-teal)' : 'rgba(66, 215, 184, 0.1)',
-                                border: '1px solid var(--accent-teal)',
-                                boxShadow: boardMode ? '0 0 12px rgba(66, 215, 184, 0.4)' : 'none'
+                                color: 'var(--accent-teal)',
+                                background: 'rgba(66, 215, 184, 0.1)',
+                                border: '1px solid var(--accent-teal)'
                             }}
                         >
                             <i className="fas fa-chalkboard"></i>
@@ -519,18 +518,18 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     )}
                     <button 
                         className="minimize-stage-btn" 
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}
-                        title="Minimize to Floating Orb"
-                    >
-                        <i className="fas fa-chevron-down"></i>
-                    </button>
-                    <button 
-                        className="minimize-stage-btn" 
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); isMeHost ? setShowEndConfirm(true) : onLeave(); }} 
                         style={{color: '#ff5f5f'}}
                         title={isMeHost ? "End Session" : "Leave Stage"}
                     >
                         <i className="fas fa-phone-slash"></i>
+                    </button>
+                    <button 
+                        className="minimize-stage-btn" 
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiveState('minimized'); }}
+                        title="Minimize to Floating Orb"
+                    >
+                        <i className="fas fa-chevron-down"></i>
                     </button>
                 </div>
             </header>
