@@ -356,7 +356,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                                           To protect your academic progress, these sessions cannot be merged.
                                       </p>
                                       <p style={{ color: '#aaa', fontSize: '0.75rem', marginBottom: '12px' }}>
-                                          If you want to use this new email instead, please sign into your other account first, go to Settings, and unlink Telegram.
+                                          If you want to use this email instead, please sign into your original account, go to Account & Registry, and update your email address there.
                                       </p>
                                       <div style={{ display: 'flex', gap: '8px' }}>
                                           <button 
