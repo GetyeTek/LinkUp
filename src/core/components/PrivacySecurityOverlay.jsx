@@ -21,6 +21,9 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     
+    // Academic Privacy UI State (Pure UI)
+    const [showOnLeaderboard, setShowOnLeaderboard] = useState(true);
+    
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState(null); // { type: 'error' | 'success', text: string }
 
@@ -132,7 +135,33 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
             </header>
 
             <div className="pso-body">
-                {/* 1. Account Security Section */}
+                {/* 1. Academic Privacy Section */}
+                <div className="pso-section">
+                    <span className="pso-section-title">Academic Privacy</span>
+                    
+                    <div className="pso-card" onClick={() => setShowOnLeaderboard(!showOnLeaderboard)} style={{ cursor: 'pointer' }}>
+                        <div className="pso-card-info">
+                            <div className="pso-icon-box" style={{ background: 'rgba(241, 196, 15, 0.1)', color: 'var(--linkoin-gold, #f1c40f)' }}>
+                                <i className="fas fa-trophy"></i>
+                            </div>
+                            <div className="pso-text-group">
+                                <h4>Campus Leaderboard Visibility</h4>
+                                <p>
+                                    {showOnLeaderboard 
+                                        ? 'Your rank and brain score appear on the Observatory ladder'
+                                        : 'Hidden from the campus ladder and peer rankings'}
+                                </p>
+                            </div>
+                        </div>
+                        <div 
+                            className={`toggle-switch ${showOnLeaderboard ? 'on' : 'off'}`}
+                            role="switch"
+                            aria-checked={showOnLeaderboard}
+                        ></div>
+                    </div>
+                </div>
+
+                {/* 2. Account Security Section */}
                 <div className="pso-section">
                     <span className="pso-section-title">Account Security</span>
                     
