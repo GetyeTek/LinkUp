@@ -262,8 +262,21 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                                 <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} disabled={saving} />
                             </div>
                             <div className="input-group-sm">
-                                <label>Phone Number</label>
-                                <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} disabled={saving} />
+                                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>Phone Number</span>
+                                    {userProfile?.registered_with_telegram && (
+                                        <span style={{ fontSize: '0.65rem', color: 'var(--accent-teal)', fontWeight: 700, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <i className="fas fa-shield-check"></i> Telegram Verified
+                                        </span>
+                                    )}
+                                </label>
+                                <input 
+                                    type="tel" 
+                                    value={editForm.phone} 
+                                    onChange={e => setEditForm({...editForm, phone: e.target.value})} 
+                                    disabled={saving || userProfile?.registered_with_telegram} 
+                                    style={userProfile?.registered_with_telegram ? { opacity: 0.8, borderColor: 'rgba(66, 215, 184, 0.3)' } : {}}
+                                />
                             </div>
                         </div>
 
