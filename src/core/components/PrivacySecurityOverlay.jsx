@@ -1,0 +1,257 @@
+import React, { useState } from 'react';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import './PrivacySecurityOverlay.css';
+
+const PrivacySecurityOverlay = ({ isActive, onClose }) => {
+    const { sessionUser } = usePlatform();
+    
+    // Check if user has an existing email/password identity
+    const providers = sessionUser?.app_metadata?.providers || [];
+    const hasPassword = providers.includes('email') || sessionUser?.app_metadata?.provider === 'email';
+
+    // Password Modal States
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNew, setShowNew] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+    
+    const [loading, setLoading] = useState(false);
+    const [statusMsg, setStatusMsg] = useState(null); // { type: 'error' | 'success', text: string }
+
+    if (!isActive) return null;
+
+    const resetForm = () => {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setStatusMsg(null);
+        setShowCurrent(false);
+        setShowNew(false);
+        setShowConfirm(false);
+    };
+
+    const handleOpenPasswordModal = () => {
+        resetForm();
+        setIsPasswordModalOpen(true);
+    };
+
+    const handleClosePasswordModal = () => {
+        if (!loading) {
+            setIsPasswordModalOpen(false);
+            resetForm();
+        }
+    };
+
+    const handleSubmitPassword = async (e) => {
+        e.preventDefault();
+        setStatusMsg(null);
+
+        if (newPassword.length < 6) {
+            setStatusMsg({ type: 'error', text: 'New password must be at least 6 characters.' });
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            setStatusMsg({ type: 'error', text: 'New passwords do not match.' });
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // 1. If user already has a password, re-authenticate to prevent library-desk session hijacking
+            if (hasPassword) {
+                if (!currentPassword) {
+                    setStatusMsg({ type: 'error', text: 'Please enter your current password.' });
+                    setLoading(false);
+                    return;
+                }
+
+                const { error: authCheckError } = await supabase.auth.signInWithPassword({
+                    email: sessionUser.email,
+                    password: currentPassword
+                });
+
+                if (authCheckError) {
+                    throw new Error('Current password verification failed. Check your password and try again.');
+                }
+            }
+
+            // 2. Commit new password to Supabase Auth
+            const { error: updateError } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+
+            if (updateError) throw updateError;
+
+            setStatusMsg({ 
+                type: 'success', 
+                text: hasPassword 
+                    ? 'Password successfully updated!' 
+                    : 'Password set! You can now sign in using your email and this password.' 
+            });
+
+            setTimeout(() => {
+                handleClosePasswordModal();
+            }, 1800);
+
+        } catch (err) {
+            setStatusMsg({ type: 'error', text: err.message || 'Failed to update password.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="pso-overlay">
+            <header className="pso-header" style={{ justifyContent: 'flex-start', gap: '1.25rem' }}>
+                <button className="icon-button" onClick={onClose} style={{ marginLeft: '-0.5rem' }}>
+                    <i className="fas fa-chevron-left"></i>
+                </button>
+                <h2>Privacy & Security</h2>
+            </header>
+
+            <div className="pso-body">
+                {/* 1. Account Security Section */}
+                <div className="pso-section">
+                    <span className="pso-section-title">Account Security</span>
+                    
+                    <div className="pso-card">
+                        <div className="pso-card-info">
+                            <div className="pso-icon-box">
+                                <i className="fas fa-key"></i>
+                            </div>
+                            <div className="pso-text-group">
+                                <h4>{hasPassword ? 'Account Password' : 'Set Account Password'}</h4>
+                                <p>
+                                    {hasPassword 
+                                        ? 'Update your password for email sign-in'
+                                        : 'Enable email sign-in alongside Google/Telegram'}
+                                </p>
+                            </div>
+                        </div>
+                        <button className="pso-action-btn" onClick={handleOpenPasswordModal}>
+                            {hasPassword ? 'Change' : 'Set Up'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Password Management Modal */}
+            {isPasswordModalOpen && (
+                <div className="pso-modal-overlay" onClick={handleClosePasswordModal}>
+                    <div className="pso-modal-card" onClick={e => e.stopPropagation()}>
+                        <div className="pso-modal-header">
+                            <h3>{hasPassword ? 'Change Password' : 'Create Account Password'}</h3>
+                            <button className="icon-button" onClick={handleClosePasswordModal} disabled={loading} style={{ width: '32px', height: '32px' }}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        {!hasPassword && (
+                            <div className="pso-badge-oauth">
+                                <i className="fas fa-link"></i>
+                                <span>Linked to {sessionUser?.email || 'OAuth'}</span>
+                            </div>
+                        )}
+
+                        {statusMsg && (
+                            <div className={`pso-alert-box ${statusMsg.type}`}>
+                                <i className={`fas ${statusMsg.type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-check'}`} style={{ marginRight: '6px' }}></i>
+                                {statusMsg.text}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmitPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {hasPassword && (
+                                <div className="pso-field-group">
+                                    <label>Current Password</label>
+                                    <div className="pso-input-wrapper">
+                                        <input 
+                                            type={showCurrent ? "text" : "password"} 
+                                            className="pso-input"
+                                            placeholder="Enter current password"
+                                            value={currentPassword}
+                                            onChange={e => setCurrentPassword(e.target.value)}
+                                            disabled={loading}
+                                            required
+                                        />
+                                        <button 
+                                            type="button" 
+                                            className="pso-eye-btn" 
+                                            onClick={() => setShowCurrent(!showCurrent)}
+                                            tabIndex={-1}
+                                        >
+                                            <i className={`fas ${showCurrent ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="pso-field-group">
+                                <label>{hasPassword ? 'New Password' : 'Password'}</label>
+                                <div className="pso-input-wrapper">
+                                    <input 
+                                        type={showNew ? "text" : "password"} 
+                                        className="pso-input"
+                                        placeholder="Minimum 6 characters"
+                                        value={newPassword}
+                                        onChange={e => setNewPassword(e.target.value)}
+                                        disabled={loading}
+                                        required
+                                    />
+                                    <button 
+                                        type="button" 
+                                        className="pso-eye-btn" 
+                                        onClick={() => setShowNew(!showNew)}
+                                        tabIndex={-1}
+                                    >
+                                        <i className={`fas ${showNew ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="pso-field-group">
+                                <label>Confirm Password</label>
+                                <div className="pso-input-wrapper">
+                                    <input 
+                                        type={showConfirm ? "text" : "password"} 
+                                        className="pso-input"
+                                        placeholder="Repeat password"
+                                        value={confirmPassword}
+                                        onChange={e => setConfirmPassword(e.target.value)}
+                                        disabled={loading}
+                                        required
+                                    />
+                                    <button 
+                                        type="button" 
+                                        className="pso-eye-btn" 
+                                        onClick={() => setShowConfirm(!showConfirm)}
+                                        tabIndex={-1}
+                                    >
+                                        <i className={`fas ${showConfirm ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="pso-modal-footer">
+                                <button type="button" className="pso-btn-cancel" onClick={handleClosePasswordModal} disabled={loading}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="pso-btn-submit" disabled={loading || !newPassword || !confirmPassword}>
+                                    {loading ? <i className="fas fa-circle-notch fa-spin"></i> : (hasPassword ? 'Update Password' : 'Set Password')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default PrivacySecurityOverlay;
