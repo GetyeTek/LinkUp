@@ -225,6 +225,40 @@
     line-height: 1.3;
 }
 
+/* Standalone Toggle Switch */
+.pso-card .toggle-switch {
+    width: 44px;
+    height: 26px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 99px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+}
+
+.pso-card .toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: var(--text-primary-dark, #fff);
+    border-radius: 50%;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.pso-card .toggle-switch.on {
+    background: var(--accent-teal);
+}
+
+.pso-card .toggle-switch.on::after {
+    transform: translateX(18px);
+    background: #0c0c0c;
+}
+
 .pso-badge-oauth {
     display: inline-flex;
     align-items: center;
