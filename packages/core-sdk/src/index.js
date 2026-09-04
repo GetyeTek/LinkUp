@@ -6,6 +6,7 @@ export { useGlobalSwipe } from './hooks/useGlobalSwipe.js';
 export { logQuestionAttempt } from './tracking.js';
 export { telemetry } from './telemetry.js';
 export { GoldBadge } from './components/GoldBadge.jsx';
+export * from './deviceSession.js';
 
 export const getAvatarFallback = (name) => {
     if (!name || name === 'Deleted Account' || name === 'Unknown User') {
