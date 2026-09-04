@@ -11,7 +11,7 @@ import UpdatePasswordGate from './components/UpdatePasswordGate.jsx';
 import MironChat from './MironChat.jsx';
 import MironLiveSession from './components/MironLiveSession.jsx';
 import BottomNavigation from './components/BottomNavigation.jsx';
-import { useGlobalSwipe, telemetry } from '@linkup-platform/sdk-core';
+import { useGlobalSwipe, telemetry, syncDeviceSession, heartbeatDeviceLease, claimDeviceLease, getDeviceId } from '@linkup-platform/sdk-core';
 
 const Discover = lazy(() => import('@linkup/gibi-news'));
 const Study = lazy(() => import('@linkup/heaven-academy'));
@@ -29,9 +29,14 @@ const App = () => {
   const [showOfflineBanner, setShowOfflineBanner] = useState(!navigator.onLine);
       const [unreadCount, setUnreadCount] = useState(0);
       const [routePayload, setRoutePayload] = useState(null);
-      const [isMironLive, setIsMironLive] = useState(false);
-      const [theme, setTheme] = useState(localStorage.getItem('linkup_theme') || 'dark');
-      const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
+        const [isMironLive, setIsMironLive] = useState(false);
+  const [theme, setTheme] = useState(localStorage.getItem('linkup_theme') || 'dark');
+  const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
+
+  // Multi-Device & Anti-Sharing Guard States
+  const [primaryTransferPrompt, setPrimaryTransferPrompt] = useState(null);
+  const [evictedNotice, setEvictedNotice] = useState(false);
+  const [leaseConflict, setLeaseConflict] = useState(null);
 
       // --- VIDEO TOUR STATE ---
       const [isVideoTourActive, setIsVideoTourActive] = useState(false);
@@ -210,8 +215,8 @@ const App = () => {
         }
     };
 
-    // 1. Check active session on load
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // 1. Check active session on load & sync device seat
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       if (session) {
         telemetry.init();
@@ -219,6 +224,15 @@ const App = () => {
         fetchProfile(session.user.id);
         updateLastSeen();
         fetchNotificationsCount(session.user.id);
+
+        try {
+            const syncRes = await syncDeviceSession(false);
+            if (syncRes?.status === 'requires_primary_confirmation') {
+                setPrimaryTransferPrompt(syncRes.current_primary_name);
+            }
+        } catch (e) {
+            console.warn('[DeviceGuard] Initial seat sync warning:', e.message);
+        }
       }
       setIsCheckingAuth(false);
     });
@@ -271,6 +285,29 @@ const App = () => {
 
       return () => supabase.removeChannel(notifChannel);
   }, [session]);
+
+  // Active Device Concurrency & Heartbeat Guardian (Anti-Freelord Loop)
+  useEffect(() => {
+      if (!session?.user?.id) return;
+
+      const runHeartbeat = async () => {
+          try {
+              const res = await heartbeatDeviceLease();
+              if (res?.status === 'evicted') {
+                  setEvictedNotice(true);
+              } else if (res?.status === 'lease_conflict') {
+                  setLeaseConflict(res.holder_name);
+              } else if (res?.status === 'ok') {
+                  setLeaseConflict(null);
+              }
+          } catch (e) {
+              // Graceful network fault tolerance
+          }
+      };
+
+      const timer = setInterval(runHeartbeat, 20000);
+      return () => clearInterval(timer);
+  }, [session?.user?.id]);
 
   // 3. BACKGROUND PREFETCHING (The Enterprise Secret)
   // Silently downloads the Micro-Frontend modules into RAM 3 seconds after the user logs in.
@@ -409,6 +446,80 @@ const App = () => {
                   <><i className="fas fa-wifi" style={{color: '#42d7b8'}}></i> <span style={{color: '#42d7b8'}}>Connection restored.</span></>
               )}
               <button className="close-btn" onClick={() => setShowOfflineBanner(false)}><i className="fas fa-times"></i></button>
+          </div>
+      )}
+
+      {/* Concurrent Session Active Warning Banner */}
+      {leaseConflict && (
+          <div className="global-offline-banner" style={{ background: 'rgba(255, 171, 64, 0.95)', color: '#000', borderColor: '#ffab40', top: '70px', zIndex: 99999 }}>
+              <i className="fas fa-bolt" style={{ color: '#000' }}></i>
+              <span>Active on <strong>{leaseConflict}</strong></span>
+              <button 
+                  onClick={async () => {
+                      await claimDeviceLease();
+                      setLeaseConflict(null);
+                  }}
+                  style={{ background: '#000', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', marginLeft: '6px' }}
+              >
+                  Resume Here
+              </button>
+          </div>
+      )}
+
+      {/* Primary Phone Transfer Modal */}
+      {primaryTransferPrompt && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+              <div style={{ background: 'var(--surface-dark)', border: '1px solid var(--border-color)', borderRadius: '24px', width: '100%', maxWidth: '380px', padding: '1.75rem', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', textAlign: 'center' }}>
+                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255, 171, 64, 0.15)', color: '#ffab40', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 1.25rem' }}>
+                      <i className="fas fa-mobile-screen"></i>
+                  </div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#fff' }}>Transfer Primary Phone?</h3>
+                  <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.88rem', color: '#aaa', lineHeight: 1.5 }}>
+                      Your primary phone is currently <strong>{primaryTransferPrompt}</strong>. Linking this phone will disconnect the old phone from your account.
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                      <button 
+                          onClick={async () => {
+                              await supabase.auth.signOut();
+                              setPrimaryTransferPrompt(null);
+                          }}
+                          style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: '#aaa', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                          Cancel
+                      </button>
+                      <button 
+                          onClick={async () => {
+                              await syncDeviceSession(true);
+                              setPrimaryTransferPrompt(null);
+                          }}
+                          style={{ flex: 1, padding: '12px', background: 'var(--accent-teal)', border: 'none', borderRadius: '12px', color: '#000', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                          Switch Phone
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Evicted / Replaced Device Notice */}
+      {evictedNotice && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+              <div style={{ background: 'var(--surface-dark)', border: '1px solid #ff5f5f', borderRadius: '24px', width: '100%', maxWidth: '380px', padding: '2rem 1.75rem', textAlign: 'center' }}>
+                  <i className="fas fa-desktop" style={{ fontSize: '2.5rem', color: '#ff5f5f', marginBottom: '1rem', display: 'block' }}></i>
+                  <h3 style={{ margin: '0 0 8px 0', color: '#fff', fontSize: '1.3rem' }}>Session Replaced</h3>
+                  <p style={{ margin: '0 0 1.5rem 0', color: '#aaa', fontSize: '0.88rem', lineHeight: 1.5 }}>
+                      Your account was signed into a new device. Only 1 Mobile and 1 PC session are permitted at a time.
+                  </p>
+                  <button 
+                      onClick={async () => {
+                          setEvictedNotice(false);
+                          await supabase.auth.signOut();
+                      }}
+                      style={{ width: '100%', padding: '14px', background: 'var(--accent-teal)', color: '#000', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                      Return to Sign In
+                  </button>
+              </div>
           </div>
       )}
       <PlatformProvider value={{ 
