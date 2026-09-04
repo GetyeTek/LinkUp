@@ -35,8 +35,23 @@ const App = () => {
 
   // Multi-Device & Anti-Sharing Guard States
   const [primaryTransferPrompt, setPrimaryTransferPrompt] = useState(null);
-  const [evictedNotice, setEvictedNotice] = useState(false);
   const [leaseConflict, setLeaseConflict] = useState(null);
+  const isDeviceSeatedRef = useRef(false);
+
+  const handleDeviceSync = async (forceTransfer = false) => {
+      try {
+          const syncRes = await syncDeviceSession(forceTransfer);
+          if (syncRes?.status === 'requires_primary_confirmation') {
+              isDeviceSeatedRef.current = false;
+              setPrimaryTransferPrompt(syncRes.current_primary_name);
+          } else if (syncRes?.status === 'registered' || syncRes?.status === 'active' || syncRes?.status === 'replaced_secondary' || syncRes?.status === 'transferred_primary') {
+              isDeviceSeatedRef.current = true;
+              setPrimaryTransferPrompt(null);
+          }
+      } catch (e) {
+          console.warn('[DeviceGuard] Seat sync warning:', e.message);
+      }
+  };
 
       // --- VIDEO TOUR STATE ---
       const [isVideoTourActive, setIsVideoTourActive] = useState(false);
@@ -225,14 +240,7 @@ const App = () => {
         updateLastSeen();
         fetchNotificationsCount(session.user.id);
 
-        try {
-            const syncRes = await syncDeviceSession(false);
-            if (syncRes?.status === 'requires_primary_confirmation') {
-                setPrimaryTransferPrompt(syncRes.current_primary_name);
-            }
-        } catch (e) {
-            console.warn('[DeviceGuard] Initial seat sync warning:', e.message);
-        }
+        await handleDeviceSync(false);
       }
       setIsCheckingAuth(false);
     });
@@ -260,9 +268,13 @@ const App = () => {
         resolveReferralStorage(session);
         fetchProfile(session.user.id);
         fetchNotificationsCount(session.user.id);
+        handleDeviceSync(false);
       } else {
         setUserProfile(null);
         setIsProfileLoaded(false);
+        isDeviceSeatedRef.current = false;
+        setPrimaryTransferPrompt(null);
+        setLeaseConflict(null);
       }
     });
 
@@ -291,10 +303,15 @@ const App = () => {
       if (!session?.user?.id) return;
 
       const runHeartbeat = async () => {
+          // Never run eviction check if this device hasn't seated or is awaiting user confirmation
+          if (!isDeviceSeatedRef.current) return;
+
           try {
               const res = await heartbeatDeviceLease();
               if (res?.status === 'evicted') {
-                  setEvictedNotice(true);
+                  isDeviceSeatedRef.current = false;
+                  // Silent eviction: Immediately sign out displaced devices without disruptive modals
+                  await supabase.auth.signOut();
               } else if (res?.status === 'lease_conflict') {
                   setLeaseConflict(res.holder_name);
               } else if (res?.status === 'ok') {
@@ -475,13 +492,13 @@ const App = () => {
                   </div>
                   <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#fff' }}>Transfer Primary Phone?</h3>
                   <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.88rem', color: '#aaa', lineHeight: 1.5 }}>
-                      Your primary phone is currently <strong>{primaryTransferPrompt}</strong>. Linking this phone will disconnect the old phone from your account.
+                      Your primary phone is currently <strong>{primaryTransferPrompt}</strong>. Setting this phone as your active device will disconnect your old phone.
                   </p>
                   <div style={{ display: 'flex', gap: '10px' }}>
                       <button 
                           onClick={async () => {
-                              await supabase.auth.signOut();
                               setPrimaryTransferPrompt(null);
+                              await supabase.auth.signOut();
                           }}
                           style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: '#aaa', fontWeight: 600, cursor: 'pointer' }}
                       >
@@ -489,36 +506,13 @@ const App = () => {
                       </button>
                       <button 
                           onClick={async () => {
-                              await syncDeviceSession(true);
-                              setPrimaryTransferPrompt(null);
+                              await handleDeviceSync(true);
                           }}
                           style={{ flex: 1, padding: '12px', background: 'var(--accent-teal)', border: 'none', borderRadius: '12px', color: '#000', fontWeight: 700, cursor: 'pointer' }}
                       >
                           Switch Phone
                       </button>
                   </div>
-              </div>
-          </div>
-      )}
-
-      {/* Evicted / Replaced Device Notice */}
-      {evictedNotice && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
-              <div style={{ background: 'var(--surface-dark)', border: '1px solid #ff5f5f', borderRadius: '24px', width: '100%', maxWidth: '380px', padding: '2rem 1.75rem', textAlign: 'center' }}>
-                  <i className="fas fa-desktop" style={{ fontSize: '2.5rem', color: '#ff5f5f', marginBottom: '1rem', display: 'block' }}></i>
-                  <h3 style={{ margin: '0 0 8px 0', color: '#fff', fontSize: '1.3rem' }}>Session Replaced</h3>
-                  <p style={{ margin: '0 0 1.5rem 0', color: '#aaa', fontSize: '0.88rem', lineHeight: 1.5 }}>
-                      Your account was signed into a new device. Only 1 Mobile and 1 PC session are permitted at a time.
-                  </p>
-                  <button 
-                      onClick={async () => {
-                          setEvictedNotice(false);
-                          await supabase.auth.signOut();
-                      }}
-                      style={{ width: '100%', padding: '14px', background: 'var(--accent-teal)', color: '#000', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}
-                  >
-                      Return to Sign In
-                  </button>
               </div>
           </div>
       )}
