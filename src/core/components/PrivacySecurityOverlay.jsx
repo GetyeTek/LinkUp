@@ -5,12 +5,14 @@ import './PrivacySecurityOverlay.css';
 const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     const { sessionUser } = usePlatform();
     
-    // Check if user has an existing email/password identity
+    // Check if user has an existing email/password identity or a synthetic Telegram placeholder
+    const isSyntheticEmail = sessionUser?.email?.endsWith('@linkup.invalid');
     const providers = sessionUser?.app_metadata?.providers || [];
-    const hasPassword = providers.includes('email') || sessionUser?.app_metadata?.provider === 'email';
+    const hasPassword = !isSyntheticEmail && (providers.includes('email') || sessionUser?.app_metadata?.provider === 'email');
 
     // Password Modal States
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [realEmail, setRealEmail] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,6 +27,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     if (!isActive) return null;
 
     const resetForm = () => {
+        setRealEmail('');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
@@ -49,6 +52,14 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     const handleSubmitPassword = async (e) => {
         e.preventDefault();
         setStatusMsg(null);
+
+        if (isSyntheticEmail) {
+            const cleanEmail = realEmail.toLowerCase().trim();
+            if (!cleanEmail || !cleanEmail.includes('@') || cleanEmail.endsWith('@linkup.invalid')) {
+                setStatusMsg({ type: 'error', text: 'Please enter a valid personal email address.' });
+                return;
+            }
+        }
 
         if (newPassword.length < 6) {
             setStatusMsg({ type: 'error', text: 'New password must be at least 6 characters.' });
@@ -81,10 +92,13 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                 }
             }
 
-            // 2. Commit new password to Supabase Auth
-            const { error: updateError } = await supabase.auth.updateUser({
-                password: newPassword
-            });
+            // 2. Commit new password (and real email if synthetic) to Supabase Auth
+            const updatePayload = { password: newPassword };
+            if (isSyntheticEmail) {
+                updatePayload.email = realEmail.toLowerCase().trim();
+            }
+
+            const { error: updateError } = await supabase.auth.updateUser(updatePayload);
 
             if (updateError) throw updateError;
 
@@ -92,15 +106,17 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                 type: 'success', 
                 text: hasPassword 
                     ? 'Password successfully updated!' 
+                    : isSyntheticEmail
+                    ? 'Credentials set! Check your inbox to verify your email, then you can log in with your email and password.'
                     : 'Password set! You can now sign in using your email and this password.' 
             });
 
             setTimeout(() => {
                 handleClosePasswordModal();
-            }, 1800);
+            }, 2500);
 
         } catch (err) {
-            setStatusMsg({ type: 'error', text: err.message || 'Failed to update password.' });
+            setStatusMsg({ type: 'error', text: err.message || 'Failed to update credentials.' });
         } finally {
             setLoading(false);
         }
@@ -126,11 +142,13 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                                 <i className="fas fa-key"></i>
                             </div>
                             <div className="pso-text-group">
-                                <h4>{hasPassword ? 'Account Password' : 'Set Account Password'}</h4>
+                                <h4>{hasPassword ? 'Account Password' : (isSyntheticEmail ? 'Set Email & Password' : 'Set Account Password')}</h4>
                                 <p>
                                     {hasPassword 
                                         ? 'Update your password for email sign-in'
-                                        : 'Enable email sign-in alongside Google/Telegram'}
+                                        : (isSyntheticEmail 
+                                            ? 'Link a personal email and password to sign in anywhere' 
+                                            : 'Enable email sign-in alongside Google/Telegram')}
                                 </p>
                             </div>
                         </div>
@@ -146,7 +164,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                 <div className="pso-modal-overlay" onClick={handleClosePasswordModal}>
                     <div className="pso-modal-card" onClick={e => e.stopPropagation()}>
                         <div className="pso-modal-header">
-                            <h3>{hasPassword ? 'Change Password' : 'Create Account Password'}</h3>
+                            <h3>{hasPassword ? 'Change Password' : (isSyntheticEmail ? 'Set Email & Password' : 'Create Account Password')}</h3>
                             <button className="icon-button" onClick={handleClosePasswordModal} disabled={loading} style={{ width: '32px', height: '32px' }}>
                                 <i className="fas fa-times"></i>
                             </button>
@@ -154,8 +172,8 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
 
                         {!hasPassword && (
                             <div className="pso-badge-oauth">
-                                <i className="fas fa-link"></i>
-                                <span>Linked to {sessionUser?.email || 'OAuth'}</span>
+                                <i className={`fas ${isSyntheticEmail ? 'fa-paper-plane' : 'fa-link'}`}></i>
+                                <span>{isSyntheticEmail ? 'Telegram Session • No Email Linked' : `Linked to ${sessionUser?.email || 'OAuth'}`}</span>
                             </div>
                         )}
 
@@ -167,6 +185,27 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                         )}
 
                         <form onSubmit={handleSubmitPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {isSyntheticEmail && (
+                                <div className="pso-field-group">
+                                    <label>Personal Email Address</label>
+                                    <div className="pso-input-wrapper">
+                                        <input 
+                                            type="email" 
+                                            className="pso-input"
+                                            placeholder="Enter your email (e.g. alex@gmail.com)"
+                                            value={realEmail}
+                                            onChange={e => setRealEmail(e.target.value)}
+                                            disabled={loading}
+                                            required
+                                            style={{ paddingRight: '14px' }}
+                                        />
+                                    </div>
+                                    <span className="pso-field-hint">
+                                        Required so you can sign in directly using email and password.
+                                    </span>
+                                </div>
+                            )}
+
                             {hasPassword && (
                                 <div className="pso-field-group">
                                     <label>Current Password</label>
@@ -242,8 +281,8 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                                 <button type="button" className="pso-btn-cancel" onClick={handleClosePasswordModal} disabled={loading}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="pso-btn-submit" disabled={loading || !newPassword || !confirmPassword}>
-                                    {loading ? <i className="fas fa-circle-notch fa-spin"></i> : (hasPassword ? 'Update Password' : 'Set Password')}
+                                <button type="submit" className="pso-btn-submit" disabled={loading || !newPassword || !confirmPassword || (isSyntheticEmail && !realEmail.trim())}>
+                                    {loading ? <i className="fas fa-circle-notch fa-spin"></i> : (hasPassword ? 'Update Password' : (isSyntheticEmail ? 'Link Email & Set Password' : 'Set Password'))}
                                 </button>
                             </div>
                         </form>
