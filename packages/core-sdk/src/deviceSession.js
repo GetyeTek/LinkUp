@@ -17,23 +17,54 @@ export const detectDeviceCategory = () => {
     return /Android|iPhone|iPad|iPod|Mobile|webOS/i.test(ua) ? 'mobile' : 'desktop';
 };
 
-export const detectDeviceName = () => {
+const getBrowserName = () => {
     const ua = navigator.userAgent || '';
-    const isMobile = detectDeviceCategory() === 'mobile';
-    
+    if (/Edg/i.test(ua)) return 'Edge';
+    if (/Chrome/i.test(ua)) return 'Chrome';
+    if (/Safari/i.test(ua)) return 'Safari';
+    if (/Firefox/i.test(ua)) return 'Firefox';
+    return 'Browser';
+};
+
+export const detectDeviceName = async () => {
+    const ua = navigator.userAgent || '';
+    const browser = getBrowserName();
+
+    // 1. High-Entropy Client Hints (Extracts exact Android hardware models on Chrome/Chromium)
+    if (navigator.userAgentData?.getHighEntropyValues) {
+        try {
+            const hints = await navigator.userAgentData.getHighEntropyValues(['model']);
+            if (hints.model) {
+                let model = hints.model.trim();
+                // Avoid generic frozen placeholders (Chrome sends "K" or generic "Mobile")
+                if (model && model !== 'K' && model !== 'Mobile') {
+                    if (model.startsWith('SM-')) model = `Samsung ${model}`;
+                    return `${model} (${browser})`;
+                }
+            }
+        } catch (e) {
+            // Graceful fallback to regex heuristics
+        }
+    }
+
+    // 2. Legacy / In-App WebView Android User-Agent regex
+    const androidMatch = ua.match(/Android\s+[\d.]+;\s*([^;]+?)(?:\s+Build|[;\)])/i);
+    if (androidMatch && androidMatch[1]) {
+        let candidate = androidMatch[1].trim();
+        if (candidate && candidate !== 'K' && candidate !== 'Mobile' && !candidate.startsWith('wv')) {
+            if (candidate.startsWith('SM-')) candidate = `Samsung ${candidate}`;
+            return `${candidate} (${browser})`;
+        }
+    }
+
+    // 3. Fallback OS / Device Classification
     let os = 'Unknown Device';
     if (/iPhone/i.test(ua)) os = 'iPhone';
     else if (/iPad/i.test(ua)) os = 'iPad';
-    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/Android/i.test(ua)) os = 'Android Phone';
     else if (/Windows NT 10.0/i.test(ua)) os = 'Windows 11/10';
     else if (/Macintosh|Mac OS X/i.test(ua)) os = 'macOS';
     else if (/Linux/i.test(ua)) os = 'Linux';
-
-    let browser = 'Browser';
-    if (/Edg/i.test(ua)) browser = 'Edge';
-    else if (/Chrome/i.test(ua)) browser = 'Chrome';
-    else if (/Safari/i.test(ua)) browser = 'Safari';
-    else if (/Firefox/i.test(ua)) browser = 'Firefox';
 
     return `${os} (${browser})`;
 };
@@ -41,7 +72,7 @@ export const detectDeviceName = () => {
 export const syncDeviceSession = async (forceTransfer = false) => {
     const deviceId = getDeviceId();
     const deviceType = detectDeviceCategory();
-    const deviceName = detectDeviceName();
+    const deviceName = await detectDeviceName();
 
     const { data, error } = await supabase.rpc('sync_device_session', {
         p_device_id: deviceId,
