@@ -4,11 +4,12 @@ import ProfileEditor from './components/ProfileEditor.jsx';
 import ObservatoryOverlay from './components/ObservatoryOverlay.jsx';
 import MissionControlOverlay from './components/MissionControlOverlay.jsx';
 import PremiumUpgradeOverlay from './components/PremiumUpgradeOverlay.jsx';
+import PrivacySecurityOverlay from './components/PrivacySecurityOverlay.jsx';
 import './Profile.css';
 
 const Profile = () => {
     const { user: userProfile, sessionUser, theme, toggleTheme } = usePlatform();
-    const [overlays, setOverlays] = useState({ observatory: false, mission: false, premium: false });
+    const [overlays, setOverlays] = useState({ observatory: false, mission: false, premium: false, privacy: false });
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     
     const handleLogout = async () => {
@@ -148,7 +149,7 @@ const Profile = () => {
                                 <span className="list-item-text">Appearance ({theme === 'dark' ? 'Dark Mode' : 'Light Mode'})</span>
                                 <i className="fas fa-sync-alt list-item-chevron"></i>
                             </a>
-                            <a href="#" className="list-item"><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">Privacy & Security</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
+                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('privacy', true); }}><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">Privacy & Security</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
                             <a href="#" className="list-item"><i className="fas fa-info-circle list-item-icon"></i><span className="list-item-text">Support & About</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
                             <a href="#" className="list-item" onClick={handleLogout} style={{ color: '#ff4757' }}><i className="fas fa-sign-out-alt list-item-icon" style={{ color: '#ff4757' }}></i><span className="list-item-text">Log Out</span></a>
                         </div>
@@ -168,6 +169,7 @@ const Profile = () => {
             <MissionControlOverlay isActive={overlays.mission} onClose={() => toggleOverlay('mission', false)} />
             
             <PremiumUpgradeOverlay isActive={overlays.premium} onClose={() => toggleOverlay('premium', false)} />
+            <PrivacySecurityOverlay isActive={overlays.privacy} onClose={() => toggleOverlay('privacy', false)} />
         </div>
     );
 };
