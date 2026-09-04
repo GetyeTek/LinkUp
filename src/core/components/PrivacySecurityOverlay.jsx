@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import React, { useState, useEffect } from 'react';
+import { supabase, usePlatform, getMyActiveDevices, getDeviceId } from '@linkup-platform/sdk-core';
 import './PrivacySecurityOverlay.css';
 
 const PrivacySecurityOverlay = ({ isActive, onClose }) => {
@@ -26,6 +26,16 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState(null); // { type: 'error' | 'success', text: string }
+
+    // Active Registered Device Slots
+    const [deviceSeats, setDeviceSeats] = useState([]);
+    const myDeviceId = getDeviceId();
+
+    useEffect(() => {
+        if (isActive) {
+            getMyActiveDevices().then(data => setDeviceSeats(data)).catch(() => {});
+        }
+    }, [isActive]);
 
     if (!isActive) return null;
 
@@ -161,7 +171,43 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                     </div>
                 </div>
 
-                {/* 2. Account Security Section */}
+                {/* 2. Active Registered Devices (1 Phone + 1 PC Policy) */}
+                <div className="pso-section">
+                    <span className="pso-section-title">Registered Devices (1 Phone + 1 PC)</span>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {deviceSeats.length === 0 ? (
+                            <div style={{ fontSize: '0.85rem', color: '#888', fontStyle: 'italic', padding: '10px 4px' }}>
+                                Syncing device slots...
+                            </div>
+                        ) : (
+                            deviceSeats.map((seat, idx) => (
+                                <div key={idx} className="pso-card" style={{ padding: '12px 16px' }}>
+                                    <div className="pso-card-info" style={{ gap: '12px' }}>
+                                        <div className="pso-icon-box" style={{ width: '38px', height: '38px', fontSize: '1rem' }}>
+                                            <i className={`fas ${seat.device_type === 'mobile' ? 'fa-mobile-screen' : 'fa-laptop'}`}></i>
+                                        </div>
+                                        <div className="pso-text-group">
+                                            <h4 style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {seat.device_name}
+                                                {seat.is_primary && (
+                                                    <span style={{ fontSize: '0.65rem', background: 'rgba(66, 215, 184, 0.15)', color: 'var(--accent-teal)', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                                                        Primary Anchor
+                                                    </span>
+                                                )}
+                                            </h4>
+                                            <p style={{ fontSize: '0.75rem' }}>
+                                                {seat.device_type === 'mobile' ? 'Mobile Seat' : 'Desktop Seat'} • Active {new Date(seat.last_active_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* 3. Account Security Section */}
                 <div className="pso-section">
                     <span className="pso-section-title">Account Security</span>
                     
