@@ -123,6 +123,35 @@
     color: #0c0c0c;
 }
 
+.pso-badge-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    background: rgba(66, 215, 184, 0.15);
+    color: var(--accent-teal);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(66, 215, 184, 0.3);
+    white-space: nowrap;
+}
+
+.pso-action-btn.telegram-btn {
+    background: rgba(41, 169, 234, 0.12);
+    border-color: rgba(41, 169, 234, 0.35);
+    color: #29A9EA;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.pso-action-btn.telegram-btn:hover {
+    background: #29A9EA;
+    color: #0c0c0c;
+}
+
 /* Password Modal */
 .pso-modal-overlay {
     position: fixed;
