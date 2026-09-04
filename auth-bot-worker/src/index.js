@@ -332,7 +332,7 @@ export default {
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({
                                             chat_id: msg.chat.id,
-                                            text: `❌ *Account Link Aborted*\n\nTo protect your academic progress, we cannot merge this session.\n\nYour Telegram is already verified and linked to an active account with the email *${maskedEmail}*.\n\nIf you want to use this new email instead, please sign into your other account first, go to Settings, and unlink Telegram.`,
+                                            text: `❌ *Account Link Aborted*\n\nTo protect your academic records, accounts cannot be merged.\n\nYour Telegram is already linked to an active account with the email *${maskedEmail}*.\n\nPlease sign into that account directly using your email or the Telegram login button.`,
                                             parse_mode: "Markdown",
                                             reply_markup: { remove_keyboard: true }
                                         })
