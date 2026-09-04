@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './PrivacySecurityOverlay.css';
 
@@ -13,7 +13,21 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     // Check if user has an existing email/password identity or a synthetic Telegram placeholder
     const isSyntheticEmail = sessionUser?.email?.endsWith('@linkup.invalid');
     const providers = sessionUser?.app_metadata?.providers || [];
-    const hasPassword = !isSyntheticEmail && (providers.includes('email') || sessionUser?.app_metadata?.provider === 'email');
+    const initialHasPassword = !isSyntheticEmail && (providers.includes('email') || sessionUser?.app_metadata?.provider === 'email');
+    const [hasPassword, setHasPassword] = useState(initialHasPassword);
+
+    // Reconcile with ground-truth database status
+    useEffect(() => {
+        if (isActive && sessionUser?.id) {
+            supabase.rpc('user_has_password')
+                .then(({ data, error }) => {
+                    if (!error && typeof data === 'boolean') {
+                        setHasPassword(!isSyntheticEmail && data);
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [isActive, sessionUser?.id, isSyntheticEmail]);
 
     // Password Modal States
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -111,6 +125,8 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
             const { error: updateError } = await supabase.auth.updateUser(updatePayload);
 
             if (updateError) throw updateError;
+
+            setHasPassword(true);
 
             setStatusMsg({ 
                 type: 'success', 
