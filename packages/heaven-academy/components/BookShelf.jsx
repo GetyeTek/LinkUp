@@ -2,9 +2,10 @@ import React from 'react';
 import './BookShelf.css';
 import BookCard from './BookCard.jsx';
 
-const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigger, onUniversityClick }) => {
+const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigger, onFlashcardTrigger, onUniversityClick }) => {
     const handleAction = (item) => {
         if (item.isExamTrigger && onExamTrigger) onExamTrigger();
+        else if (item.isFlashcardTrigger && onFlashcardTrigger) onFlashcardTrigger();
         else if (isUniversity && onUniversityClick) onUniversityClick(item);
         else if (!isUniversity && onBookClick) onBookClick(item);
     };
@@ -22,6 +23,7 @@ const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigge
                                     item={item} 
                                     isUniversity={false} 
                                     isExamTrigger={item.isExamTrigger} 
+                                    isFlashcardTrigger={item.isFlashcardTrigger}
                                     previewMode={true}
                                     onClick={() => handleAction(item)}
                                 />
@@ -57,11 +59,12 @@ const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigge
                                     item={item} 
                                     isUniversity={isUniversity} 
                                     isExamTrigger={item.isExamTrigger}
+                                    isFlashcardTrigger={item.isFlashcardTrigger}
                                     onClick={() => handleAction(item)}
                                 />
                                 <div className="book-label-plate" onClick={() => handleAction(item)}>
                                     <span className="book-plate-title">
-                                        {item.isExamTrigger ? 'Past Exams & Tests' : (item.title || item.name)}
+                                        {item.isExamTrigger ? 'Past Exams & Tests' : item.isFlashcardTrigger ? 'Flashcard Decks' : (item.title || item.name)}
                                     </span>
                                 </div>
                             </div>
