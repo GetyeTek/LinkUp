@@ -10,7 +10,7 @@
 .heritage-label { font-family: 'Newsreader', serif; font-style: italic; font-size: 0.55rem; color: #666; letter-spacing: 1px; text-transform: uppercase; }
 .heritage-title { font-family: 'Cinzel', serif; color: #c5a059; font-size: 0.55rem; letter-spacing: 1px; line-height: 1.3; margin-top: 2px; text-transform: uppercase; }
 
-/* Normalized Stack */
+/* Normalized Stack (Exams) */
 .book-immersive.is-stack { background: linear-gradient(145deg, #3d2b1f, #1a1410) !important; border: 1px solid rgba(255, 215, 0, 0.1); box-shadow: 5px 5px 20px rgba(0,0,0,0.5); z-index: 5; }
 .book-immersive.is-stack::before { content: ''; position: absolute; inset: 0; background: inherit; border-radius: inherit; box-shadow: -2px -2px 0 0 #2a1f10, -3px -3px 0 0 #eaddcf, -5px -5px 0 0 #3d2b1f, -6px -6px 0 0 #eaddcf; z-index: -1; transition: transform 0.3s ease; }
 .exam-stack-content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0.5rem; background: radial-gradient(circle at center, rgba(255, 215, 0, 0.05) 0%, transparent 80%); }
@@ -18,6 +18,27 @@
 .exam-stack-content .stack-title { font-family: 'Cinzel', serif; font-size: 0.6rem; font-weight: 700; color: var(--linkoin-gold); letter-spacing: 1px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 .book-group:hover .book-immersive.is-stack::before { transform: translate(-4px, -4px); }
 .book-group:hover .book-immersive.is-stack { transform: scale(1.02); }
+
+/* Tactile Flashcard Box */
+.book-immersive.is-flashcard-stack {
+    background: linear-gradient(135deg, #0e241f 0%, #061310 100%) !important;
+    border: 1.5px solid rgba(66, 215, 184, 0.4);
+    box-shadow: 0 0 15px rgba(66, 215, 184, 0.25), 5px 5px 20px rgba(0,0,0,0.5);
+    z-index: 5;
+}
+.book-immersive.is-flashcard-stack::before {
+    content: ''; position: absolute; inset: 0; background: inherit; border-radius: inherit;
+    box-shadow: -2px -2px 0 0 #061310, -3px -3px 0 0 #42d7b8, -5px -5px 0 0 #0e241f, -6px -6px 0 0 #42d7b8;
+    z-index: -1; transition: transform 0.3s ease;
+}
+.flashcard-stack-content {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0.5rem;
+    background: radial-gradient(circle at center, rgba(66, 215, 184, 0.1) 0%, transparent 80%);
+}
+.flashcard-stack-content .emblem { font-size: 1.3rem; color: var(--accent-teal); margin-bottom: 4px; filter: drop-shadow(0 0 8px rgba(66, 215, 184, 0.5)); }
+.flashcard-stack-content .stack-title { font-family: 'Cinzel', serif; font-size: 0.65rem; font-weight: 700; color: #fff; letter-spacing: 1px; }
+.book-group:hover .book-immersive.is-flashcard-stack::before { transform: translate(-4px, -4px); }
+.book-group:hover .book-immersive.is-flashcard-stack { transform: scale(1.02); }
 
 /* Overlays & Previews */
 .info-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.95), transparent); padding: 0.75rem 0.5rem; color: white; opacity: 0; transform: translateY(10px); transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1); }
