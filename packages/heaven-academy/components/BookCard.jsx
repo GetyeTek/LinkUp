@@ -46,12 +46,12 @@ export const getBookColor = (title) => {
     return `linear-gradient(135deg, hsl(${Math.abs(hash) % 360}, 50%, 30%), hsl(${(Math.abs(hash) + 40) % 360}, 60%, 15%))`;
 };
 
-const BookCard = ({ item, isUniversity, isExamTrigger, previewMode, onClick }) => {
+const BookCard = ({ item, isUniversity, isExamTrigger, isFlashcardTrigger, previewMode, onClick }) => {
     return (
         <div 
-            className={`book-immersive ${isExamTrigger ? 'is-stack' : ''} ${isUniversity ? 'is-heritage' : ''} ${previewMode ? 'preview-mode' : ''}`}
+            className={`book-immersive ${isExamTrigger ? 'is-stack' : ''} ${isFlashcardTrigger ? 'is-flashcard-stack' : ''} ${isUniversity ? 'is-heritage' : ''} ${previewMode ? 'preview-mode' : ''}`}
             style={{ 
-                backgroundImage: (isUniversity || isExamTrigger) ? 'none' : (item.cover_url ? `url("${item.cover_url}")` : getBookColor(item.title)),
+                backgroundImage: (isUniversity || isExamTrigger || isFlashcardTrigger) ? 'none' : (item.cover_url ? `url("${item.cover_url}")` : getBookColor(item.title)),
             }}
             onClick={onClick}
         >
@@ -59,6 +59,11 @@ const BookCard = ({ item, isUniversity, isExamTrigger, previewMode, onClick }) =
                 <div className="exam-stack-content">
                     <div className="emblem"><i className="fas fa-university"></i></div>
                     <div className="stack-title">EXAMS</div>
+                </div>
+            ) : isFlashcardTrigger ? (
+                <div className="flashcard-stack-content">
+                    <div className="emblem"><i className="fas fa-bolt"></i></div>
+                    <div className="stack-title">CARDS</div>
                 </div>
             ) : isUniversity ? (
                 <>
