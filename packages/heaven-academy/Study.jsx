@@ -6,6 +6,7 @@ import BookCard from './components/BookCard.jsx';
 import ExamPavilion from './ExamPavilion.jsx';
 import ExamSession from './ExamSession.jsx';
 import PlanMyDayModal from './components/PlanMyDayModal.jsx';
+import FlashcardPavilion from './components/FlashcardPavilion.jsx';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './Study.css';
 
@@ -27,12 +28,13 @@ const Study = () => {
     const [targetPage, setTargetPage] = useState(undefined);
     const [showAllPacing, setShowAllPacing] = useState(false);
     const [isPlannerOpen, setIsPlannerOpen] = useState(false);
+    const [isFlashcardsOpen, setIsFlashcardsOpen] = useState(false);
     const searchInputRef = useRef(null);
     const wavePathRef = useRef(null);
 
     // 1. Fetch Main Books, Universities, & Academic Pacing
     useEffect(() => {
-        // Fetch Main Books
+        // Fetch Main Books & Mount Interactive Deck Triggers
         invokeBookReader({ action: 'list_books' })
             .then(data => {
                 if (data.books) {
@@ -42,7 +44,13 @@ const Study = () => {
                         isExamTrigger: true, 
                         cover_url: null 
                     };
-                    setBooks([examBook, ...data.books]);
+                    const flashcardBook = {
+                        id: "flashcard-trigger-001",
+                        title: "Flashcards",
+                        isFlashcardTrigger: true,
+                        cover_url: null
+                    };
+                    setBooks([examBook, flashcardBook, ...data.books]);
                 }
             })
             .catch(err => console.error(err));
@@ -140,6 +148,7 @@ const Study = () => {
                                     previewMode={true} 
                                     onBookClick={setActiveBook} 
                                     onExamTrigger={() => { setIsLibraryOpen(true); setShelfLevel('universities'); }} 
+                                    onFlashcardTrigger={() => setIsFlashcardsOpen(true)}
                                 />
                             </div>
                         </div>
@@ -306,6 +315,10 @@ const Study = () => {
                                     setActiveCategory('Exams');
                                     setShelfLevel('universities');
                                 }}>Exams</div>
+                                <div className={`chip ${activeCategory === 'Flashcards' ? 'active' : ''}`} onClick={() => {
+                                    setActiveCategory('Flashcards');
+                                    setIsFlashcardsOpen(true);
+                                }}>Flashcards</div>
                             </div>
                         </div>
                     </header>
@@ -346,6 +359,7 @@ const Study = () => {
                                             onBookClick={setActiveBook}
                                             onUniversityClick={setSelectedUniversity}
                                             onExamTrigger={() => setShelfLevel('universities')}
+                                            onFlashcardTrigger={() => setIsFlashcardsOpen(true)}
                                         />
                                     );
                                 })()}
@@ -383,6 +397,10 @@ const Study = () => {
                     }
                 }}
             />
+
+            {isFlashcardsOpen && (
+                <FlashcardPavilion onClose={() => setIsFlashcardsOpen(false)} />
+            )}
         </div>
     );
 };
