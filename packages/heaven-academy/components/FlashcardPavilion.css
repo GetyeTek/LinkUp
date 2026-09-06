@@ -1,0 +1,147 @@
+.fcp-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: var(--bg-dark, #09090b);
+    display: flex;
+    flex-direction: column;
+    font-family: 'Poppins', sans-serif;
+    color: #f4f4f6;
+    animation: fadeInModal 0.25s ease-out;
+}
+
+.fcp-header {
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(14, 14, 18, 0.9);
+    backdrop-filter: blur(15px);
+}
+
+.fcp-back-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.fcp-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.fcp-scroll-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+}
+.fcp-scroll-body::-webkit-scrollbar { display: none; }
+
+.fcp-section-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #888;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+/* Mistake Vault Card */
+.fcp-mistake-card {
+    background: linear-gradient(135deg, rgba(255, 95, 95, 0.12) 0%, rgba(22, 22, 26, 0.95) 100%);
+    border: 1px solid rgba(255, 95, 95, 0.35);
+    border-radius: 20px;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(255, 95, 95, 0.12);
+    transition: all 0.25s ease;
+}
+.fcp-mistake-card:hover { transform: translateY(-2px); border-color: #ff5f5f; }
+.fcp-mistake-card:active { transform: scale(0.98); }
+
+.fcp-mv-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(255, 95, 95, 0.2);
+    color: #ff5f5f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.fcp-mv-info h3 { font-size: 1rem; font-weight: 600; color: #fff; margin: 0; }
+.fcp-mv-info p { font-size: 0.78rem; color: #aaa; margin-top: 3px; line-height: 1.3; }
+
+.fcp-badge-red {
+    margin-left: auto;
+    background: rgba(255, 95, 95, 0.2);
+    color: #ff5f5f;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 99px;
+    white-space: nowrap;
+}
+
+/* Course Deck Card */
+.fcp-deck-card {
+    background: #16161a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+.fcp-deck-card:hover { border-color: var(--accent-teal, #42d7b8); transform: translateY(-2px); }
+.fcp-deck-card:active { transform: scale(0.98); }
+
+.fcp-cdc-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(66, 215, 184, 0.1);
+    color: var(--accent-teal, #42d7b8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.fcp-cdc-info { flex: 1; min-width: 0; }
+.fcp-cdc-code { font-family: 'Roboto Mono', monospace; font-size: 0.7rem; color: var(--accent-teal, #42d7b8); font-weight: 700; }
+.fcp-cdc-title { font-size: 0.95rem; font-weight: 600; color: #fff; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fcp-cdc-desc { font-size: 0.75rem; color: #888; }
+
+.fcp-badge-teal {
+    background: rgba(66, 215, 184, 0.15);
+    color: var(--accent-teal, #42d7b8);
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 99px;
+    white-space: nowrap;
+}
