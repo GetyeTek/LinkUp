@@ -1,155 +1,170 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-09-04T05:59:30.385Z
+-- Date: 2026-09-07T18:58:31.012Z
 
 -- ========================
 -- TABLES & COLUMNS
 -- ========================
 Table: api_keys
-service (text), api_key (text), name (text), cooldown_until (timestamp with time zone), last_used_at (timestamp with time zone), is_active (boolean), created_at (timestamp with time zone), id (bigint)
+name (text), cooldown_until (timestamp with time zone), last_used_at (timestamp with time zone), is_active (boolean), created_at (timestamp with time zone), id (bigint), service (text), api_key (text)
 
 Table: asset_upload_queue
-book_name (text), error_message (text), updated_at (timestamp with time zone), created_at (timestamp with time zone), id (bigint), image_name (text), file_path (text), zip_name (text), status (text)
+error_message (text), id (bigint), status (text), zip_name (text), created_at (timestamp with time zone), updated_at (timestamp with time zone), file_path (text), book_name (text), image_name (text)
+
+Table: book_flashcard_progress
+book_id (uuid), status (text), book_title (text), course_code (text), created_at (timestamp with time zone), updated_at (timestamp with time zone), error_message (text), locked_until (timestamp with time zone), cards_generated (integer), end_page (integer), start_page (integer), id (uuid), section_title (text), chapter_title (text)
 
 Table: book_pages
-content_json (jsonb), book_id (uuid), id (uuid), page_key (text), manual_flag (text), created_at (timestamp with time zone), page_number (integer)
+book_id (uuid), page_number (integer), created_at (timestamp with time zone), content_json (jsonb), manual_flag (text), page_key (text), id (uuid)
 
 Table: book_progress
-status (text), created_at (timestamp with time zone), updated_at (timestamp with time zone), page_number (integer), id (uuid), pdf_name (text), error_message (text)
+id (uuid), pdf_name (text), status (text), error_message (text), created_at (timestamp with time zone), updated_at (timestamp with time zone), page_number (integer)
 
 Table: book_question_links
-question_id (uuid), id (uuid), chunk_id (uuid), created_at (timestamp with time zone), similarity_score (double precision)
+created_at (timestamp with time zone), id (uuid), chunk_id (uuid), similarity_score (double precision), question_id (uuid)
 
 Table: book_results
-id (uuid), pdf_name (text), page_number (integer), result_json (jsonb), created_at (timestamp with time zone)
+page_number (integer), id (uuid), pdf_name (text), created_at (timestamp with time zone), result_json (jsonb)
 
 Table: books
-category (text), title (text), id (uuid), cover_url (text), author (text), course_code (text), custom_css (text), page_offset (integer), toc (jsonb), created_at (timestamp with time zone)
+custom_css (text), category (text), id (uuid), created_at (timestamp with time zone), toc (jsonb), page_offset (integer), cover_url (text), author (text), course_code (text), title (text)
 
 Table: campus_channels
-is_active (boolean), last_scraped_id (bigint), id (uuid), channel_handle (text), is_private (boolean), members_data (jsonb), last_extracted_at (timestamp with time zone), telegram_peer_id (bigint), created_at (timestamp with time zone)
+last_scraped_id (bigint), last_extracted_at (timestamp with time zone), members_data (jsonb), is_private (boolean), telegram_peer_id (bigint), created_at (timestamp with time zone), is_active (boolean), id (uuid), channel_handle (text)
 
 Table: campus_feed
-sender_name (text), image_url (text), full_text (text), sender_id (bigint), metadata (jsonb), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), channel_handle (text), telegram_id (bigint), id (uuid), sender_username (text)
+channel_handle (text), sender_username (text), telegram_id (bigint), telegram_timestamp (timestamp with time zone), full_text (text), image_url (text), id (uuid), created_at (timestamp with time zone), sender_name (text), metadata (jsonb), sender_id (bigint)
 
 Table: chunks
-id (uuid), next_chunk_id (uuid), chunk_index (integer), chunk_text (text), embedding (USER-DEFINED), prev_chunk_id (uuid), created_at (timestamp with time zone), page_number (integer), document_id (uuid), toc_node_id (uuid)
+document_id (uuid), created_at (timestamp with time zone), page_number (integer), embedding (USER-DEFINED), toc_node_id (uuid), prev_chunk_id (uuid), chunk_text (text), id (uuid), next_chunk_id (uuid), chunk_index (integer)
 
 Table: conduit_favorites
-id (uuid), created_at (timestamp with time zone), category (text), target_id (text), repo_name (text), metadata (jsonb)
+target_id (text), repo_name (text), category (text), id (uuid), metadata (jsonb), created_at (timestamp with time zone)
 
 Table: conduit_history
-ops (jsonb), note (text), meta (text), type (text), title (text), sha (text), repo_name (text), id (uuid), conduit_id (integer), created_at (timestamp with time zone)
+type (text), sha (text), repo_name (text), conduit_id (integer), ops (jsonb), title (text), id (uuid), note (text), created_at (timestamp with time zone), meta (text)
 
 Table: conduit_logs
-repo_name (text), type (text), id (uuid), created_at (timestamp with time zone), data (jsonb)
+repo_name (text), type (text), created_at (timestamp with time zone), id (uuid), data (jsonb)
 
 Table: conversation_members
-last_read_at (timestamp with time zone), id (uuid), muted_until (timestamp with time zone), created_at (timestamp with time zone), role (USER-DEFINED), user_id (uuid), conversation_id (uuid)
+muted_until (timestamp with time zone), created_at (timestamp with time zone), last_read_at (timestamp with time zone), role (USER-DEFINED), user_id (uuid), conversation_id (uuid), id (uuid)
 
 Table: conversations
-id (uuid), title (character varying), avatar_url (text), type (USER-DEFINED), created_at (timestamp with time zone), last_message_at (timestamp with time zone), owner_id (uuid), metadata (jsonb)
+id (uuid), type (USER-DEFINED), last_message_at (timestamp with time zone), created_at (timestamp with time zone), owner_id (uuid), metadata (jsonb), avatar_url (text), title (character varying)
+
+Table: course_flashcards
+section_title (text), front (text), course_code (text), created_at (timestamp with time zone), ref_page (integer), book_id (uuid), id (uuid), chapter_title (text), back (text)
 
 Table: courses
-id (uuid), code (text), name (text), department_id (uuid), created_at (timestamp with time zone)
+department_id (uuid), code (text), name (text), created_at (timestamp with time zone), id (uuid)
 
 Table: departments
-name (text), id (uuid), created_at (timestamp with time zone)
+created_at (timestamp with time zone), id (uuid), name (text)
 
 Table: documents
-user_id (uuid), storage_path (text), file_name (text), id (uuid), page_count (integer), last_processed_at (timestamp with time zone), created_at (timestamp with time zone), chunk_count (integer), status (text)
+page_count (integer), file_name (text), storage_path (text), status (text), id (uuid), user_id (uuid), chunk_count (integer), created_at (timestamp with time zone), last_processed_at (timestamp with time zone)
 
 Table: embedding_progress
-updated_at (timestamp with time zone), error_message (text), status (text), id (uuid), book_id (uuid), page_number (integer), block_index (integer), locked_until (timestamp with time zone)
+page_number (integer), id (uuid), updated_at (timestamp with time zone), status (text), error_message (text), book_id (uuid), locked_until (timestamp with time zone), block_index (integer)
 
 Table: exams
-date (text), total_marks (numeric), time_allowed_minutes (integer), university_id (uuid), id (uuid), course_id (uuid), created_at (timestamp with time zone), general_instructions (text), exam_type (text), program (text), media_summary (jsonb), exam_quality_notes (jsonb), constants_provided (jsonb)
+media_summary (jsonb), date (text), exam_type (text), id (uuid), university_id (uuid), time_allowed_minutes (integer), total_marks (numeric), constants_provided (jsonb), exam_quality_notes (jsonb), created_at (timestamp with time zone), course_id (uuid), program (text), general_instructions (text)
 
 Table: extracted_events
-title (text), description (text), id (uuid), channel_id (uuid), event_date (timestamp with time zone), source_ids (ARRAY), created_at (timestamp with time zone), is_active (boolean), event_type (text)
+id (uuid), description (text), event_type (text), created_at (timestamp with time zone), event_date (timestamp with time zone), source_ids (ARRAY), is_active (boolean), title (text), channel_id (uuid)
 
 Table: featured_events
-created_at (timestamp with time zone), is_active (boolean), app_route (jsonb), id (uuid), external_url (text), title (text), body (text), image_url (text), tag_text (text), tag_color (text), button_text (text), button_color (text), action_type (text), html_content (text), metadata (jsonb)
+app_route (jsonb), is_active (boolean), created_at (timestamp with time zone), metadata (jsonb), body (text), image_url (text), tag_text (text), tag_color (text), button_text (text), button_color (text), action_type (text), html_content (text), title (text), external_url (text), id (uuid)
 
 Table: linkoin_transactions
-amount (integer), user_id (uuid), id (uuid), idempotency_key (text), description (text), transaction_type (text), created_at (timestamp with time zone)
+created_at (timestamp with time zone), transaction_type (text), description (text), idempotency_key (text), user_id (uuid), id (uuid), amount (integer)
 
 Table: live_stage_questions
-text (text), is_pinned (boolean), created_at (timestamp with time zone), sender_id (uuid), conversation_id (uuid), id (uuid), status (text)
+id (uuid), sender_id (uuid), conversation_id (uuid), text (text), status (text), is_pinned (boolean), created_at (timestamp with time zone)
 
 Table: live_study_sessions
-conversation_id (uuid), id (uuid), active_user_ids (ARRAY), last_updated_at (timestamp with time zone), lecture_chunks (jsonb), compiled_answers (jsonb), layout_blueprint (jsonb), generation_state (text), course_name (text), lesson_topic (text), raw_source_text (text)
+lecture_chunks (jsonb), last_updated_at (timestamp with time zone), active_user_ids (ARRAY), conversation_id (uuid), id (uuid), lesson_topic (text), course_name (text), generation_state (text), raw_source_text (text), layout_blueprint (jsonb), compiled_answers (jsonb)
 
 Table: messages
-reply_to_id (uuid), forward_meta (jsonb), id (uuid), text (text), conversation_id (uuid), sender_id (uuid), attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean)
+created_at (timestamp with time zone), text (text), id (uuid), conversation_id (uuid), sender_id (uuid), attachments (jsonb), forward_meta (jsonb), is_edited (boolean), reply_to_id (uuid)
 
 Table: migration_progress
-id (uuid), processed_at (timestamp with time zone), page_index (text), status (text), error_message (text), remote_id (text), pdf_name (text)
+page_index (text), pdf_name (text), processed_at (timestamp with time zone), error_message (text), status (text), remote_id (text), id (uuid)
 
 Table: migration_sync_state
-id (integer), last_run_at (timestamp with time zone), current_offset (integer)
+current_offset (integer), id (integer), last_run_at (timestamp with time zone)
 
 Table: miron_messages
-user_id (uuid), snapshots (jsonb), created_at (timestamp with time zone), thought_process (text), text (text), role (text), ui_command (jsonb), id (uuid), thread_id (uuid), quizzes (jsonb)
+snapshots (jsonb), thought_process (text), text (text), role (text), created_at (timestamp with time zone), ui_command (jsonb), quizzes (jsonb), user_id (uuid), thread_id (uuid), id (uuid)
 
 Table: miron_threads
-is_pinned (boolean), title (text), course_code (text), context_passage (text), updated_at (timestamp with time zone), id (uuid), created_at (timestamp with time zone), last_message_at (timestamp with time zone), user_id (uuid)
+id (uuid), user_id (uuid), created_at (timestamp with time zone), updated_at (timestamp with time zone), is_pinned (boolean), last_message_at (timestamp with time zone), context_passage (text), title (text), course_code (text)
 
 Table: news_feed
-telegram_timestamp (timestamp with time zone), full_text (text), image_url (text), post_url (text), category (text), telegram_id (bigint), id (bigint), channel (text), title (text), is_ad (boolean), created_at (timestamp with time zone), snippet (text)
+id (bigint), channel (text), telegram_id (bigint), telegram_timestamp (timestamp with time zone), title (text), snippet (text), full_text (text), image_url (text), post_url (text), is_ad (boolean), created_at (timestamp with time zone), category (text)
 
 Table: notifications
-action_data (jsonb), is_read (boolean), type (text), user_id (uuid), id (uuid), icon (text), insight (text), description (text), created_at (timestamp with time zone), title (text)
+icon (text), title (text), description (text), is_read (boolean), insight (text), action_data (jsonb), id (uuid), created_at (timestamp with time zone), user_id (uuid), type (text)
 
 Table: payment_submissions
-amount (integer), id (uuid), rejection_reason (text), status (text), screenshot_url (text), sms_text (text), transaction_ref (text), updated_at (timestamp with time zone), created_at (timestamp with time zone), payment_method (text), user_id (uuid), plan (text)
+created_at (timestamp with time zone), sms_text (text), screenshot_url (text), status (text), rejection_reason (text), updated_at (timestamp with time zone), transaction_ref (text), amount (integer), user_id (uuid), id (uuid), plan (text), payment_method (text)
 
 Table: peer_questions
-body (text), course_tag (text), title (text), replies_count (integer), created_at (timestamp with time zone), user_id (uuid), id (uuid)
+title (text), user_id (uuid), created_at (timestamp with time zone), course_tag (text), id (uuid), replies_count (integer), body (text)
 
 Table: poll_votes
-created_at (timestamp with time zone), id (uuid), message_id (uuid), option_index (integer), user_id (uuid)
+created_at (timestamp with time zone), option_index (integer), message_id (uuid), id (uuid), user_id (uuid)
 
 Table: profiles
-full_name (text), avatar_url (text), level (text), username (text), department (text), freshman_stream (text), year (text), target_department (text), pro_expires_at (timestamp with time zone), last_streak_update (date), longest_streak (integer), current_streak (integer), registered_with_telegram (boolean), telegram_id (bigint), last_username_change_at (timestamp with time zone), university_id (uuid), last_seen_at (timestamp with time zone), updated_at (timestamp with time zone), linkoin_balance (integer), id (uuid), program (text), phone (text), bio (text), theme (text), telegram_username (text), is_pro (boolean), class_id (uuid)
+is_pro (boolean), id (uuid), linkoin_balance (integer), updated_at (timestamp with time zone), last_seen_at (timestamp with time zone), university_id (uuid), last_username_change_at (timestamp with time zone), telegram_id (bigint), registered_with_telegram (boolean), current_streak (integer), longest_streak (integer), last_streak_update (date), class_id (uuid), pro_expires_at (timestamp with time zone), telegram_username (text), theme (text), bio (text), phone (text), avatar_url (text), level (text), program (text), year (text), freshman_stream (text), department (text), target_department (text), username (text), full_name (text)
 
 Table: question_book_mappings
-created_at (timestamp with time zone), page_key (text), processed_at (timestamp with time zone), id (uuid), is_valid (boolean), error_message (text), content_index (integer), book_id (uuid), question_id (uuid), status (text), snippet (text)
+question_id (uuid), book_id (uuid), id (uuid), is_valid (boolean), content_index (integer), status (text), page_key (text), error_message (text), processed_at (timestamp with time zone), created_at (timestamp with time zone), snippet (text)
 
 Table: question_processing_progress
-created_at (timestamp with time zone), processed_at (timestamp with time zone), book_id (uuid), question_id (uuid), status (text), error_message (text)
+processed_at (timestamp with time zone), error_message (text), status (text), created_at (timestamp with time zone), book_id (uuid), question_id (uuid)
 
 Table: question_reports
-id (uuid), question_id (uuid), created_at (timestamp with time zone), status (text), source (text), report_text (text)
+id (uuid), status (text), created_at (timestamp with time zone), report_text (text), question_id (uuid), source (text)
 
 Table: questions
-id (uuid), options (jsonb), matching_data (jsonb), question_order (integer), transcription_quality (jsonb), correct_answer (jsonb), media (jsonb), points (numeric), embedding_status (text), retry_count (integer), created_at (timestamp with time zone), explanation (text), question_number (text), question_type (text), text (text), section_id (uuid), embedding (USER-DEFINED)
+correct_answer (jsonb), embedding (USER-DEFINED), explanation (text), retry_count (integer), created_at (timestamp with time zone), question_number (text), question_type (text), question_order (integer), text (text), section_id (uuid), transcription_quality (jsonb), media (jsonb), matching_data (jsonb), options (jsonb), points (numeric), id (uuid), embedding_status (text)
 
 Table: referrals
-created_at (timestamp with time zone), referee_id (uuid), referrer_id (uuid), status (text), id (uuid)
+id (uuid), referrer_id (uuid), referee_id (uuid), created_at (timestamp with time zone), status (text)
 
 Table: sections
-id (uuid), title (text), created_at (timestamp with time zone), section_order (integer), shared_context (jsonb), total_points (numeric), exam_id (uuid), instructions (text)
+id (uuid), exam_id (uuid), total_points (numeric), shared_context (jsonb), section_order (integer), created_at (timestamp with time zone), title (text), instructions (text)
 
 Table: squad_bans
-created_at (timestamp with time zone), banned_until (timestamp with time zone), user_id (uuid), conversation_id (uuid), id (uuid)
+id (uuid), conversation_id (uuid), banned_until (timestamp with time zone), created_at (timestamp with time zone), user_id (uuid)
 
 Table: system_config
-value (jsonb), key (text)
+key (text), value (jsonb)
 
 Table: telegram_login_tokens
-metadata (jsonb), token_hash (text), id (uuid), telegram_id (bigint), created_at (timestamp with time zone), expires_at (timestamp with time zone)
+metadata (jsonb), token_hash (text), id (uuid), expires_at (timestamp with time zone), created_at (timestamp with time zone), telegram_id (bigint)
 
 Table: universities
-name (text), created_at (timestamp with time zone), id (uuid), short_name (text)
+short_name (text), name (text), id (uuid), created_at (timestamp with time zone)
 
 Table: user_course_progress
-created_at (timestamp with time zone), section_title (text), chapter_title (text), course_code (text), id (uuid), user_id (uuid), book_id (uuid), current_page (integer), furthest_page (integer), reading_seconds (integer), completion_pct (numeric), last_read_at (timestamp with time zone), updated_at (timestamp with time zone)
+chapter_title (text), course_code (text), updated_at (timestamp with time zone), section_title (text), created_at (timestamp with time zone), last_read_at (timestamp with time zone), completion_pct (numeric), reading_seconds (integer), furthest_page (integer), current_page (integer), book_id (uuid), user_id (uuid), id (uuid)
 
 Table: user_daily_telemetry
-total_active_seconds (integer), time_home_seconds (integer), time_discover_seconds (integer), time_connect_seconds (integer), id (uuid), time_exam_seconds (integer), updated_at (timestamp with time zone), time_books_seconds (integer), time_miron_seconds (integer), user_id (uuid), total_interactions (integer), date (date)
+user_id (uuid), date (date), total_active_seconds (integer), time_exam_seconds (integer), time_books_seconds (integer), time_miron_seconds (integer), time_connect_seconds (integer), time_discover_seconds (integer), time_home_seconds (integer), total_interactions (integer), updated_at (timestamp with time zone), id (uuid)
+
+Table: user_device_seats
+device_name (text), last_lease_at (timestamp with time zone), created_at (timestamp with time zone), last_active_at (timestamp with time zone), is_primary (boolean), user_id (uuid), id (uuid), device_id (text), device_type (text)
+
+Table: user_flashcard_reviews
+card_id (uuid), card_type (text), difficulty (text), last_reviewed_at (timestamp with time zone), next_review_at (timestamp with time zone), review_count (integer), user_id (uuid), id (uuid)
+
+Table: user_mistake_flashcards
+id (uuid), reference_info (text), back (text), front (text), course_code (text), created_at (timestamp with time zone), source_question_id (uuid), user_id (uuid)
 
 Table: user_question_attempts
-is_correct (boolean), source_id (text), question_snapshot (jsonb), question_id (uuid), user_id (uuid), id (uuid), source_type (text), topic_tag (text), course_code (text), attempted_at (timestamp with time zone), user_answer (jsonb)
+source_type (text), course_code (text), topic_tag (text), source_id (text), attempted_at (timestamp with time zone), id (uuid), user_id (uuid), question_id (uuid), question_snapshot (jsonb), user_answer (jsonb), is_correct (boolean)
 
 -- ========================
 -- RLS POLICIES
@@ -221,10 +236,222 @@ Table: miron_messages | Policy: Users can manage their own miron messages | Cmd:
 Table: payment_submissions | Policy: Users can view their own payment submissions | Cmd: SELECT | Using: (auth.uid() = user_id)
 null
 Table: payment_submissions | Policy: Users can update their pending payment submissions | Cmd: UPDATE | Using: ((auth.uid() = user_id) AND (status = 'pending'::text))
+Table: user_device_seats | Policy: Users can manage own device seats | Cmd: ALL | Using: (auth.uid() = user_id)
+Table: course_flashcards | Policy: Allow authenticated read for course_flashcards | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
+Table: user_mistake_flashcards | Policy: Users can manage their own mistake flashcards | Cmd: ALL | Using: (auth.uid() = user_id)
+Table: user_flashcard_reviews | Policy: Users can manage their own flashcard reviews | Cmd: ALL | Using: (auth.uid() = user_id)
+Table: book_flashcard_progress | Policy: Allow authenticated read for bfp | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
 
 -- ========================
 -- FUNCTIONS & RPCs
 -- ========================
+-- Function: get_pending_mistake_batch
+
+BEGIN
+    RETURN QUERY
+    SELECT 
+        uqa.id AS attempt_id,
+        uqa.question_id,
+        COALESCE(uqa.course_code, 'General') AS course_code,
+        COALESCE(uqa.topic_tag, 'Core Concept') AS topic_tag,
+        COALESCE(uqa.question_snapshot->>'text', '') AS question_text,
+        COALESCE(uqa.question_snapshot->>'type', 'multiple_choice') AS question_type,
+        COALESCE(uqa.question_snapshot->'options', '[]'::jsonb) AS options,
+        COALESCE(uqa.question_snapshot->'correct_answer', 'null'::jsonb) AS correct_answer,
+        uqa.user_answer
+    FROM public.user_question_attempts uqa
+    WHERE uqa.user_id = p_user_id
+      AND uqa.is_correct = false
+      AND NOT EXISTS (
+          SELECT 1 FROM public.user_mistake_flashcards umf
+          WHERE umf.user_id = p_user_id 
+            AND (umf.source_question_id = uqa.question_id OR umf.front ILIKE '%' || LEFT(uqa.question_snapshot->>'text', 40) || '%')
+      )
+    ORDER BY uqa.attempted_at DESC
+    LIMIT p_limit;
+END;
+
+
+-- Function: get_next_pending_book_section
+
+DECLARE
+    v_book RECORD;
+    v_target_sec RECORD;
+    v_offset INT;
+BEGIN
+    FOR v_book IN 
+        SELECT b.id, b.course_code, b.title, b.toc, COALESCE(b.page_offset, 0) AS page_offset 
+        FROM public.books b 
+        WHERE b.toc IS NOT NULL AND jsonb_array_length(b.toc) > 0
+        ORDER BY b.created_at ASC
+    LOOP
+        v_offset := v_book.page_offset;
+        
+        -- Build an ordered sequence of sections with lookahead to find true section boundaries
+        FOR v_target_sec IN
+            WITH flattened_toc AS (
+                SELECT 
+                    ch->>'title' AS ch_title,
+                    sec->>'title' AS sec_title,
+                    (sec->>'page')::int AS raw_page,
+                    LEAD((sec->>'page')::int) OVER () AS next_raw_page
+                FROM jsonb_array_elements(v_book.toc) AS ch,
+                LATERAL jsonb_array_elements(
+                    CASE 
+                        WHEN ch->'children' IS NOT NULL AND jsonb_array_length(ch->'children') > 0 
+                        THEN ch->'children' 
+                        ELSE jsonb_build_array(ch) 
+                    END
+                ) AS sec
+            )
+            SELECT 
+                ch_title,
+                sec_title,
+                raw_page,
+                next_raw_page
+            FROM flattened_toc
+        LOOP
+            -- Check if this section has already been processed in course_flashcards
+            IF NOT EXISTS (
+                SELECT 1 FROM public.course_flashcards cf
+                WHERE cf.book_id = v_book.id AND cf.section_title = v_target_sec.sec_title
+            ) THEN
+                book_id := v_book.id;
+                course_code := v_book.course_code;
+                book_title := v_book.title;
+                chapter_title := v_target_sec.ch_title;
+                section_title := v_target_sec.sec_title;
+                start_page := GREATEST(1, v_target_sec.raw_page + v_offset);
+                
+                -- The True Boundary: Reads up to the exact page before the next section begins
+                IF v_target_sec.next_raw_page IS NOT NULL AND v_target_sec.next_raw_page > v_target_sec.raw_page THEN
+                    end_page := GREATEST(start_page, (v_target_sec.next_raw_page + v_offset) - 1);
+                ELSE
+                    -- If final section of the book, allow full span through the chapter end
+                    end_page := start_page + 25;
+                END IF;
+
+                RETURN NEXT;
+                RETURN; -- Terminate immediately to fulfill "one section per ping"
+            END IF;
+        END LOOP;
+    END LOOP;
+END;
+
+
+-- Function: initialize_book_flashcard_jobs
+
+DECLARE
+    v_book RECORD;
+    v_target_sec RECORD;
+    v_offset INT;
+    v_inserted_count INT := 0;
+BEGIN
+    FOR v_book IN 
+        SELECT b.id, b.course_code, b.title, b.toc, COALESCE(b.page_offset, 0) AS page_offset 
+        FROM public.books b 
+        WHERE b.toc IS NOT NULL AND jsonb_array_length(b.toc) > 0
+    LOOP
+        v_offset := v_book.page_offset;
+
+        FOR v_target_sec IN
+            WITH flattened_toc AS (
+                SELECT 
+                    ch->>'title' AS ch_title,
+                    sec->>'title' AS sec_title,
+                    (sec->>'page')::int AS raw_page,
+                    LEAD((sec->>'page')::int) OVER () AS next_raw_page
+                FROM jsonb_array_elements(v_book.toc) AS ch,
+                LATERAL jsonb_array_elements(
+                    CASE 
+                        WHEN ch->'children' IS NOT NULL AND jsonb_array_length(ch->'children') > 0 
+                        THEN ch->'children' 
+                        ELSE jsonb_build_array(ch) 
+                    END
+                ) AS sec
+            )
+            SELECT ch_title, sec_title, raw_page, next_raw_page
+            FROM flattened_toc
+        LOOP
+            INSERT INTO public.book_flashcard_progress (
+                book_id, course_code, book_title, chapter_title, section_title, start_page, end_page
+            ) VALUES (
+                v_book.id,
+                v_book.course_code,
+                v_book.title,
+                v_target_sec.ch_title,
+                v_target_sec.sec_title,
+                GREATEST(1, v_target_sec.raw_page + v_offset),
+                CASE 
+                    WHEN v_target_sec.next_raw_page IS NOT NULL AND v_target_sec.next_raw_page > v_target_sec.raw_page 
+                    THEN GREATEST(1, (v_target_sec.next_raw_page + v_offset) - 1)
+                    ELSE GREATEST(1, v_target_sec.raw_page + v_offset) + 25
+                END
+            )
+            ON CONFLICT (book_id, section_title) DO NOTHING;
+            
+            IF FOUND THEN
+                v_inserted_count := v_inserted_count + 1;
+            END IF;
+        END LOOP;
+    END LOOP;
+
+    RETURN v_inserted_count;
+END;
+
+
+-- Function: acquire_next_flashcard_job
+
+DECLARE
+    v_job_id UUID;
+BEGIN
+    -- 1. Ensure any new books have their sections mapped
+    PERFORM public.initialize_book_flashcard_jobs();
+
+    -- 2. Lock 1 pending section using SKIP LOCKED
+    SELECT id INTO v_job_id
+    FROM public.book_flashcard_progress
+    WHERE (status = 'pending' OR status = 'failed' OR (status = 'processing' AND locked_until < now()))
+    ORDER BY created_at ASC, start_page ASC
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED;
+
+    IF v_job_id IS NOT NULL THEN
+        UPDATE public.book_flashcard_progress
+        SET status = 'processing',
+            locked_until = now() + INTERVAL '5 minutes',
+            updated_at = now()
+        WHERE id = v_job_id;
+
+        RETURN QUERY
+        SELECT 
+            p.id AS job_id,
+            p.book_id,
+            p.course_code,
+            p.book_title,
+            p.chapter_title,
+            p.section_title,
+            p.start_page,
+            p.end_page
+        FROM public.book_flashcard_progress p
+        WHERE p.id = v_job_id;
+    END IF;
+END;
+
+
+-- Function: complete_flashcard_job
+
+BEGIN
+    UPDATE public.book_flashcard_progress
+    SET status = p_status,
+        cards_generated = p_cards_count,
+        error_message = p_error,
+        locked_until = NULL,
+        updated_at = now()
+    WHERE id = p_job_id;
+END;
+
+
 -- Function: get_table_counts
 
 DECLARE
@@ -2660,6 +2887,280 @@ BEGIN
   JOIN public.conversation_members cm ON c.id = cm.conversation_id
   WHERE cm.user_id = req_user_id
   ORDER BY COALESCE(c.last_message_at, c.created_at) DESC NULLS LAST;
+END;
+
+
+-- Function: get_my_active_devices
+
+DECLARE
+    v_res JSONB;
+BEGIN
+    SELECT jsonb_agg(jsonb_build_object(
+        'device_type', device_type,
+        'device_name', device_name,
+        'is_primary', is_primary,
+        'last_active_at', last_active_at
+    ) ORDER BY is_primary DESC, last_active_at DESC)
+    INTO v_res
+    FROM public.user_device_seats
+    WHERE user_id = auth.uid();
+
+    RETURN COALESCE(v_res, '[]'::jsonb);
+END;
+
+
+-- Function: claim_device_lease
+
+DECLARE
+    v_user_id UUID := auth.uid();
+BEGIN
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object('success', false);
+    END IF;
+
+    UPDATE public.user_device_seats 
+    SET last_lease_at = now()
+    WHERE user_id = v_user_id AND device_id = p_device_id;
+
+    RETURN jsonb_build_object('success', true, 'claimed_at', now());
+END;
+
+
+-- Function: sync_device_session
+
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_existing_slot RECORD;
+    v_is_primary BOOLEAN := false;
+    v_device_count INT;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthenticated session sync';
+    END IF;
+
+    -- 1. Check existing seat for this device category (mobile or desktop)
+    SELECT * INTO v_existing_slot 
+    FROM public.user_device_seats 
+    WHERE user_id = v_user_id AND device_type = p_device_type;
+
+    -- CASE A: First time registering this device category
+    IF NOT FOUND THEN
+        SELECT count(*) INTO v_device_count 
+        FROM public.user_device_seats 
+        WHERE user_id = v_user_id;
+
+        -- Mobile Anchor Priority: Mobile always takes primary if first device or if upgrading from PC
+        IF p_device_type = 'mobile' THEN
+            v_is_primary := true;
+            -- Demote any previous desktop primary to companion
+            UPDATE public.user_device_seats 
+            SET is_primary = false 
+            WHERE user_id = v_user_id AND device_type = 'desktop';
+        ELSIF v_device_count = 0 THEN
+            -- First device ever is desktop, temporarily primary until mobile arrives
+            v_is_primary := true;
+        END IF;
+
+        INSERT INTO public.user_device_seats (
+            user_id, device_id, device_type, device_name, is_primary, last_active_at, last_lease_at
+        ) VALUES (
+            v_user_id, p_device_id, p_device_type, p_device_name, v_is_primary, now(), now()
+        );
+
+        RETURN jsonb_build_object(
+            'status', 'registered',
+            'device_type', p_device_type,
+            'is_primary', v_is_primary
+        );
+    END IF;
+
+    -- CASE B: Same physical device returning (Normal Session Refresh)
+    IF v_existing_slot.device_id = p_device_id THEN
+        IF p_device_type = 'mobile' AND NOT v_existing_slot.is_primary THEN
+            v_is_primary := true;
+            UPDATE public.user_device_seats SET is_primary = false WHERE user_id = v_user_id AND device_type = 'desktop';
+        ELSE
+            v_is_primary := v_existing_slot.is_primary;
+        END IF;
+
+        UPDATE public.user_device_seats 
+        SET last_active_at = now(),
+            device_name = p_device_name,
+            is_primary = v_is_primary
+        WHERE user_id = v_user_id AND device_type = p_device_type;
+
+        RETURN jsonb_build_object(
+            'status', 'active',
+            'device_type', p_device_type,
+            'is_primary', v_is_primary
+        );
+    END IF;
+
+    -- CASE C: Different device of the same type colliding
+    IF p_device_type = 'desktop' THEN
+        -- Ephemeral Companion Policy: Desktop auto-replaces the old PC seamlessly!
+        UPDATE public.user_device_seats 
+        SET device_id = p_device_id,
+            device_name = p_device_name,
+            last_active_at = now(),
+            last_lease_at = now()
+        WHERE user_id = v_user_id AND device_type = 'desktop';
+
+        RETURN jsonb_build_object(
+            'status', 'replaced_secondary',
+            'device_type', 'desktop',
+            'replaced_device_name', v_existing_slot.device_name
+        );
+    ELSE
+        -- Mobile Collision: Primary Anchor requires confirmation unless forced
+        IF NOT p_force_transfer THEN
+            RETURN jsonb_build_object(
+                'status', 'requires_primary_confirmation',
+                'current_primary_name', v_existing_slot.device_name
+            );
+        ELSE
+            -- User confirmed switch to new primary phone
+            UPDATE public.user_device_seats 
+            SET device_id = p_device_id,
+                device_name = p_device_name,
+                is_primary = true,
+                last_active_at = now(),
+                last_lease_at = now()
+            WHERE user_id = v_user_id AND device_type = 'mobile';
+
+            UPDATE public.user_device_seats SET is_primary = false WHERE user_id = v_user_id AND device_type = 'desktop';
+
+            RETURN jsonb_build_object(
+                'status', 'transferred_primary',
+                'device_type', 'mobile'
+            );
+        END IF;
+    END IF;
+END;
+
+
+-- Function: heartbeat_device_lease
+
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_my_seat RECORD;
+    v_other_seat RECORD;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object('status', 'unauthenticated');
+    END IF;
+
+    -- 1. Verify this device is still officially seated
+    SELECT * INTO v_my_seat 
+    FROM public.user_device_seats 
+    WHERE user_id = v_user_id AND device_id = p_device_id;
+
+    IF NOT FOUND THEN
+        -- Device was replaced or never registered
+        RETURN jsonb_build_object('status', 'evicted');
+    END IF;
+
+    -- 2. Update active presence timestamp
+    UPDATE public.user_device_seats 
+    SET last_active_at = now()
+    WHERE id = v_my_seat.id;
+
+    -- 3. Check if the other device holds an active exclusive lease (< 45s old)
+    SELECT device_name, device_type, last_lease_at INTO v_other_seat
+    FROM public.user_device_seats
+    WHERE user_id = v_user_id 
+      AND device_id != p_device_id
+      AND last_lease_at > (now() - INTERVAL '45 seconds');
+
+    IF FOUND THEN
+        RETURN jsonb_build_object(
+            'status', 'lease_conflict',
+            'holder_name', v_other_seat.device_name,
+            'holder_type', v_other_seat.device_type
+        );
+    END IF;
+
+    RETURN jsonb_build_object('status', 'ok');
+END;
+
+
+-- Function: user_has_password
+
+  SELECT COALESCE((encrypted_password IS NOT NULL AND encrypted_password != ''), false)
+  FROM auth.users
+  WHERE id = auth.uid();
+
+
+-- Function: get_flashcard_deck_stats
+
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_mistakes_due INT;
+    v_course_decks JSONB;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object('error', 'Unauthenticated');
+    END IF;
+
+    -- Tally due cards in the Mistake Vault
+    SELECT count(*)::int INTO v_mistakes_due
+    FROM public.user_mistake_flashcards m
+    LEFT JOIN public.user_flashcard_reviews r 
+        ON r.card_id = m.id AND r.card_type = 'mistake' AND r.user_id = v_user_id
+    WHERE m.user_id = v_user_id
+      AND (r.next_review_at IS NULL OR r.next_review_at <= now());
+
+    -- Group course flashcards by course_code
+    SELECT jsonb_agg(jsonb_build_object(
+        'course_code', c.course_code,
+        'title', COALESCE(b.title, c.course_code),
+        'total_cards', count(c.id)::int,
+        'due_cards', count(c.id) FILTER (WHERE r.next_review_at IS NULL OR r.next_review_at <= now())::int
+    )) INTO v_course_decks
+    FROM public.course_flashcards c
+    LEFT JOIN public.books b ON b.id = c.book_id
+    LEFT JOIN public.user_flashcard_reviews r 
+        ON r.card_id = c.id AND r.card_type = 'course' AND r.user_id = v_user_id
+    GROUP BY c.course_code, b.title;
+
+    RETURN jsonb_build_object(
+        'mistakes_due', COALESCE(v_mistakes_due, 0),
+        'course_decks', COALESCE(v_course_decks, '[]'::jsonb)
+    );
+END;
+
+
+-- Function: record_flashcard_review
+
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_next_review TIMESTAMPTZ;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object('error', 'Unauthenticated');
+    END IF;
+
+    -- Clean intervals: Hard -> 1 day, Good -> 3 days, Easy -> 7 days
+    IF p_difficulty = 'hard' THEN
+        v_next_review := now() + INTERVAL '1 day';
+    ELSIF p_difficulty = 'good' THEN
+        v_next_review := now() + INTERVAL '3 days';
+    ELSE
+        v_next_review := now() + INTERVAL '7 days';
+    END IF;
+
+    INSERT INTO public.user_flashcard_reviews (
+        user_id, card_id, card_type, difficulty, review_count, next_review_at, last_reviewed_at
+    ) VALUES (
+        v_user_id, p_card_id, p_card_type, p_difficulty, 1, v_next_review, now()
+    )
+    ON CONFLICT (user_id, card_id, card_type) DO UPDATE SET
+        difficulty = EXCLUDED.difficulty,
+        review_count = user_flashcard_reviews.review_count + 1,
+        next_review_at = EXCLUDED.next_review_at,
+        last_reviewed_at = now();
+
+    RETURN jsonb_build_object('success', true, 'next_review_at', v_next_review);
 END;
 
 
