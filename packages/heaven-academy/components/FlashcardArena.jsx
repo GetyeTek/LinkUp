@@ -8,7 +8,21 @@ const FlashcardArena = ({ deck, cards = [], onClose }) => {
     const [stats, setStats] = useState({ hard: 0, good: 0, easy: 0 });
     const [isCompleted, setIsCompleted] = useState(false);
 
-    if (!cards || cards.length === 0) return null;
+    if (!cards || cards.length === 0) {
+        return (
+            <div className="fca-overlay">
+                <header className="fca-topbar">
+                    <button className="fca-btn-close" onClick={onClose}><i className="fas fa-times"></i></button>
+                </header>
+                <main className="fca-summary">
+                    <i className="fas fa-box-open" style={{ fontSize: '2.5rem', color: '#888', marginBottom: '1rem' }}></i>
+                    <h2>No Cards Due</h2>
+                    <p>You are all caught up on this deck. Check back later for your next scheduled review.</p>
+                    <button className="fca-btn-finish" onClick={onClose}>Return to Decks</button>
+                </main>
+            </div>
+        );
+    }
 
     const currentCard = cards[currentIndex];
     const progressPct = ((currentIndex + 1) / cards.length) * 100;
