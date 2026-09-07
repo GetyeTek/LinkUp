@@ -213,14 +213,18 @@ ${JSON.stringify(rawBatch, null, 2)}`;
       endPage = item.end_page;
     }
 
-    // Read textbook pages for this section
-    const { data: pages, error: pageErr } = await supabase
+    // Read all textbook pages belonging to this complete section without arbitrary limits
+    let pageQuery = supabase
       .from("book_pages")
       .select("page_number, content_json")
       .eq("book_id", targetBookId)
-      .gte("page_number", startPage)
-      .lte("page_number", endPage || startPage + 3)
-      .order("page_number", { ascending: true });
+      .gte("page_number", startPage);
+
+    if (endPage) {
+      pageQuery = pageQuery.lte("page_number", endPage);
+    }
+
+    const { data: pages, error: pageErr } = await pageQuery.order("page_number", { ascending: true });
 
     if (pageErr) throw pageErr;
 
@@ -239,7 +243,7 @@ ${JSON.stringify(rawBatch, null, 2)}`;
     }
 
     const prompt = `You are Miron, a curriculum editor for university freshman courses in Ethiopia.
-Extract 3 to 6 high-yield conceptual flashcards from the following textbook section.
+Extract high-yield conceptual flashcards covering all key concepts from the following textbook section.
 
 SECTION CONTEXT:
 Course: ${targetCourseCode}
@@ -247,8 +251,8 @@ Chapter: ${targetChapter}
 Section: ${targetSection}
 
 EXTRACTION RULES:
-1. HIGH-YIELD ONLY: Extract fundamental definitions, laws, principles, core formulas, and key distinctions.
-2. EXCLUDE HEAVY CALCULATIONS: Do NOT create workout math questions with numerical arithmetic.
+1. HIGH-YIELD ONLY: Extract fundamental definitions, laws, principles, core formulas, and key distinctions across the entire section.
+2. EXCLUDE HEAVY CALCULATIONS: Do NOT create workout math questions with numerical arithmetic. Focus on concepts.
 3. CLEAR FORMATTING: 
    - "front": Direct recall question or concept definition prompt.
    - "back": Concise, accurate answer. Use <strong> for key terms.
@@ -262,7 +266,7 @@ EXTRACTION RULES:
 ]
 
 SECTION CONTENT:
-${sectionText.substring(0, 10000)}`;
+${sectionText}`;
 
     const geminiRes = await fetch(geminiEndpoint, {
       method: "POST",
