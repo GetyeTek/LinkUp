@@ -3,120 +3,110 @@ import { supabase } from '@linkup-platform/sdk-core';
 import FlashcardArena from './FlashcardArena.jsx';
 import './FlashcardPavilion.css';
 
-// Fallback high-yield freshman decks so the arena is playable immediately before ingestion edge functions run
-const DEFAULT_DECKS = [
-    {
-        course_code: 'PHYS 1011',
-        title: 'General Physics',
-        desc: 'Vectors, Dynamics, Work & Thermodynamics',
-        due_cards: 14,
-        cards: [
-            {
-                front: "What is the fundamental difference between Instantaneous Velocity and Average Velocity?",
-                back: "<strong>Instantaneous velocity</strong> is the velocity at a specific point in time (dx/dt), whereas <strong>average velocity</strong> is total displacement over the elapsed time interval (Δx/Δt).",
-                ref: "General Physics, Page 42"
-            },
-            {
-                front: "State Newton's Third Law in terms of interaction pairs.",
-                back: "When two bodies interact, they apply forces to one another that are <strong>equal in magnitude and opposite in direction</strong>: F_AB = -F_BA.",
-                ref: "General Physics, Page 61"
-            },
-            {
-                front: "Under what condition does a force do zero work on an object?",
-                back: "When the force is <strong>perpendicular to the displacement</strong> (cos 90° = 0) or when there is zero displacement.",
-                ref: "General Physics, Page 78"
-            }
-        ]
-    },
-    {
-        course_code: 'LOCT 1011',
-        title: 'Logic & Critical Thinking',
-        desc: 'Deductive Arguments, Fallacies & Truth Tables',
-        due_cards: 10,
-        cards: [
-            {
-                front: "What conditions are required for an argument to be 'Sound'?",
-                back: "The argument must be <strong>structurally valid</strong>, and <strong>all its premises must be factually true</strong>.",
-                ref: "Logic & Critical Thinking, Page 24"
-            },
-            {
-                front: "What is the Fallacy of Equivocation?",
-                back: "An informal fallacy where a key word or phrase is used with <strong>two or more different meanings</strong> in the same argument.",
-                ref: "Logic & Critical Thinking, Page 98"
-            }
-        ]
-    },
-    {
-        course_code: 'BIOL 1012',
-        title: 'General Biology',
-        desc: 'Cellular Division, Enzymes & Genetics',
-        due_cards: 12,
-        cards: [
-            {
-                front: "During which phase of mitosis do sister chromatids separate toward opposite poles?",
-                back: "During <strong>Anaphase</strong>, the centromeres split and sister chromatids are pulled to opposite spindle poles.",
-                ref: "General Biology, Page 93"
-            }
-        ]
-    }
-];
-
 const FlashcardPavilion = ({ onClose }) => {
     const [stats, setStats] = useState({ mistakes_due: 0, course_decks: [] });
     const [activeSession, setActiveSession] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [notice, setNotice] = useState(null); // { title: string, msg: string }
+
+    const fetchDeckStats = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase.rpc('get_flashcard_deck_stats');
+            if (!error && data && !data.error) {
+                setStats({
+                    mistakes_due: data.mistakes_due || 0,
+                    course_decks: data.course_decks || []
+                });
+            }
+        } catch (e) {
+            console.warn('[Flashcards] Stats fetch warning:', e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        supabase.rpc('get_flashcard_deck_stats')
-            .then(({ data }) => {
-                if (data && !data.error) setStats(data);
-            })
-            .catch(() => {});
+        fetchDeckStats();
     }, []);
 
     const handleStartMistakes = async () => {
-        // Fetch user mistakes or fallback
-        const { data } = await supabase
-            .from('user_mistake_flashcards')
-            .select('*')
-            .limit(25);
+        try {
+            const { data, error } = await supabase
+                .from('user_mistake_flashcards')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
 
-        const cards = (data && data.length > 0) ? data.map(c => ({ ...c, is_mistake: true })) : [
-            {
-                id: 'm-mock-1',
-                front: "Which fallacy occurs when an arguer distorts an opponent's argument to make it easier to attack?",
-                back: "The <strong>Straw Man Fallacy</strong>. Misrepresenting an argument to refute a caricature instead of the real thesis.",
-                ref: "Logic & Critical Thinking (Midterm Mistake)",
-                is_mistake: true
-            },
-            {
-                id: 'm-mock-2',
-                front: "Is mechanical energy conserved in the presence of friction?",
-                back: "<strong>No.</strong> Friction is a non-conservative force that dissipates mechanical energy into thermal energy.",
-                ref: "General Physics (Assignment 1 Mistake)",
-                is_mistake: true
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                setNotice({
+                    title: "Mistake Vault Empty",
+                    msg: "You haven't missed any questions yet! When you complete practice exams and textbook checkpoints, questions you miss will be transformed into recall flashcards here."
+                });
+                return;
             }
-        ];
 
-        setActiveSession({
-            deck: { course_code: 'VAULT', title: 'Mistake Vault' },
-            cards
-        });
+            const cards = data.map(c => ({
+                id: c.id,
+                front: c.front,
+                back: c.back,
+                ref: c.reference_info || 'Exam Mistake Review',
+                chapter_title: c.course_code || 'Mistake Vault',
+                is_mistake: true
+            }));
+
+            setActiveSession({
+                deck: { course_code: 'VAULT', title: 'Mistake Vault' },
+                cards
+            });
+        } catch (err) {
+            setNotice({
+                title: "Unable to Load Cards",
+                msg: err.message || "Failed to load your mistake cards. Please check your connection."
+            });
+        }
     };
 
-    const handleStartCourse = async (courseCode, fallbackDeck) => {
-        // Query database cards for this course
-        const { data } = await supabase
-            .from('course_flashcards')
-            .select('*')
-            .eq('course_code', courseCode)
-            .limit(30);
+    const handleStartCourse = async (courseCode, title) => {
+        try {
+            const { data, error } = await supabase
+                .from('course_flashcards')
+                .select('*')
+                .eq('course_code', courseCode)
+                .order('ref_page', { ascending: true })
+                .limit(50);
 
-        const cards = (data && data.length > 0) ? data : fallbackDeck.cards;
+            if (error) throw error;
 
-        setActiveSession({
-            deck: { course_code: courseCode, title: fallbackDeck.title },
-            cards
-        });
+            if (!data || data.length === 0) {
+                setNotice({
+                    title: "Deck Not Generated Yet",
+                    msg: `No flashcards have been published for ${title || courseCode} yet. Curriculum decks are being processed.`
+                });
+                return;
+            }
+
+            const cards = data.map(c => ({
+                id: c.id,
+                front: c.front,
+                back: c.back,
+                ref: c.ref_page ? `Page ${c.ref_page}` : (c.section_title || title),
+                chapter_title: c.chapter_title || courseCode,
+                is_mistake: false
+            }));
+
+            setActiveSession({
+                deck: { course_code: courseCode, title },
+                cards
+            });
+        } catch (err) {
+            setNotice({
+                title: "Unable to Load Deck",
+                msg: err.message || "Failed to load course flashcards. Please check your connection."
+            });
+        }
     };
 
     return (
@@ -141,34 +131,64 @@ const FlashcardPavilion = ({ onClose }) => {
                         <p>Questions you missed on recent exam drills and book checkpoints</p>
                     </div>
                     <div className="fcp-badge-red">
-                        {stats.mistakes_due > 0 ? `${stats.mistakes_due} Due` : 'Ready'}
+                        {stats.mistakes_due > 0 ? `${stats.mistakes_due} Due` : 'Review'}
                     </div>
                 </div>
 
-                <span className="fcp-section-tag" style={{ marginTop: '12px' }}>📚 Common Freshman Courses</span>
+                <span className="fcp-section-tag" style={{ marginTop: '12px' }}>📚 Course Decks</span>
 
-                {DEFAULT_DECKS.map((d) => (
-                    <div key={d.course_code} className="fcp-deck-card" onClick={() => handleStartCourse(d.course_code, d)}>
-                        <div className="fcp-cdc-icon">
-                            <i className="fas fa-bolt"></i>
-                        </div>
-                        <div className="fcp-cdc-info">
-                            <div className="fcp-cdc-code">{d.course_code}</div>
-                            <div className="fcp-cdc-title">{d.title}</div>
-                            <div className="fcp-cdc-desc">{d.desc}</div>
-                        </div>
-                        <div className="fcp-badge-teal">
-                            {d.due_cards} Due
-                        </div>
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--accent-teal)' }}>
+                        <i className="fas fa-circle-notch fa-spin fa-2x"></i>
                     </div>
-                ))}
+                ) : stats.course_decks.length === 0 ? (
+                    <div className="fcp-empty-decks">
+                        <i className="fas fa-layer-group"></i>
+                        <p>No course flashcard decks available yet.<br />Decks will appear here as textbook sections are processed.</p>
+                    </div>
+                ) : (
+                    stats.course_decks.map((d) => (
+                        <div key={d.course_code} className="fcp-deck-card" onClick={() => handleStartCourse(d.course_code, d.title)}>
+                            <div className="fcp-cdc-icon">
+                                <i className="fas fa-bolt"></i>
+                            </div>
+                            <div className="fcp-cdc-info">
+                                <div className="fcp-cdc-code">{d.course_code}</div>
+                                <div className="fcp-cdc-title">{d.title}</div>
+                                <div className="fcp-cdc-desc">{d.total_cards} Total Cards</div>
+                            </div>
+                            <div className="fcp-badge-teal">
+                                {d.due_cards || 0} Due
+                            </div>
+                        </div>
+                    ))
+                )}
             </main>
+
+            {/* Friendly Empty / Informational Modal */}
+            {notice && (
+                <div className="fcp-notice-overlay" onClick={() => setNotice(null)}>
+                    <div className="fcp-notice-card" onClick={e => e.stopPropagation()}>
+                        <div className="fcp-notice-icon">
+                            <i className="fas fa-info"></i>
+                        </div>
+                        <h3>{notice.title}</h3>
+                        <p>{notice.msg}</p>
+                        <button className="fcp-notice-btn" onClick={() => setNotice(null)}>
+                            Okay
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {activeSession && (
                 <FlashcardArena 
                     deck={activeSession.deck} 
                     cards={activeSession.cards} 
-                    onClose={() => setActiveSession(null)} 
+                    onClose={() => {
+                        setActiveSession(null);
+                        fetchDeckStats();
+                    }} 
                 />
             )}
         </div>
