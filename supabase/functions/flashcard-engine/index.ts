@@ -179,8 +179,9 @@ ${JSON.stringify(rawBatch, null, 2)}`;
     }
 
     // =========================================================================
-    // PIPELINE 2: TEXTBOOK SECTION INGESTION (ONE SECTION PER PING)
+    // PIPELINE 2: TEXTBOOK SECTION INGESTION (ATOMIC LEASE-BACKED PROGRESS)
     // =========================================================================
+    let activeJobId: string | null = null;
     let targetBookId = body.book_id;
     let targetCourseCode = body.course_code;
     let targetChapter = body.chapter_title;
@@ -188,15 +189,15 @@ ${JSON.stringify(rawBatch, null, 2)}`;
     let startPage = body.start_page;
     let endPage = body.end_page;
 
-    // Auto-discovery mode for cron jobs
+    // 1. Acquire atomic job with SKIP LOCKED if running in automated cron mode
     if (!targetBookId || !targetSection) {
-      const { data: nextSec, error: discErr } = await supabase.rpc("get_next_pending_book_section");
-      if (discErr) throw discErr;
+      const { data: jobData, error: jobErr } = await supabase.rpc("acquire_next_flashcard_job");
+      if (jobErr) throw jobErr;
 
-      if (!nextSec || nextSec.length === 0) {
+      if (!jobData || jobData.length === 0) {
         return new Response(JSON.stringify({ 
           success: true, 
-          message: "All textbook sections have already been ingested into flashcards!", 
+          message: "All textbook sections have been processed. Queue is empty!", 
           pending: false 
         }), {
           status: 200,
@@ -204,45 +205,57 @@ ${JSON.stringify(rawBatch, null, 2)}`;
         });
       }
 
-      const item = nextSec[0];
-      targetBookId = item.book_id;
-      targetCourseCode = item.course_code;
-      targetChapter = item.chapter_title;
-      targetSection = item.section_title;
-      startPage = item.start_page;
-      endPage = item.end_page;
+      const currentJob = jobData[0];
+      activeJobId = currentJob.job_id;
+      targetBookId = currentJob.book_id;
+      targetCourseCode = currentJob.course_code;
+      targetChapter = currentJob.chapter_title;
+      targetSection = currentJob.section_title;
+      startPage = currentJob.start_page;
+      endPage = currentJob.end_page;
     }
 
-    // Read all textbook pages belonging to this complete section without arbitrary limits
-    let pageQuery = supabase
-      .from("book_pages")
-      .select("page_number, content_json")
-      .eq("book_id", targetBookId)
-      .gte("page_number", startPage);
+    try {
+      // 2. Read full section page range
+      let pageQuery = supabase
+        .from("book_pages")
+        .select("page_number, content_json")
+        .eq("book_id", targetBookId)
+        .gte("page_number", startPage);
 
-    if (endPage) {
-      pageQuery = pageQuery.lte("page_number", endPage);
-    }
+      if (endPage) {
+        pageQuery = pageQuery.lte("page_number", endPage);
+      }
 
-    const { data: pages, error: pageErr } = await pageQuery.order("page_number", { ascending: true });
+      const { data: pages, error: pageErr } = await pageQuery.order("page_number", { ascending: true });
+      if (pageErr) throw pageErr;
 
-    if (pageErr) throw pageErr;
+      const sectionText = (pages || []).map(p => {
+        return `--- PAGE ${p.page_number} ---\n` + extractTextFromBlocks(p.content_json || []);
+      }).join("\n\n");
 
-    const sectionText = (pages || []).map(p => {
-      return `--- PAGE ${p.page_number} ---\n` + extractTextFromBlocks(p.content_json || []);
-    }).join("\n\n");
+      if (!sectionText.trim()) {
+        if (activeJobId) {
+          await supabase.rpc("complete_flashcard_job", {
+            p_job_id: activeJobId,
+            p_cards_count: 0,
+            p_status: "skipped",
+            p_error: "No readable content extracted from pages"
+          });
+        }
+        return new Response(JSON.stringify({ 
+          success: true, 
+          section: targetSection, 
+          status: "skipped", 
+          reason: "Empty page content" 
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
 
-    if (!sectionText.trim()) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        message: `No readable content found for section "${targetSection}"` 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    const prompt = `You are Miron, a curriculum editor for university freshman courses in Ethiopia.
+      // 3. Prompt Gemini for High-Yield Flashcards
+      const prompt = `You are Miron, a curriculum editor for university freshman courses in Ethiopia.
 Extract high-yield conceptual flashcards covering all key concepts from the following textbook section.
 
 SECTION CONTEXT:
@@ -268,64 +281,96 @@ EXTRACTION RULES:
 SECTION CONTENT:
 ${sectionText}`;
 
-    const geminiRes = await fetch(geminiEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json"
+      const geminiRes = await fetch(geminiEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json"
+          }
+        })
+      });
+
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        if (geminiRes.status === 429) {
+          await supabase.rpc("cooldown_gemini_key", { expired_key: apiKey });
         }
-      })
-    });
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      if (geminiRes.status === 429) {
-        await supabase.rpc("cooldown_gemini_key", { expired_key: apiKey });
+        throw new Error(`Gemini API Error ${geminiRes.status}: ${errText}`);
       }
-      throw new Error(`Gemini API Error ${geminiRes.status}: ${errText}`);
-    }
 
-    const geminiJson = await geminiRes.json();
-    const rawOutput = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-    const cards = JSON.parse(rawOutput);
+      const geminiJson = await geminiRes.json();
+      const rawOutput = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+      const cards = JSON.parse(rawOutput);
 
-    if (Array.isArray(cards) && cards.length > 0) {
-      const rowsToInsert = cards.map(c => ({
-        book_id: targetBookId,
-        course_code: targetCourseCode,
-        chapter_title: targetChapter,
-        section_title: targetSection,
-        front: c.front,
-        back: c.back,
-        ref_page: c.ref_page || startPage
-      }));
+      if (Array.isArray(cards) && cards.length > 0) {
+        const rowsToInsert = cards.map(c => ({
+          book_id: targetBookId,
+          course_code: targetCourseCode,
+          chapter_title: targetChapter,
+          section_title: targetSection,
+          front: c.front,
+          back: c.back,
+          ref_page: c.ref_page || startPage
+        }));
 
-      const { error: insertErr } = await supabase
-        .from("course_flashcards")
-        .insert(rowsToInsert);
+        const { error: insertErr } = await supabase
+          .from("course_flashcards")
+          .insert(rowsToInsert);
 
-      if (insertErr) throw insertErr;
+        if (insertErr) throw insertErr;
+
+        if (activeJobId) {
+          await supabase.rpc("complete_flashcard_job", {
+            p_job_id: activeJobId,
+            p_cards_count: rowsToInsert.length,
+            p_status: "completed"
+          });
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          section: targetSection, 
+          status: "completed", 
+          cards_generated: rowsToInsert.length 
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // If section is purely calculations or empty, mark skipped so cron moves forward
+      if (activeJobId) {
+        await supabase.rpc("complete_flashcard_job", {
+          p_job_id: activeJobId,
+          p_cards_count: 0,
+          p_status: "skipped"
+        });
+      }
 
       return new Response(JSON.stringify({ 
         success: true, 
         section: targetSection, 
-        cards_generated: rowsToInsert.length 
+        status: "skipped", 
+        cards_generated: 0 
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
-    }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      section: targetSection, 
-      cards_generated: 0 
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+    } catch (processErr: unknown) {
+      const errMsg = processErr instanceof Error ? processErr.message : String(processErr);
+      if (activeJobId) {
+        await supabase.rpc("complete_flashcard_job", {
+          p_job_id: activeJobId,
+          p_cards_count: 0,
+          p_status: "failed",
+          p_error: errMsg
+        }).catch(() => {});
+      }
+      throw processErr;
+    }
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
