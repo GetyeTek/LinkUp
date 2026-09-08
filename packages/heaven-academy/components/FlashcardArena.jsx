@@ -37,13 +37,19 @@ const FlashcardArena = ({ deck, cards = [], onClose }) => {
         setStats(prev => ({ ...prev, [difficulty]: prev[difficulty] + 1 }));
         if (navigator.vibrate) navigator.vibrate([15, 30]);
 
-        // Record SRS grading in background
+        // Non-blocking background sync (bypasses thenable .catch limitation)
         if (currentCard?.id) {
-            supabase.rpc('record_flashcard_review', {
-                p_card_id: currentCard.id,
-                p_card_type: currentCard.is_mistake ? 'mistake' : 'course',
-                p_difficulty: difficulty
-            }).catch(e => console.warn('SRS review sync error:', e.message));
+            (async () => {
+                try {
+                    await supabase.rpc('record_flashcard_review', {
+                        p_card_id: currentCard.id,
+                        p_card_type: currentCard.is_mistake ? 'mistake' : 'course',
+                        p_difficulty: difficulty
+                    });
+                } catch (e) {
+                    console.warn('SRS review sync warning:', e?.message || e);
+                }
+            })();
         }
 
         setIsFlipped(false);
