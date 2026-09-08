@@ -117,6 +117,26 @@
 .fcp-deck-card:hover { border-color: var(--accent-teal, #42d7b8); transform: translateY(-2px); }
 .fcp-deck-card:active { transform: scale(0.98); }
 
+/* Opening Feedback Animation */
+.fcp-deck-card.is-opening, .fcp-mistake-card.is-opening {
+    border-color: var(--accent-teal, #42d7b8) !important;
+    background: rgba(66, 215, 184, 0.08) !important;
+    box-shadow: 0 0 25px rgba(66, 215, 184, 0.25) !important;
+    transform: scale(0.98);
+    pointer-events: none;
+    transition: all 0.2s ease;
+}
+
+.fcp-deck-card.is-opening .fcp-cdc-icon, .fcp-mistake-card.is-opening .fcp-mv-icon {
+    color: var(--accent-teal, #42d7b8);
+    animation: fcpIconPulse 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes fcpIconPulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(66, 215, 184, 0.4)); }
+    100% { transform: scale(1.15); filter: drop-shadow(0 0 12px rgba(66, 215, 184, 0.8)); }
+}
+
 .fcp-cdc-icon {
     width: 44px;
     height: 44px;
