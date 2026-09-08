@@ -119,6 +119,11 @@
     margin: auto 0;
 }
 
+.fca-prompt-text strong {
+    color: var(--accent-teal, #42d7b8);
+    font-weight: 700;
+}
+
 .fca-tap-hint {
     font-size: 0.75rem;
     color: #777;
