@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { supabase } from '@linkup-platform/sdk-core';
 import './FlashcardArena.css';
 
@@ -81,9 +82,10 @@ const FlashcardArena = ({ deck, cards = [], onClose }) => {
                                     {deck?.course_code || 'COURSE'} {currentCard?.chapter_title ? `• ${currentCard.chapter_title}` : ''}
                                 </span>
 
-                                <div className="fca-prompt-text">
-                                    {currentCard.front}
-                                </div>
+                                <div 
+                                    className="fca-prompt-text"
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentCard.front) }}
+                                />
 
                                 <div className="fca-tap-hint">
                                     <i className="fas fa-rotate"></i> Tap card to reveal answer
@@ -94,7 +96,10 @@ const FlashcardArena = ({ deck, cards = [], onClose }) => {
                             <div className="fca-card-face back">
                                 <span className="fca-back-label">Explanation & Answer</span>
 
-                                <div className="fca-answer-text" dangerouslySetInnerHTML={{ __html: currentCard.back }} />
+                                <div 
+                                    className="fca-answer-text" 
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentCard.back) }} 
+                                />
 
                                 <div className="fca-source-ref">
                                     <i className="fas fa-bookmark"></i>
