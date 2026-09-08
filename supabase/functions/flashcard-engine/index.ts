@@ -247,9 +247,16 @@ ${JSON.stringify(rawBatch, null, 2)}`;
       targetSection = currentJob.section_title;
       startPage = currentJob.start_page;
       endPage = currentJob.end_page;
+      
+      const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
+      var targetCardCount = currentJob.target_cards || Math.max(4, Math.min(25, pageSpan * 3));
+    } else {
+      const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
+      var targetCardCount = Math.max(4, Math.min(25, pageSpan * 3));
     }
 
     try {
+      const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
       // 2. Read full section page range
       let pageQuery = supabase
         .from("book_pages")
@@ -289,25 +296,39 @@ ${JSON.stringify(rawBatch, null, 2)}`;
       }
 
       // 3. Prompt Gemini for High-Yield Flashcards
-      const prompt = `You are Miron, a curriculum editor for university freshman courses in Ethiopia.
-Extract high-yield conceptual flashcards covering all key concepts from the following textbook subsection.
+      const prompt = `You are Miron, an elite academic curriculum tutor for university students in Ethiopia.
+Your mission is to generate EXACTLY ${targetCardCount} high-yield, razor-sharp active-recall flashcards from this textbook subsection.
+
+TARGET QUANTITY (MANDATORY):
+Generate EXACTLY ${targetCardCount} unique, distinct flashcards. Do not generate fewer. Do not generate repetitive rewordings.
 
 SUBSECTION CONTEXT:
 Course: ${targetCourseCode}
 Chapter: ${targetChapter}
-Hierarchy: ${targetSection}
+Hierarchy / Topic: ${targetSection}
+Page Range: ${startPage} to ${endPage || startPage} (${pageSpan} page${pageSpan > 1 ? 's' : ''})
 
-EXTRACTION RULES:
-1. HIGH-YIELD ONLY: Extract fundamental definitions, laws, principles, core formulas, and key distinctions specific to this subsection topic. Pay special attention to tables, summarized rules, and bolded terms.
-2. EXCLUDE HEAVY CALCULATIONS: Do NOT create workout math questions with numerical arithmetic. Focus on concepts.
-3. CLEAR FORMATTING: 
-   - "front": Direct recall question or concept definition prompt.
-   - "back": Concise, accurate answer. Use <strong> for key terms.
-4. Output schema MUST be a valid JSON array:
+SURGICAL FLASHCARD RULES:
+1. SHORT, PRECISE & SURGICAL:
+   - "front" (The Probe): Maximum 15 words. Direct, punchy, and clear. Zero conversational filler or essay-style preambles.
+     * GOOD: "What is a proposition in symbolic logic?"
+     * GOOD: "Which sentence types cannot be truth-valued propositions?"
+     * BAD: "Can you explain in detail the various characteristics that define a proposition according to..."
+   - "back" (The Strike): Maximum 2 sentences. Deliver the exact, accurate conceptual answer immediately. Wrap key technical terms, laws, and definitions in <strong> tags.
+     * GOOD: "A declarative statement that is either <strong>true</strong> or <strong>false</strong>, but not both."
+     * BAD: "As discussed in the chapter above, when we look at logic, a proposition is considered to be..."
+2. 100% CONCEPTUAL MASTERY: Focus on core definitions, foundational laws, governing formulas, and contrasting distinctions. Cover tables, summarized rules, and bolded terms.
+3. NO HEAVY ARITHMETIC: Exclude multi-step scratchpad calculations or long algebra.
+4. VALID JSON ARRAY: You MUST return a JSON array containing EXACTLY ${targetCardCount} items:
 [
   {
-    "front": "Prompt text",
-    "back": "Answer text",
+    "front": "Short surgical prompt (<= 15 words)",
+    "back": "Direct accurate answer (<= 2 sentences). Key terms in <strong>tags</strong>.",
+    "ref_page": ${startPage}
+  },
+  {
+    "front": "Second distinct surgical prompt",
+    "back": "Second concise answer with <strong>key terms</strong>.",
     "ref_page": ${startPage}
   }
 ]
