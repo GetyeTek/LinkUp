@@ -22,6 +22,17 @@ interface BlockItem {
   entries?: any[];
 }
 
+const formatError = (err: unknown): string => {
+  if (!err) return "Unknown error";
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message;
+  if (typeof err === "object") {
+    const anyErr = err as Record<string, any>;
+    return anyErr.message || anyErr.error || anyErr.details || anyErr.hint || JSON.stringify(err);
+  }
+  return String(err);
+};
+
 const extractTextFromBlocks = (blocks: BlockItem[]): string => {
   if (!Array.isArray(blocks)) return "";
   return blocks.map(b => {
@@ -103,7 +114,7 @@ serve(async (req: Request) => {
         p_limit: batchLimit
       });
 
-      if (batchErr) throw batchErr;
+      if (batchErr) throw new Error(`[batch_mistakes] ${formatError(batchErr)}`);
 
       if (!rawBatch || rawBatch.length === 0) {
         return new Response(JSON.stringify({ 
@@ -215,7 +226,7 @@ ${JSON.stringify(rawBatch, null, 2)}`;
     // 1. Acquire atomic job with SKIP LOCKED if running in automated cron mode
     if (!targetBookId || !targetSection) {
       const { data: jobData, error: jobErr } = await supabase.rpc("acquire_next_flashcard_job");
-      if (jobErr) throw jobErr;
+      if (jobErr) throw new Error(`[acquire_next_flashcard_job] ${formatError(jobErr)}`);
 
       if (!jobData || jobData.length === 0) {
         return new Response(JSON.stringify({ 
@@ -251,7 +262,7 @@ ${JSON.stringify(rawBatch, null, 2)}`;
       }
 
       const { data: pages, error: pageErr } = await pageQuery.order("page_number", { ascending: true });
-      if (pageErr) throw pageErr;
+      if (pageErr) throw new Error(`[pageQuery] ${formatError(pageErr)}`);
 
       const sectionText = (pages || []).map(p => {
         return `--- PAGE ${p.page_number} ---\n` + extractTextFromBlocks(p.content_json || []);
@@ -396,7 +407,8 @@ ${sectionText}`;
     }
 
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = formatError(err);
+    console.error("[FlashcardEngine Fatal]:", message);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
