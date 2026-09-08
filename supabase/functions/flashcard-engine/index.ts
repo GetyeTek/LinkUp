@@ -13,10 +13,13 @@ interface BlockItem {
   title?: string;
   body?: string;
   text?: string;
+  caption?: string;
   items?: string[];
   premises?: string[];
   conclusion?: string;
   question?: string;
+  rows?: any[];
+  entries?: any[];
 }
 
 const extractTextFromBlocks = (blocks: BlockItem[]): string => {
@@ -29,10 +32,30 @@ const extractTextFromBlocks = (blocks: BlockItem[]): string => {
     if (b.sub) parts.push(b.sub);
     if (b.body) parts.push(b.body);
     if (b.text) parts.push(b.text);
+    if (b.caption) parts.push(b.caption);
     if (Array.isArray(b.items)) parts.push(b.items.join(" "));
     if (Array.isArray(b.premises)) parts.push(b.premises.join(" "));
     if (b.conclusion) parts.push(b.conclusion);
     if (b.question) parts.push(b.question);
+
+    // Extract table rows cleanly for LLM synthesis
+    if (Array.isArray(b.rows)) {
+      b.rows.forEach(r => {
+        if (Array.isArray(r)) {
+          parts.push(r.map(cell => typeof cell === "object" ? (cell?.text || "") : cell).filter(Boolean).join(" | "));
+        }
+      });
+    }
+
+    // Extract key-value dictionaries
+    if (Array.isArray(b.entries)) {
+      b.entries.forEach(e => {
+        if (typeof e === "object" && e) {
+          parts.push(`${e.label || ""}: ${e.value || e.text || ""}`);
+        }
+      });
+    }
+
     return parts.join(" ").replace(/<[^>]+>/g, "").trim();
   }).filter(Boolean).join("\n");
 };
@@ -256,15 +279,15 @@ ${JSON.stringify(rawBatch, null, 2)}`;
 
       // 3. Prompt Gemini for High-Yield Flashcards
       const prompt = `You are Miron, a curriculum editor for university freshman courses in Ethiopia.
-Extract high-yield conceptual flashcards covering all key concepts from the following textbook section.
+Extract high-yield conceptual flashcards covering all key concepts from the following textbook subsection.
 
-SECTION CONTEXT:
+SUBSECTION CONTEXT:
 Course: ${targetCourseCode}
 Chapter: ${targetChapter}
-Section: ${targetSection}
+Hierarchy: ${targetSection}
 
 EXTRACTION RULES:
-1. HIGH-YIELD ONLY: Extract fundamental definitions, laws, principles, core formulas, and key distinctions across the entire section.
+1. HIGH-YIELD ONLY: Extract fundamental definitions, laws, principles, core formulas, and key distinctions specific to this subsection topic. Pay special attention to tables, summarized rules, and bolded terms.
 2. EXCLUDE HEAVY CALCULATIONS: Do NOT create workout math questions with numerical arithmetic. Focus on concepts.
 3. CLEAR FORMATTING: 
    - "front": Direct recall question or concept definition prompt.
