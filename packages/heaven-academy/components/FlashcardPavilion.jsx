@@ -7,6 +7,7 @@ const FlashcardPavilion = ({ onClose }) => {
     const [stats, setStats] = useState({ mistakes_due: 0, course_decks: [] });
     const [activeSession, setActiveSession] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [openingDeckId, setOpeningDeckId] = useState(null);
     const [notice, setNotice] = useState(null); // { title: string, msg: string }
 
     const fetchDeckStats = async () => {
@@ -31,6 +32,8 @@ const FlashcardPavilion = ({ onClose }) => {
     }, []);
 
     const handleStartMistakes = async () => {
+        if (openingDeckId) return;
+        setOpeningDeckId('vault');
         try {
             const { data, error } = await supabase
                 .from('user_mistake_flashcards')
@@ -66,10 +69,14 @@ const FlashcardPavilion = ({ onClose }) => {
                 title: "Unable to Load Cards",
                 msg: err.message || "Failed to load your mistake cards. Please check your connection."
             });
+        } finally {
+            setOpeningDeckId(null);
         }
     };
 
     const handleStartCourse = async (courseCode, title) => {
+        if (openingDeckId) return;
+        setOpeningDeckId(courseCode);
         try {
             const { data, error } = await supabase
                 .from('course_flashcards')
@@ -106,6 +113,8 @@ const FlashcardPavilion = ({ onClose }) => {
                 title: "Unable to Load Deck",
                 msg: err.message || "Failed to load course flashcards. Please check your connection."
             });
+        } finally {
+            setOpeningDeckId(null);
         }
     };
 
@@ -122,9 +131,9 @@ const FlashcardPavilion = ({ onClose }) => {
                 <span className="fcp-section-tag">⚡ Personalized Recovery</span>
 
                 {/* Mistake Vault Card */}
-                <div className="fcp-mistake-card" onClick={handleStartMistakes}>
+                <div className={`fcp-mistake-card ${openingDeckId === 'vault' ? 'is-opening' : ''}`} onClick={handleStartMistakes}>
                     <div className="fcp-mv-icon">
-                        <i className="fas fa-bullseye"></i>
+                        {openingDeckId === 'vault' ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-bullseye"></i>}
                     </div>
                     <div className="fcp-mv-info">
                         <h3>Mistake Vault</h3>
@@ -148,9 +157,13 @@ const FlashcardPavilion = ({ onClose }) => {
                     </div>
                 ) : (
                     stats.course_decks.map((d) => (
-                        <div key={d.course_code} className="fcp-deck-card" onClick={() => handleStartCourse(d.course_code, d.title)}>
+                        <div 
+                            key={d.course_code} 
+                            className={`fcp-deck-card ${openingDeckId === d.course_code ? 'is-opening' : ''}`} 
+                            onClick={() => handleStartCourse(d.course_code, d.title)}
+                        >
                             <div className="fcp-cdc-icon">
-                                <i className="fas fa-bolt"></i>
+                                {openingDeckId === d.course_code ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-bolt"></i>}
                             </div>
                             <div className="fcp-cdc-info">
                                 <div className="fcp-cdc-code">{d.course_code}</div>
