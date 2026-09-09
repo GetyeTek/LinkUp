@@ -363,34 +363,34 @@ ${JSON.stringify(rawBatch, null, 2)}`;
 
       // 4. Prompt Gemini for 50 High-Yield Chapter Flashcards
       const prompt = `You are Miron, an elite academic curriculum tutor for university students in Ethiopia.
-Your mission is to generate EXACTLY ${targetCardCount} comprehensive, high-yield, active-recall flashcards covering this ENTIRE textbook chapter.
+Your mission is to generate EXACTLY ${targetCardCount} high-yield, active-recall flashcards from the provided textbook chapter.
 
 TARGET QUANTITY (MANDATORY):
-Generate EXACTLY ${targetCardCount} unique, distinct flashcards. Do not generate fewer. Ensure thorough, balanced coverage from beginning to end of the chapter.
+Generate EXACTLY ${targetCardCount} unique, non-repetitive flashcards. Do not stop early. Ensure balanced, thorough coverage across the entire chapter.
 
-CHAPTER CONTEXT:
-Course: ${targetCourseCode}
-Chapter: ${targetChapter}
-Page Range: ${startPage} to ${endPage || startPage} (${pageSpan} pages)
+PAGE CITATION RULE (CRITICAL):
+The chapter text contains distinct page markers like "--- PAGE 18 ---". For EVERY card, set "ref_page" to the exact integer of the page where that specific definition, law, or fact appears. Do not default all cards to the first page.
 
-SURGICAL FLASHCARD RULES:
-1. SHORT, PRECISE & SURGICAL:
-   - "front" (The Probe): Maximum 15 words. Direct, punchy, and clear. Zero conversational filler or essay-style preambles.
-     * GOOD: "What is a proposition in symbolic logic?"
-     * GOOD: "Which sentence types cannot be truth-valued propositions?"
-     * BAD: "Can you explain in detail the various characteristics that define a proposition according to..."
-   - "back" (The Strike): Maximum 2 sentences. Deliver the exact, accurate conceptual answer immediately. Wrap key technical terms, laws, and definitions in <strong> tags.
-     * GOOD: "A declarative statement that is either <strong>true</strong> or <strong>false</strong>, but not both."
-     * BAD: "As discussed in the chapter above, when we look at logic, a proposition is considered to be..."
-   - "ref_page": The integer page number where this concept is primarily discussed.
-2. 100% CONCEPTUAL MASTERY: Focus on core definitions, foundational laws, governing formulas, classifications, and contrasting distinctions across all topics of the chapter.
-3. NO HEAVY ARITHMETIC: Exclude multi-step scratchpad calculations or long algebra. Focus on the underlying theory, conditions, and principles.
-4. VALID JSON ARRAY: You MUST return a JSON array containing EXACTLY ${targetCardCount} items:
+STRICT ANTI-META RULES:
+1. NEVER mention course codes (e.g. "${targetCourseCode}"), book titles, or chapter labels (e.g. "${targetChapter}") anywhere in the "front" or "back". Treat every concept as an objective scientific/academic truth.
+2. BANNED META QUESTIONS: Do NOT ask questions about chapter overviews, module goals, unit introductions, what topics are discussed, or summary lists.
+3. EXAM FOCUS ONLY: Every question must be a bull's-eye academic probe (definitions, laws, mechanisms, formulas, contrasts) that could legitimately appear on a university exam.
+4. NO HEAVY ARITHMETIC: Exclude multi-step scratchpad calculations or lengthy algebra. Focus on conceptual theory, conditions, and core principles.
+
+FLASHCARD STYLES (MANDATORY DIVERSE MIX):
+- DIRECT CONCEPT PROBE (~40%): Direct, punchy question (<= 15 words).
+- CLOZE DELETION (~25%): Accurate sentence with [...] concealing key technical terms.
+  * Example Front: "The Greek root 'anthropos' means [...], while 'logos' translates to [...]."
+  * Example Back: "<strong>human being / humankind</strong> and <strong>study / reason / science</strong>."
+- CONTRAST / DISTINCTION (~20%): Comparing easily confused concepts ("What is the primary difference between X and Y?").
+- GOVERNING PRINCIPLE (~15%): Testing core rules ("Under what condition does X apply?").
+
+RESPONSE SCHEMA (VALID JSON ONLY):
 [
   {
-    "front": "Short surgical prompt (<= 15 words)",
-    "back": "Direct accurate answer (<= 2 sentences). Key terms in <strong>tags</strong>.",
-    "ref_page": ${startPage}
+    "front": "Punchy probe, contrast, or cloze deletion with [...]",
+    "back": "Max 2 direct sentences. Bold key technical terms with <strong>tags</strong>.",
+    "ref_page": 18
   }
 ]
 
@@ -438,7 +438,7 @@ ${chapterText}`;
           section_title: targetSection,
           front: c.front,
           back: c.back,
-          ref_page: c.ref_page || startPage
+          ref_page: (typeof c.ref_page === "number" ? c.ref_page : parseInt(c.ref_page, 10)) || startPage
         }));
 
         log("DbCommit:Insert", `Inserting ${rowsToInsert.length} flashcard record(s) into course_flashcards...`);
