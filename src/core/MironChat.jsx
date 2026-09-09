@@ -555,8 +555,8 @@ const MironChat = ({ onClose, initialContext }) => {
 
                                     const cardMatch = part.match(/\[FLASHCARD_(\d+)\]/);
                                     if (cardMatch) {
-                                        const cardIdx = parseInt(cardMatch[1], 10) - 1;
-                                        const card = m.flashcards?.[cardIdx];
+                                        const cardNum = parseInt(cardMatch[1], 10);
+                                        const card = m.flashcards?.find(c => c.id == cardNum) || m.flashcards?.[cardNum - 1] || m.flashcards?.[cardNum];
                                         if (!card) return null;
                                         return <InlineChatCard key={idx} card={card} onRate={handleInlineCardRate} />;
                                     }
