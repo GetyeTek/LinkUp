@@ -5,7 +5,7 @@ export const useGlobalSwipe = (activeTab, setActiveTab) => {
 
     const handleTouchStart = (e) => {
         // Ignore swipes originating from horizontal scroll areas to prevent conflict
-        if (e.target.closest('.priority-scroll-wrapper') || e.target.closest('.dashboard-scroll-wrapper') || e.target.closest('.filter-pills') || e.target.closest('.question-nav-strip')) {
+        if (e.target.closest('.priority-scroll-wrapper') || e.target.closest('.dashboard-scroll-wrapper') || e.target.closest('.filter-pills') || e.target.closest('.question-nav-strip') || e.target.closest('.fca-chapter-strip') || e.target.closest('.fca-overlay') || e.target.closest('.fcp-overlay')) {
             touchState.current.startX = 0;
             return;
         }
