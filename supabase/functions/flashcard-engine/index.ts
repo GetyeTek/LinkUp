@@ -105,7 +105,7 @@ serve(async (req: Request) => {
 
     const apiKey = keyData[0].api_key;
     const maskedKey = `${apiKey.substring(0, 6)}...${apiKey.substring(apiKey.length - 4)}`;
-    const model = "gemini-2.5-flash";
+    const model = "gemini-3.1-flash-lite";
     const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     log("KeyLease:Success", `Leased key ID: ${keyData[0].id} (${maskedKey}). Model targeted: "${model}"`);
 
