@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-09-09T08:22:27.514Z
+-- Date: 2026-09-09T09:28:40.100Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -414,25 +414,37 @@ BEGIN
             (t.children IS NOT NULL AND jsonb_typeof(t.children) = 'array' AND jsonb_array_length(t.children) > 0) AS has_children
         FROM toc_hierarchy t
     ),
-    -- 3. Select Target Jobs (Level 3 or Leaf Nodes)
+    -- 3. Select Target Jobs (Mathematically Constrained)
     candidate_jobs AS (
         SELECT 
             c.*,
             row_number() OVER (PARTITION BY c.book_id ORDER BY c.path_order) AS seq_idx
         FROM classified_nodes c
         WHERE 
-            (c.depth = 3)
-            OR 
-            (c.depth < 3 AND NOT c.has_children)
+            -- Mathematical Constraint 1: Must have a valid Arabic positive integer page number
+            c.page IS NOT NULL 
+            AND c.page >= 1
+            AND (
+                (c.depth = 3)
+                OR 
+                (c.depth = 2 AND NOT c.has_children)
+                OR
+                -- Mathematical Constraint 2: A Depth 1 node with no children is ONLY accepted
+                -- if the entire book is a flat list of chapters (no container units exist)
+                (c.depth = 1 AND NOT c.has_children AND NOT EXISTS (
+                    SELECT 1 FROM classified_nodes other 
+                    WHERE other.book_id = c.book_id AND other.depth = 1 AND other.has_children
+                ))
+            )
     ),
-    -- 4. Overview Absorption: Chapter intro pages absorbed by first job of that chapter
+    -- 4. Overview Absorption: Chapter intro pages absorbed by the first section of that chapter
     chapter_starts AS (
         SELECT 
             book_id,
             chapter_title,
             MIN(page) AS chapter_min_page
         FROM classified_nodes
-        WHERE depth = 1 AND page IS NOT NULL
+        WHERE depth = 1 AND page IS NOT NULL AND page >= 1
         GROUP BY book_id, chapter_title
     ),
     first_candidate_per_chapter AS (
@@ -454,14 +466,14 @@ BEGIN
             cj.breadcrumb,
             cj.depth,
             cj.path_order,
-            COALESCE(
-                CASE 
-                    WHEN fc.min_seq_idx IS NOT NULL AND cs.chapter_min_page IS NOT NULL AND (cj.page IS NULL OR cs.chapter_min_page < cj.page)
-                    THEN cs.chapter_min_page
-                    ELSE cj.page
-                END,
-                1
-            ) AS raw_start_page
+            -- If Section 1.1 is on page 2, but Chapter 1 starts on page 1, Section 1.1 absorbs the intro pages
+            CASE 
+                WHEN fc.min_seq_idx IS NOT NULL 
+                     AND cs.chapter_min_page IS NOT NULL 
+                     AND cs.chapter_min_page < cj.page
+                THEN cs.chapter_min_page
+                ELSE cj.page
+            END AS raw_start_page
         FROM candidate_jobs cj
         LEFT JOIN first_candidate_per_chapter fc 
             ON fc.book_id = cj.book_id AND fc.chapter_title = cj.chapter_title AND fc.min_seq_idx = cj.seq_idx
