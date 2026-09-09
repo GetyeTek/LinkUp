@@ -551,29 +551,24 @@ const MironChat = ({ onClose, initialContext }) => {
                     messages.filter(m => !m.text?.startsWith('[Quiz Submission:')).map(m => (
                         <div key={m.id} className={`chat-node ${m.side}`}>
                             <div className="athena-bubble">
-                                {m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\]|\[FLASHCARD_\d+\])/g).map((part, idx) => {
-                                    const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
-                                    if (boardMatch) {
-                                        return <InlineBoardTrigger key={idx} boardId={boardMatch[1]} onOpen={setActiveBoardPayload} />;
-                                    }
+                                {m.text
+                                    .replace(/\[FLASHCARD_\d+\]/g, '')
+                                    .split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\])/g)
+                                    .map((part, idx) => {
+                                        const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
+                                        if (boardMatch) {
+                                            return <InlineBoardTrigger key={idx} boardId={boardMatch[1]} onOpen={setActiveBoardPayload} />;
+                                        }
 
-                                    const quizMatch = part.match(/\[QUIZ_(\d+)\]/);
-                                    if (quizMatch) {
-                                        const quizId = parseInt(quizMatch[1], 10);
-                                        const quiz = m.quizzes?.find(q => q.id === quizId);
-                                        if (!quiz) return null;
-                                        return <InlineChatQuiz key={idx} quiz={quiz} onSubmit={sendMessage} />;
-                                    }
+                                        const quizMatch = part.match(/\[QUIZ_(\d+)\]/);
+                                        if (quizMatch) {
+                                            const quizId = parseInt(quizMatch[1], 10);
+                                            const quiz = m.quizzes?.find(q => q.id === quizId);
+                                            if (!quiz) return null;
+                                            return <InlineChatQuiz key={idx} quiz={quiz} onSubmit={sendMessage} />;
+                                        }
 
-                                    const cardMatch = part.match(/\[FLASHCARD_(\d+)\]/);
-                                    if (cardMatch) {
-                                        const cardNum = parseInt(cardMatch[1], 10);
-                                        const card = m.flashcards?.find(c => c.id == cardNum) || m.flashcards?.[cardNum - 1] || m.flashcards?.[cardNum];
-                                        if (!card) return null;
-                                        return <InlineChatCard key={idx} card={card} onRate={handleInlineCardRate} />;
-                                    }
-
-                                    const snapMatch = part.match(/\[SNAPSHOT_(\d+)\]/);
+                                        const snapMatch = part.match(/\[SNAPSHOT_(\d+)\]/);
                                     if (snapMatch) {
                                         const snapId = parseInt(snapMatch[1], 10);
                                         const snap = m.snapshots?.find(s => s.id === snapId);
@@ -605,6 +600,9 @@ const MironChat = ({ onClose, initialContext }) => {
                                         />
                                     );
                                 })}
+                                {m.flashcards && m.flashcards.length > 0 && (
+                                    <InlineChatCard cards={m.flashcards} onRate={handleInlineCardRate} />
+                                )}
                             </div>
                             <div className="athena-bubble-actions">
                                 <button 
