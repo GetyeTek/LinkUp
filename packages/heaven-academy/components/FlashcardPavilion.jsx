@@ -78,16 +78,15 @@ const FlashcardPavilion = ({ onClose }) => {
         if (openingDeckId) return;
         setOpeningDeckId(courseCode);
         try {
-            const { data, error } = await supabase
+            // Fast count check: verify if flashcards exist for this course without fetching all rows upfront
+            const { count, error } = await supabase
                 .from('course_flashcards')
-                .select('*')
-                .eq('course_code', courseCode)
-                .order('ref_page', { ascending: true })
-                .limit(50);
+                .select('id', { count: 'exact', head: true })
+                .eq('course_code', courseCode);
 
             if (error) throw error;
 
-            if (!data || data.length === 0) {
+            if (!count || count === 0) {
                 setNotice({
                     title: "Deck Not Generated Yet",
                     msg: `No flashcards have been published for ${title || courseCode} yet. Curriculum decks are being processed.`
@@ -95,18 +94,9 @@ const FlashcardPavilion = ({ onClose }) => {
                 return;
             }
 
-            const cards = data.map(c => ({
-                id: c.id,
-                front: c.front,
-                back: c.back,
-                ref: c.ref_page ? `Page ${c.ref_page}` : (c.section_title || title),
-                chapter_title: c.chapter_title || courseCode,
-                is_mistake: false
-            }));
-
+            // Hand off to FlashcardArena to lazy-load on a per-chapter basis
             setActiveSession({
-                deck: { course_code: courseCode, title },
-                cards
+                deck: { course_code: courseCode, title }
             });
         } catch (err) {
             setNotice({
@@ -197,7 +187,7 @@ const FlashcardPavilion = ({ onClose }) => {
             {activeSession && (
                 <FlashcardArena 
                     deck={activeSession.deck} 
-                    cards={activeSession.cards} 
+                    initialCards={activeSession.cards} 
                     onClose={() => {
                         setActiveSession(null);
                         fetchDeckStats();
