@@ -249,7 +249,7 @@ ${JSON.stringify(rawBatch, null, 2)}`;
     }
 
     // =========================================================================
-    // PIPELINE 2: TEXTBOOK SECTION INGESTION (ATOMIC LEASE-BACKED PROGRESS)
+    // PIPELINE 2: CHAPTER-LEVEL FLASHCARD INGESTION (50 CARDS PER CHAPTER)
     // =========================================================================
     let activeJobId: string | null = null;
     let targetBookId = body.book_id;
@@ -258,11 +258,11 @@ ${JSON.stringify(rawBatch, null, 2)}`;
     let targetSection = body.section_title;
     let startPage = body.start_page;
     let endPage = body.end_page;
-    let targetCardCount = 10;
+    const targetCardCount = 50;
 
-    // 1. Acquire atomic job with SKIP LOCKED if running in automated cron mode
-    if (!targetBookId || !targetSection) {
-      log("JobAcquisition", "No manual book/section passed. Calling RPC acquire_next_flashcard_job (SKIP LOCKED)...");
+    // 1. Acquire atomic chapter job with SKIP LOCKED
+    if (!targetBookId || !targetChapter) {
+      log("JobAcquisition", "Calling RPC acquire_next_flashcard_job (SKIP LOCKED for whole chapter)...");
       const { data: jobData, error: jobErr } = await supabase.rpc("acquire_next_flashcard_job");
       if (jobErr) {
         log("JobAcquisition:Error", "acquire_next_flashcard_job failed", { error: formatError(jobErr) });
@@ -270,10 +270,10 @@ ${JSON.stringify(rawBatch, null, 2)}`;
       }
 
       if (!jobData || jobData.length === 0) {
-        log("JobAcquisition:Empty", "RPC returned 0 jobs. All textbook sections are up-to-date.");
+        log("JobAcquisition:Empty", "RPC returned 0 jobs. All textbook chapters are up-to-date.");
         return new Response(JSON.stringify({ 
           success: true, 
-          message: "All textbook sections have been processed. Queue is empty!", 
+          message: "All textbook chapters have been processed. Queue is empty!", 
           pending: false,
           audit_logs: auditLogs
         }), {
@@ -287,222 +287,68 @@ ${JSON.stringify(rawBatch, null, 2)}`;
       targetBookId = currentJob.book_id;
       targetCourseCode = currentJob.course_code;
       targetChapter = currentJob.chapter_title;
-      targetSection = currentJob.section_title;
+      targetSection = currentJob.section_title || currentJob.chapter_title;
       startPage = currentJob.start_page;
       endPage = currentJob.end_page;
-      
-      const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
-      targetCardCount = currentJob.target_cards || Math.max(4, Math.min(25, pageSpan * 3));
 
-      log("JobAcquisition:Success", `Acquired Job ID: ${activeJobId}`, {
+      const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
+
+      log("JobAcquisition:Success", `Acquired Chapter Job ID: ${activeJobId}`, {
         book: currentJob.book_title,
         course_code: targetCourseCode,
         chapter: targetChapter,
-        section: targetSection,
         start_page: startPage,
         end_page: endPage,
         span: pageSpan,
         target_card_count: targetCardCount
       });
     } else {
+      targetSection = targetSection || targetChapter;
       const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
-      targetCardCount = Math.max(4, Math.min(25, pageSpan * 3));
-      log("JobAcquisition:Manual", `Manual parameters provided: "${targetSection}" (Pages ${startPage} to ${endPage}) in book ${targetBookId}. Target Cards: ${targetCardCount}`);
+      log("JobAcquisition:Manual", `Manual parameters provided: "${targetChapter}" (Pages ${startPage} to ${endPage}) in book ${targetBookId}. Target Cards: ${targetCardCount}`);
     }
 
     try {
       const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
-      
-      // 2. Read full section page range (with duplicate Page 1 scan-ahead resolution)
-      let pages: { page_number: number; content_json: any }[] = [];
 
-      log("Page1Analysis", `Inspecting book ${targetBookId} for duplicate Page 1 anomalies...`);
-      const { data: pageOneRecords, error: p1Err } = await supabase
+      // 2. Fetch full chapter page range directly
+      log("PageQuery", `Querying chapter pages for book ${targetBookId} (Pages ${startPage} to ${endPage || "end"})...`);
+      let pageQuery = supabase
         .from("book_pages")
-        .select("id")
+        .select("page_number, content_json")
         .eq("book_id", targetBookId)
-        .eq("page_number", 1);
+        .gte("page_number", startPage);
 
-      if (p1Err) {
-        log("Page1Analysis:Error", "Failed to query page_number = 1", { error: formatError(p1Err) });
-        throw new Error(`[pageOneCheck] ${formatError(p1Err)}`);
+      if (endPage) {
+        pageQuery = pageQuery.lte("page_number", endPage);
       }
 
-      const p1Count = pageOneRecords?.length || 0;
-      log("Page1Analysis:Result", `Found ${p1Count} record(s) with page_number = 1.`);
-
-      if (p1Count > 1) {
-        log("SequenceDisambiguation", `MULTIPLE PAGE 1s DETECTED (${p1Count}). Engaging scan-ahead sequence analyzer...`);
-
-        const { data: allBookPages, error: allPagesErr } = await supabase
-          .from("book_pages")
-          .select("id, page_number, page_key, created_at")
-          .eq("book_id", targetBookId)
-          .order("created_at", { ascending: true });
-
-        if (allPagesErr) throw new Error(`[allPagesQuery] ${formatError(allPagesErr)}`);
-        log("SequenceDisambiguation:IndexLoaded", `Loaded index of ${allBookPages?.length || 0} total physical pages for sequence tracing.`);
-
-        // Strategy A: Group by page_key prefix (e.g. "preface-" vs "page-")
-        const prefixGroups = new Map<string, typeof allBookPages>();
-        for (const p of allBookPages || []) {
-          const prefix = (p.page_key || "").replace(/\d+.*$/, "") || "main";
-          if (!prefixGroups.has(prefix)) prefixGroups.set(prefix, []);
-          prefixGroups.get(prefix)!.push(p);
-        }
-
-        const prefixSummary: Record<string, number> = {};
-        for (const [k, v] of prefixGroups.entries()) {
-          prefixSummary[k] = v.length;
-        }
-        log("SequenceDisambiguation:Prefixes", "Detected key-family groups:", prefixSummary);
-
-        const candidateChains: Array<{
-          source: string;
-          maxPage: number;
-          pageCount: number;
-          pageMap: Map<number, string>;
-        }> = [];
-
-        // Evaluate each prefix group
-        for (const [prefixName, groupPages] of prefixGroups.entries()) {
-          const sortedGroup = [...groupPages].sort((a, b) => a.page_number - b.page_number);
-          if (sortedGroup.length > 0 && sortedGroup[0].page_number === 1) {
-            const pMap = new Map<number, string>();
-            let maxP = 1;
-            let lastP = 0;
-
-            for (const item of sortedGroup) {
-              if (lastP === 0 || (item.page_number > lastP && item.page_number <= lastP + 5)) {
-                pMap.set(item.page_number, item.id);
-                lastP = item.page_number;
-                if (item.page_number > maxP) maxP = item.page_number;
-              }
-            }
-
-            candidateChains.push({
-              source: `Prefix "${prefixName}"`,
-              maxPage: maxP,
-              pageCount: pMap.size,
-              pageMap: pMap
-            });
-            log("SequenceDisambiguation:Candidate", `Evaluated candidate chain from prefix "${prefixName}"`, {
-              starting_page: 1,
-              max_page_reached: maxP,
-              sequential_pages_count: pMap.size
-            });
-          }
-        }
-
-        // Strategy B: If all page_keys shared identical prefixes, scan by insertion/chronological chains
-        if (candidateChains.length <= 1 && allBookPages && allBookPages.length > 0) {
-          log("SequenceDisambiguation:Fallback", "Prefixes identical or singular. Scanning chronological insertion runs...");
-          for (let i = 0; i < allBookPages.length; i++) {
-            if (allBookPages[i].page_number === 1) {
-              const pMap = new Map<number, string>();
-              pMap.set(1, allBookPages[i].id);
-              let lastNum = 1;
-              let maxNum = 1;
-
-              for (let j = i + 1; j < allBookPages.length; j++) {
-                const cur = allBookPages[j].page_number;
-                if (cur === 1 || cur < lastNum) break;
-                if (cur > lastNum && cur <= lastNum + 5) {
-                  pMap.set(cur, allBookPages[j].id);
-                  lastNum = cur;
-                  if (cur > maxNum) maxNum = cur;
-                }
-              }
-
-              candidateChains.push({
-                source: `Chronological Chain at Index ${i}`,
-                maxPage: maxNum,
-                pageCount: pMap.size,
-                pageMap: pMap
-              });
-              log("SequenceDisambiguation:Candidate", `Evaluated chronological run from Index ${i}`, {
-                max_page_reached: maxNum,
-                sequential_pages_count: pMap.size
-              });
-            }
-          }
-        }
-
-        // Rank candidates: highest maxPage reached, followed by longest continuous sequence
-        candidateChains.sort((a, b) => {
-          if (b.maxPage !== a.maxPage) return b.maxPage - a.maxPage;
-          return b.pageCount - a.pageCount;
-        });
-
-        const winningChain = candidateChains[0];
-        log("SequenceDisambiguation:Decision", `Crowned winning sequence: ${winningChain?.source}`, {
-          max_page_reached: winningChain?.maxPage,
-          total_pages_in_chain: winningChain?.pageCount
-        });
-
-        const targetIds: string[] = [];
-        if (winningChain) {
-          for (const [pNum, pId] of winningChain.pageMap.entries()) {
-            if (pNum >= startPage && (!endPage || pNum <= endPage)) {
-              targetIds.push(pId);
-            }
-          }
-        }
-
-        log("RangeResolution", `Mapped requested range [${startPage}..${endPage || startPage}] against winning sequence. Matched ${targetIds.length} unique page UUID(s).`);
-
-        if (targetIds.length > 0) {
-          const { data: resolvedPages, error: resolvedErr } = await supabase
-            .from("book_pages")
-            .select("page_number, content_json")
-            .in("id", targetIds)
-            .order("page_number", { ascending: true });
-
-          if (resolvedErr) throw new Error(`[resolvedPages] ${formatError(resolvedErr)}`);
-          pages = resolvedPages || [];
-        }
-      } else {
-        // Fast path for books with single continuous sequence
-        log("PageQuery:FastPath", `Single continuous sequence confirmed. Querying pages >= ${startPage} and <= ${endPage || "end"}...`);
-        let pageQuery = supabase
-          .from("book_pages")
-          .select("page_number, content_json")
-          .eq("book_id", targetBookId)
-          .gte("page_number", startPage);
-
-        if (endPage) {
-          pageQuery = pageQuery.lte("page_number", endPage);
-        }
-
-        const { data: queryPages, error: pageErr } = await pageQuery.order("page_number", { ascending: true });
-        if (pageErr) throw new Error(`[pageQuery] ${formatError(pageErr)}`);
-        pages = queryPages || [];
-      }
-
-      log("PageQuery:Complete", `Loaded ${pages.length} page payload(s) from database.`, {
-        page_numbers: pages.map(p => p.page_number)
-      });
+      const { data: queryPages, error: pageErr } = await pageQuery.order("page_number", { ascending: true });
+      if (pageErr) throw new Error(`[pageQuery] ${formatError(pageErr)}`);
+      
+      const pages = queryPages || [];
+      log("PageQuery:Complete", `Loaded ${pages.length} page payload(s) for chapter "${targetChapter}".`);
 
       // 3. Extract Block Text
-      const sectionText = (pages || []).map(p => {
+      const chapterText = pages.map(p => {
         return `--- PAGE ${p.page_number} ---\n` + extractTextFromBlocks(p.content_json || []);
       }).join("\n\n");
 
-      log("ContentExtraction", `Extracted text from ${pages.length} pages. Total text length: ${sectionText.length} characters.`);
+      log("ContentExtraction", `Extracted text from ${pages.length} pages. Total text length: ${chapterText.length} characters.`);
 
-      if (!sectionText.trim()) {
-        log("ContentExtraction:Skip", "Page content is completely empty. Marking job as skipped.");
+      if (!chapterText.trim()) {
+        log("ContentExtraction:Skip", "Chapter page content is completely empty. Marking job as skipped.");
         if (activeJobId) {
           await supabase.rpc("complete_flashcard_job", {
             p_job_id: activeJobId,
             p_cards_count: 0,
             p_status: "skipped",
-            p_error: "No readable content extracted from pages"
+            p_error: "No readable content extracted from chapter pages"
           });
         }
         return new Response(JSON.stringify({ 
           success: true, 
-          section: targetSection, 
+          chapter: targetChapter, 
           status: "skipped", 
           reason: "Empty page content",
           audit_logs: auditLogs
@@ -512,22 +358,20 @@ ${JSON.stringify(rawBatch, null, 2)}`;
         });
       }
 
-      // Log preview of the text being sent to LLM
-      const sampleText = sectionText.substring(0, 180).replace(/\n/g, " ");
+      const sampleText = chapterText.substring(0, 180).replace(/\n/g, " ");
       log("ContentPreview", `Sample text for prompt: "${sampleText}..."`);
 
-      // 4. Prompt Gemini for High-Yield Flashcards
+      // 4. Prompt Gemini for 50 High-Yield Chapter Flashcards
       const prompt = `You are Miron, an elite academic curriculum tutor for university students in Ethiopia.
-Your mission is to generate EXACTLY ${targetCardCount} high-yield, razor-sharp active-recall flashcards from this textbook subsection.
+Your mission is to generate EXACTLY ${targetCardCount} comprehensive, high-yield, active-recall flashcards covering this ENTIRE textbook chapter.
 
 TARGET QUANTITY (MANDATORY):
-Generate EXACTLY ${targetCardCount} unique, distinct flashcards. Do not generate fewer. Do not generate repetitive rewordings.
+Generate EXACTLY ${targetCardCount} unique, distinct flashcards. Do not generate fewer. Ensure thorough, balanced coverage from beginning to end of the chapter.
 
-SUBSECTION CONTEXT:
+CHAPTER CONTEXT:
 Course: ${targetCourseCode}
 Chapter: ${targetChapter}
-Hierarchy / Topic: ${targetSection}
-Page Range: ${startPage} to ${endPage || startPage} (${pageSpan} page${pageSpan > 1 ? 's' : ''})
+Page Range: ${startPage} to ${endPage || startPage} (${pageSpan} pages)
 
 SURGICAL FLASHCARD RULES:
 1. SHORT, PRECISE & SURGICAL:
@@ -538,24 +382,20 @@ SURGICAL FLASHCARD RULES:
    - "back" (The Strike): Maximum 2 sentences. Deliver the exact, accurate conceptual answer immediately. Wrap key technical terms, laws, and definitions in <strong> tags.
      * GOOD: "A declarative statement that is either <strong>true</strong> or <strong>false</strong>, but not both."
      * BAD: "As discussed in the chapter above, when we look at logic, a proposition is considered to be..."
-2. 100% CONCEPTUAL MASTERY: Focus on core definitions, foundational laws, governing formulas, and contrasting distinctions. Cover tables, summarized rules, and bolded terms.
-3. NO HEAVY ARITHMETIC: Exclude multi-step scratchpad calculations or long algebra.
+   - "ref_page": The integer page number where this concept is primarily discussed.
+2. 100% CONCEPTUAL MASTERY: Focus on core definitions, foundational laws, governing formulas, classifications, and contrasting distinctions across all topics of the chapter.
+3. NO HEAVY ARITHMETIC: Exclude multi-step scratchpad calculations or long algebra. Focus on the underlying theory, conditions, and principles.
 4. VALID JSON ARRAY: You MUST return a JSON array containing EXACTLY ${targetCardCount} items:
 [
   {
     "front": "Short surgical prompt (<= 15 words)",
     "back": "Direct accurate answer (<= 2 sentences). Key terms in <strong>tags</strong>.",
     "ref_page": ${startPage}
-  },
-  {
-    "front": "Second distinct surgical prompt",
-    "back": "Second concise answer with <strong>key terms</strong>.",
-    "ref_page": ${startPage}
   }
 ]
 
-SECTION CONTENT:
-${sectionText}`;
+CHAPTER CONTENT:
+${chapterText}`;
 
       log("GeminiSynthesis:Dispatch", `Dispatching prompt to Gemini (${prompt.length} bytes). Target: ${targetCardCount} cards...`);
 
@@ -566,7 +406,8 @@ ${sectionText}`;
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            responseMimeType: "application/json"
+            responseMimeType: "application/json",
+            maxOutputTokens: 8192
           }
         })
       });
@@ -590,11 +431,6 @@ ${sectionText}`;
       log("GeminiSynthesis:Parsed", `Successfully parsed JSON response containing ${cards?.length || 0} cards.`);
 
       if (Array.isArray(cards) && cards.length > 0) {
-        log("SampleCard1", `[Front]: ${cards[0]?.front} | [Back]: ${cards[0]?.back}`);
-        if (cards[1]) {
-          log("SampleCard2", `[Front]: ${cards[1]?.front} | [Back]: ${cards[1]?.back}`);
-        }
-
         const rowsToInsert = cards.map(c => ({
           book_id: targetBookId,
           course_code: targetCourseCode,
@@ -628,7 +464,7 @@ ${sectionText}`;
 
         return new Response(JSON.stringify({ 
           success: true, 
-          section: targetSection, 
+          chapter: targetChapter, 
           status: "completed", 
           cards_generated: rowsToInsert.length,
           audit_logs: auditLogs
@@ -638,8 +474,7 @@ ${sectionText}`;
         });
       }
 
-      // If section returned 0 cards
-      log("GeminiSynthesis:ZeroCards", "LLM returned zero cards for this section. Marking skipped.");
+      log("GeminiSynthesis:ZeroCards", "LLM returned zero cards for this chapter. Marking skipped.");
       if (activeJobId) {
         await supabase.rpc("complete_flashcard_job", {
           p_job_id: activeJobId,
@@ -650,7 +485,7 @@ ${sectionText}`;
 
       return new Response(JSON.stringify({ 
         success: true, 
-        section: targetSection, 
+        chapter: targetChapter, 
         status: "skipped", 
         cards_generated: 0,
         audit_logs: auditLogs
