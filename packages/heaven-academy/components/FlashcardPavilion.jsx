@@ -51,18 +51,9 @@ const FlashcardPavilion = ({ onClose }) => {
                 return;
             }
 
-            const cards = data.map(c => ({
-                id: c.id,
-                front: c.front,
-                back: c.back,
-                ref: c.reference_info || 'Exam Mistake Review',
-                chapter_title: c.course_code || 'Mistake Vault',
-                is_mistake: true
-            }));
-
+            // Hand off to FlashcardArena to synthesize the mistake queue via the unified SRS engine
             setActiveSession({
-                deck: { course_code: 'VAULT', title: 'Mistake Vault' },
-                cards
+                deck: { course_code: 'VAULT', title: 'Mistake Vault' }
             });
         } catch (err) {
             setNotice({
