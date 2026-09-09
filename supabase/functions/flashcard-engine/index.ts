@@ -80,19 +80,34 @@ serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+  const auditLogs: string[] = [];
+  const log = (stage: string, message: string, meta?: any) => {
+    const timestamp = new Date().toISOString().substring(11, 23);
+    const formatted = meta !== undefined
+      ? `[${timestamp}][${stage}] ${message} -> ${typeof meta === "object" ? JSON.stringify(meta) : meta}`
+      : `[${timestamp}][${stage}] ${message}`;
+    console.log(formatted);
+    auditLogs.push(formatted);
+  };
+
   try {
     const body = await req.json().catch(() => ({}));
     const action = body.action || "cron_next_section";
+    log("Init", `Request accepted. Pipeline Action: "${action}"`, { origin: req.headers.get("origin") || "direct" });
 
     // 1. Lease active Gemini key from DB pool
+    log("KeyLease", "Requesting active Gemini API key from database pool via RPC...");
     const { data: keyData, error: keyErr } = await supabase.rpc("lease_gemini_api_key");
     if (keyErr || !keyData || !keyData[0]?.api_key) {
+      log("KeyLease:Error", "Key lease failed!", { error: formatError(keyErr) });
       throw new Error(`API Key Pool Error: ${keyErr?.message || "No active keys available"}`);
     }
 
     const apiKey = keyData[0].api_key;
+    const maskedKey = `${apiKey.substring(0, 6)}...${apiKey.substring(apiKey.length - 4)}`;
     const model = "gemini-2.5-flash";
     const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    log("KeyLease:Success", `Leased key ID: ${keyData[0].id} (${maskedKey}). Model targeted: "${model}"`);
 
     // =========================================================================
     // PIPELINE 1: BATCH MISTAKE VAULT SYNTHESIZER
@@ -102,30 +117,38 @@ serve(async (req: Request) => {
       const batchLimit = body.limit || 8;
 
       if (!userId) {
-        return new Response(JSON.stringify({ error: "Missing user_id parameter" }), {
+        log("BatchMistakes:Error", "Rejected: Missing user_id parameter in payload.");
+        return new Response(JSON.stringify({ error: "Missing user_id parameter", audit_logs: auditLogs }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
 
-      // Fetch pending un-synthesized questions via helper RPC
+      log("BatchMistakes:Query", `Fetching un-synthesized mistake questions for user ${userId} (limit: ${batchLimit})...`);
       const { data: rawBatch, error: batchErr } = await supabase.rpc("get_pending_mistake_batch", {
         p_user_id: userId,
         p_limit: batchLimit
       });
 
-      if (batchErr) throw new Error(`[batch_mistakes] ${formatError(batchErr)}`);
+      if (batchErr) {
+        log("BatchMistakes:Error", "RPC failed", { error: formatError(batchErr) });
+        throw new Error(`[batch_mistakes] ${formatError(batchErr)}`);
+      }
 
       if (!rawBatch || rawBatch.length === 0) {
+        log("BatchMistakes:Done", "Zero pending mistake questions found. Queue clean.");
         return new Response(JSON.stringify({ 
           success: true, 
           message: "No pending mistake questions to process", 
-          processed: 0 
+          processed: 0,
+          audit_logs: auditLogs
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
+
+      log("BatchMistakes:Synthesis", `Found ${rawBatch.length} questions to synthesize into active-recall probes. Dispatching to Gemini...`);
 
       const prompt = `You are Miron, a high-yield university academic tutor. Below is a batch of questions that a student answered incorrectly on exams or book checkpoints.
 
@@ -152,6 +175,7 @@ CRITICAL INSTRUCTIONS:
 INPUT QUESTIONS:
 ${JSON.stringify(rawBatch, null, 2)}`;
 
+      const tStartGemini = Date.now();
       const geminiRes = await fetch(geminiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -163,9 +187,13 @@ ${JSON.stringify(rawBatch, null, 2)}`;
         })
       });
 
+      const geminiLatency = Date.now() - tStartGemini;
+      log("BatchMistakes:GeminiResponse", `Gemini returned HTTP ${geminiRes.status} in ${geminiLatency}ms`);
+
       if (!geminiRes.ok) {
         const errText = await geminiRes.text();
         if (geminiRes.status === 429) {
+          log("BatchMistakes:Cooldown", `Key rate-limited. Putting key ${maskedKey} on cooldown.`);
           await supabase.rpc("cooldown_gemini_key", { expired_key: apiKey });
         }
         throw new Error(`Gemini API Error ${geminiRes.status}: ${errText}`);
@@ -174,6 +202,7 @@ ${JSON.stringify(rawBatch, null, 2)}`;
       const geminiJson = await geminiRes.json();
       const rawOutput = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
       const cards = JSON.parse(rawOutput);
+      log("BatchMistakes:CardsParsed", `Received ${cards.length} synthesized cards from LLM.`);
 
       if (Array.isArray(cards) && cards.length > 0) {
         const rowsToInsert = cards.map(c => ({
@@ -189,12 +218,18 @@ ${JSON.stringify(rawBatch, null, 2)}`;
           .from("user_mistake_flashcards")
           .insert(rowsToInsert);
 
-        if (insertErr) throw insertErr;
+        if (insertErr) {
+          log("BatchMistakes:InsertError", "Failed to insert mistake flashcards", { error: formatError(insertErr) });
+          throw insertErr;
+        }
+
+        log("BatchMistakes:Committed", `Committed ${rowsToInsert.length} mistake flashcards to user_mistake_flashcards.`);
 
         return new Response(JSON.stringify({ 
           success: true, 
           questions_evaluated: rawBatch.length, 
-          cards_created: rowsToInsert.length 
+          cards_created: rowsToInsert.length,
+          audit_logs: auditLogs
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -205,7 +240,8 @@ ${JSON.stringify(rawBatch, null, 2)}`;
         success: true, 
         questions_evaluated: rawBatch.length, 
         cards_created: 0,
-        note: "All questions in batch were calculations or excluded" 
+        note: "All questions in batch were calculations or excluded",
+        audit_logs: auditLogs
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -222,17 +258,24 @@ ${JSON.stringify(rawBatch, null, 2)}`;
     let targetSection = body.section_title;
     let startPage = body.start_page;
     let endPage = body.end_page;
+    let targetCardCount = 10;
 
     // 1. Acquire atomic job with SKIP LOCKED if running in automated cron mode
     if (!targetBookId || !targetSection) {
+      log("JobAcquisition", "No manual book/section passed. Calling RPC acquire_next_flashcard_job (SKIP LOCKED)...");
       const { data: jobData, error: jobErr } = await supabase.rpc("acquire_next_flashcard_job");
-      if (jobErr) throw new Error(`[acquire_next_flashcard_job] ${formatError(jobErr)}`);
+      if (jobErr) {
+        log("JobAcquisition:Error", "acquire_next_flashcard_job failed", { error: formatError(jobErr) });
+        throw new Error(`[acquire_next_flashcard_job] ${formatError(jobErr)}`);
+      }
 
       if (!jobData || jobData.length === 0) {
+        log("JobAcquisition:Empty", "RPC returned 0 jobs. All textbook sections are up-to-date.");
         return new Response(JSON.stringify({ 
           success: true, 
           message: "All textbook sections have been processed. Queue is empty!", 
-          pending: false 
+          pending: false,
+          audit_logs: auditLogs
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -249,28 +292,48 @@ ${JSON.stringify(rawBatch, null, 2)}`;
       endPage = currentJob.end_page;
       
       const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
-      var targetCardCount = currentJob.target_cards || Math.max(4, Math.min(25, pageSpan * 3));
+      targetCardCount = currentJob.target_cards || Math.max(4, Math.min(25, pageSpan * 3));
+
+      log("JobAcquisition:Success", `Acquired Job ID: ${activeJobId}`, {
+        book: currentJob.book_title,
+        course_code: targetCourseCode,
+        chapter: targetChapter,
+        section: targetSection,
+        start_page: startPage,
+        end_page: endPage,
+        span: pageSpan,
+        target_card_count: targetCardCount
+      });
     } else {
       const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
-      var targetCardCount = Math.max(4, Math.min(25, pageSpan * 3));
+      targetCardCount = Math.max(4, Math.min(25, pageSpan * 3));
+      log("JobAcquisition:Manual", `Manual parameters provided: "${targetSection}" (Pages ${startPage} to ${endPage}) in book ${targetBookId}. Target Cards: ${targetCardCount}`);
     }
 
     try {
       const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
+      
       // 2. Read full section page range (with duplicate Page 1 scan-ahead resolution)
       let pages: { page_number: number; content_json: any }[] = [];
 
-      // Check if this book contains multiple "Page 1" records (e.g. preface vs main body)
+      log("Page1Analysis", `Inspecting book ${targetBookId} for duplicate Page 1 anomalies...`);
       const { data: pageOneRecords, error: p1Err } = await supabase
         .from("book_pages")
         .select("id")
         .eq("book_id", targetBookId)
         .eq("page_number", 1);
 
-      if (p1Err) throw new Error(`[pageOneCheck] ${formatError(p1Err)}`);
+      if (p1Err) {
+        log("Page1Analysis:Error", "Failed to query page_number = 1", { error: formatError(p1Err) });
+        throw new Error(`[pageOneCheck] ${formatError(p1Err)}`);
+      }
 
-      if (pageOneRecords && pageOneRecords.length > 1) {
-        // Multiple Page 1s detected! Scan ahead to discover the true main-body sequence
+      const p1Count = pageOneRecords?.length || 0;
+      log("Page1Analysis:Result", `Found ${p1Count} record(s) with page_number = 1.`);
+
+      if (p1Count > 1) {
+        log("SequenceDisambiguation", `MULTIPLE PAGE 1s DETECTED (${p1Count}). Engaging scan-ahead sequence analyzer...`);
+
         const { data: allBookPages, error: allPagesErr } = await supabase
           .from("book_pages")
           .select("id, page_number, page_key, created_at")
@@ -278,6 +341,7 @@ ${JSON.stringify(rawBatch, null, 2)}`;
           .order("created_at", { ascending: true });
 
         if (allPagesErr) throw new Error(`[allPagesQuery] ${formatError(allPagesErr)}`);
+        log("SequenceDisambiguation:IndexLoaded", `Loaded index of ${allBookPages?.length || 0} total physical pages for sequence tracing.`);
 
         // Strategy A: Group by page_key prefix (e.g. "preface-" vs "page-")
         const prefixGroups = new Map<string, typeof allBookPages>();
@@ -287,14 +351,21 @@ ${JSON.stringify(rawBatch, null, 2)}`;
           prefixGroups.get(prefix)!.push(p);
         }
 
+        const prefixSummary: Record<string, number> = {};
+        for (const [k, v] of prefixGroups.entries()) {
+          prefixSummary[k] = v.length;
+        }
+        log("SequenceDisambiguation:Prefixes", "Detected key-family groups:", prefixSummary);
+
         const candidateChains: Array<{
+          source: string;
           maxPage: number;
           pageCount: number;
           pageMap: Map<number, string>;
         }> = [];
 
         // Evaluate each prefix group
-        for (const groupPages of prefixGroups.values()) {
+        for (const [prefixName, groupPages] of prefixGroups.entries()) {
           const sortedGroup = [...groupPages].sort((a, b) => a.page_number - b.page_number);
           if (sortedGroup.length > 0 && sortedGroup[0].page_number === 1) {
             const pMap = new Map<number, string>();
@@ -302,7 +373,6 @@ ${JSON.stringify(rawBatch, null, 2)}`;
             let lastP = 0;
 
             for (const item of sortedGroup) {
-              // Allow sequential ascent with minor gap tolerance (<= 5) for blank plates
               if (lastP === 0 || (item.page_number > lastP && item.page_number <= lastP + 5)) {
                 pMap.set(item.page_number, item.id);
                 lastP = item.page_number;
@@ -311,15 +381,22 @@ ${JSON.stringify(rawBatch, null, 2)}`;
             }
 
             candidateChains.push({
+              source: `Prefix "${prefixName}"`,
               maxPage: maxP,
               pageCount: pMap.size,
               pageMap: pMap
             });
+            log("SequenceDisambiguation:Candidate", `Evaluated candidate chain from prefix "${prefixName}"`, {
+              starting_page: 1,
+              max_page_reached: maxP,
+              sequential_pages_count: pMap.size
+            });
           }
         }
 
-        // Strategy B: If page_keys shared identical prefixes, scan by insertion/chronological chains
+        // Strategy B: If all page_keys shared identical prefixes, scan by insertion/chronological chains
         if (candidateChains.length <= 1 && allBookPages && allBookPages.length > 0) {
+          log("SequenceDisambiguation:Fallback", "Prefixes identical or singular. Scanning chronological insertion runs...");
           for (let i = 0; i < allBookPages.length; i++) {
             if (allBookPages[i].page_number === 1) {
               const pMap = new Map<number, string>();
@@ -329,7 +406,7 @@ ${JSON.stringify(rawBatch, null, 2)}`;
 
               for (let j = i + 1; j < allBookPages.length; j++) {
                 const cur = allBookPages[j].page_number;
-                if (cur === 1 || cur < lastNum) break; // Reset or backwards break
+                if (cur === 1 || cur < lastNum) break;
                 if (cur > lastNum && cur <= lastNum + 5) {
                   pMap.set(cur, allBookPages[j].id);
                   lastNum = cur;
@@ -338,23 +415,32 @@ ${JSON.stringify(rawBatch, null, 2)}`;
               }
 
               candidateChains.push({
+                source: `Chronological Chain at Index ${i}`,
                 maxPage: maxNum,
                 pageCount: pMap.size,
                 pageMap: pMap
+              });
+              log("SequenceDisambiguation:Candidate", `Evaluated chronological run from Index ${i}`, {
+                max_page_reached: maxNum,
+                sequential_pages_count: pMap.size
               });
             }
           }
         }
 
-        // The true textbook body is the candidate sequence reaching the highest page number
+        // Rank candidates: highest maxPage reached, followed by longest continuous sequence
         candidateChains.sort((a, b) => {
           if (b.maxPage !== a.maxPage) return b.maxPage - a.maxPage;
           return b.pageCount - a.pageCount;
         });
 
         const winningChain = candidateChains[0];
-        const targetIds: string[] = [];
+        log("SequenceDisambiguation:Decision", `Crowned winning sequence: ${winningChain?.source}`, {
+          max_page_reached: winningChain?.maxPage,
+          total_pages_in_chain: winningChain?.pageCount
+        });
 
+        const targetIds: string[] = [];
         if (winningChain) {
           for (const [pNum, pId] of winningChain.pageMap.entries()) {
             if (pNum >= startPage && (!endPage || pNum <= endPage)) {
@@ -362,6 +448,8 @@ ${JSON.stringify(rawBatch, null, 2)}`;
             }
           }
         }
+
+        log("RangeResolution", `Mapped requested range [${startPage}..${endPage || startPage}] against winning sequence. Matched ${targetIds.length} unique page UUID(s).`);
 
         if (targetIds.length > 0) {
           const { data: resolvedPages, error: resolvedErr } = await supabase
@@ -375,6 +463,7 @@ ${JSON.stringify(rawBatch, null, 2)}`;
         }
       } else {
         // Fast path for books with single continuous sequence
+        log("PageQuery:FastPath", `Single continuous sequence confirmed. Querying pages >= ${startPage} and <= ${endPage || "end"}...`);
         let pageQuery = supabase
           .from("book_pages")
           .select("page_number, content_json")
@@ -390,11 +479,19 @@ ${JSON.stringify(rawBatch, null, 2)}`;
         pages = queryPages || [];
       }
 
+      log("PageQuery:Complete", `Loaded ${pages.length} page payload(s) from database.`, {
+        page_numbers: pages.map(p => p.page_number)
+      });
+
+      // 3. Extract Block Text
       const sectionText = (pages || []).map(p => {
         return `--- PAGE ${p.page_number} ---\n` + extractTextFromBlocks(p.content_json || []);
       }).join("\n\n");
 
+      log("ContentExtraction", `Extracted text from ${pages.length} pages. Total text length: ${sectionText.length} characters.`);
+
       if (!sectionText.trim()) {
+        log("ContentExtraction:Skip", "Page content is completely empty. Marking job as skipped.");
         if (activeJobId) {
           await supabase.rpc("complete_flashcard_job", {
             p_job_id: activeJobId,
@@ -407,14 +504,19 @@ ${JSON.stringify(rawBatch, null, 2)}`;
           success: true, 
           section: targetSection, 
           status: "skipped", 
-          reason: "Empty page content" 
+          reason: "Empty page content",
+          audit_logs: auditLogs
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
 
-      // 3. Prompt Gemini for High-Yield Flashcards
+      // Log preview of the text being sent to LLM
+      const sampleText = sectionText.substring(0, 180).replace(/\n/g, " ");
+      log("ContentPreview", `Sample text for prompt: "${sampleText}..."`);
+
+      // 4. Prompt Gemini for High-Yield Flashcards
       const prompt = `You are Miron, an elite academic curriculum tutor for university students in Ethiopia.
 Your mission is to generate EXACTLY ${targetCardCount} high-yield, razor-sharp active-recall flashcards from this textbook subsection.
 
@@ -455,6 +557,9 @@ SURGICAL FLASHCARD RULES:
 SECTION CONTENT:
 ${sectionText}`;
 
+      log("GeminiSynthesis:Dispatch", `Dispatching prompt to Gemini (${prompt.length} bytes). Target: ${targetCardCount} cards...`);
+
+      const tStartGemini = Date.now();
       const geminiRes = await fetch(geminiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -466,9 +571,13 @@ ${sectionText}`;
         })
       });
 
+      const geminiLatency = Date.now() - tStartGemini;
+      log("GeminiSynthesis:Response", `Gemini responded with HTTP ${geminiRes.status} in ${geminiLatency}ms.`);
+
       if (!geminiRes.ok) {
         const errText = await geminiRes.text();
         if (geminiRes.status === 429) {
+          log("GeminiSynthesis:Cooldown", `Rate-limited! Cooldown triggered on key ${maskedKey}`);
           await supabase.rpc("cooldown_gemini_key", { expired_key: apiKey });
         }
         throw new Error(`Gemini API Error ${geminiRes.status}: ${errText}`);
@@ -478,7 +587,14 @@ ${sectionText}`;
       const rawOutput = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
       const cards = JSON.parse(rawOutput);
 
+      log("GeminiSynthesis:Parsed", `Successfully parsed JSON response containing ${cards?.length || 0} cards.`);
+
       if (Array.isArray(cards) && cards.length > 0) {
+        log("SampleCard1", `[Front]: ${cards[0]?.front} | [Back]: ${cards[0]?.back}`);
+        if (cards[1]) {
+          log("SampleCard2", `[Front]: ${cards[1]?.front} | [Back]: ${cards[1]?.back}`);
+        }
+
         const rowsToInsert = cards.map(c => ({
           book_id: targetBookId,
           course_code: targetCourseCode,
@@ -489,32 +605,41 @@ ${sectionText}`;
           ref_page: c.ref_page || startPage
         }));
 
+        log("DbCommit:Insert", `Inserting ${rowsToInsert.length} flashcard record(s) into course_flashcards...`);
         const { error: insertErr } = await supabase
           .from("course_flashcards")
           .insert(rowsToInsert);
 
-        if (insertErr) throw insertErr;
+        if (insertErr) {
+          log("DbCommit:Error", "Insertion to course_flashcards failed", { error: formatError(insertErr) });
+          throw insertErr;
+        }
+        log("DbCommit:Success", `Committed ${rowsToInsert.length} flashcards to course_flashcards.`);
 
         if (activeJobId) {
+          log("DbCommit:JobComplete", `Updating job ${activeJobId} in book_flashcard_progress to status 'completed'...`);
           await supabase.rpc("complete_flashcard_job", {
             p_job_id: activeJobId,
             p_cards_count: rowsToInsert.length,
             p_status: "completed"
           });
+          log("DbCommit:JobComplete:Success", `Job ${activeJobId} marked 'completed'.`);
         }
 
         return new Response(JSON.stringify({ 
           success: true, 
           section: targetSection, 
           status: "completed", 
-          cards_generated: rowsToInsert.length 
+          cards_generated: rowsToInsert.length,
+          audit_logs: auditLogs
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
 
-      // If section is purely calculations or empty, mark skipped so cron moves forward
+      // If section returned 0 cards
+      log("GeminiSynthesis:ZeroCards", "LLM returned zero cards for this section. Marking skipped.");
       if (activeJobId) {
         await supabase.rpc("complete_flashcard_job", {
           p_job_id: activeJobId,
@@ -527,7 +652,8 @@ ${sectionText}`;
         success: true, 
         section: targetSection, 
         status: "skipped", 
-        cards_generated: 0 
+        cards_generated: 0,
+        audit_logs: auditLogs
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -535,6 +661,7 @@ ${sectionText}`;
 
     } catch (processErr: unknown) {
       const errMsg = processErr instanceof Error ? processErr.message : String(processErr);
+      log("ExecutionError", `Processing section failed: ${errMsg}`);
       if (activeJobId) {
         await supabase.rpc("complete_flashcard_job", {
           p_job_id: activeJobId,
@@ -548,8 +675,8 @@ ${sectionText}`;
 
   } catch (err: unknown) {
     const message = formatError(err);
-    console.error("[FlashcardEngine Fatal]:", message);
-    return new Response(JSON.stringify({ error: message }), {
+    log("FatalError", message);
+    return new Response(JSON.stringify({ error: message, audit_logs: auditLogs }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
