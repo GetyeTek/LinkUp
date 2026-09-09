@@ -549,12 +549,13 @@ const MironChat = ({ onClose, initialContext }) => {
                     </div>
                 ) : (
                     messages.filter(m => !m.text?.startsWith('[Quiz Submission:')).map(m => (
-                        <div key={m.id} className={`chat-node ${m.side}`}>
+                                                <div key={m.id} className={`chat-node ${m.side}`}>
                             <div className="athena-bubble">
-                                {m.text
-                                    .replace(/\[FLASHCARD_\d+\]/g, '')
-                                    .split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\])/g)
-                                    .map((part, idx) => {
+                                {(() => {
+                                    let flashcardDeckRendered = false;
+                                    const parts = m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\]|\[FLASHCARD_\d+\])/g);
+
+                                    const renderedElements = parts.map((part, idx) => {
                                         const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
                                         if (boardMatch) {
                                             return <InlineBoardTrigger key={idx} boardId={boardMatch[1]} onOpen={setActiveBoardPayload} />;
@@ -568,41 +569,57 @@ const MironChat = ({ onClose, initialContext }) => {
                                             return <InlineChatQuiz key={idx} quiz={quiz} onSubmit={sendMessage} />;
                                         }
 
+                                        const cardMatch = part.match(/\[FLASHCARD_\d+\]/);
+                                        if (cardMatch) {
+                                            if (!flashcardDeckRendered && m.flashcards && m.flashcards.length > 0) {
+                                                flashcardDeckRendered = true;
+                                                return <InlineChatCard key={idx} cards={m.flashcards} onRate={handleInlineCardRate} />;
+                                            }
+                                            return null;
+                                        }
+
                                         const snapMatch = part.match(/\[SNAPSHOT_(\d+)\]/);
-                                    if (snapMatch) {
-                                        const snapId = parseInt(snapMatch[1], 10);
-                                        const snap = m.snapshots?.find(s => s.id === snapId);
-                                        if (!snap) return null;
-                                        
+                                        if (snapMatch) {
+                                            const snapId = parseInt(snapMatch[1], 10);
+                                            const snap = m.snapshots?.find(s => s.id === snapId);
+                                            if (!snap) return null;
+                                            
+                                            return (
+                                                <div key={idx} className="inline-chat-snapshot">
+                                                    <div className="snapshot-topbar">
+                                                        <span><i className="fas fa-file-pdf"></i> {snap.book_title || snap.course_code}</span>
+                                                        <span>Page {snap.page_number}</span>
+                                                    </div>
+                                                    <div className="snapshot-content">
+                                                        {snap.blocks.map((b, i) => {
+                                                            const Renderer = getComponent('book-block-renderer');
+                                                            if (Renderer) return Renderer(b, i, { bookTitle: snap.book_title || snap.course_code });
+                                                            return <div key={i} style={{color: 'red'}}>[Rendering Engine Disconnected]</div>;
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        if (!part.trim()) return null;
                                         return (
-                                            <div key={idx} className="inline-chat-snapshot">
-                                                <div className="snapshot-topbar">
-                                                    <span><i className="fas fa-file-pdf"></i> {snap.book_title || snap.course_code}</span>
-                                                    <span>Page {snap.page_number}</span>
-                                                </div>
-                                                <div className="snapshot-content">
-                                                    {snap.blocks.map((b, i) => {
-                                                        const Renderer = getComponent('book-block-renderer');
-                                                        if (Renderer) return Renderer(b, i, { bookTitle: snap.book_title || snap.course_code });
-                                                        return <div key={i} style={{color: 'red'}}>[Rendering Engine Disconnected]</div>;
-                                                    })}
-                                                </div>
-                                            </div>
+                                            <div 
+                                                key={idx} 
+                                                className="miron-markdown-chunk"
+                                                dangerouslySetInnerHTML={{ __html: renderMironMarkdown(part) }} 
+                                            />
                                         );
-                                    }
-                                    
-                                    if (!part.trim()) return null;
+                                    });
+
                                     return (
-                                        <div 
-                                            key={idx} 
-                                            className="miron-markdown-chunk"
-                                            dangerouslySetInnerHTML={{ __html: renderMironMarkdown(part) }} 
-                                        />
+                                        <>
+                                            {renderedElements}
+                                            {!flashcardDeckRendered && m.flashcards && m.flashcards.length > 0 && (
+                                                <InlineChatCard cards={m.flashcards} onRate={handleInlineCardRate} />
+                                            )}
+                                        </>
                                     );
-                                })}
-                                {m.flashcards && m.flashcards.length > 0 && (
-                                    <InlineChatCard cards={m.flashcards} onRate={handleInlineCardRate} />
-                                )}
+                                })()}
                             </div>
                             <div className="athena-bubble-actions">
                                 <button 
