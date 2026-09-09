@@ -109,7 +109,7 @@ const FlashcardPavilion = ({ onClose }) => {
     };
 
     return (
-        <div className="fcp-overlay">
+        <div className="fcp-overlay" onTouchStart={(e) => e.stopPropagation()}>
             <header className="fcp-header">
                 <button className="fcp-back-btn" onClick={onClose}>
                     <i className="fas fa-chevron-left"></i>
