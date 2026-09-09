@@ -371,28 +371,18 @@ Generate EXACTLY ${targetCardCount} unique, non-repetitive flashcards. Do not st
 PAGE CITATION RULE (CRITICAL):
 The chapter text contains distinct page markers like "--- PAGE 18 ---". For EVERY card, set "ref_page" to the exact integer of the page where that specific definition, law, or fact appears. Do not default all cards to the first page.
 
-STRICT ANTI-META RULES:
+STRICT ANTI-META & JSON RULES:
 1. NEVER mention course codes (e.g. "${targetCourseCode}"), book titles, or chapter labels (e.g. "${targetChapter}") anywhere in the "front" or "back". Treat every concept as an objective scientific/academic truth.
 2. BANNED META QUESTIONS: Do NOT ask questions about chapter overviews, module goals, unit introductions, what topics are discussed, or summary lists.
 3. EXAM FOCUS ONLY: Every question must be a bull's-eye academic probe (definitions, laws, mechanisms, formulas, contrasts) that could legitimately appear on a university exam.
 4. NO HEAVY ARITHMETIC: Exclude multi-step scratchpad calculations or lengthy algebra. Focus on conceptual theory, conditions, and core principles.
+5. SINGLE QUOTES FOR PHRASES: Use single quotes ('...') for terms or words inside strings. Never include raw unescaped double quotes inside text values.
 
 FLASHCARD STYLES (MANDATORY DIVERSE MIX):
 - DIRECT CONCEPT PROBE (~40%): Direct, punchy question (<= 15 words).
 - CLOZE DELETION (~25%): Accurate sentence with [...] concealing key technical terms.
-  * Example Front: "The Greek root 'anthropos' means [...], while 'logos' translates to [...]."
-  * Example Back: "<strong>human being / humankind</strong> and <strong>study / reason / science</strong>."
 - CONTRAST / DISTINCTION (~20%): Comparing easily confused concepts ("What is the primary difference between X and Y?").
 - GOVERNING PRINCIPLE (~15%): Testing core rules ("Under what condition does X apply?").
-
-RESPONSE SCHEMA (VALID JSON ONLY):
-[
-  {
-    "front": "Punchy probe, contrast, or cloze deletion with [...]",
-    "back": "Max 2 direct sentences. Bold key technical terms with <strong>tags</strong>.",
-    "ref_page": 18
-  }
-]
 
 CHAPTER CONTENT:
 ${chapterText}`;
@@ -407,6 +397,18 @@ ${chapterText}`;
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: "application/json",
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  front: { type: "STRING" },
+                  back: { type: "STRING" },
+                  ref_page: { type: "INTEGER" }
+                },
+                required: ["front", "back", "ref_page"]
+              }
+            },
             maxOutputTokens: 8192
           }
         })
@@ -425,8 +427,24 @@ ${chapterText}`;
       }
 
       const geminiJson = await geminiRes.json();
-      const rawOutput = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-      const cards = JSON.parse(rawOutput);
+      const rawOutput = (geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || "[]").trim();
+      
+      let cards: any[] = [];
+      try {
+        cards = JSON.parse(rawOutput);
+      } catch (parseErr: any) {
+        log("JSONParseFallback", `Initial parse failed (${parseErr.message}). Attempting regex card recovery...`);
+        const itemRegex = /"front"\s*:\s*"([\s\S]*?)"\s*,\s*"back"\s*:\s*"([\s\S]*?)"\s*,\s*"ref_page"\s*:\s*(\d+)/gi;
+        let match;
+        while ((match = itemRegex.exec(rawOutput)) !== null) {
+          cards.push({
+            front: match[1],
+            back: match[2],
+            ref_page: parseInt(match[3], 10)
+          });
+        }
+        if (cards.length === 0) throw parseErr;
+      }
 
       log("GeminiSynthesis:Parsed", `Successfully parsed JSON response containing ${cards?.length || 0} cards.`);
 
@@ -498,12 +516,16 @@ ${chapterText}`;
       const errMsg = processErr instanceof Error ? processErr.message : String(processErr);
       log("ExecutionError", `Processing section failed: ${errMsg}`);
       if (activeJobId) {
-        await supabase.rpc("complete_flashcard_job", {
-          p_job_id: activeJobId,
-          p_cards_count: 0,
-          p_status: "failed",
-          p_error: errMsg
-        }).catch(() => {});
+        try {
+          await supabase.rpc("complete_flashcard_job", {
+            p_job_id: activeJobId,
+            p_cards_count: 0,
+            p_status: "failed",
+            p_error: errMsg
+          });
+        } catch (_) {
+          // Ignore RPC completion error
+        }
       }
       throw processErr;
     }
