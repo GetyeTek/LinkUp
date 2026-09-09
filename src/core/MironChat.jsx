@@ -374,12 +374,24 @@ const MironChat = ({ onClose, initialContext }) => {
                     ui_command: data.ui_command || null
                 };
 
-                const { data: aiMsgData } = await supabase
+                const { data: aiMsgData, error: insertErr } = await supabase
                     .from('miron_messages')
                     .insert(mironMsgPayload)
                     .select()
                     .single();
-                savedAiMsg = aiMsgData;
+
+                if (insertErr && (insertErr.code === 'PGRST204' || insertErr.message?.includes('flashcards'))) {
+                    // Self-healing fallback if database column is pending migration
+                    delete mironMsgPayload.flashcards;
+                    const { data: retryData } = await supabase
+                        .from('miron_messages')
+                        .insert(mironMsgPayload)
+                        .select()
+                        .single();
+                    savedAiMsg = retryData;
+                } else {
+                    savedAiMsg = aiMsgData;
+                }
             }
 
             setMessages(prev => [
