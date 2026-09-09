@@ -21,16 +21,23 @@ const formatChapterPillLabel = (title, index) => {
     return title.length > 16 ? title.substring(0, 14) + '...' : title;
 };
 
+const sanitizeCard = (c) => ({
+    ...c,
+    frontHtml: c.frontHtml || DOMPurify.sanitize(c.front || ''),
+    backHtml: c.backHtml || DOMPurify.sanitize(c.back || '')
+});
+
 const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
     const isVault = deck?.course_code === 'VAULT';
     const [chapters, setChapters] = useState([]);
     const [selectedChapter, setSelectedChapter] = useState(null);
-    const [cards, setCards] = useState(initialCards);
+    const [cards, setCards] = useState(() => (initialCards || []).map(sanitizeCard));
     const [loadingCards, setLoadingCards] = useState(false);
     const [loadingChapters, setLoadingChapters] = useState(!isVault);
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
+    const [isTransitioning, setIsTransitioning] = useState(false);
     const [stats, setStats] = useState({ hard: 0, good: 0, easy: 0 });
     const [isCompleted, setIsCompleted] = useState(false);
 
@@ -61,7 +68,7 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
 
             if (error) throw error;
 
-            const mapped = (data || []).map(c => ({
+            const mapped = (data || []).map(c => sanitizeCard({
                 id: c.id,
                 front: c.front,
                 back: c.back,
@@ -155,7 +162,7 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
     }, [deck?.course_code, isVault, loadChapterCards]);
 
     const handleSelectChapter = (chapterTitle) => {
-        if (chapterTitle === selectedChapter || loadingCards) return;
+        if (chapterTitle === selectedChapter) return;
         setSelectedChapter(chapterTitle);
         localStorage.setItem(`linkup_fc_ch_${deck.course_code}`, chapterTitle);
         loadChapterCards(chapterTitle);
@@ -166,13 +173,13 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
     const progressPct = cards.length > 0 ? ((currentIndex + 1) / cards.length) * 100 : 0;
 
     const handleFlip = () => {
-        if (!currentCard || loadingCards) return;
-        setIsFlipped(!isFlipped);
+        if (!currentCard || loadingCards || isTransitioning) return;
+        setIsFlipped(prev => !prev);
         if (navigator.vibrate) navigator.vibrate(18);
     };
 
     const handleRate = async (difficulty) => {
-        if (!currentCard || loadingCards) return;
+        if (!currentCard || loadingCards || isTransitioning) return;
         setStats(prev => ({ ...prev, [difficulty]: prev[difficulty] + 1 }));
         if (navigator.vibrate) navigator.vibrate([15, 30]);
 
@@ -190,11 +197,17 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
             })();
         }
 
-        setIsFlipped(false);
-
         if (currentIndex + 1 < cards.length) {
+            setIsTransitioning(true);
+            setIsFlipped(false);
             setCurrentIndex(prev => prev + 1);
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    setIsTransitioning(false);
+                });
+            });
         } else {
+            setIsFlipped(false);
             setIsCompleted(true);
         }
     };
@@ -202,7 +215,7 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
     const activePillObject = chapters.find(c => c.title === selectedChapter);
 
     return (
-        <div className="fca-overlay">
+        <div className="fca-overlay" onTouchStart={(e) => e.stopPropagation()}>
             {!isCompleted ? (
                 <>
                     <header className="fca-topbar">
@@ -228,7 +241,6 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                                     className={`fca-chapter-pill ${selectedChapter === ch.title ? 'active' : ''}`}
                                     onClick={() => handleSelectChapter(ch.title)}
                                     title={ch.title}
-                                    disabled={loadingCards}
                                 >
                                     {selectedChapter === ch.title && loadingCards ? (
                                         <i className="fas fa-circle-notch fa-spin"></i>
@@ -255,7 +267,7 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                             </div>
                         ) : (
                             <div 
-                                className={`fca-flip-card ${isFlipped ? 'is-flipped' : ''}`}
+                                className={`fca-flip-card ${isFlipped ? 'is-flipped' : ''} ${isTransitioning ? 'no-transition' : ''}`}
                                 onClick={handleFlip}
                             >
                                 {/* FRONT FACE */}
@@ -266,7 +278,7 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
 
                                     <div 
                                         className="fca-prompt-text"
-                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentCard.front) }}
+                                        dangerouslySetInnerHTML={{ __html: currentCard.frontHtml || currentCard.front || '' }}
                                     />
 
                                     <div className="fca-tap-hint">
@@ -280,7 +292,7 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
 
                                     <div 
                                         className="fca-answer-text" 
-                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentCard.back) }} 
+                                        dangerouslySetInnerHTML={{ __html: currentCard.backHtml || currentCard.back || '' }} 
                                     />
 
                                     <div className="fca-source-ref">
