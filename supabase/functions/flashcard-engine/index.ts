@@ -257,19 +257,138 @@ ${JSON.stringify(rawBatch, null, 2)}`;
 
     try {
       const pageSpan = Math.max(1, (endPage || startPage) - startPage + 1);
-      // 2. Read full section page range
-      let pageQuery = supabase
+      // 2. Read full section page range (with duplicate Page 1 scan-ahead resolution)
+      let pages: { page_number: number; content_json: any }[] = [];
+
+      // Check if this book contains multiple "Page 1" records (e.g. preface vs main body)
+      const { data: pageOneRecords, error: p1Err } = await supabase
         .from("book_pages")
-        .select("page_number, content_json")
+        .select("id")
         .eq("book_id", targetBookId)
-        .gte("page_number", startPage);
+        .eq("page_number", 1);
 
-      if (endPage) {
-        pageQuery = pageQuery.lte("page_number", endPage);
+      if (p1Err) throw new Error(`[pageOneCheck] ${formatError(p1Err)}`);
+
+      if (pageOneRecords && pageOneRecords.length > 1) {
+        // Multiple Page 1s detected! Scan ahead to discover the true main-body sequence
+        const { data: allBookPages, error: allPagesErr } = await supabase
+          .from("book_pages")
+          .select("id, page_number, page_key, created_at")
+          .eq("book_id", targetBookId)
+          .order("created_at", { ascending: true });
+
+        if (allPagesErr) throw new Error(`[allPagesQuery] ${formatError(allPagesErr)}`);
+
+        // Strategy A: Group by page_key prefix (e.g. "preface-" vs "page-")
+        const prefixGroups = new Map<string, typeof allBookPages>();
+        for (const p of allBookPages || []) {
+          const prefix = (p.page_key || "").replace(/\d+.*$/, "") || "main";
+          if (!prefixGroups.has(prefix)) prefixGroups.set(prefix, []);
+          prefixGroups.get(prefix)!.push(p);
+        }
+
+        const candidateChains: Array<{
+          maxPage: number;
+          pageCount: number;
+          pageMap: Map<number, string>;
+        }> = [];
+
+        // Evaluate each prefix group
+        for (const groupPages of prefixGroups.values()) {
+          const sortedGroup = [...groupPages].sort((a, b) => a.page_number - b.page_number);
+          if (sortedGroup.length > 0 && sortedGroup[0].page_number === 1) {
+            const pMap = new Map<number, string>();
+            let maxP = 1;
+            let lastP = 0;
+
+            for (const item of sortedGroup) {
+              // Allow sequential ascent with minor gap tolerance (<= 5) for blank plates
+              if (lastP === 0 || (item.page_number > lastP && item.page_number <= lastP + 5)) {
+                pMap.set(item.page_number, item.id);
+                lastP = item.page_number;
+                if (item.page_number > maxP) maxP = item.page_number;
+              }
+            }
+
+            candidateChains.push({
+              maxPage: maxP,
+              pageCount: pMap.size,
+              pageMap: pMap
+            });
+          }
+        }
+
+        // Strategy B: If page_keys shared identical prefixes, scan by insertion/chronological chains
+        if (candidateChains.length <= 1 && allBookPages && allBookPages.length > 0) {
+          for (let i = 0; i < allBookPages.length; i++) {
+            if (allBookPages[i].page_number === 1) {
+              const pMap = new Map<number, string>();
+              pMap.set(1, allBookPages[i].id);
+              let lastNum = 1;
+              let maxNum = 1;
+
+              for (let j = i + 1; j < allBookPages.length; j++) {
+                const cur = allBookPages[j].page_number;
+                if (cur === 1 || cur < lastNum) break; // Reset or backwards break
+                if (cur > lastNum && cur <= lastNum + 5) {
+                  pMap.set(cur, allBookPages[j].id);
+                  lastNum = cur;
+                  if (cur > maxNum) maxNum = cur;
+                }
+              }
+
+              candidateChains.push({
+                maxPage: maxNum,
+                pageCount: pMap.size,
+                pageMap: pMap
+              });
+            }
+          }
+        }
+
+        // The true textbook body is the candidate sequence reaching the highest page number
+        candidateChains.sort((a, b) => {
+          if (b.maxPage !== a.maxPage) return b.maxPage - a.maxPage;
+          return b.pageCount - a.pageCount;
+        });
+
+        const winningChain = candidateChains[0];
+        const targetIds: string[] = [];
+
+        if (winningChain) {
+          for (const [pNum, pId] of winningChain.pageMap.entries()) {
+            if (pNum >= startPage && (!endPage || pNum <= endPage)) {
+              targetIds.push(pId);
+            }
+          }
+        }
+
+        if (targetIds.length > 0) {
+          const { data: resolvedPages, error: resolvedErr } = await supabase
+            .from("book_pages")
+            .select("page_number, content_json")
+            .in("id", targetIds)
+            .order("page_number", { ascending: true });
+
+          if (resolvedErr) throw new Error(`[resolvedPages] ${formatError(resolvedErr)}`);
+          pages = resolvedPages || [];
+        }
+      } else {
+        // Fast path for books with single continuous sequence
+        let pageQuery = supabase
+          .from("book_pages")
+          .select("page_number, content_json")
+          .eq("book_id", targetBookId)
+          .gte("page_number", startPage);
+
+        if (endPage) {
+          pageQuery = pageQuery.lte("page_number", endPage);
+        }
+
+        const { data: queryPages, error: pageErr } = await pageQuery.order("page_number", { ascending: true });
+        if (pageErr) throw new Error(`[pageQuery] ${formatError(pageErr)}`);
+        pages = queryPages || [];
       }
-
-      const { data: pages, error: pageErr } = await pageQuery.order("page_number", { ascending: true });
-      if (pageErr) throw new Error(`[pageQuery] ${formatError(pageErr)}`);
 
       const sectionText = (pages || []).map(p => {
         return `--- PAGE ${p.page_number} ---\n` + extractTextFromBlocks(p.content_json || []);
