@@ -52,6 +52,7 @@ const renderMironMarkdown = (content) => {
 import InteractiveBoard from './components/InteractiveBoard.jsx';
 import InlineBoardTrigger from './components/InlineBoardTrigger.jsx';
 import InlineChatQuiz from './components/InlineChatQuiz.jsx';
+import InlineChatCard from './components/InlineChatCard.jsx';
 import MironThreadSidebar from './components/MironThreadSidebar.jsx';
 import './MironChat.css';
 
@@ -135,6 +136,22 @@ const MironChat = ({ onClose, initialContext }) => {
         setTimeout(() => setCopiedId(null), 2000);
     };
 
+    const handleInlineCardRate = async (difficulty, card) => {
+        if (!card?.id) return;
+        try {
+            await supabase.rpc('record_flashcard_reviews_batch', {
+                p_reviews: [{
+                    card_id: card.id,
+                    card_type: 'custom',
+                    difficulty,
+                    reviewed_at: new Date().toISOString()
+                }]
+            });
+        } catch (e) {
+            console.warn('[MironChat] Inline flashcard review error:', e);
+        }
+    };
+
     // 2. Load Messages for Active Thread
     const selectThread = async (thread) => {
         setActiveThread(thread);
@@ -154,6 +171,7 @@ const MironChat = ({ onClose, initialContext }) => {
                 thought: m.thought_process,
                 snapshots: m.snapshots,
                 quizzes: m.quizzes,
+                flashcards: m.flashcards,
                 ui_command: m.ui_command
             })));
         } catch (err) {
@@ -327,6 +345,21 @@ const MironChat = ({ onClose, initialContext }) => {
                 context: currentThread?.context_passage || initialContext
             });
 
+            // 2b. Automatically persist dynamic flashcards into user's private collection
+            let persistedCards = data.flashcards || null;
+            if (data.flashcards && Array.isArray(data.flashcards) && data.flashcards.length > 0) {
+                try {
+                    const { data: savedCards } = await supabase.rpc('save_miron_flashcards', {
+                        p_cards: data.flashcards
+                    });
+                    if (savedCards && savedCards.length > 0) {
+                        persistedCards = savedCards;
+                    }
+                } catch (saveErr) {
+                    console.warn('[MironChat] Failed to auto-persist custom cards:', saveErr);
+                }
+            }
+
             let savedAiMsg = null;
             if (currentThreadId) {
                 const mironMsgPayload = {
@@ -337,6 +370,7 @@ const MironChat = ({ onClose, initialContext }) => {
                     thought_process: null,
                     snapshots: data.snapshots || null,
                     quizzes: data.quizzes || null,
+                    flashcards: persistedCards,
                     ui_command: data.ui_command || null
                 };
 
@@ -356,6 +390,7 @@ const MironChat = ({ onClose, initialContext }) => {
                     text: data.response,
                     snapshots: data.snapshots,
                     quizzes: data.quizzes,
+                    flashcards: persistedCards,
                     ui_command: data.ui_command
                 }
             ]);
@@ -504,7 +539,7 @@ const MironChat = ({ onClose, initialContext }) => {
                     messages.filter(m => !m.text?.startsWith('[Quiz Submission:')).map(m => (
                         <div key={m.id} className={`chat-node ${m.side}`}>
                             <div className="athena-bubble">
-                                {m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\])/g).map((part, idx) => {
+                                {m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\]|\[FLASHCARD_\d+\])/g).map((part, idx) => {
                                     const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
                                     if (boardMatch) {
                                         return <InlineBoardTrigger key={idx} boardId={boardMatch[1]} onOpen={setActiveBoardPayload} />;
@@ -516,6 +551,14 @@ const MironChat = ({ onClose, initialContext }) => {
                                         const quiz = m.quizzes?.find(q => q.id === quizId);
                                         if (!quiz) return null;
                                         return <InlineChatQuiz key={idx} quiz={quiz} onSubmit={sendMessage} />;
+                                    }
+
+                                    const cardMatch = part.match(/\[FLASHCARD_(\d+)\]/);
+                                    if (cardMatch) {
+                                        const cardIdx = parseInt(cardMatch[1], 10) - 1;
+                                        const card = m.flashcards?.[cardIdx];
+                                        if (!card) return null;
+                                        return <InlineChatCard key={idx} card={card} onRate={handleInlineCardRate} />;
                                     }
 
                                     const snapMatch = part.match(/\[SNAPSHOT_(\d+)\]/);
