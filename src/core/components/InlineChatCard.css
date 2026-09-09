@@ -1,0 +1,190 @@
+/* --- INLINE CHAT FLASHCARD (3D TACTILE FLIP) --- */
+.miron-inline-card-wrapper {
+    margin: 16px -1.2rem;
+    padding: 0 1.2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    perspective: 1200px;
+    font-family: 'Poppins', sans-serif;
+}
+
+.mic-card {
+    width: 100%;
+    max-width: 440px;
+    min-height: 280px;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.mic-card.is-flipped {
+    transform: rotateY(180deg);
+}
+
+.mic-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    border-radius: 20px;
+    background: #16161a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    contain: layout paint;
+    box-sizing: border-box;
+}
+
+.mic-face.front {
+    border-color: rgba(66, 215, 184, 0.25);
+    background: linear-gradient(145deg, #181920 0%, #111215 100%);
+}
+
+.mic-face.back {
+    transform: rotateY(180deg) translateZ(0);
+    background: linear-gradient(160deg, #1a1b22 0%, #0d0e11 100%);
+    border-color: rgba(66, 215, 184, 0.35);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 15px rgba(66, 215, 184, 0.1);
+}
+
+.mic-top-tag {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent-teal, #42d7b8);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.mic-content-text {
+    font-family: 'Newsreader', serif;
+    font-size: 1.2rem;
+    line-height: 1.45;
+    color: #ffffff;
+    text-align: center;
+    margin: auto 0;
+    word-break: break-word;
+}
+
+.mic-content-text strong {
+    color: var(--accent-teal, #42d7b8);
+}
+
+.mic-content-text p {
+    margin: 0;
+}
+
+.mic-content-text .katex-display {
+    margin: 8px 0;
+    overflow-x: auto;
+}
+
+.mic-tap-hint {
+    font-size: 0.72rem;
+    color: #777;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.mic-back-header {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.mic-answer-text {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: #e5e5eb;
+    margin: auto 0;
+    text-align: left;
+    word-break: break-word;
+}
+
+.mic-answer-text strong {
+    color: var(--accent-teal, #42d7b8);
+}
+
+.mic-source-ref {
+    font-size: 0.7rem;
+    color: #777;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mic-rating-bar {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.mic-rate-btn {
+    flex: 1;
+    padding: 10px 8px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    transition: all 0.2s ease;
+}
+
+.mic-rate-btn:active { transform: scale(0.96); }
+
+.mic-rate-btn.hard {
+    background: rgba(255, 95, 95, 0.12);
+    border-color: rgba(255, 95, 95, 0.35);
+    color: #ff5f5f;
+}
+
+.mic-rate-btn.good {
+    background: rgba(241, 196, 15, 0.12);
+    border-color: rgba(241, 196, 15, 0.35);
+    color: #f1c40f;
+}
+
+.mic-rate-btn.easy {
+    background: rgba(66, 215, 184, 0.12);
+    border-color: rgba(66, 215, 184, 0.35);
+    color: var(--accent-teal, #42d7b8);
+}
+
+.mic-status-pill {
+    margin-top: 10px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    background: rgba(66, 215, 184, 0.12);
+    border: 1px solid rgba(66, 215, 184, 0.3);
+    color: var(--accent-teal, #42d7b8);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: fadeInModal 0.3s ease;
+}
