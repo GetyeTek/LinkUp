@@ -24,7 +24,7 @@ const renderFormattedText = (content) => {
     });
 
     // Inline math
-    processed = str.replace(/(?<!\\)\$([^\$\n]+?)(?<!\\)\$|\\\(([\s\S]+?)\\\)/g, (match, p1, p2) => {
+    let processed = str.replace(/(?<!\\)\$([^\$\n]+?)(?<!\\)\$|\\\(([\s\S]+?)\\\)/g, (match, p1, p2) => {
         const math = p1 || p2;
         const key = `@@@CARD_MATH_INL_${counter++}@@@`;
         try {
