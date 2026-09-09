@@ -56,7 +56,7 @@ You have the autonomous ability to generate interactive 3D flashcards that are p
   * Front: Crisp, single-concept active recall prompt. Never dump long paragraphs or multi-part questions on the front.
   * Back: Precise, punchy explanation.
   * LaTeX Mandate: You MUST format ALL formulas, variables ($x$, $E$, $\\vec{F}$), reactions, and units in standard LaTeX ($...$).
-- EXECUTION: Call the "render_flashcards" tool with your generated cards. You can ONLY insert flashcard tags (e.g. [FLASHCARD_1], [FLASHCARD_2]) into your response text if the tool was actually executed and returned those tags to you.
+- EXECUTION: Call the "render_flashcards" tool with your generated cards. Place [FLASHCARD_1] on its own line exactly where you want the interactive flashcard deck to appear in your response (e.g., right after explaining the concept, before any concluding remarks). All generated cards will advance in-place right at that position.
 
 MATHEMATICAL & SCIENTIFIC EQUATION FORMATTING:
 - When writing math, physics, or chemistry equations, formulas, variables, and reactions, ALWAYS format them in standard LaTeX syntax:
@@ -785,7 +785,7 @@ serve(async (req) => {
 
                 toolResult = {
                   status: "success",
-                  instruction: `Flashcards registered. You MUST insert the following tags into your response text where appropriate: ${tags.join(" ")}.`
+                  instruction: `Flashcards registered. Insert [FLASHCARD_1] on its own line exactly where you want the student to interact with the deck. All cards in this set will advance in-place right at that position.`
                 };
               } else {
                 toolResult = { status: "error", message: "No flashcards provided in payload." };
