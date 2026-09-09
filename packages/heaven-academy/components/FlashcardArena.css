@@ -74,7 +74,9 @@
     height: 390px;
     position: relative;
     transform-style: preserve-3d;
-    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+    touch-action: manipulation;
     cursor: pointer;
 }
 
@@ -82,31 +84,37 @@
     transform: rotateY(180deg);
 }
 
+.fca-flip-card.no-transition {
+    transition: none !important;
+}
+
 .fca-card-face {
     position: absolute;
     inset: 0;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
     border-radius: 28px;
     background: #16161a;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
     padding: 30px 24px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    contain: layout paint;
 }
 
 .fca-card-face.front {
     border-color: rgba(255, 255, 255, 0.12);
 }
 
-.fca-topic-tag {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--accent-teal, #42d7b8);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+.fca-card-face.back {
+    transform: rotateY(180deg) translateZ(0);
+    background: linear-gradient(160deg, #181920 0%, #101114 100%);
+    border-color: rgba(66, 215, 184, 0.35);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 15px rgba(66, 215, 184, 0.1);
+}
     font-weight: 700;
 }
 
@@ -196,6 +204,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    touch-action: manipulation;
     transition: all 0.2s;
 }
 .fca-btn-flip:active { transform: scale(0.98); }
@@ -218,6 +227,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    touch-action: manipulation;
     transition: all 0.2s ease;
 }
 .fca-btn-srs:active { transform: scale(0.96); }
@@ -323,6 +333,7 @@
     color: #aaa;
     cursor: pointer;
     white-space: nowrap;
+    touch-action: manipulation;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     align-items: center;
