@@ -41,16 +41,54 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
     const [stats, setStats] = useState({ hard: 0, good: 0, easy: 0 });
     const [isCompleted, setIsCompleted] = useState(false);
 
-    // In-memory session cache so previously loaded chapters switch with 0ms latency
+    // In-memory session cache & atomic review batch buffer
     const cardCacheRef = useRef({});
+    const batchQueueRef = useRef([]);
 
-    // Fetch cards for a specific chapter on demand
+    // Atomically flush queued reviews to Supabase
+    const flushBatchQueue = useCallback(async () => {
+        if (batchQueueRef.current.length === 0) return;
+        const payloadToFlush = [...batchQueueRef.current];
+        batchQueueRef.current = [];
+
+        try {
+            await supabase.rpc('record_flashcard_reviews_batch', {
+                p_reviews: payloadToFlush
+            });
+        } catch (err) {
+            console.warn('[FlashcardSRS] Batch review flush warning:', err?.message || err);
+            // Re-enqueue uncommitted logs on network error
+            batchQueueRef.current.push(...payloadToFlush);
+        }
+    }, []);
+
+    // Flush automatically on unmount, page exit, or app backgrounding
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                flushBatchQueue();
+            }
+        };
+        window.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('beforeunload', flushBatchQueue);
+
+        return () => {
+            window.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('beforeunload', flushBatchQueue);
+            flushBatchQueue();
+        };
+    }, [flushBatchQueue]);
+
+    // Synthesize cards via backend SRS queue
     const loadChapterCards = useCallback(async (chapterTitle) => {
-        if (!chapterTitle || isVault) return;
+        const cacheKey = isVault ? 'vault_all' : chapterTitle;
+        if (!cacheKey) return;
 
-        // Check in-memory session cache first
-        if (cardCacheRef.current[chapterTitle]) {
-            setCards(cardCacheRef.current[chapterTitle]);
+        // Flush any pending review logs from prior chapter before switching
+        await flushBatchQueue();
+
+        if (cardCacheRef.current[cacheKey]) {
+            setCards(cardCacheRef.current[cacheKey]);
             setCurrentIndex(0);
             setIsFlipped(false);
             setIsCompleted(false);
@@ -59,12 +97,12 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
 
         setLoadingCards(true);
         try {
-            const { data, error } = await supabase
-                .from('course_flashcards')
-                .select('*')
-                .eq('course_code', deck.course_code)
-                .eq('chapter_title', chapterTitle)
-                .order('ref_page', { ascending: true });
+            const { data, error } = await supabase.rpc('get_srs_session_queue', {
+                p_course_code: isVault ? 'VAULT' : deck.course_code,
+                p_chapter_title: isVault ? null : chapterTitle,
+                p_limit: isVault ? 50 : 35,
+                p_is_vault: isVault
+            });
 
             if (error) throw error;
 
@@ -72,34 +110,35 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                 id: c.id,
                 front: c.front,
                 back: c.back,
-                ref: c.ref_page ? `Page ${c.ref_page}` : (c.section_title || deck.title),
-                chapter_title: c.chapter_title || deck.course_code,
-                is_mistake: false
+                ref: c.ref || (c.is_mistake ? 'Exam Review' : deck.title),
+                chapter_title: c.chapter_title || (isVault ? 'Mistake Vault' : deck.course_code),
+                is_mistake: !!c.is_mistake,
+                due_status: c.due_status
             }));
 
-            cardCacheRef.current[chapterTitle] = mapped;
+            cardCacheRef.current[cacheKey] = mapped;
             setCards(mapped);
             setCurrentIndex(0);
             setIsFlipped(false);
             setIsCompleted(false);
         } catch (err) {
-            console.error('[FlashcardArena] Failed to lazy load chapter cards:', err);
+            console.error('[FlashcardArena] Queue synthesis error:', err);
         } finally {
             setLoadingCards(false);
         }
-    }, [deck?.course_code, deck?.title, isVault]);
+    }, [deck?.course_code, deck?.title, isVault, flushBatchQueue]);
 
     // Initial Chapter Discovery & Persistence Retrieval
     useEffect(() => {
         if (isVault) {
             setLoadingChapters(false);
+            loadChapterCards(null);
             return;
         }
 
         const resolveChapters = async () => {
             setLoadingChapters(true);
             try {
-                // Primary: load completed chapters from the progress ledger
                 let availableChapters = [];
                 const { data: progList } = await supabase
                     .from('book_flashcard_progress')
@@ -120,7 +159,6 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                     }));
                 }
 
-                // Fallback: discover from course_flashcards directly if needed
                 if (availableChapters.length === 0) {
                     const { data: rawSample } = await supabase
                         .from('course_flashcards')
@@ -141,7 +179,6 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
 
                 setChapters(availableChapters);
 
-                // Restore last selected chapter or default to Chapter 1
                 const savedChapter = localStorage.getItem(`linkup_fc_ch_${deck.course_code}`);
                 const initialChapter = (savedChapter && availableChapters.some(c => c.title === savedChapter))
                     ? savedChapter
@@ -183,21 +220,33 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
         setStats(prev => ({ ...prev, [difficulty]: prev[difficulty] + 1 }));
         if (navigator.vibrate) navigator.vibrate([15, 30]);
 
+        // 1. Buffer review in batch queue (0ms main-thread cost)
         if (currentCard?.id) {
-            (async () => {
-                try {
-                    await supabase.rpc('record_flashcard_review', {
-                        p_card_id: currentCard.id,
-                        p_card_type: currentCard.is_mistake ? 'mistake' : 'course',
-                        p_difficulty: difficulty
-                    });
-                } catch (e) {
-                    console.warn('SRS review sync warning:', e?.message || e);
-                }
-            })();
+            batchQueueRef.current.push({
+                card_id: currentCard.id,
+                card_type: currentCard.is_mistake ? 'mistake' : 'course',
+                difficulty,
+                reviewed_at: new Date().toISOString()
+            });
+
+            // Trigger atomic background flush when threshold is reached
+            if (batchQueueRef.current.length >= 8) {
+                flushBatchQueue();
+            }
         }
 
-        if (currentIndex + 1 < cards.length) {
+        // 2. Intra-Session Retry Loop: If Hard (Lapse), re-queue card 3 slots ahead
+        if (difficulty === 'hard') {
+            setCards(prev => {
+                const nextCards = [...prev];
+                const insertIndex = Math.min(currentIndex + 4, nextCards.length);
+                nextCards.splice(insertIndex, 0, currentCard);
+                return nextCards;
+            });
+        }
+
+        // 3. Smooth instantaneous progression
+        if (currentIndex + 1 < cards.length || difficulty === 'hard') {
             setIsTransitioning(true);
             setIsFlipped(false);
             setCurrentIndex(prev => prev + 1);
@@ -209,6 +258,7 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
         } else {
             setIsFlipped(false);
             setIsCompleted(true);
+            flushBatchQueue();
         }
     };
 
