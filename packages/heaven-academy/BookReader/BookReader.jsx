@@ -14,6 +14,7 @@ import TableOfContents from './components/TableOfContents.jsx';
 import PageQuestionsBlock from './components/PageQuestionsBlock.jsx';
 import MiniMironOverlay from './components/MiniMironOverlay.jsx';
 import BookReaderUI from './components/BookReaderUI.jsx';
+import VisualNotebookViewer from './components/VisualNotebookViewer.jsx';
 import { usePlatform, telemetry } from '@linkup-platform/sdk-core';
 
 const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexOverride }) => {
@@ -26,6 +27,9 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const [activeExplanations, setActiveExplanations] = useState({});
     const [layoutReady, setLayoutReady] = useState(false);
     const [reportQuestionId, setReportQuestionId] = useState(null);
+
+    // Course Variant Modes: 'text' (standard PDF/JSON) | 'visual_en' | 'visual_am'
+    const [viewMode, setViewMode] = useState('text');
     
     // TOC & Scrubber States
     const [tocData, setTocData] = useState([]);
@@ -427,6 +431,15 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
 
     return (
         <div className={`reader-root theme-${currentTheme}`} style={zIndexOverride ? { zIndex: zIndexOverride } : {}}>
+            {viewMode !== 'text' && (
+                <VisualNotebookViewer 
+                    courseCode={book?.course_code || 'PHYS 1011'}
+                    language={viewMode === 'visual_am' ? 'am' : 'en'}
+                    currentPage={currentDisplayPage}
+                    onCloseVariant={() => setViewMode('text')}
+                />
+            )}
+
             <div 
                 id="viewport" 
                 ref={viewportRef} 
@@ -434,6 +447,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 onTouchStart={handleGestureStart}
                 onTouchEnd={handleGestureEnd}
                 onContextMenu={(e) => e.preventDefault()} /* Kills native right-click/long-press menu on Android/Desktop */
+                style={{ display: viewMode === 'text' ? 'block' : 'none' }}
             >
                 <div id="scroll-container" ref={scrollContainerRef} style={{ opacity: layoutReady ? 1 : 0, transition: 'opacity 0.3s ease' }}>
                     <div id="book-layer" ref={layerRef}>
@@ -588,6 +602,8 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 jumpToPage={jumpToPage}
                 lastDisplayPage={lastDisplayPage}
                 pageCountRef={pageCountRef}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
             />
         </div>
     );
