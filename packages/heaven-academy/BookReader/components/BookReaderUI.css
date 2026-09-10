@@ -6,8 +6,60 @@
 .reader-header { background-color: rgba(18, 18, 18, 0.95); backdrop-filter: blur(12px); color: #e0e0e0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; height: 44px; border-bottom: 1px solid rgba(255,255,255,0.05); transform: translateY(0); transition: transform 0.3s; }
 #ui-layer.hidden .reader-header { transform: translateY(-100%); }
 
-.header-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
+.header-left { display: flex; align-items: center; flex: 1; overflow: hidden; min-width: 0; }
 .header-title { font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 12px; font-family: 'Poppins', sans-serif;}
+
+/* 3-Way Mode Switcher (Textbook vs Visual EN vs Visual AM) */
+.header-variant-toggle {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+    padding: 2px;
+    gap: 2px;
+    flex-shrink: 0;
+    margin-right: 4px;
+}
+
+.variant-toggle-btn {
+    background: transparent;
+    border: none;
+    color: #888;
+    padding: 5px 10px;
+    border-radius: 99px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    touch-action: manipulation;
+}
+
+.variant-toggle-btn:hover {
+    color: #fff;
+}
+
+.variant-toggle-btn.active {
+    background: var(--accent-teal, #42d7b8);
+    color: #0c0c0c;
+    box-shadow: 0 2px 8px rgba(66, 215, 184, 0.3);
+}
+
+.variant-toggle-btn.am-active {
+    background: #f1c40f;
+    color: #0c0c0c;
+    box-shadow: 0 2px 8px rgba(241, 196, 15, 0.3);
+}
+
+@media (max-width: 580px) {
+    .header-title { max-width: 130px; }
+    .variant-toggle-btn { padding: 4px 8px; }
+    .variant-toggle-btn .variant-label { display: none; }
+}
 
 .reader-footer { background-color: rgba(18, 18, 18, 0.95); backdrop-filter: blur(12px); color: #e0e0e0; display: flex; align-items: center; gap: 12px; padding: 0 16px; height: calc(54px + env(safe-area-inset-bottom, 10px)); padding-bottom: env(safe-area-inset-bottom, 10px); border-top: 1px solid rgba(255,255,255,0.05); transform: translateY(0); transition: transform 0.3s; }
 #ui-layer.hidden .reader-footer { transform: translateY(100%); }
