@@ -19,7 +19,9 @@ const BookReaderUI = ({
     setJumpInput,
     jumpToPage,
     lastDisplayPage,
-    pageCountRef
+    pageCountRef,
+    viewMode = 'text',
+    setViewMode
 }) => {
     return (
         <>
@@ -39,6 +41,34 @@ const BookReaderUI = ({
                     <div className="header-left">
                         <div className="icon-btn" onClick={onClose}><i className="fa-solid fa-chevron-left"></i></div>
                         <div className="header-title">{book?.title || 'Loading Document'}</div>
+                    </div>
+
+                    {/* 3-Way Mode Switcher */}
+                    <div className="header-variant-toggle">
+                        <button 
+                            className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
+                            onClick={() => setViewMode('text')}
+                            title="Standard Book"
+                        >
+                            <i className="fas fa-book-open"></i>
+                            <span className="variant-label">Book</span>
+                        </button>
+                        <button 
+                            className={`variant-toggle-btn ${viewMode === 'visual_en' ? 'active' : ''}`}
+                            onClick={() => setViewMode('visual_en')}
+                            title="Visual Notebook (English)"
+                        >
+                            <i className="fas fa-sparkles"></i>
+                            <span className="variant-label">Visual EN</span>
+                        </button>
+                        <button 
+                            className={`variant-toggle-btn ${viewMode === 'visual_am' ? 'am-active' : ''}`}
+                            onClick={() => setViewMode('visual_am')}
+                            title="Visual Notebook (Amharic)"
+                        >
+                            <span>🇪🇹</span>
+                            <span className="variant-label">አማርኛ</span>
+                        </button>
                     </div>
                 </div>
 
