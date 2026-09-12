@@ -1,170 +1,179 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-09-09T09:28:40.100Z
+-- Date: 2026-09-12T22:24:38.533Z
 
 -- ========================
 -- TABLES & COLUMNS
 -- ========================
 Table: api_keys
-last_used_at (timestamp with time zone), api_key (text), cooldown_until (timestamp with time zone), service (text), created_at (timestamp with time zone), id (bigint), name (text), is_active (boolean)
+id (bigint), created_at (timestamp with time zone), cooldown_until (timestamp with time zone), is_active (boolean), name (text), service (text), api_key (text), last_used_at (timestamp with time zone)
 
 Table: asset_upload_queue
-file_path (text), book_name (text), status (text), error_message (text), zip_name (text), created_at (timestamp with time zone), updated_at (timestamp with time zone), id (bigint), image_name (text)
+updated_at (timestamp with time zone), created_at (timestamp with time zone), book_name (text), error_message (text), id (bigint), file_path (text), image_name (text), zip_name (text), status (text)
 
 Table: book_flashcard_progress
-updated_at (timestamp with time zone), error_message (text), chapter_title (text), section_title (text), start_page (integer), end_page (integer), cards_generated (integer), locked_until (timestamp with time zone), created_at (timestamp with time zone), status (text), id (uuid), book_id (uuid), course_code (text), book_title (text)
+end_page (integer), id (uuid), book_id (uuid), error_message (text), status (text), section_title (text), chapter_title (text), book_title (text), course_code (text), created_at (timestamp with time zone), updated_at (timestamp with time zone), locked_until (timestamp with time zone), cards_generated (integer), start_page (integer)
 
 Table: book_pages
-page_key (text), manual_flag (text), content_json (jsonb), id (uuid), created_at (timestamp with time zone), book_id (uuid), page_number (integer)
+page_key (text), book_id (uuid), page_number (integer), created_at (timestamp with time zone), content_json (jsonb), id (uuid), manual_flag (text)
 
 Table: book_progress
-id (uuid), updated_at (timestamp with time zone), error_message (text), status (text), pdf_name (text), created_at (timestamp with time zone), page_number (integer)
+error_message (text), id (uuid), updated_at (timestamp with time zone), page_number (integer), created_at (timestamp with time zone), pdf_name (text), status (text)
 
 Table: book_question_links
-created_at (timestamp with time zone), similarity_score (double precision), question_id (uuid), chunk_id (uuid), id (uuid)
+created_at (timestamp with time zone), id (uuid), chunk_id (uuid), question_id (uuid), similarity_score (double precision)
 
 Table: book_results
 created_at (timestamp with time zone), result_json (jsonb), page_number (integer), id (uuid), pdf_name (text)
 
 Table: books
-created_at (timestamp with time zone), page_offset (integer), title (text), category (text), custom_css (text), cover_url (text), author (text), course_code (text), id (uuid), toc (jsonb)
+created_at (timestamp with time zone), id (uuid), custom_css (text), course_code (text), author (text), cover_url (text), category (text), title (text), page_offset (integer), toc (jsonb)
 
 Table: campus_channels
-members_data (jsonb), channel_handle (text), last_extracted_at (timestamp with time zone), is_private (boolean), telegram_peer_id (bigint), created_at (timestamp with time zone), is_active (boolean), last_scraped_id (bigint), id (uuid)
+last_extracted_at (timestamp with time zone), id (uuid), telegram_peer_id (bigint), last_scraped_id (bigint), is_active (boolean), created_at (timestamp with time zone), channel_handle (text), is_private (boolean), members_data (jsonb)
 
 Table: campus_feed
-channel_handle (text), full_text (text), id (uuid), sender_name (text), sender_id (bigint), metadata (jsonb), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), telegram_id (bigint), image_url (text), sender_username (text)
+sender_username (text), image_url (text), full_text (text), sender_id (bigint), channel_handle (text), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), telegram_id (bigint), id (uuid), metadata (jsonb), sender_name (text)
 
 Table: chunks
-next_chunk_id (uuid), id (uuid), document_id (uuid), page_number (integer), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), prev_chunk_id (uuid), chunk_text (text), chunk_index (integer)
+id (uuid), document_id (uuid), page_number (integer), created_at (timestamp with time zone), embedding (USER-DEFINED), toc_node_id (uuid), prev_chunk_id (uuid), next_chunk_id (uuid), chunk_index (integer), chunk_text (text)
 
 Table: conduit_favorites
-target_id (text), repo_name (text), id (uuid), created_at (timestamp with time zone), metadata (jsonb), category (text)
+repo_name (text), category (text), target_id (text), id (uuid), metadata (jsonb), created_at (timestamp with time zone)
 
 Table: conduit_history
-id (uuid), conduit_id (integer), ops (jsonb), created_at (timestamp with time zone), note (text), meta (text), type (text), title (text), sha (text), repo_name (text)
+type (text), title (text), conduit_id (integer), sha (text), created_at (timestamp with time zone), id (uuid), ops (jsonb), repo_name (text), meta (text), note (text)
 
 Table: conduit_logs
-data (jsonb), created_at (timestamp with time zone), type (text), repo_name (text), id (uuid)
+created_at (timestamp with time zone), type (text), repo_name (text), id (uuid), data (jsonb)
 
 Table: conversation_members
-last_read_at (timestamp with time zone), muted_until (timestamp with time zone), role (USER-DEFINED), id (uuid), conversation_id (uuid), user_id (uuid), created_at (timestamp with time zone)
+role (USER-DEFINED), id (uuid), conversation_id (uuid), user_id (uuid), last_read_at (timestamp with time zone), created_at (timestamp with time zone), muted_until (timestamp with time zone)
 
 Table: conversations
-created_at (timestamp with time zone), title (character varying), type (USER-DEFINED), last_message_at (timestamp with time zone), owner_id (uuid), metadata (jsonb), id (uuid), avatar_url (text)
+title (character varying), created_at (timestamp with time zone), avatar_url (text), type (USER-DEFINED), metadata (jsonb), owner_id (uuid), last_message_at (timestamp with time zone), id (uuid)
 
 Table: course_flashcards
-book_id (uuid), created_at (timestamp with time zone), section_title (text), chapter_title (text), back (text), course_code (text), id (uuid), ref_page (integer), front (text)
+created_at (timestamp with time zone), ref_page (integer), id (uuid), book_id (uuid), course_code (text), front (text), chapter_title (text), section_title (text), back (text)
+
+Table: course_visual_notebooks
+language (text), topic_title (text), page_number (integer), scoped_css (text), html_body (text), created_at (timestamp with time zone), metadata (jsonb), course_code (text), id (uuid)
 
 Table: courses
-id (uuid), name (text), code (text), department_id (uuid), created_at (timestamp with time zone)
+code (text), id (uuid), department_id (uuid), created_at (timestamp with time zone), name (text)
 
 Table: departments
-name (text), created_at (timestamp with time zone), id (uuid)
+created_at (timestamp with time zone), id (uuid), name (text)
 
 Table: documents
-status (text), file_name (text), chunk_count (integer), created_at (timestamp with time zone), user_id (uuid), last_processed_at (timestamp with time zone), id (uuid), page_count (integer), storage_path (text)
+last_processed_at (timestamp with time zone), created_at (timestamp with time zone), chunk_count (integer), page_count (integer), file_name (text), user_id (uuid), id (uuid), status (text), storage_path (text)
 
 Table: embedding_progress
-book_id (uuid), status (text), error_message (text), id (uuid), updated_at (timestamp with time zone), locked_until (timestamp with time zone), block_index (integer), page_number (integer)
+page_number (integer), block_index (integer), locked_until (timestamp with time zone), updated_at (timestamp with time zone), id (uuid), book_id (uuid), status (text), error_message (text)
 
 Table: exams
-time_allowed_minutes (integer), created_at (timestamp with time zone), course_id (uuid), university_id (uuid), id (uuid), program (text), exam_type (text), general_instructions (text), date (text), constants_provided (jsonb), exam_quality_notes (jsonb), media_summary (jsonb), total_marks (numeric)
+university_id (uuid), constants_provided (jsonb), exam_quality_notes (jsonb), media_summary (jsonb), created_at (timestamp with time zone), course_id (uuid), date (text), exam_type (text), id (uuid), program (text), time_allowed_minutes (integer), total_marks (numeric), general_instructions (text)
 
 Table: extracted_events
-created_at (timestamp with time zone), event_type (text), description (text), title (text), id (uuid), channel_id (uuid), event_date (timestamp with time zone), source_ids (ARRAY), is_active (boolean)
+id (uuid), is_active (boolean), event_date (timestamp with time zone), channel_id (uuid), description (text), title (text), source_ids (ARRAY), created_at (timestamp with time zone), event_type (text)
 
 Table: featured_events
-metadata (jsonb), button_text (text), action_type (text), html_content (text), external_url (text), tag_color (text), tag_text (text), image_url (text), body (text), title (text), button_color (text), id (uuid), app_route (jsonb), is_active (boolean), created_at (timestamp with time zone)
+app_route (jsonb), metadata (jsonb), created_at (timestamp with time zone), is_active (boolean), title (text), body (text), image_url (text), tag_text (text), tag_color (text), button_text (text), button_color (text), id (uuid), action_type (text), html_content (text), external_url (text)
 
 Table: linkoin_transactions
-description (text), transaction_type (text), idempotency_key (text), created_at (timestamp with time zone), amount (integer), user_id (uuid), id (uuid)
+user_id (uuid), created_at (timestamp with time zone), idempotency_key (text), amount (integer), description (text), transaction_type (text), id (uuid)
 
 Table: live_stage_questions
-id (uuid), is_pinned (boolean), status (text), sender_id (uuid), created_at (timestamp with time zone), conversation_id (uuid), text (text)
+is_pinned (boolean), conversation_id (uuid), id (uuid), sender_id (uuid), created_at (timestamp with time zone), status (text), text (text)
 
 Table: live_study_sessions
-last_updated_at (timestamp with time zone), lecture_chunks (jsonb), layout_blueprint (jsonb), compiled_answers (jsonb), generation_state (text), raw_source_text (text), id (uuid), conversation_id (uuid), active_user_ids (ARRAY), course_name (text), lesson_topic (text)
+course_name (text), lesson_topic (text), raw_source_text (text), generation_state (text), layout_blueprint (jsonb), lecture_chunks (jsonb), last_updated_at (timestamp with time zone), active_user_ids (ARRAY), conversation_id (uuid), id (uuid), compiled_answers (jsonb)
 
 Table: messages
-attachments (jsonb), created_at (timestamp with time zone), is_edited (boolean), reply_to_id (uuid), forward_meta (jsonb), text (text), id (uuid), conversation_id (uuid), sender_id (uuid)
+id (uuid), created_at (timestamp with time zone), conversation_id (uuid), is_edited (boolean), reply_to_id (uuid), forward_meta (jsonb), text (text), sender_id (uuid), attachments (jsonb)
 
 Table: migration_progress
-page_index (text), error_message (text), status (text), processed_at (timestamp with time zone), remote_id (text), id (uuid), pdf_name (text)
+remote_id (text), error_message (text), status (text), page_index (text), pdf_name (text), id (uuid), processed_at (timestamp with time zone)
 
 Table: migration_sync_state
-id (integer), current_offset (integer), last_run_at (timestamp with time zone)
+last_run_at (timestamp with time zone), current_offset (integer), id (integer)
 
 Table: miron_messages
-text (text), thought_process (text), role (text), created_at (timestamp with time zone), ui_command (jsonb), quizzes (jsonb), snapshots (jsonb), user_id (uuid), thread_id (uuid), id (uuid)
+ui_command (jsonb), created_at (timestamp with time zone), flashcards (jsonb), id (uuid), thread_id (uuid), user_id (uuid), role (text), thought_process (text), text (text), snapshots (jsonb), quizzes (jsonb)
 
 Table: miron_threads
-id (uuid), title (text), user_id (uuid), updated_at (timestamp with time zone), context_passage (text), course_code (text), is_pinned (boolean), last_message_at (timestamp with time zone), created_at (timestamp with time zone)
+updated_at (timestamp with time zone), user_id (uuid), is_pinned (boolean), last_message_at (timestamp with time zone), created_at (timestamp with time zone), id (uuid), context_passage (text), course_code (text), title (text)
 
 Table: news_feed
-full_text (text), title (text), category (text), post_url (text), channel (text), is_ad (boolean), created_at (timestamp with time zone), telegram_timestamp (timestamp with time zone), telegram_id (bigint), id (bigint), snippet (text), image_url (text)
+telegram_timestamp (timestamp with time zone), id (bigint), telegram_id (bigint), category (text), snippet (text), post_url (text), image_url (text), title (text), is_ad (boolean), created_at (timestamp with time zone), full_text (text), channel (text)
 
 Table: notifications
-user_id (uuid), icon (text), insight (text), created_at (timestamp with time zone), action_data (jsonb), is_read (boolean), type (text), description (text), title (text), id (uuid)
+icon (text), is_read (boolean), action_data (jsonb), created_at (timestamp with time zone), type (text), title (text), description (text), insight (text), user_id (uuid), id (uuid)
 
 Table: payment_submissions
-id (uuid), user_id (uuid), amount (integer), created_at (timestamp with time zone), updated_at (timestamp with time zone), plan (text), payment_method (text), transaction_ref (text), sms_text (text), screenshot_url (text), status (text), rejection_reason (text)
+user_id (uuid), rejection_reason (text), plan (text), screenshot_url (text), status (text), updated_at (timestamp with time zone), created_at (timestamp with time zone), id (uuid), amount (integer), sms_text (text), transaction_ref (text), payment_method (text)
 
 Table: peer_questions
-id (uuid), course_tag (text), created_at (timestamp with time zone), title (text), replies_count (integer), user_id (uuid), body (text)
+title (text), created_at (timestamp with time zone), course_tag (text), id (uuid), replies_count (integer), user_id (uuid), body (text)
 
 Table: poll_votes
-id (uuid), message_id (uuid), user_id (uuid), option_index (integer), created_at (timestamp with time zone)
+created_at (timestamp with time zone), id (uuid), option_index (integer), message_id (uuid), user_id (uuid)
 
 Table: profiles
-class_id (uuid), last_streak_update (date), longest_streak (integer), username (text), avatar_url (text), level (text), current_streak (integer), registered_with_telegram (boolean), telegram_id (bigint), last_username_change_at (timestamp with time zone), university_id (uuid), bio (text), theme (text), telegram_username (text), department (text), freshman_stream (text), year (text), target_department (text), phone (text), program (text), pro_expires_at (timestamp with time zone), last_seen_at (timestamp with time zone), full_name (text), updated_at (timestamp with time zone), linkoin_balance (integer), id (uuid), is_pro (boolean)
+target_department (text), longest_streak (integer), last_streak_update (date), class_id (uuid), is_pro (boolean), pro_expires_at (timestamp with time zone), registered_with_telegram (boolean), telegram_id (bigint), last_username_change_at (timestamp with time zone), university_id (uuid), last_seen_at (timestamp with time zone), updated_at (timestamp with time zone), linkoin_balance (integer), id (uuid), full_name (text), avatar_url (text), level (text), username (text), department (text), freshman_stream (text), year (text), current_streak (integer), program (text), phone (text), bio (text), theme (text), telegram_username (text)
 
 Table: question_book_mappings
-created_at (timestamp with time zone), id (uuid), question_id (uuid), book_id (uuid), is_valid (boolean), content_index (integer), processed_at (timestamp with time zone), status (text), page_key (text), snippet (text), error_message (text)
+book_id (uuid), id (uuid), is_valid (boolean), created_at (timestamp with time zone), processed_at (timestamp with time zone), status (text), content_index (integer), page_key (text), question_id (uuid), error_message (text), snippet (text)
 
 Table: question_processing_progress
-created_at (timestamp with time zone), status (text), error_message (text), question_id (uuid), book_id (uuid), processed_at (timestamp with time zone)
+error_message (text), created_at (timestamp with time zone), processed_at (timestamp with time zone), book_id (uuid), question_id (uuid), status (text)
 
 Table: question_reports
-id (uuid), question_id (uuid), report_text (text), created_at (timestamp with time zone), status (text), source (text)
+source (text), question_id (uuid), status (text), id (uuid), created_at (timestamp with time zone), report_text (text)
 
 Table: questions
-points (numeric), matching_data (jsonb), options (jsonb), correct_answer (jsonb), embedding (USER-DEFINED), section_id (uuid), question_number (text), question_type (text), id (uuid), retry_count (integer), embedding_status (text), created_at (timestamp with time zone), explanation (text), question_order (integer), transcription_quality (jsonb), media (jsonb), text (text)
+text (text), id (uuid), section_id (uuid), points (numeric), options (jsonb), matching_data (jsonb), media (jsonb), transcription_quality (jsonb), question_order (integer), created_at (timestamp with time zone), retry_count (integer), embedding (USER-DEFINED), correct_answer (jsonb), explanation (text), question_number (text), question_type (text), embedding_status (text)
 
 Table: referrals
-status (text), referee_id (uuid), id (uuid), created_at (timestamp with time zone), referrer_id (uuid)
+id (uuid), referee_id (uuid), created_at (timestamp with time zone), status (text), referrer_id (uuid)
 
 Table: sections
-total_points (numeric), section_order (integer), created_at (timestamp with time zone), title (text), instructions (text), id (uuid), exam_id (uuid), shared_context (jsonb)
+total_points (numeric), shared_context (jsonb), section_order (integer), created_at (timestamp with time zone), id (uuid), instructions (text), title (text), exam_id (uuid)
 
 Table: squad_bans
-banned_until (timestamp with time zone), id (uuid), created_at (timestamp with time zone), conversation_id (uuid), user_id (uuid)
+created_at (timestamp with time zone), banned_until (timestamp with time zone), user_id (uuid), conversation_id (uuid), id (uuid)
 
 Table: system_config
-key (text), value (jsonb)
+value (jsonb), key (text)
 
 Table: telegram_login_tokens
-token_hash (text), telegram_id (bigint), created_at (timestamp with time zone), id (uuid), expires_at (timestamp with time zone), metadata (jsonb)
+expires_at (timestamp with time zone), id (uuid), telegram_id (bigint), created_at (timestamp with time zone), token_hash (text), metadata (jsonb)
 
 Table: universities
-id (uuid), created_at (timestamp with time zone), short_name (text), name (text)
+name (text), id (uuid), created_at (timestamp with time zone), short_name (text)
 
 Table: user_course_progress
-course_code (text), chapter_title (text), section_title (text), updated_at (timestamp with time zone), created_at (timestamp with time zone), last_read_at (timestamp with time zone), completion_pct (numeric), reading_seconds (integer), book_id (uuid), user_id (uuid), id (uuid), current_page (integer), furthest_page (integer)
+chapter_title (text), created_at (timestamp with time zone), completion_pct (numeric), reading_seconds (integer), course_code (text), section_title (text), book_id (uuid), current_page (integer), furthest_page (integer), id (uuid), user_id (uuid), updated_at (timestamp with time zone), last_read_at (timestamp with time zone)
+
+Table: user_custom_flashcards
+is_mistake (boolean), course_code (text), back (text), chapter_title (text), ref (text), front (text), user_id (uuid), id (uuid), created_at (timestamp with time zone)
 
 Table: user_daily_telemetry
-total_interactions (integer), updated_at (timestamp with time zone), time_home_seconds (integer), time_discover_seconds (integer), time_connect_seconds (integer), time_miron_seconds (integer), time_books_seconds (integer), time_exam_seconds (integer), total_active_seconds (integer), date (date), user_id (uuid), id (uuid)
+time_home_seconds (integer), updated_at (timestamp with time zone), total_interactions (integer), id (uuid), user_id (uuid), date (date), time_discover_seconds (integer), time_connect_seconds (integer), time_miron_seconds (integer), time_books_seconds (integer), time_exam_seconds (integer), total_active_seconds (integer)
 
 Table: user_device_seats
-created_at (timestamp with time zone), last_lease_at (timestamp with time zone), device_name (text), last_active_at (timestamp with time zone), is_primary (boolean), id (uuid), user_id (uuid), device_id (text), device_type (text)
+is_primary (boolean), user_id (uuid), last_active_at (timestamp with time zone), device_id (text), id (uuid), device_type (text), device_name (text), last_lease_at (timestamp with time zone), created_at (timestamp with time zone)
 
 Table: user_flashcard_reviews
-last_reviewed_at (timestamp with time zone), card_type (text), id (uuid), user_id (uuid), card_id (uuid), difficulty (text), review_count (integer), next_review_at (timestamp with time zone)
+card_type (text), last_reviewed_at (timestamp with time zone), review_count (integer), card_id (uuid), next_review_at (timestamp with time zone), user_id (uuid), id (uuid), difficulty (text)
+
+Table: user_flashcard_srs
+ease_factor (numeric), card_type (text), user_id (uuid), card_id (uuid), next_review_at (timestamp with time zone), interval_days (numeric), state (text), last_reviewed_at (timestamp with time zone), lapses (integer), repetitions (integer)
 
 Table: user_mistake_flashcards
-id (uuid), user_id (uuid), source_question_id (uuid), created_at (timestamp with time zone), front (text), course_code (text), back (text), reference_info (text)
+source_question_id (uuid), front (text), back (text), reference_info (text), created_at (timestamp with time zone), user_id (uuid), id (uuid), course_code (text)
 
 Table: user_question_attempts
-is_correct (boolean), user_answer (jsonb), question_snapshot (jsonb), question_id (uuid), source_type (text), topic_tag (text), user_id (uuid), source_id (text), course_code (text), id (uuid), attempted_at (timestamp with time zone)
+user_id (uuid), id (uuid), topic_tag (text), question_snapshot (jsonb), course_code (text), is_correct (boolean), attempted_at (timestamp with time zone), user_answer (jsonb), question_id (uuid), source_type (text), source_id (text)
 
 -- ========================
 -- RLS POLICIES
@@ -241,6 +250,9 @@ Table: course_flashcards | Policy: Allow authenticated read for course_flashcard
 Table: user_mistake_flashcards | Policy: Users can manage their own mistake flashcards | Cmd: ALL | Using: (auth.uid() = user_id)
 Table: user_flashcard_reviews | Policy: Users can manage their own flashcard reviews | Cmd: ALL | Using: (auth.uid() = user_id)
 Table: book_flashcard_progress | Policy: Allow authenticated read for bfp | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
+Table: user_flashcard_srs | Policy: Users manage their own flashcard SRS | Cmd: ALL | Using: (auth.uid() = user_id)
+Table: user_custom_flashcards | Policy: Users own their custom flashcards | Cmd: ALL | Using: (auth.uid() = user_id)
+Table: course_visual_notebooks | Policy: Allow public read access to visual course notebooks | Cmd: SELECT | Using: true
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -357,130 +369,22 @@ END;
 DECLARE
     v_inserted_count INT := 0;
 BEGIN
-    WITH RECURSIVE 
-    -- 1. Recursive Pre-Order Depth-First Traversal
-    toc_hierarchy AS (
-        -- Level 1: Chapters / Units
+    WITH raw_chapters AS (
         SELECT 
             b.id AS book_id,
             b.course_code,
             b.title AS book_title,
             COALESCE(b.page_offset, 0) AS page_offset,
-            ch.elem->>'title' AS title,
+            ch.elem->>'title' AS chapter_title,
             CASE 
                 WHEN (ch.elem->>'page') ~ '^\d+$' THEN (ch.elem->>'page')::int 
-                ELSE NULL 
-            END AS page,
-            ch.elem->'children' AS children,
-            1 AS depth,
-            ch.elem->>'title' AS chapter_title,
-            ch.elem->>'title' AS breadcrumb,
-            ARRAY[ch.idx::int] AS path_order
+                ELSE 1 
+            END AS raw_start_page,
+            ch.idx AS chapter_order
         FROM public.books b
         CROSS JOIN LATERAL jsonb_array_elements(b.toc) WITH ORDINALITY ch(elem, idx)
         WHERE b.toc IS NOT NULL AND jsonb_typeof(b.toc) = 'array'
-
-        UNION ALL
-
-        -- Level 2, 3, 4, ...
-        SELECT 
-            parent.book_id,
-            parent.course_code,
-            parent.book_title,
-            parent.page_offset,
-            child.elem->>'title' AS title,
-            COALESCE(
-                CASE 
-                    WHEN (child.elem->>'page') ~ '^\d+$' THEN (child.elem->>'page')::int 
-                    ELSE NULL 
-                END, 
-                parent.page
-            ) AS page,
-            child.elem->'children' AS children,
-            parent.depth + 1 AS depth,
-            parent.chapter_title,
-            parent.breadcrumb || ' > ' || (child.elem->>'title'),
-            parent.path_order || child.idx::int
-        FROM toc_hierarchy parent
-        CROSS JOIN LATERAL jsonb_array_elements(parent.children) WITH ORDINALITY child(elem, idx)
-        WHERE parent.children IS NOT NULL 
-          AND jsonb_typeof(parent.children) = 'array'
-          AND jsonb_array_length(parent.children) > 0
     ),
-    -- 2. Detect Which Nodes Have Children
-    classified_nodes AS (
-        SELECT 
-            t.*,
-            (t.children IS NOT NULL AND jsonb_typeof(t.children) = 'array' AND jsonb_array_length(t.children) > 0) AS has_children
-        FROM toc_hierarchy t
-    ),
-    -- 3. Select Target Jobs (Mathematically Constrained)
-    candidate_jobs AS (
-        SELECT 
-            c.*,
-            row_number() OVER (PARTITION BY c.book_id ORDER BY c.path_order) AS seq_idx
-        FROM classified_nodes c
-        WHERE 
-            -- Mathematical Constraint 1: Must have a valid Arabic positive integer page number
-            c.page IS NOT NULL 
-            AND c.page >= 1
-            AND (
-                (c.depth = 3)
-                OR 
-                (c.depth = 2 AND NOT c.has_children)
-                OR
-                -- Mathematical Constraint 2: A Depth 1 node with no children is ONLY accepted
-                -- if the entire book is a flat list of chapters (no container units exist)
-                (c.depth = 1 AND NOT c.has_children AND NOT EXISTS (
-                    SELECT 1 FROM classified_nodes other 
-                    WHERE other.book_id = c.book_id AND other.depth = 1 AND other.has_children
-                ))
-            )
-    ),
-    -- 4. Overview Absorption: Chapter intro pages absorbed by the first section of that chapter
-    chapter_starts AS (
-        SELECT 
-            book_id,
-            chapter_title,
-            MIN(page) AS chapter_min_page
-        FROM classified_nodes
-        WHERE depth = 1 AND page IS NOT NULL AND page >= 1
-        GROUP BY book_id, chapter_title
-    ),
-    first_candidate_per_chapter AS (
-        SELECT 
-            book_id,
-            chapter_title,
-            MIN(seq_idx) AS min_seq_idx
-        FROM candidate_jobs
-        GROUP BY book_id, chapter_title
-    ),
-    adjusted_candidates AS (
-        SELECT 
-            cj.book_id,
-            cj.course_code,
-            cj.book_title,
-            cj.page_offset,
-            cj.chapter_title,
-            cj.title,
-            cj.breadcrumb,
-            cj.depth,
-            cj.path_order,
-            -- If Section 1.1 is on page 2, but Chapter 1 starts on page 1, Section 1.1 absorbs the intro pages
-            CASE 
-                WHEN fc.min_seq_idx IS NOT NULL 
-                     AND cs.chapter_min_page IS NOT NULL 
-                     AND cs.chapter_min_page < cj.page
-                THEN cs.chapter_min_page
-                ELSE cj.page
-            END AS raw_start_page
-        FROM candidate_jobs cj
-        LEFT JOIN first_candidate_per_chapter fc 
-            ON fc.book_id = cj.book_id AND fc.chapter_title = cj.chapter_title AND fc.min_seq_idx = cj.seq_idx
-        LEFT JOIN chapter_starts cs 
-            ON cs.book_id = cj.book_id AND cs.chapter_title = cj.chapter_title
-    ),
-    -- 5. Calculate Sibling Boundary Intervals using LEAD()
     book_max_pages AS (
         SELECT 
             bp.book_id,
@@ -488,59 +392,42 @@ BEGIN
         FROM public.book_pages bp
         GROUP BY bp.book_id
     ),
-    partitioned_jobs AS (
+    positioned_chapters AS (
         SELECT 
-            ac.book_id,
-            ac.course_code,
-            ac.book_title,
-            ac.chapter_title,
-            CASE 
-                WHEN ac.depth > 1 THEN ac.breadcrumb
-                ELSE ac.title
-            END AS section_title,
-            GREATEST(1, ac.raw_start_page + ac.page_offset) AS physical_start_page,
-            LEAD(GREATEST(1, ac.raw_start_page + ac.page_offset)) OVER (
-                PARTITION BY ac.book_id 
-                ORDER BY ac.path_order
-            ) AS next_physical_start_page,
-            COALESCE(bmp.max_page, GREATEST(1, ac.raw_start_page + ac.page_offset) + 25) AS book_end_page,
-            ac.path_order
-        FROM adjusted_candidates ac
-        LEFT JOIN book_max_pages bmp ON bmp.book_id = ac.book_id
+            rc.book_id,
+            rc.course_code,
+            rc.book_title,
+            rc.chapter_title,
+            rc.chapter_title AS section_title,
+            GREATEST(1, rc.raw_start_page + rc.page_offset) AS start_page,
+            LEAD(GREATEST(1, rc.raw_start_page + rc.page_offset)) OVER (
+                PARTITION BY rc.book_id 
+                ORDER BY rc.chapter_order ASC
+            ) AS next_chapter_start,
+            COALESCE(bmp.max_page, GREATEST(1, rc.raw_start_page + rc.page_offset) + 50) AS book_max_page
+        FROM raw_chapters rc
+        LEFT JOIN book_max_pages bmp ON bmp.book_id = rc.book_id
     ),
-    final_job_rows AS (
+    filtered_real_chapters AS (
         SELECT 
-            pj.book_id,
-            pj.course_code,
-            pj.book_title,
-            pj.chapter_title,
-            pj.section_title,
-            pj.physical_start_page AS start_page,
+            pc.book_id,
+            pc.course_code,
+            pc.book_title,
+            pc.chapter_title,
+            pc.section_title,
+            pc.start_page,
             CASE 
-                WHEN pj.next_physical_start_page IS NOT NULL AND pj.next_physical_start_page > pj.physical_start_page
-                THEN pj.next_physical_start_page - 1
-                WHEN pj.next_physical_start_page IS NOT NULL AND pj.next_physical_start_page <= pj.physical_start_page
-                THEN pj.physical_start_page
-                ELSE pj.book_end_page
-            END AS end_page,
-            pj.path_order
-        FROM partitioned_jobs pj
-    ),
-    -- 6. Deduplication Guard on (book_id, section_title)
-    deduped_jobs AS (
-        SELECT DISTINCT ON (f.book_id, f.section_title)
-            f.book_id,
-            f.course_code,
-            f.book_title,
-            f.chapter_title,
-            f.section_title,
-            f.start_page,
-            f.end_page
-        FROM final_job_rows f
-        WHERE f.start_page IS NOT NULL AND f.end_page IS NOT NULL AND f.start_page <= f.end_page
-        ORDER BY f.book_id, f.section_title, f.path_order ASC
+                WHEN pc.next_chapter_start IS NOT NULL AND pc.next_chapter_start > pc.start_page
+                THEN pc.next_chapter_start - 1
+                WHEN pc.next_chapter_start IS NOT NULL AND pc.next_chapter_start <= pc.start_page
+                THEN pc.start_page
+                ELSE pc.book_max_page
+            END AS end_page
+        FROM positioned_chapters pc
+        WHERE 
+            -- STRICT FILTER: Only real chapters or units (kills Preface, Acknowledgments, References)
+            pc.chapter_title ~* '^(chapter|unit)[-\s:]'
     )
-    -- 7. Atomic Insert
     INSERT INTO public.book_flashcard_progress (
         book_id,
         course_code,
@@ -551,14 +438,17 @@ BEGIN
         end_page
     )
     SELECT 
-        d.book_id,
-        d.course_code,
-        d.book_title,
-        d.chapter_title,
-        d.section_title,
-        d.start_page,
-        d.end_page
-    FROM deduped_jobs d
+        fc.book_id,
+        fc.course_code,
+        fc.book_title,
+        fc.chapter_title,
+        fc.section_title,
+        fc.start_page,
+        fc.end_page
+    FROM filtered_real_chapters fc
+    WHERE fc.start_page IS NOT NULL 
+      AND fc.end_page IS NOT NULL 
+      AND (fc.end_page - fc.start_page + 1) >= 5 -- Guard against 1-page stubs
     ON CONFLICT (book_id, section_title) DO UPDATE
     SET 
         start_page = EXCLUDED.start_page,
@@ -577,20 +467,11 @@ END;
 #variable_conflict use_column
 DECLARE
     v_job_id UUID;
-    v_book_id UUID;
-    v_chapter_title TEXT;
-    v_start_page INT;
-    v_end_page INT;
-    v_chapter_total_pages INT;
-    v_section_pages INT;
-    v_calc_cards INT;
 BEGIN
-    -- 1. Ensure any new books or sections are initialized into the queue
+    -- Populate top-level chapter jobs into queue
     PERFORM public.initialize_book_flashcard_jobs();
 
-    -- 2. Sequential Book Anchor:
-    -- Identify the single active book that has unfinished work, finishing it completely
-    -- before moving on to the next book
+    -- Lock next pending chapter job sequentially
     WITH active_target_book AS (
         SELECT bfp_book.book_id
         FROM public.book_flashcard_progress bfp_book
@@ -598,8 +479,8 @@ BEGIN
         ORDER BY bfp_book.book_title ASC, bfp_book.book_id ASC
         LIMIT 1
     )
-    SELECT bfp.id, bfp.book_id, bfp.chapter_title, bfp.start_page, bfp.end_page
-    INTO v_job_id, v_book_id, v_chapter_title, v_start_page, v_end_page
+    SELECT bfp.id
+    INTO v_job_id
     FROM public.book_flashcard_progress bfp
     JOIN active_target_book tb ON bfp.book_id = tb.book_id
     WHERE (bfp.status = 'pending' OR bfp.status = 'failed' OR (bfp.status = 'processing' AND bfp.locked_until < now()))
@@ -607,16 +488,8 @@ BEGIN
     LIMIT 1
     FOR UPDATE SKIP LOCKED;
 
-    -- 3. Calculate Dynamic Chapter-Proportional Card Target
+    -- Return atomic job with fixed target of 50 flashcards
     IF v_job_id IS NOT NULL THEN
-        SELECT COALESCE(NULLIF(SUM(GREATEST(1, bfp2.end_page - bfp2.start_page + 1)), 0), 20)
-        INTO v_chapter_total_pages
-        FROM public.book_flashcard_progress bfp2
-        WHERE bfp2.book_id = v_book_id AND bfp2.chapter_title = v_chapter_title;
-
-        v_section_pages := GREATEST(1, v_end_page - v_start_page + 1);
-        v_calc_cards := GREATEST(4, LEAST(30, ROUND((v_section_pages::numeric / v_chapter_total_pages::numeric) * 50)::int));
-
         UPDATE public.book_flashcard_progress
         SET status = 'processing',
             locked_until = now() + INTERVAL '5 minutes',
@@ -633,11 +506,341 @@ BEGIN
             p.section_title,
             p.start_page,
             p.end_page,
-            v_calc_cards AS target_cards
+            50 AS target_cards
         FROM public.book_flashcard_progress p
         WHERE p.id = v_job_id;
     END IF;
 END;
+
+
+-- Function: record_flashcard_reviews_batch
+
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_review jsonb;
+    v_card_id UUID;
+    v_card_type TEXT;
+    v_difficulty TEXT;
+    v_curr_interval NUMERIC;
+    v_curr_factor NUMERIC;
+    v_curr_reps INT;
+    v_curr_lapses INT;
+    v_curr_state TEXT;
+    v_new_interval NUMERIC;
+    v_new_factor NUMERIC;
+    v_new_reps INT;
+    v_new_lapses INT;
+    v_new_state TEXT;
+    v_fuzz NUMERIC;
+    v_count INT := 0;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Authentication required';
+    END IF;
+
+    FOR v_review IN SELECT * FROM jsonb_array_elements(p_reviews)
+    LOOP
+        v_card_id := (v_review->>'card_id')::UUID;
+        v_card_type := COALESCE(v_review->>'card_type', 'course');
+        v_difficulty := LOWER(COALESCE(v_review->>'difficulty', 'good'));
+
+        -- Fetch existing SRS memory state
+        SELECT interval_days, ease_factor, repetitions, lapses, state
+        INTO v_curr_interval, v_curr_factor, v_curr_reps, v_curr_lapses, v_curr_state
+        FROM public.user_flashcard_srs
+        WHERE user_id = v_user_id AND card_id = v_card_id;
+
+        IF NOT FOUND THEN
+            v_curr_interval := 0;
+            v_curr_factor := 2.5;
+            v_curr_reps := 0;
+            v_curr_lapses := 0;
+            v_curr_state := 'learning';
+        END IF;
+
+        -- 3-Button Full SM-2 Transition Matrix
+        IF v_difficulty = 'hard' THEN
+            -- Failure / Lapse
+            v_new_reps := 0;
+            v_new_lapses := v_curr_lapses + 1;
+            v_new_factor := GREATEST(1.3, v_curr_factor - 0.20);
+            v_new_interval := 1.0; -- Drops back to day-1 review
+            v_new_state := 'learning';
+        ELSIF v_difficulty = 'good' THEN
+            -- Standard Recall Pass
+            v_new_reps := v_curr_reps + 1;
+            v_new_lapses := v_curr_lapses;
+            v_new_factor := v_curr_factor;
+            
+            IF v_curr_state = 'learning' OR v_curr_reps = 0 THEN
+                v_new_interval := 1.0;
+                v_new_state := 'review';
+            ELSIF v_curr_reps = 1 THEN
+                v_new_interval := 3.0;
+                v_new_state := 'review';
+            ELSE
+                v_new_interval := v_curr_interval * v_curr_factor;
+                v_new_state := 'review';
+            END IF;
+        ELSIF v_difficulty = 'easy' THEN
+            -- Fast-Track Mastery
+            v_new_reps := v_curr_reps + 1;
+            v_new_lapses := v_curr_lapses;
+            v_new_factor := v_curr_factor + 0.15;
+            v_new_state := 'review';
+
+            IF v_curr_state = 'learning' OR v_curr_reps = 0 THEN
+                v_new_interval := 4.0;
+            ELSIF v_curr_reps = 1 THEN
+                v_new_interval := 7.0;
+            ELSE
+                v_new_interval := v_curr_interval * v_curr_factor * 1.30;
+            END IF;
+        END IF;
+
+        -- Anti-Clumping Interval Fuzz (Jitter +/- 6% for intervals >= 3 days)
+        IF v_new_interval >= 3.0 THEN
+            v_fuzz := 1.0 + (random() * 0.12 - 0.06);
+            v_new_interval := v_new_interval * v_fuzz;
+        END IF;
+
+        -- Clamp max interval to 5 years (1825 days)
+        v_new_interval := LEAST(1825.0, v_new_interval);
+
+        -- Atomic Upsert
+        INSERT INTO public.user_flashcard_srs (
+            user_id, card_id, card_type, interval_days, ease_factor,
+            repetitions, lapses, state, last_reviewed_at, next_review_at
+        ) VALUES (
+            v_user_id, v_card_id, v_card_type, v_new_interval, v_new_factor,
+            v_new_reps, v_new_lapses, v_new_state, NOW(),
+            NOW() + (v_new_interval || ' days')::interval
+        )
+        ON CONFLICT (user_id, card_id) DO UPDATE SET
+            interval_days = EXCLUDED.interval_days,
+            ease_factor = EXCLUDED.ease_factor,
+            repetitions = EXCLUDED.repetitions,
+            lapses = EXCLUDED.lapses,
+            state = EXCLUDED.state,
+            last_reviewed_at = EXCLUDED.last_reviewed_at,
+            next_review_at = EXCLUDED.next_review_at;
+
+        v_count := v_count + 1;
+    END LOOP;
+
+    RETURN jsonb_build_object('success', true, 'flushed', v_count);
+END;
+
+
+-- Function: get_srs_session_queue
+
+DECLARE
+    v_user_id UUID := auth.uid();
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Authentication required';
+    END IF;
+
+    IF p_is_vault OR p_course_code = 'VAULT' THEN
+        -- Synthesize Mistake Vault: Exam Mistakes + Mistake-flagged Miron Cards
+        RETURN QUERY
+        SELECT 
+            card.id, card.front, card.back, card.ref, card.chapter_title, card.is_mistake,
+            card.due_status, card.interval_days, card.ease_factor, card.repetitions
+        FROM (
+            SELECT 
+                umf.id,
+                umf.front,
+                umf.back,
+                COALESCE(umf.reference_info, 'Exam Mistake Review') as ref,
+                COALESCE(umf.course_code, 'Mistake Vault') as chapter_title,
+                true as is_mistake,
+                CASE 
+                    WHEN srs.card_id IS NULL THEN 'new'
+                    WHEN srs.next_review_at <= NOW() THEN 'overdue'
+                    ELSE 'future'
+                END as due_status,
+                COALESCE(srs.interval_days, 0) as interval_days,
+                COALESCE(srs.ease_factor, 2.5) as ease_factor,
+                COALESCE(srs.repetitions, 0) as repetitions,
+                COALESCE(srs.next_review_at, umf.created_at) as sort_date,
+                CASE 
+                    WHEN srs.next_review_at <= NOW() THEN 1
+                    WHEN srs.card_id IS NULL THEN 2
+                    ELSE 3
+                END as priority_bucket
+            FROM public.user_mistake_flashcards umf
+            LEFT JOIN public.user_flashcard_srs srs 
+                   ON srs.card_id = umf.id AND srs.user_id = v_user_id
+            WHERE umf.user_id = v_user_id
+
+            UNION ALL
+
+            SELECT 
+                ucf.id,
+                ucf.front,
+                ucf.back,
+                COALESCE(ucf.ref, 'Miron AI • Mistake Review') as ref,
+                COALESCE(ucf.course_code, 'Mistake Vault') as chapter_title,
+                true as is_mistake,
+                CASE 
+                    WHEN srs.card_id IS NULL THEN 'new'
+                    WHEN srs.next_review_at <= NOW() THEN 'overdue'
+                    ELSE 'future'
+                END as due_status,
+                COALESCE(srs.interval_days, 0) as interval_days,
+                COALESCE(srs.ease_factor, 2.5) as ease_factor,
+                COALESCE(srs.repetitions, 0) as repetitions,
+                COALESCE(srs.next_review_at, ucf.created_at) as sort_date,
+                CASE 
+                    WHEN srs.next_review_at <= NOW() THEN 1
+                    WHEN srs.card_id IS NULL THEN 2
+                    ELSE 3
+                END as priority_bucket
+            FROM public.user_custom_flashcards ucf
+            LEFT JOIN public.user_flashcard_srs srs 
+                   ON srs.card_id = ucf.id AND srs.user_id = v_user_id
+            WHERE ucf.user_id = v_user_id AND ucf.is_mistake = true
+        ) card
+        ORDER BY card.priority_bucket ASC, card.sort_date ASC
+        LIMIT p_limit;
+    ELSE
+        -- Synthesize Course Decks: Public Cards + User's Miron AI Cards for this Course
+        RETURN QUERY
+        SELECT 
+            card.id, card.front, card.back, card.ref, card.chapter_title, card.is_mistake,
+            card.due_status, card.interval_days, card.ease_factor, card.repetitions
+        FROM (
+            SELECT 
+                cf.id,
+                cf.front,
+                cf.back,
+                CASE 
+                    WHEN cf.ref_page IS NOT NULL THEN 'Page ' || cf.ref_page
+                    ELSE COALESCE(cf.section_title, 'Textbook Section')
+                END as ref,
+                COALESCE(cf.chapter_title, cf.course_code) as chapter_title,
+                false as is_mistake,
+                CASE 
+                    WHEN srs.card_id IS NULL THEN 'new'
+                    WHEN srs.next_review_at <= NOW() THEN 'overdue'
+                    ELSE 'future'
+                END as due_status,
+                COALESCE(srs.interval_days, 0) as interval_days,
+                COALESCE(srs.ease_factor, 2.5) as ease_factor,
+                COALESCE(srs.repetitions, 0) as repetitions,
+                COALESCE(srs.next_review_at, '9999-12-31'::timestamptz) as sort_date,
+                CASE 
+                    WHEN srs.next_review_at <= NOW() THEN 1
+                    WHEN srs.card_id IS NULL THEN 2
+                    ELSE 3
+                END as priority_bucket,
+                cf.ref_page as page_num
+            FROM public.course_flashcards cf
+            LEFT JOIN public.user_flashcard_srs srs 
+                   ON srs.card_id = cf.id AND srs.user_id = v_user_id
+            WHERE cf.course_code = p_course_code
+              AND (p_chapter_title IS NULL OR cf.chapter_title = p_chapter_title)
+
+            UNION ALL
+
+            SELECT 
+                ucf.id,
+                ucf.front,
+                ucf.back,
+                COALESCE(ucf.ref, 'Miron AI • Synthesis') as ref,
+                COALESCE(ucf.chapter_title, ucf.course_code) as chapter_title,
+                false as is_mistake,
+                CASE 
+                    WHEN srs.card_id IS NULL THEN 'new'
+                    WHEN srs.next_review_at <= NOW() THEN 'overdue'
+                    ELSE 'future'
+                END as due_status,
+                COALESCE(srs.interval_days, 0) as interval_days,
+                COALESCE(srs.ease_factor, 2.5) as ease_factor,
+                COALESCE(srs.repetitions, 0) as repetitions,
+                COALESCE(srs.next_review_at, '9999-12-31'::timestamptz) as sort_date,
+                CASE 
+                    WHEN srs.next_review_at <= NOW() THEN 1
+                    WHEN srs.card_id IS NULL THEN 2
+                    ELSE 3
+                END as priority_bucket,
+                99999 as page_num
+            FROM public.user_custom_flashcards ucf
+            LEFT JOIN public.user_flashcard_srs srs 
+                   ON srs.card_id = ucf.id AND srs.user_id = v_user_id
+            WHERE ucf.user_id = v_user_id 
+              AND ucf.course_code = p_course_code
+              AND (p_chapter_title IS NULL OR ucf.chapter_title = p_chapter_title)
+        ) card
+        ORDER BY card.priority_bucket ASC, card.sort_date ASC, card.page_num ASC NULLS LAST
+        LIMIT p_limit;
+    END IF;
+END;
+
+
+-- Function: save_miron_flashcards
+
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_card jsonb;
+    v_id UUID;
+    v_front TEXT;
+    v_back TEXT;
+    v_course_code TEXT;
+    v_chapter_title TEXT;
+    v_ref TEXT;
+    v_is_mistake BOOLEAN;
+    v_result jsonb := '[]'::jsonb;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Authentication required';
+    END IF;
+
+    FOR v_card IN SELECT * FROM jsonb_array_elements(p_cards)
+    LOOP
+        v_front := v_card->>'front';
+        v_back := v_card->>'back';
+        v_course_code := UPPER(COALESCE(v_card->>'course_code', 'GENERAL'));
+        v_chapter_title := COALESCE(v_card->>'topic', v_card->>'chapter_title', 'Miron Synthesis');
+        v_ref := COALESCE(v_card->>'ref', 'Miron AI • Dialogue');
+        v_is_mistake := COALESCE((v_card->>'is_mistake')::boolean, false);
+
+        INSERT INTO public.user_custom_flashcards (
+            user_id, course_code, chapter_title, front, back, ref, is_mistake
+        ) VALUES (
+            v_user_id, v_course_code, v_chapter_title, v_front, v_back, v_ref, v_is_mistake
+        ) RETURNING id INTO v_id;
+
+        -- Seed initial SRS memory record (0-day initial step)
+        INSERT INTO public.user_flashcard_srs (
+            user_id, card_id, card_type, interval_days, ease_factor,
+            repetitions, lapses, state, last_reviewed_at, next_review_at
+        ) VALUES (
+            v_user_id, v_id, 'custom', 0, 2.5, 0, 0, 'learning', NOW(), NOW()
+        ) ON CONFLICT (user_id, card_id) DO NOTHING;
+
+        v_result := v_result || jsonb_build_object(
+            'id', v_id,
+            'front', v_front,
+            'back', v_back,
+            'course_code', v_course_code,
+            'topic', v_chapter_title,
+            'ref', v_ref,
+            'is_mistake', v_is_mistake
+        );
+    END LOOP;
+
+    RETURN v_result;
+END;
+
+
+-- Function: safe_cast_int
+
+    SELECT CASE 
+        WHEN val IS NOT NULL AND val ~ '^\s*[0-9]+\s*$' THEN val::int 
+        ELSE default_val 
+    END;
 
 
 -- Function: get_table_counts
@@ -670,6 +873,98 @@ BEGIN
 
         RETURN NEXT;
     END LOOP;
+END;
+
+
+-- Function: get_student_academic_pacing
+
+DECLARE
+    v_user_id UUID := COALESCE(p_user_id, auth.uid());
+    v_dept TEXT;
+    v_stream TEXT;
+    v_year TEXT;
+    v_courses jsonb := '[]'::jsonb;
+    v_book RECORD;
+    v_user_page INT;
+    v_expected_page INT;
+    v_expected_ch_idx INT;
+    v_ch_title TEXT;
+    v_status TEXT;
+    v_priority BOOLEAN;
+    v_msg TEXT;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object('courses', '[]'::jsonb);
+    END IF;
+
+    -- Fetch user's academic classification
+    SELECT department, freshman_stream, year
+    INTO v_dept, v_stream, v_year
+    FROM public.profiles
+    WHERE id = v_user_id;
+
+    -- Loop through active curriculum books
+    FOR v_book IN 
+        SELECT b.id, b.title, b.course_code, b.toc, COALESCE(b.page_offset, 0) as page_offset
+        FROM public.books b
+        WHERE b.course_code IS NOT NULL
+        ORDER BY b.title ASC
+    LOOP
+        v_expected_page := 1;
+        v_expected_ch_idx := 1;
+        v_ch_title := 'Chapter 1';
+
+        IF v_book.toc IS NOT NULL AND jsonb_array_length(v_book.toc) > 0 THEN
+            SELECT 
+                COALESCE(public.safe_cast_int(elem->>'page', 1), 1),
+                COALESCE(elem->>'title', 'Chapter 1')
+            INTO v_expected_page, v_ch_title
+            FROM jsonb_array_elements(v_book.toc) elem
+            WHERE (elem->>'page') ~ '^[0-9]+$'
+            LIMIT 1;
+        END IF;
+
+        -- Fetch student's highest reached page from telemetry / reading logs
+        SELECT COALESCE(MAX(public.safe_cast_int(current_page::text, 1)), 1)
+        INTO v_user_page
+        FROM (
+            SELECT (p_book_context->>'current_page') as current_page
+            FROM public.telemetry_flushes
+            WHERE user_id = v_user_id 
+              AND (p_book_context->>'book_id')::text = v_book.id::text
+            UNION ALL
+            SELECT 1 as current_page
+        ) p;
+
+        -- Pacing evaluation
+        IF v_user_page >= (v_expected_page + 20) THEN
+            v_status := 'ahead';
+            v_priority := false;
+            v_msg := 'You are ahead of pace! Reinforce your knowledge with practice questions.';
+        ELSIF v_user_page < v_expected_page THEN
+            v_status := 'behind';
+            v_priority := true;
+            v_msg := 'Catch up by reading ' || v_ch_title || ' to stay on schedule.';
+        ELSE
+            v_status := 'on_track';
+            v_priority := false;
+            v_msg := 'On schedule. Continue reading ' || v_ch_title || '.';
+        END IF;
+
+        v_courses := v_courses || jsonb_build_object(
+            'book_id', v_book.id,
+            'book_title', v_book.title,
+            'course_code', v_book.course_code,
+            'status', v_status,
+            'expected_chapter_index', v_expected_ch_idx,
+            'expected_chapter_page', v_expected_page,
+            'user_current_page', v_user_page,
+            'is_priority', v_priority,
+            'recommendation_msg', v_msg
+        );
+    END LOOP;
+
+    RETURN jsonb_build_object('courses', v_courses);
 END;
 
 
@@ -2836,177 +3131,6 @@ BEGIN
 END;
 
 
--- Function: get_student_academic_pacing
-
-DECLARE
-    v_user_stream TEXT;
-    v_user_dept TEXT;
-    v_calendar JSONB;
-    v_sem INT;
-    v_sem_start DATE;
-    v_sem_end DATE;
-    v_sem_midterm DATE;
-    v_now DATE := CURRENT_DATE;
-    v_ratio NUMERIC := 0.0;
-    v_total_days INT;
-    v_elapsed_days INT;
-    v_courses JSONB := '[]'::JSONB;
-    v_book RECORD;
-    v_toc JSONB;
-    v_total_chapters INT;
-    v_expected_ch_idx INT;
-    v_expected_ch_title TEXT;
-    v_expected_ch_page INT;
-    v_user_prog RECORD;
-    v_user_ch_idx INT := 0;
-    v_delta INT := 0;
-    v_status TEXT := 'on_track';
-    v_recommendation_type TEXT;
-    v_recommendation_msg TEXT;
-    v_priority_flag BOOLEAN;
-BEGIN
-    IF p_user_id IS NULL THEN
-        RETURN jsonb_build_object('error', 'Unauthenticated');
-    END IF;
-
-    -- 1. Get student profile context
-    SELECT freshman_stream, department INTO v_user_stream, v_user_dept
-    FROM public.profiles WHERE id = p_user_id;
-
-    -- 2. Get academic calendar config
-    SELECT value INTO v_calendar FROM public.system_config WHERE key = 'academic_calendar';
-    v_sem := COALESCE((v_calendar->>'semester')::INT, 1);
-
-    IF v_sem = 1 THEN
-        v_sem_start := COALESCE((v_calendar->>'semester_1_start')::DATE, '2026-10-01'::DATE);
-        v_sem_end := COALESCE((v_calendar->>'semester_1_end')::DATE, '2027-02-15'::DATE);
-        v_sem_midterm := COALESCE((v_calendar->>'semester_1_midterm')::DATE, '2026-12-01'::DATE);
-    ELSE
-        v_sem_start := COALESCE((v_calendar->>'semester_2_start')::DATE, '2027-03-01'::DATE);
-        v_sem_end := COALESCE((v_calendar->>'semester_2_end')::DATE, '2027-07-15'::DATE);
-        v_sem_midterm := COALESCE((v_calendar->>'semester_2_midterm')::DATE, '2027-05-01'::DATE);
-    END IF;
-
-    -- 3. Calculate Academic Calendar Progress Ratio
-    v_total_days := GREATEST(1, (v_sem_end - v_sem_start));
-    v_elapsed_days := v_now - v_sem_start;
-
-    IF v_elapsed_days <= 0 THEN
-        v_ratio := 0.05;
-    ELSIF v_elapsed_days >= v_total_days THEN
-        v_ratio := 1.0;
-    ELSE
-        v_ratio := (v_elapsed_days::NUMERIC / v_total_days::NUMERIC);
-    END IF;
-
-    -- 4. Evaluate each course book in the catalog
-    FOR v_book IN 
-        SELECT b.id, b.title, b.course_code, b.toc, b.page_offset, b.cover_url
-        FROM public.books b
-        WHERE 
-            CASE 
-                WHEN b.title ILIKE ANY(ARRAY['%Biology%', '%Chemistry%', '%Physics%', '%Mechanics%']) 
-                    THEN COALESCE(v_user_stream, 'Natural Science') = 'Natural Science'
-                WHEN b.title ILIKE ANY(ARRAY['%Geography%', '%History%', '%Anthropology%', '%Economics%']) 
-                    THEN COALESCE(v_user_stream, 'Social Science') = 'Social Science'
-                ELSE TRUE
-            END
-        ORDER BY b.title ASC
-    LOOP
-        v_toc := COALESCE(v_book.toc, '[]'::JSONB);
-        v_total_chapters := jsonb_array_length(v_toc);
-
-        IF v_total_chapters > 0 THEN
-            -- Calculate Expected Chapter index (1-based)
-            v_expected_ch_idx := GREATEST(1, LEAST(v_total_chapters, CEIL(v_ratio * v_total_chapters)::INT));
-            v_expected_ch_title := COALESCE(v_toc->(v_expected_ch_idx - 1)->>'title', 'Chapter ' || v_expected_ch_idx);
-            v_expected_ch_page := COALESCE((v_toc->(v_expected_ch_idx - 1)->>'page')::INT, 1);
-
-            -- Fetch student's actual progress in this book
-            SELECT * INTO v_user_prog 
-            FROM public.user_course_progress 
-            WHERE user_id = p_user_id AND book_id = v_book.id;
-
-            IF v_user_prog IS NULL THEN
-                v_user_ch_idx := 0;
-                v_status := 'not_started';
-                v_priority_flag := (v_expected_ch_idx > 1);
-            ELSE
-                -- Determine user's active chapter index
-                v_user_ch_idx := 1;
-                FOR i IN 0..(v_total_chapters - 1) LOOP
-                    IF (v_toc->i->>'title') = v_user_prog.chapter_title 
-                       OR (v_user_prog.current_page >= COALESCE((v_toc->i->>'page')::INT, 0)) THEN
-                        v_user_ch_idx := i + 1;
-                    END IF;
-                END LOOP;
-
-                v_delta := v_expected_ch_idx - v_user_ch_idx;
-
-                IF v_delta > 1 THEN
-                    v_status := 'behind';
-                    v_priority_flag := true;
-                ELSIF v_delta < -1 THEN
-                    v_status := 'ahead';
-                    v_priority_flag := false;
-                ELSE
-                    v_status := 'on_track';
-                    v_priority_flag := false;
-                END IF;
-            END IF;
-
-            -- Formulate Pacing Recommendations
-            IF v_status = 'not_started' THEN
-                IF v_expected_ch_idx > 2 THEN
-                    v_recommendation_type := 'catch_up';
-                    v_recommendation_msg := 'Campus is on ' || v_expected_ch_title || '. Start high-yield catch-up.';
-                ELSE
-                    v_recommendation_type := 'start';
-                    v_recommendation_msg := 'Start ' || COALESCE(v_toc->0->>'title', 'Chapter 1');
-                END IF;
-            ELSIF v_status = 'behind' THEN
-                v_recommendation_type := 'catch_up';
-                v_recommendation_msg := 'You are at Ch ' || v_user_ch_idx || ' (Campus at Ch ' || v_expected_ch_idx || '). Catch-up recommended.';
-            ELSIF v_status = 'ahead' THEN
-                v_recommendation_type := 'practice';
-                v_recommendation_msg := 'Ahead of schedule! Practice exam questions for ' || COALESCE(v_user_prog.chapter_title, 'this course') || '.';
-            ELSE
-                v_recommendation_type := 'continue';
-                v_recommendation_msg := 'Continue ' || COALESCE(v_user_prog.section_title, v_user_prog.chapter_title, v_expected_ch_title);
-            END IF;
-
-            v_courses := v_courses || jsonb_build_object(
-                'book_id', v_book.id,
-                'book_title', v_book.title,
-                'course_code', v_book.course_code,
-                'cover_url', v_book.cover_url,
-                'total_chapters', v_total_chapters,
-                'expected_chapter_index', v_expected_ch_idx,
-                'expected_chapter_title', v_expected_ch_title,
-                'expected_chapter_page', v_expected_ch_page,
-                'user_current_page', COALESCE(v_user_prog.current_page, 1),
-                'user_current_chapter', v_user_prog.chapter_title,
-                'user_current_section', v_user_prog.section_title,
-                'user_chapter_index', v_user_ch_idx,
-                'completion_pct', COALESCE(v_user_prog.completion_pct, 0.0),
-                'last_read_at', v_user_prog.last_read_at,
-                'status', v_status,
-                'is_priority', v_priority_flag,
-                'recommendation_type', v_recommendation_type,
-                'recommendation_msg', v_recommendation_msg
-            );
-        END IF;
-    END LOOP;
-
-    RETURN jsonb_build_object(
-        'semester', v_sem,
-        'is_midterm_season', (v_now >= v_sem_midterm - 14 AND v_now <= v_sem_midterm + 7),
-        'progress_ratio', v_ratio,
-        'courses', v_courses
-    );
-END;
-
-
 -- Function: get_user_conversations
 
 BEGIN
@@ -3284,47 +3408,55 @@ END;
 DECLARE
     v_user_id UUID := auth.uid();
     v_mistakes_due INT := 0;
-    v_course_decks JSONB;
+    v_decks jsonb;
 BEGIN
-    -- 1. Tally due cards in the Mistake Vault (if user is authenticated)
-    IF v_user_id IS NOT NULL THEN
-        SELECT count(*)::int INTO v_mistakes_due
-        FROM public.user_mistake_flashcards m
-        LEFT JOIN public.user_flashcard_reviews r 
-            ON r.card_id = m.id AND r.card_type = 'mistake' AND r.user_id = v_user_id
-        WHERE m.user_id = v_user_id
-          AND (r.next_review_at IS NULL OR r.next_review_at <= now());
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object('mistakes_due', 0, 'course_decks', '[]'::jsonb);
     END IF;
 
-    -- 2. Stage 1: Group and calculate card counts per deck
-    WITH deck_counts AS (
+    -- Mistakes count (Exam mistakes + custom cards marked mistake)
+    SELECT COUNT(*)
+    INTO v_mistakes_due
+    FROM (
+        SELECT umf.id, srs.card_id, srs.next_review_at
+        FROM public.user_mistake_flashcards umf
+        LEFT JOIN public.user_flashcard_srs srs ON srs.card_id = umf.id AND srs.user_id = v_user_id
+        WHERE umf.user_id = v_user_id
+        UNION ALL
+        SELECT ucf.id, srs.card_id, srs.next_review_at
+        FROM public.user_custom_flashcards ucf
+        LEFT JOIN public.user_flashcard_srs srs ON srs.card_id = ucf.id AND srs.user_id = v_user_id
+        WHERE ucf.user_id = v_user_id AND ucf.is_mistake = true
+    ) m
+    WHERE m.card_id IS NULL OR m.next_review_at <= NOW();
+
+    -- Course Decks totals and due counts (Public + Private Miron cards)
+    SELECT jsonb_agg(d)
+    INTO v_decks
+    FROM (
         SELECT 
-            c.course_code,
-            COALESCE(b.title, c.course_code) AS title,
-            count(c.id)::int AS total_cards,
-            count(c.id) FILTER (
-                WHERE v_user_id IS NULL 
-                   OR r.next_review_at IS NULL 
-                   OR r.next_review_at <= now()
-            )::int AS due_cards
-        FROM public.course_flashcards c
-        LEFT JOIN public.books b ON b.id = c.book_id
-        LEFT JOIN public.user_flashcard_reviews r 
-            ON r.card_id = c.id AND r.card_type = 'course' AND r.user_id = v_user_id
-        GROUP BY c.course_code, b.title
-    )
-    -- Stage 2: Aggregate the grouped records into a JSON array (Zero nested aggregates)
-    SELECT jsonb_agg(jsonb_build_object(
-        'course_code', dc.course_code,
-        'title', dc.title,
-        'total_cards', dc.total_cards,
-        'due_cards', dc.due_cards
-    )) INTO v_course_decks
-    FROM deck_counts dc;
+            all_cards.course_code,
+            COALESCE(b.title, all_cards.course_code) as title,
+            COUNT(all_cards.id) as total_cards,
+            COUNT(all_cards.id) FILTER (WHERE all_cards.srs_card_id IS NULL OR all_cards.next_review_at <= NOW()) as due_cards
+        FROM (
+            SELECT cf.id, cf.course_code, srs.card_id as srs_card_id, srs.next_review_at
+            FROM public.course_flashcards cf
+            LEFT JOIN public.user_flashcard_srs srs ON srs.card_id = cf.id AND srs.user_id = v_user_id
+            UNION ALL
+            SELECT ucf.id, ucf.course_code, srs.card_id as srs_card_id, srs.next_review_at
+            FROM public.user_custom_flashcards ucf
+            LEFT JOIN public.user_flashcard_srs srs ON srs.card_id = ucf.id AND srs.user_id = v_user_id
+            WHERE ucf.user_id = v_user_id
+        ) all_cards
+        LEFT JOIN public.books b ON b.course_code = all_cards.course_code
+        GROUP BY all_cards.course_code, b.title
+        ORDER BY all_cards.course_code ASC
+    ) d;
 
     RETURN jsonb_build_object(
-        'mistakes_due', COALESCE(v_mistakes_due, 0),
-        'course_decks', COALESCE(v_course_decks, '[]'::jsonb)
+        'mistakes_due', v_mistakes_due,
+        'course_decks', COALESCE(v_decks, '[]'::jsonb)
     );
 END;
 
