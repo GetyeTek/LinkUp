@@ -433,7 +433,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
         <div className={`reader-root theme-${currentTheme}`} style={zIndexOverride ? { zIndex: zIndexOverride } : {}}>
             {viewMode !== 'text' && (
                 <VisualNotebookViewer 
-                    courseCode={book?.course_code || 'PHYS 1011'}
+                    courseCode={book?.course_code}
                     language={viewMode === 'visual_am' ? 'am' : 'en'}
                     currentPage={currentDisplayPage}
                     onCloseVariant={() => setViewMode('text')}
