@@ -514,7 +514,7 @@
             updateStagedList();
         }
 
-        // XML Block Parser
+        // Resilient Tag-Based Parser (Handles unescaped '&', math '<', and raw HTML effortlessly)
         function parseSheets() {
             const raw = document.getElementById('raw-input').value.trim();
             if (!raw) {
@@ -522,41 +522,42 @@
                 return;
             }
 
-            // Wrap in a root tag to guarantee valid XML parsing
-            const wrapped = `<root>${raw}</root>`;
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(wrapped, "text/xml");
+            const sheetRegex = /<notebook_sheet\s+([^>]*?)>([\s\S]*?)<\/notebook_sheet>/gi;
+            const matches = [...raw.matchAll(sheetRegex)];
 
-            const parserError = doc.querySelector("parsererror");
-            if (parserError) {
-                log(`XML Parser Error: ${parserError.textContent.slice(0, 150)}...`, "err");
-                return;
-            }
-
-            const nodes = doc.querySelectorAll("notebook_sheet");
-            if (nodes.length === 0) {
-                log("No <notebook_sheet> elements found. Ensure blocks match specification.", "warn");
+            if (matches.length === 0) {
+                log("No <notebook_sheet> blocks found. Ensure blocks match <notebook_sheet ...>...</notebook_sheet>.", "warn");
                 return;
             }
 
             parsedSheets = [];
 
-            nodes.forEach((n, idx) => {
-                const course = n.getAttribute("course") || "PHYS 1011";
-                const lang = n.getAttribute("lang") || "en";
-                const page = parseInt(n.getAttribute("page"), 10) || 1;
-                const titleNode = n.querySelector("title");
-                const cssNode = n.querySelector("scoped_css");
-                const htmlNode = n.querySelector("html");
+            matches.forEach((match) => {
+                const attrStr = match[1];
+                const inner = match[2];
 
-                const title = titleNode ? titleNode.textContent.trim() : "Untitled Topic";
-                const css = cssNode ? cssNode.textContent.trim() : "";
-                const html = htmlNode ? htmlNode.innerHTML.trim() : "";
+                // Extract attributes with regex
+                const courseMatch = attrStr.match(/course\s*=\s*['"]([^'"]+)['"]/i);
+                const langMatch = attrStr.match(/lang\s*=\s*['"]([^'"]+)['"]/i);
+                const pageMatch = attrStr.match(/page\s*=\s*['"]([^'"]+)['"]/i);
+
+                const course = courseMatch ? courseMatch[1] : "PHYS 1011";
+                const lang = langMatch ? langMatch[1] : "en";
+                const page = pageMatch ? parseInt(pageMatch[1], 10) : 1;
+
+                // Extract child tags with regex
+                const titleMatch = inner.match(/<title>([\s\S]*?)<\/title>/i);
+                const cssMatch = inner.match(/<scoped_css>([\s\S]*?)<\/scoped_css>/i);
+                const htmlMatch = inner.match(/<html>([\s\S]*?)<\/html>/i);
+
+                const title = titleMatch ? titleMatch[1].trim() : "Untitled Topic";
+                const css = cssMatch ? cssMatch[1].trim() : "";
+                const html = htmlMatch ? htmlMatch[1].trim() : "";
 
                 parsedSheets.push({
                     course_code: course.toUpperCase().trim(),
                     language: lang.toLowerCase().trim(),
-                    page_number: page,
+                    page_number: isNaN(page) ? 1 : page,
                     topic_title: title,
                     scoped_css: css,
                     html_body: html
