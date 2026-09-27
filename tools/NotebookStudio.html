@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkUp: Visual Notebook Studio</title>
+
+    <!-- Typography & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&family=Cinzel:wght@700&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Abyssinica+SIL&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- KaTeX Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    
+    <!-- Sanitizer & Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0c0c0c;
+            --surface-dark: #16161a;
+            --border: rgba(255, 255, 255, 0.08);
+            --accent-teal: #42d7b8;
+            --gold-main: #f1c40f;
+            --text-color: #e0e0e0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        .studio-topbar {
+            height: 56px;
+            background: rgba(18, 18, 22, 0.95);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+        .studio-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .studio-brand i { color: var(--accent-teal); font-size: 1.2rem; }
+        
+        .tab-switcher {
+            display: flex;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            padding: 3px;
+            gap: 4px;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            padding: 6px 18px;
+            border-radius: 99px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tab-btn:hover { color: #fff; }
+        .tab-btn.active {
+            background: var(--accent-teal);
+            color: #0c0c0c;
+        }
+
+        /* Main Workspace */
+        .studio-viewport {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        .tab-pane {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+        }
+        .tab-pane.active { display: flex; }
+
+        /* TAB 1: INGEST & STAGE */
+        .ingest-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+        .panel-card {
+            background: var(--surface-dark);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+        .panel-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .field-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .input-dark, .textarea-dark {
+            width: 100%;
+            background: #09090b;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: #fff;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-dark:focus, .textarea-dark:focus { border-color: var(--accent-teal); }
+        .textarea-dark {
+            flex: 1;
+            min-height: 280px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        /* Ledger & Cards */
+        .staged-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 380px;
+            padding-right: 4px;
+        }
+        .staged-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .staged-item.amharic { border-left: 3px solid var(--gold-main); }
+        .staged-item.english { border-left: 3px solid var(--accent-teal); }
+        .staged-info h4 { font-size: 0.88rem; color: #fff; margin-bottom: 2px; }
+        .staged-info p { font-size: 0.72rem; color: #888; font-family: 'Roboto Mono', monospace; }
+
+        .btn-action {
+            background: var(--accent-teal);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-action:disabled { background: #333; color: #777; cursor: not-allowed; transform: none; }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+            color: #ccc;
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        /* Terminal Console */
+        .terminal-box {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            color: #42d7b8;
+            height: 120px;
+            overflow-y: auto;
+        }
+        .terminal-box p { margin-bottom: 4px; }
+        .term-err { color: #ff5f5f; }
+        .term-warn { color: var(--gold-main); }
+
+        /* TAB 2: LIVE PREVIEW */
+        .preview-controls {
+            height: 48px;
+            background: #111215;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            flex-shrink: 0;
+        }
+        .sheet-selector-pills {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+        }
+        .pill-select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #aaa;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .pill-select.active {
+            background: rgba(66, 215, 184, 0.15);
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .preview-scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem 1rem 6rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #0d0d0d;
+        }
+
+        /* Mirror Exact LinkUp Platform Styles */
+        .v-notebook-sheet {
+            width: 100%;
+            max-width: 780px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 48px;
+            scroll-margin-top: 24px;
+        }
+        .v-sheet-anchor-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #888;
+        }
+        .anchor-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent-teal);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .v-bento-canvas {
+            width: 100%;
+            max-width: 780px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .v-card {
+            background: var(--surface-dark);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 22px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .v-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .v-tag.cyber {
+            background: rgba(66, 215, 184, 0.15);
+            color: var(--accent-teal);
+            border: 1px solid rgba(66, 215, 184, 0.3);
+        }
+        .v-tag.gold {
+            background: rgba(241, 196, 15, 0.15);
+            color: var(--gold-main);
+            border: 1px solid rgba(241, 196, 15, 0.3);
+        }
+        .v-callout {
+            display: flex;
+            gap: 14px;
+            padding: 16px;
+            border-radius: 16px;
+            margin-top: 14px;
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+        .v-callout.miron-insight {
+            background: rgba(66, 215, 184, 0.06);
+            border-left: 4px solid var(--accent-teal);
+            color: #e0e0e0;
+        }
+        .v-callout.cultural-analogy {
+            background: rgba(241, 196, 15, 0.06);
+            border-left: 4px solid var(--gold-main);
+            color: #f4ecd8;
+        }
+        .v-diagram-box {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 16px;
+            margin: 16px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .v-diagram-box svg { max-width: 100%; height: auto; }
+        .lang-am { font-family: 'Abyssinica SIL', serif; line-height: 1.8; }
+    </style>
+</head>
+<body>
+
+    <header class="studio-topbar">
+        <div class="studio-brand">
+            <i class="fas fa-palette"></i>
+            <span>Visual Notebook Studio</span>
+        </div>
+        <div class="tab-switcher">
+            <button class="tab-btn active" onclick="switchTab('ingest')">
+                <i class="fas fa-file-code"></i> Ingest & Stage
+            </button>
+            <button class="tab-btn" onclick="switchTab('preview')">
+                <i class="fas fa-eye"></i> Live Simulator (<span id="sheet-count-tab">0</span>)
+            </button>
+        </div>
+    </header>
+
+    <main class="studio-viewport">
+        <!-- TAB 1: INGEST & STAGE -->
+        <div class="tab-pane active" id="pane-ingest">
+            <div class="ingest-grid">
+                
+                <!-- Left: Configuration & Raw Input -->
+                <div class="panel-card">
+                    <h3><i class="fas fa-key"></i> Connection & Payload</h3>
+
+                    <div style="display: flex; gap: 10px;">
+                        <div class="field-group" style="flex: 2;">
+                            <label>Supabase URL</label>
+                            <input type="text" id="sb-url" class="input-dark" placeholder="https://xyz.supabase.co">
+                        </div>
+                        <div class="field-group" style="flex: 3;">
+                            <label>Supabase Key (Session Only)</label>
+                            <input type="password" id="sb-key" class="input-dark" placeholder="Service Role or Anon Key">
+                        </div>
+                    </div>
+
+                    <div class="field-group" style="flex: 1; display: flex; flex-direction: column;">
+                        <label>AI Generated XML Tagged Payload</label>
+                        <textarea id="raw-input" class="textarea-dark" placeholder="Paste <notebook_sheet> blocks here..."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-action" onclick="parseSheets()"><i class="fas fa-wand-magic-sparkles"></i> Parse Sheets</button>
+                        <button class="btn-action btn-secondary" onclick="clearInput()"><i class="fas fa-trash"></i> Clear</button>
+                    </div>
+                </div>
+
+                <!-- Right: Staging Ledger & Terminal -->
+                <div class="panel-card">
+                    <h3><i class="fas fa-layer-group"></i> Staged Sheets Ledger (<span id="staged-count">0</span>)</h3>
+
+                    <div class="staged-list" id="staged-container">
+                        <div style="text-align: center; color: #666; margin: auto; padding: 2rem; font-style: italic;">
+                            Paste XML output from the AI and tap "Parse Sheets" to stage rows.
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: auto;">
+                        <button id="btn-upsert-all" class="btn-action" style="flex: 1;" onclick="uploadAllSheets()" disabled>
+                            <i class="fas fa-cloud-arrow-up"></i> Upsert Staged to Supabase
+                        </button>
+                        <button id="btn-inspect-first" class="btn-action btn-secondary" onclick="inspectFirstSheet()" disabled>
+                            <i class="fas fa-play"></i> Inspect
+                        </button>
+                    </div>
+
+                    <div class="terminal-box" id="term-log">
+                        <p>> Studio Ready. Paste AI blocks and click Parse Sheets.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 2: LIVE SIMULATOR -->
+        <div class="tab-pane" id="pane-preview">
+            <div class="preview-controls">
+                <div class="sheet-selector-pills" id="preview-pills"></div>
+                <button id="btn-approve-single" class="btn-action" style="padding: 6px 14px; font-size: 0.8rem;" onclick="uploadActiveSheet()">
+                    <i class="fas fa-check"></i> Approve & Insert This Sheet
+                </button>
+            </div>
+
+            <div class="preview-scroll-area" id="preview-viewport">
+                <!-- Live preview injected here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Scoped Style Tag Target -->
+    <style id="preview-scoped-css"></style>
+
+    <script>
+        let parsedSheets = [];
+        let activeSheetIndex = 0;
+
+        // Session storage preservation for Supabase credentials
+        window.onload = () => {
+            const savedUrl = sessionStorage.getItem('linkup_studio_url');
+            const savedKey = sessionStorage.getItem('linkup_studio_key');
+            if (savedUrl) document.getElementById('sb-url').value = savedUrl;
+            if (savedKey) document.getElementById('sb-key').value = savedKey;
+        };
+
+        const log = (msg, type = 'info') => {
+            const term = document.getElementById('term-log');
+            const p = document.createElement('p');
+            p.innerText = `> ${msg}`;
+            if (type === 'err') p.className = 'term-err';
+            if (type === 'warn') p.className = 'term-warn';
+            term.appendChild(p);
+            term.scrollTop = term.scrollHeight;
+        };
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+            if (tab === 'ingest') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('pane-ingest').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('pane-preview').classList.add('active');
+                renderPreview();
+            }
+        }
+
+        function clearInput() {
+            document.getElementById('raw-input').value = '';
+            parsedSheets = [];
+            updateStagedList();
+        }
+
+        // XML Block Parser
+        function parseSheets() {
+            const raw = document.getElementById('raw-input').value.trim();
+            if (!raw) {
+                log("Input area is empty!", "err");
+                return;
+            }
+
+            // Wrap in a root tag to guarantee valid XML parsing
+            const wrapped = `<root>${raw}</root>`;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(wrapped, "text/xml");
+
+            const parserError = doc.querySelector("parsererror");
+            if (parserError) {
+                log(`XML Parser Error: ${parserError.textContent.slice(0, 150)}...`, "err");
+                return;
+            }
+
+            const nodes = doc.querySelectorAll("notebook_sheet");
+            if (nodes.length === 0) {
+                log("No <notebook_sheet> elements found. Ensure blocks match specification.", "warn");
+                return;
+            }
+
+            parsedSheets = [];
+
+            nodes.forEach((n, idx) => {
+                const course = n.getAttribute("course") || "PHYS 1011";
+                const lang = n.getAttribute("lang") || "en";
+                const page = parseInt(n.getAttribute("page"), 10) || 1;
+                const titleNode = n.querySelector("title");
+                const cssNode = n.querySelector("scoped_css");
+                const htmlNode = n.querySelector("html");
+
+                const title = titleNode ? titleNode.textContent.trim() : "Untitled Topic";
+                const css = cssNode ? cssNode.textContent.trim() : "";
+                const html = htmlNode ? htmlNode.innerHTML.trim() : "";
+
+                parsedSheets.push({
+                    course_code: course.toUpperCase().trim(),
+                    language: lang.toLowerCase().trim(),
+                    page_number: page,
+                    topic_title: title,
+                    scoped_css: css,
+                    html_body: html
+                });
+            });
+
+            log(`Successfully parsed ${parsedSheets.length} sheet(s)! Ready for review.`);
+            updateStagedList();
+        }
+
+        function updateStagedList() {
+            const container = document.getElementById('staged-container');
+            document.getElementById('staged-count').innerText = parsedSheets.length;
+            document.getElementById('sheet-count-tab').innerText = parsedSheets.length;
+
+            if (parsedSheets.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: #666; margin: auto; padding: 2rem; font-style: italic;">Paste XML output from the AI and tap "Parse Sheets" to stage rows.</div>`;
+                document.getElementById('btn-upsert-all').disabled = true;
+                document.getElementById('btn-inspect-first').disabled = true;
+                return;
+            }
+
+            container.innerHTML = parsedSheets.map((s, idx) => `
+                <div class="staged-item ${s.language === 'am' ? 'amharic' : 'english'}">
+                    <div class="staged-info">
+                        <h4>${s.topic_title}</h4>
+                        <p>${s.course_code} • ${s.language.toUpperCase()} • Anchor Page: ${s.page_number}</p>
+                    </div>
+                    <button class="pill-select" onclick="inspectSheet(${idx})">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                </div>
+            `).join('');
+
+            document.getElementById('btn-upsert-all').disabled = false;
+            document.getElementById('btn-inspect-first').disabled = false;
+        }
+
+        function inspectFirstSheet() {
+            if (parsedSheets.length > 0) inspectSheet(0);
+        }
+
+        function inspectSheet(idx) {
+            activeSheetIndex = idx;
+            switchTab('preview');
+        }
+
+        // TAB 2: RENDER PREVIEW
+        function renderPreview() {
+            const viewport = document.getElementById('preview-viewport');
+            const pills = document.getElementById('preview-pills');
+            const styleTag = document.getElementById('preview-scoped-css');
+
+            if (parsedSheets.length === 0) {
+                viewport.innerHTML = `<div style="color: #666; font-style: italic; margin-top: 4rem;">No sheets staged to preview. Go to Ingest & Stage tab.</div>`;
+                pills.innerHTML = '';
+                styleTag.textContent = '';
+                return;
+            }
+
+            // Build selector pills
+            pills.innerHTML = parsedSheets.map((s, idx) => `
+                <div class="pill-select ${idx === activeSheetIndex ? 'active' : ''}" onclick="selectPreviewSheet(${idx})">
+                    ${s.course_code} • p.${s.page_number} (${s.language.toUpperCase()})
+                </div>
+            `).join('');
+
+            const sheet = parsedSheets[activeSheetIndex];
+            styleTag.textContent = sheet.scoped_css || '';
+
+            viewport.innerHTML = `
+                <article class="v-notebook-sheet lang-${sheet.language}">
+                    <div class="v-sheet-anchor-bar">
+                        <span class="anchor-pill">
+                            <i class="fas fa-bookmark"></i> Matches Textbook Page ${sheet.page_number}
+                        </span>
+                        <span class="anchor-title">${sheet.topic_title} (${sheet.language.toUpperCase()})</span>
+                    </div>
+                    <div class="v-bento-canvas">
+                        ${DOMPurify.sanitize(sheet.html_body, { USE_PROFILES: { html: true, svg: true, mathMl: true } })}
+                    </div>
+                </article>
+            `;
+
+            // Auto-render math equations via KaTeX
+            renderMathInElement(viewport, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "\\[", right: "\\]", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false }
+                ],
+                throwOnError: false
+            });
+        }
+
+        function selectPreviewSheet(idx) {
+            activeSheetIndex = idx;
+            renderPreview();
+        }
+
+        // SUPABASE UPLOAD ENGINE
+        function getSupabaseClient() {
+            const url = document.getElementById('sb-url').value.trim();
+            const key = document.getElementById('sb-key').value.trim();
+
+            if (!url || !key) {
+                log("Supabase URL or Key missing!", "err");
+                return null;
+            }
+
+            sessionStorage.setItem('linkup_studio_url', url);
+            sessionStorage.setItem('linkup_studio_key', key);
+
+            return window.supabase.createClient(url, key);
+        }
+
+        async function uploadAllSheets() {
+            const client = getSupabaseClient();
+            if (!client || parsedSheets.length === 0) return;
+
+            log(`Initiating batch upsert of ${parsedSheets.length} sheet(s)...`);
+            document.getElementById('btn-upsert-all').disabled = true;
+
+            try {
+                for (let i = 0; i < parsedSheets.length; i++) {
+                    const sheet = parsedSheets[i];
+                    log(`Upserting ${sheet.course_code} (p. ${sheet.page_number}) [${sheet.language}]...`);
+
+                    const { error } = await client
+                        .from('course_visual_notebooks')
+                        .upsert({
+                            course_code: sheet.course_code,
+                            language: sheet.language,
+                            page_number: sheet.page_number,
+                            topic_title: sheet.topic_title,
+                            scoped_css: sheet.scoped_css,
+                            html_body: sheet.html_body,
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: 'course_code, language, page_number' });
+
+                    if (error) throw error;
+                }
+
+                log(`✅ BATCH COMPLETE: All ${parsedSheets.length} sheets published successfully!`);
+            } catch (err) {
+                log(`Upsert Failed: ${err.message}`, "err");
+            } finally {
+                document.getElementById('btn-upsert-all').disabled = false;
+            }
+        }
+
+        async function uploadActiveSheet() {
+            const client = getSupabaseClient();
+            if (!client || !parsedSheets[activeSheetIndex]) return;
+
+            const sheet = parsedSheets[activeSheetIndex];
+            log(`Publishing single sheet: ${sheet.topic_title} (p. ${sheet.page_number})...`);
+
+            try {
+                const { error } = await client
+                    .from('course_visual_notebooks')
+                    .upsert({
+                        course_code: sheet.course_code,
+                        language: sheet.language,
+                        page_number: sheet.page_number,
+                        topic_title: sheet.topic_title,
+                        scoped_css: sheet.scoped_css,
+                        html_body: sheet.html_body,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'course_code, language, page_number' });
+
+                if (error) throw error;
+                log(`✅ Sheet Published: ${sheet.topic_title} (p. ${sheet.page_number})!`);
+            } catch (err) {
+                log(`Publish Failed: ${err.message}`, "err");
+            }
+        }
+    </script>
+</body>
+</html>
