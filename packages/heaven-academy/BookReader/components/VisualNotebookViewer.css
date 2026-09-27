@@ -138,3 +138,67 @@
     height: auto;
     overflow: visible;
 }
+
+/* --- MULTI-PAGE NOTEBOOK SHEETS --- */
+.v-notebook-sheet {
+    width: 100%;
+    max-width: 780px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 48px;
+    scroll-margin-top: 24px;
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.v-notebook-sheet:last-child {
+    margin-bottom: 24px;
+}
+
+/* Page Anchor Header Bar */
+.v-sheet-anchor-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #888;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.v-sheet-anchor-bar .anchor-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent-teal, #42d7b8);
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.v-sheet-anchor-bar .anchor-title {
+    color: #ccc;
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 250px;
+}
+
+/* Landing Highlight Glow Animation */
+@keyframes sheetLandedPulse {
+    0% { box-shadow: 0 0 0 rgba(66, 215, 184, 0); }
+    30% { box-shadow: 0 0 35px rgba(66, 215, 184, 0.4); transform: scale(1.01); }
+    100% { box-shadow: 0 0 0 rgba(66, 215, 184, 0); transform: scale(1); }
+}
+
+.sheet-landed-glow {
+    animation: sheetLandedPulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    border-radius: 24px;
+}
