@@ -3,6 +3,9 @@ import DOMPurify from 'dompurify';
 import { supabase } from '@linkup-platform/sdk-core';
 import './VisualNotebookViewer.css';
 
+// Session-level in-memory cache: key = `${courseCode}_${language}`
+const notebookSheetsCache = new Map();
+
 const VisualNotebookViewer = ({ 
   courseCode, 
   language = 'en', 
@@ -10,25 +13,38 @@ const VisualNotebookViewer = ({
   onCloseVariant, 
   onSyncTextbookPage 
 }) => {
-  const [sheets, setSheets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = `${courseCode}_${language}`;
+
+  // Instant hydration from cache (zero spinner flash on remount)
+  const [sheets, setSheets] = useState(() => (
+    courseCode && notebookSheetsCache.has(cacheKey) ? notebookSheetsCache.get(cacheKey) : []
+  ));
+  const [loading, setLoading] = useState(() => (
+    courseCode ? !notebookSheetsCache.has(cacheKey) : false
+  ));
   const styleTagRef = useRef(null);
   const containerRef = useRef(null);
 
   // 1. Fetch all visual sheets for this course and language, ordered by page number
   useEffect(() => {
     let isMounted = true;
+
+    if (!courseCode) {
+      setSheets([]);
+      setLoading(false);
+      return;
+    }
+
+    // Fast-path: Cache hit bypasses Supabase completely
+    if (notebookSheetsCache.has(cacheKey)) {
+      setSheets(notebookSheetsCache.get(cacheKey));
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     const loadSheets = async () => {
-      if (!courseCode) {
-        if (isMounted) {
-          setSheets([]);
-          setLoading(false);
-        }
-        return;
-      }
-
       try {
         const { data, error } = await supabase
           .from('course_visual_notebooks')
@@ -39,8 +55,11 @@ const VisualNotebookViewer = ({
 
         if (error) throw error;
 
+        const resultSheets = data || [];
+        notebookSheetsCache.set(cacheKey, resultSheets);
+
         if (isMounted) {
-          setSheets(data || []);
+          setSheets(resultSheets);
           setLoading(false);
         }
       } catch (err) {
@@ -54,7 +73,7 @@ const VisualNotebookViewer = ({
 
     loadSheets();
     return () => { isMounted = false; };
-  }, [courseCode, language]);
+  }, [courseCode, language, cacheKey]);
 
   // 2. Inject combined scoped styles dynamically into head
   useEffect(() => {
