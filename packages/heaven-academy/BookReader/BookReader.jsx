@@ -104,6 +104,15 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
         };
     }, []);
 
+    // Resynchronize physical textbook position when returning from Visual Notebook
+    useEffect(() => {
+        if (viewMode === 'text' && layoutReady && currentDisplayPage) {
+            requestAnimationFrame(() => {
+                jumpToPage(currentDisplayPage);
+            });
+        }
+    }, [viewMode]);
+
     // Course Progress Telemetry Sync with Dwell Debounce (2.5s threshold)
     useEffect(() => {
         if (!book?.id || pages.length === 0) return;
@@ -437,6 +446,10 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                     language={viewMode === 'visual_am' ? 'am' : 'en'}
                     currentPage={currentDisplayPage}
                     onCloseVariant={() => setViewMode('text')}
+                    onSyncTextbookPage={(pageNum) => {
+                        lastDisplayPage.current = pageNum;
+                        setCurrentDisplayPage(pageNum);
+                    }}
                 />
             )}
 
