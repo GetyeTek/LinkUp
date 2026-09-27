@@ -3,75 +3,76 @@ import DOMPurify from 'dompurify';
 import { supabase } from '@linkup-platform/sdk-core';
 import './VisualNotebookViewer.css';
 
-const VisualNotebookViewer = ({ courseCode, language = 'en', currentPage = 1, onCloseVariant }) => {
-  const [pageData, setPageData] = useState(null);
+const VisualNotebookViewer = ({ 
+  courseCode, 
+  language = 'en', 
+  currentPage = 1, 
+  onCloseVariant, 
+  onSyncTextbookPage 
+}) => {
+  const [sheets, setSheets] = useState([]);
   const [loading, setLoading] = useState(true);
   const styleTagRef = useRef(null);
+  const containerRef = useRef(null);
 
+  // 1. Fetch all visual sheets for this course and language, ordered by page number
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
 
-    const loadPage = async () => {
+    const loadSheets = async () => {
       if (!courseCode) {
         if (isMounted) {
-          setPageData(null);
+          setSheets([]);
           setLoading(false);
         }
         return;
       }
 
       try {
-        // 1. Nearest-Topic Query: Snap to active chapter/topic based on current textbook page
-        let { data, error } = await supabase
+        const { data, error } = await supabase
           .from('course_visual_notebooks')
-          .select('topic_title, html_body, scoped_css, page_number')
+          .select('id, topic_title, html_body, scoped_css, page_number')
           .eq('course_code', courseCode)
           .eq('language', language)
-          .lte('page_number', currentPage)
-          .order('page_number', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .order('page_number', { ascending: true });
 
-        // 2. Fallback: If user is on an introductory page before page 1, fetch the earliest guide
-        if (!data) {
-          const { data: firstTopic } = await supabase
-            .from('course_visual_notebooks')
-            .select('topic_title, html_body, scoped_css, page_number')
-            .eq('course_code', courseCode)
-            .eq('language', language)
-            .order('page_number', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-          data = firstTopic;
-        }
+        if (error) throw error;
 
         if (isMounted) {
-          setPageData(data || null);
+          setSheets(data || []);
           setLoading(false);
         }
       } catch (err) {
         console.error('[VisualNotebook] Backend fetch error:', err);
         if (isMounted) {
-          setPageData(null);
+          setSheets([]);
           setLoading(false);
         }
       }
     };
 
-    loadPage();
+    loadSheets();
     return () => { isMounted = false; };
-  }, [courseCode, language, currentPage]);
-  // Inject dynamic scoped CSS from backend cleanly
+  }, [courseCode, language]);
+
+  // 2. Inject combined scoped styles dynamically into head
   useEffect(() => {
-    if (pageData?.scoped_css) {
-      if (!styleTagRef.current) {
-        const tag = document.createElement('style');
-        tag.id = 'v-notebook-dynamic-style';
-        document.head.appendChild(tag);
-        styleTagRef.current = tag;
+    if (sheets.length > 0) {
+      const combinedCss = sheets
+        .map(s => s.scoped_css)
+        .filter(Boolean)
+        .join('\n\n');
+
+      if (combinedCss) {
+        if (!styleTagRef.current) {
+          const tag = document.createElement('style');
+          tag.id = 'v-notebook-dynamic-style';
+          document.head.appendChild(tag);
+          styleTagRef.current = tag;
+        }
+        styleTagRef.current.textContent = combinedCss;
       }
-      styleTagRef.current.textContent = pageData.scoped_css;
     }
 
     return () => {
@@ -80,7 +81,64 @@ const VisualNotebookViewer = ({ courseCode, language = 'en', currentPage = 1, on
         styleTagRef.current = null;
       }
     };
-  }, [pageData?.scoped_css]);
+  }, [sheets]);
+
+  // 3. Teleport Snapper: Smoothly navigate to the sheet closest to the active textbook page
+  const scrollToAnchorSheet = (targetPage, smooth = true) => {
+    if (!sheets || sheets.length === 0 || !containerRef.current) return;
+
+    let targetSheet = sheets[0];
+    for (const sheet of sheets) {
+      if (sheet.page_number <= targetPage) {
+        targetSheet = sheet;
+      } else {
+        break;
+      }
+    }
+
+    if (targetSheet) {
+      const el = containerRef.current.querySelector(`[data-page-number="${targetSheet.page_number}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+        el.classList.add('sheet-landed-glow');
+        setTimeout(() => el.classList.remove('sheet-landed-glow'), 2200);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!loading && sheets.length > 0) {
+      const timer = setTimeout(() => {
+        scrollToAnchorSheet(currentPage, false);
+      }, 70);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, sheets]);
+
+  // 4. Bi-Directional Tracker: Updates the underlying textbook cursor as the student scrolls
+  useEffect(() => {
+    if (loading || sheets.length === 0 || !containerRef.current || !onSyncTextbookPage) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const pageNum = parseInt(entry.target.getAttribute('data-page-number'), 10);
+          if (pageNum) {
+            onSyncTextbookPage(pageNum);
+          }
+        }
+      });
+    }, {
+      root: containerRef.current,
+      rootMargin: "-15% 0px -55% 0px",
+      threshold: 0.1
+    });
+
+    const targets = containerRef.current.querySelectorAll('.v-notebook-sheet');
+    targets.forEach(t => observer.observe(t));
+
+    return () => observer.disconnect();
+  }, [loading, sheets, onSyncTextbookPage]);
 
   if (loading) {
     return (
@@ -90,7 +148,7 @@ const VisualNotebookViewer = ({ courseCode, language = 'en', currentPage = 1, on
     );
   }
 
-  if (!pageData) {
+  if (!sheets || sheets.length === 0) {
     return (
       <div className={`v-notebook-root lang-${language}`} style={{ justifyContent: 'center' }}>
         <div className="v-card" style={{ maxWidth: '440px', textAlign: 'center', padding: '2.5rem 1.5rem' }}>
@@ -117,15 +175,35 @@ const VisualNotebookViewer = ({ courseCode, language = 'en', currentPage = 1, on
   }
 
   return (
-    <div className={`v-notebook-root lang-${language}`}>
-      <div 
-        className="v-notebook-content-body"
-        dangerouslySetInnerHTML={{ 
-          __html: DOMPurify.sanitize(pageData.html_body || '', { 
-            USE_PROFILES: { html: true, svg: true, mathMl: true } 
-          }) 
-        }}
-      />
+    <div className={`v-notebook-root lang-${language}`} ref={containerRef}>
+      <div className="v-bento-canvas">
+        {sheets.map((sheet) => (
+          <article 
+            key={sheet.id || sheet.page_number}
+            className="v-notebook-sheet"
+            id={`vn-sheet-page-${sheet.page_number}`}
+            data-page-number={sheet.page_number}
+          >
+            <div className="v-sheet-anchor-bar">
+              <span className="anchor-pill">
+                <i className="fas fa-bookmark"></i> Textbook Page {sheet.page_number}
+              </span>
+              {sheet.topic_title && (
+                <span className="anchor-title">{sheet.topic_title}</span>
+              )}
+            </div>
+
+            <div 
+              className="v-notebook-content-body"
+              dangerouslySetInnerHTML={{ 
+                __html: DOMPurify.sanitize(sheet.html_body || '', { 
+                  USE_PROFILES: { html: true, svg: true, mathMl: true } 
+                }) 
+              }}
+            />
+          </article>
+        ))}
+      </div>
     </div>
   );
 };
