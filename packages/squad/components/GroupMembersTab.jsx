@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, getAvatarFallback } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
 import { invokeSocial } from '../api.js';
 import GenericConfirmModal from './GenericConfirmModal.jsx';
 import PunishMemberModal from './PunishMemberModal.jsx';
@@ -113,7 +113,9 @@ const GroupMembersTab = ({
                         <img src={m.avatar || getAvatarFallback(m.name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(m.name); }} alt="Avatar" className="si-member-avatar" />
                         <div className="si-member-info">
                             <div className="si-member-name">
-                                {m.name} {uid === currentUser.id && <span style={{fontSize:'0.7rem', color:'#888'}}>(You)</span>}
+                                {m.name}
+                                {m.is_pro && <GoldBadge size="sm" />}
+                                {uid === currentUser.id && <span style={{fontSize:'0.7rem', color:'#888'}}>(You)</span>}
                             </div>
                             <span className={`si-member-role ${m.role === 'owner' ? 'si-role-owner' : 'si-role-member'}`}>{m.role}</span>
                         </div>
