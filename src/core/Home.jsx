@@ -86,7 +86,7 @@ const Home = () => {
     const handleWnClick = (filterPill, targetId) => {
         window.dispatchEvent(new CustomEvent('navigate-tab', { 
             detail: { 
-                tab: 'connect', 
+                tab: 'discover', 
                 payload: { 
                     action: 'open_explore_item', 
                     target_pill: filterPill,
