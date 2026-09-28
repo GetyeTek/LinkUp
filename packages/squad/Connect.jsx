@@ -92,7 +92,7 @@ const Connect = () => {
                 }
             });
             clearRoutePayload();
-
+        }
     }, [routePayload, currentUser]);
 
     useEffect(() => {
@@ -166,13 +166,17 @@ const Connect = () => {
                 // Fetch and open the squad
                 const { data } = await supabase.from('conversations').select('*').eq('id', targetId).single();
                 if (data && data.type === 'group') {
-                    setActiveChat({
-                        conversation_id: data.id,
-                        type: 'group',
-                        title: data.title,
-                        metadata: data.metadata,
-                        is_preview: true
-                    });
+                    setMountedChats(prev => ({
+                        ...prev,
+                        [data.id]: {
+                            conversation_id: data.id,
+                            type: 'group',
+                            title: data.title,
+                            metadata: data.metadata,
+                            is_preview: true
+                        }
+                    }));
+                    setActiveChatId(data.id);
                 }
             }
         };
