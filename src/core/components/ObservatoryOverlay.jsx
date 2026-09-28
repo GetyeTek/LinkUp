@@ -119,34 +119,23 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                 <div className="overlay-inner-content">
                     {/* Top Stat Cards */}
                     <section className="dashboard-section fade-in-up" style={{ transitionDelay: '0.1s' }}>
-                        <div className="dashboard-scroll-wrapper">
-                            <div className="dashboard-track">
-                                <div className="dashboard-card mr-score-card">
-                                    <div className="icon"><i className="fas fa-chart-line"></i></div>
-                                    <div>
-                                        <div className="value">
-                                            <AnimatedValue target={data?.mastery_rating || 0} isActive={isActive} />
-                                        </div>
-                                        <div className="label">Mastery Rating (MR)</div>
+                        <div className="dashboard-track duo-track">
+                            <div className="dashboard-card mr-score-card">
+                                <div className="icon"><i className="fas fa-chart-line"></i></div>
+                                <div>
+                                    <div className="value">
+                                        <AnimatedValue target={data?.mastery_rating || 0} isActive={isActive} />
                                     </div>
+                                    <div className="label">Mastery Rating (MR)</div>
                                 </div>
-                                <div className="dashboard-card">
-                                    <div className="icon" style={{ color: '#ffab40' }}><i className="fas fa-fire"></i></div>
-                                    <div>
-                                        <div className="value">
-                                            <AnimatedValue target={data?.current_streak || 0} isActive={isActive} />
-                                        </div>
-                                        <div className="label">Day Streak</div>
+                            </div>
+                            <div className="dashboard-card">
+                                <div className="icon" style={{ color: '#ffab40' }}><i className="fas fa-fire"></i></div>
+                                <div>
+                                    <div className="value">
+                                        <AnimatedValue target={data?.current_streak || 0} isActive={isActive} />
                                     </div>
-                                </div>
-                                <div className="dashboard-card">
-                                    <div className="icon"><i className="fas fa-brain"></i></div>
-                                    <div>
-                                        <div className="value">
-                                            <AnimatedValue target={data?.topics_mastered || 0} isActive={isActive} />
-                                        </div>
-                                        <div className="label">Topics Mastered</div>
-                                    </div>
+                                    <div className="label">Day Streak</div>
                                 </div>
                             </div>
                         </div>
@@ -160,7 +149,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                             </div>
                             <h3 className="rank-title">{divMeta.label}</h3>
                             <p className="rank-standing-subtitle">
-                                Global Rank #{data?.my_standing?.rank || '--'} of {data?.my_standing?.total_scholars || '--'} Scholars
+                                Global Rank #{data?.my_standing?.rank || '--'} of {data?.my_standing?.total_scholars || '--'} Students
                             </p>
                         </header>
 
@@ -217,49 +206,87 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                         </div>
                     </section>
 
-                    {/* Analytics Suite (Real 49-Day Heatmap & Weekly Bars) */}
+                    {/* Analytics Suite (Universal Habit Ring & Weekly Bars) */}
                     <section className="analytics-suite fade-in-up" style={{ transitionDelay: '0.3s' }}>
-                        <h2 className="section-title"><span>Study Analytics</span></h2>
-                        <div className="analytics-grid">
-                            <div>
-                                <h3 className="analytics-card-title">49-Day Commitment Grid</h3>
-                                <div className="heatmap-grid">
-                                    {heatmapCells.map((cell, i) => (
-                                        <div 
-                                            key={i} 
-                                            className={`heatmap-cell level-${cell.level}`}
-                                            title={`${cell.date}: ${Math.round((cell.active_seconds || 0) / 60)} mins (${cell.interactions || 0} actions)`}
-                                        ></div>
-                                    ))}
-                                </div>
-                                <div className="heatmap-legend">
-                                    <span>Less</span>
-                                    <span className="legend-cell level-0"></span>
-                                    <span className="legend-cell level-1"></span>
-                                    <span className="legend-cell level-2"></span>
-                                    <span className="legend-cell level-3"></span>
-                                    <span>More</span>
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="analytics-card-title">Weekly Study Velocity</h3>
-                                <div className="chart-bars">
-                                    {weeklyBars.map((b, i) => {
-                                        const pct = Math.min(100, Math.max(8, (b.hours / maxWeeklyHours) * 100));
-                                        return (
-                                            <div key={i} className={`bar-group ${b.is_today ? 'is-today' : ''}`}>
-                                                <div 
-                                                    className="bar" 
-                                                    style={{ height: `${pct}%` }}
-                                                    title={`${b.hours} hrs on ${b.day}`}
-                                                ></div>
-                                                <span className="bar-label">{b.day}</span>
+                        <h2 className="section-title"><span>Weekly Study Analytics</span></h2>
+                        
+                        {(() => {
+                            const totalHours = weeklyBars.reduce((acc, b) => acc + (Number(b.hours) || 0), 0);
+                            const activeDays = weeklyBars.filter(b => (b.active_seconds || 0) > 0).length;
+                            const dailyAvg = (totalHours / 7).toFixed(1);
+                            const activePct = Math.round((activeDays / 7) * 100);
+                            const strokeDash = Math.round((activePct / 100) * 220);
+
+                            return (
+                                <div className="analytics-grid">
+                                    {/* Left: Universal Habit Gauge */}
+                                    <div className="habit-gauge-panel">
+                                        <h3 className="analytics-card-title">Weekly Consistency</h3>
+                                        
+                                        <div className="habit-gauge-content">
+                                            <div className="habit-ring-box">
+                                                <svg className="habit-ring-svg" viewBox="0 0 80 80">
+                                                    <circle cx="40" cy="40" r="35" className="habit-ring-bg" />
+                                                    <circle 
+                                                        cx="40" cy="40" r="35" 
+                                                        className="habit-ring-fill" 
+                                                        style={{ strokeDasharray: `${strokeDash} 220` }}
+                                                    />
+                                                </svg>
+                                                <div className="habit-ring-text">
+                                                    <span className="habit-ring-num">{activeDays}/7</span>
+                                                    <span className="habit-ring-sub">Days</span>
+                                                </div>
                                             </div>
-                                        );
-                                    })}
+
+                                            <div className="habit-stats-col">
+                                                <div className="habit-stat-row">
+                                                    <span className="stat-lbl">Time Studied</span>
+                                                    <span className="stat-val">{totalHours.toFixed(1)} hrs</span>
+                                                </div>
+                                                <div className="habit-stat-row">
+                                                    <span className="stat-lbl">Daily Average</span>
+                                                    <span className="stat-val">{dailyAvg} hrs/day</span>
+                                                </div>
+                                                <div className="habit-stat-row">
+                                                    <span className="stat-lbl">Consistency</span>
+                                                    <span className="stat-val" style={{ color: 'var(--accent-teal)' }}>{activePct}%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Daily Hours Bar Chart */}
+                                    <div className="velocity-bar-panel">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                            <h3 className="analytics-card-title" style={{ margin: 0 }}>Daily Study Hours</h3>
+                                            <span style={{ fontSize: '0.72rem', color: '#888', fontFamily: 'Roboto Mono, monospace' }}>
+                                                Mon — Sun
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="chart-bars">
+                                            {weeklyBars.map((b, i) => {
+                                                const pct = Math.min(100, Math.max(8, (b.hours / maxWeeklyHours) * 100));
+                                                return (
+                                                    <div key={i} className={`bar-group ${b.is_today ? 'is-today' : ''}`}>
+                                                        {b.hours > 0 && (
+                                                            <span className="bar-val-pill">{b.hours}h</span>
+                                                        )}
+                                                        <div 
+                                                            className="bar" 
+                                                            style={{ height: `${pct}%` }}
+                                                            title={`${b.hours} hrs on ${b.day}`}
+                                                        ></div>
+                                                        <span className="bar-label">{b.day}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            );
+                        })()}
                     </section>
                 </div>
             </div>
