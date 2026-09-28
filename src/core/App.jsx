@@ -285,17 +285,29 @@ const App = () => {
     };
   }, []);
 
-  // Realtime Notifications Listener
+  // Realtime Notifications & Profile Sync Listener
   useEffect(() => {
-      if (!session) return;
+      if (!session?.user?.id) return;
       const notifChannel = supabase.channel('global_notifications')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` }, () => {
-            // Re-fetch count on any notification table change
             supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('is_read', false)
             .then(({ count }) => setUnreadCount(count || 0));
         }).subscribe();
 
-      return () => supabase.removeChannel(notifChannel);
+      const profileChannel = supabase.channel(`live_profile_sync_${session.user.id}`)
+        .on('postgres_changes', { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'profiles', 
+            filter: `id=eq.${session.user.id}` 
+        }, (payload) => {
+            setUserProfile(prev => ({ ...prev, ...payload.new }));
+        }).subscribe();
+
+      return () => {
+          supabase.removeChannel(notifChannel);
+          supabase.removeChannel(profileChannel);
+      };
   }, [session]);
 
   // Active Device Concurrency & Heartbeat Guardian (Anti-Freelord Loop)
