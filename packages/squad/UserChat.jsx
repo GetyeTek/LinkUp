@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
 import ChatSearchOverlay from './components/ChatSearchOverlay.jsx';
 import MessageContextMenu from './components/MessageContextMenu.jsx';
 import ChatInputDock from './components/ChatInputDock.jsx';
@@ -40,6 +40,17 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
     } = useChatInputState(roomChannelRef, setAlertNotice);
 
     const isOtherUserDeleted = chat.type === 'dm' && !chat.other_user_id;
+    const [peerPro, setPeerPro] = useState(false);
+
+    useEffect(() => {
+        if (chat.other_user_id) {
+            supabase.rpc('get_user_profile_public', { target_user_id: chat.other_user_id })
+                .then(({ data }) => {
+                    if (data?.is_pro) setPeerPro(true);
+                })
+                .catch(() => {});
+        }
+    }, [chat.other_user_id]);
     const chatTitle = isOtherUserDeleted ? 'Deleted Account' : (chat.type === 'dm' ? chat.other_user_name : chat.title);
     const chatAvatar = isOtherUserDeleted ? null : (chat.type === 'dm' ? chat.other_user_avatar : chat.avatar_url);
 
@@ -455,7 +466,10 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                             {isOnline && <div className="online-dot"></div>}
                         </div>
                         <div className="contact-details">
-                            <h2>{chatTitle}</h2>
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {chatTitle}
+                                {peerPro && <GoldBadge size="sm" />}
+                            </h2>
                             <p style={{ color: (isOnline || isOtherTyping) ? '#42d7b8' : '#888' }}>
                                 {isOtherTyping ? (
                                     <span>typing<span className="blink-cursor">...</span></span>
