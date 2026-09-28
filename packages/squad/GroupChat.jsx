@@ -874,7 +874,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 {isLoading ? (
                     <div className="squad-loading-state">
                         <i className="fas fa-circle-notch fa-spin"></i>
-                        <p>Syncing Squad comms...</p>
+                        <p>Loading messages...</p>
                     </div>
                 ) : messages.length === 0 ? (
                     <div className="squad-empty-state">
@@ -1010,7 +1010,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     description="Are you sure you want to permanently delete this message for everyone?"
                     onConfirm={confirmAndDelete}
                     onCancel={() => setDeleteConfirm(null)}
-                    confirmText="Purge Message"
+                    confirmText="Delete Message"
                     isDanger={true}
                 />
             )}
