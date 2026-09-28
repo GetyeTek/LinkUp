@@ -230,7 +230,7 @@ const Home = () => {
                     <div>
                       <h3 className="promo-title">LinkUp Gold</h3>
                       <div className="promo-desc">
-                        Unlock unlimited Miron AI, full Exam Pavilion archives, & priority Audio Stages.
+                        Unlock unlimited Miron AI, complete Exam Archives, & priority Audio Stages.
                       </div>
                     </div>
                   </div>
@@ -245,7 +245,7 @@ const Home = () => {
                     <div>
                       <h3 className="promo-title">Learn About Us</h3>
                       <div className="promo-desc">
-                        Built by scholars, for scholars. Discover the team & mission behind LinkUp.
+                        Built by students, for students. Discover the team & mission behind LinkUp.
                       </div>
                     </div>
                   </div>
@@ -461,7 +461,7 @@ const Home = () => {
                     lineHeight: 1.6
                   }}
                 >
-                  LinkUp is an enterprise academic & social ecosystem built to empower university students across Ethiopia with real-time study stages, past exam pavilion archives, and Miron AI tutoring.
+                  LinkUp is an academic ecosystem built to empower university students across Ethiopia with real-time study stages, past exam archives, and Miron AI tutoring.
                 </p>
                 <button
                   className="cm-btn-primary"
