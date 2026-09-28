@@ -113,7 +113,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
         }
     }, [viewMode]);
 
-    // Course Progress Telemetry Sync with Dwell Debounce (2.5s threshold)
+    // Course Progress Telemetry Sync with Dwell Debounce (15s verified dwell threshold)
     useEffect(() => {
         if (!book?.id || pages.length === 0) return;
 
@@ -127,7 +127,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 section_title: sectionTitle,
                 total_pages: pages.length
             });
-        }, 2500);
+        }, 15000);
 
         return () => clearTimeout(timer);
     }, [currentDisplayPage, tocData, book?.id, book?.course_code, pages.length]);
