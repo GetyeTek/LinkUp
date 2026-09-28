@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
 import QAComposerModal from './QAComposerModal.jsx';
 import ReplyFullScreen from './ReplyFullScreen.jsx';
 import './ForYouFeed.css';
@@ -194,8 +194,9 @@ const ForYouFeed = ({ featuredEvents, handleFeaturedAction }) => {
                             <h2 className="activity-headline">{q.title}</h2>
                             <div style={{display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0'}}>
                                 <img src={q.asker_avatar || getAvatarFallback(q.asker_name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(q.asker_name); }} style={{width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover'}} alt="Asker" />
-                                <span style={{fontSize: '0.8rem', color: '#888'}}>
-                                    {q.asker_id === currentUser.id ? 'Asked by You' : `Asked by ${q.asker_name}`} • {timeAgo(q.created_at)}
+                                <span style={{fontSize: '0.8rem', color: '#888', display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                    {q.asker_id === currentUser.id ? 'Asked by You' : `Asked by ${q.asker_name}`}
+                                    {q.asker_is_pro && <GoldBadge size="sm" />} • {timeAgo(q.created_at)}
                                 </span>
                             </div>
                             {q.body && <p className="activity-snippet">{q.body}</p>}
