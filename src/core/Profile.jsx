@@ -136,15 +136,15 @@ const Profile = () => {
                                 <canvas className="plexus-canvas" ref={plexusRef}></canvas>
                             </div>
                             <div className="portal-content">
-                                <h2 className="portal-title">Personal Observatory</h2>
-                                <p className="portal-subtitle">Explore your complete journey</p>
+                                <h2 className="portal-title">Study Analytics</h2>
+                                <p className="portal-subtitle">View your study stats and global rank</p>
                             </div>
                         </div>
                         <div className="portal-card" id="mission-portal-card" onClick={() => toggleOverlay('mission', true)}>
                             <div className="portal-window" style={{ color: 'var(--linkoin-gold)' }}><i className="fas fa-tasks"></i></div>
                             <div className="portal-content">
-                                <h2 className="portal-title">Mission Control</h2>
-                                <p className="portal-subtitle">Earn rewards and level up</p>
+                                <h2 className="portal-title">Tasks & Rewards</h2>
+                                <p className="portal-subtitle">Complete daily tasks to earn Credits</p>
                             </div>
                         </div>
                         
@@ -164,7 +164,7 @@ const Profile = () => {
                         <h2 className="section-title"><span>Settings</span></h2>
                         <div className="settings-list">
                             <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); setIsEditingProfile(true); }}>
-                                <i className="fas fa-user-pen list-item-icon"></i><span className="list-item-text">Account & Registry</span><i className="fas fa-chevron-right list-item-chevron"></i>
+                                <i className="fas fa-user-pen list-item-icon"></i><span className="list-item-text">Account Settings</span><i className="fas fa-chevron-right list-item-chevron"></i>
                             </a>
                             <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleTheme(); }}>
                                 <i className="fas fa-palette list-item-icon"></i>
