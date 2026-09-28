@@ -95,13 +95,35 @@ const Profile = () => {
                         </div>
                         <div className="user-info">
                             <h1 className="profile-name" style={{ display: 'flex', alignItems: 'center' }}>
-                                {userProfile?.full_name || 'Scholar'}
+                                {userProfile?.full_name || 'Student'}
                                 {userProfile?.is_pro && <GoldBadge size="lg" />}
                             </h1>
-                            <p className="profile-level">{userProfile?.level || 'Division I'}</p>
-                            <div className="linkoin-balance-hero">
+                            {(() => {
+                                const level = userProfile?.level || 'Division V';
+                                const divIconMap = {
+                                    'Division I': 'fa-shield-halved',
+                                    'Division II': 'fa-crown',
+                                    'Division III': 'fa-medal',
+                                    'Division IV': 'fa-award',
+                                    'Division V': 'fa-seedling'
+                                };
+                                const divClassMap = {
+                                    'Division I': 'div-badge-1',
+                                    'Division II': 'div-badge-2',
+                                    'Division III': 'div-badge-3',
+                                    'Division IV': 'div-badge-4',
+                                    'Division V': 'div-badge-5'
+                                };
+                                return (
+                                    <div className={`profile-division-pill ${divClassMap[level] || 'div-badge-5'}`}>
+                                        <i className={`fas ${divIconMap[level] || 'fa-seedling'}`}></i>
+                                        <span>{level}</span>
+                                    </div>
+                                );
+                            })()}
+                            <div className="linkoin-balance-hero" title="LinkUp Credits">
                                 <i className="fas fa-coins linkoin-icon-sm"></i>
-                                <span>{userProfile?.linkoin_balance || 0}</span>
+                                <span>{userProfile?.linkoin_balance ?? 0} Credits</span>
                             </div>
                         </div>
                     </div>
