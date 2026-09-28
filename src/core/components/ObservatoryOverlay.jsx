@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
 import './ObservatoryOverlay.css';
 
 const AnimatedValue = ({ target = 0, isActive }) => {
@@ -113,7 +113,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
             <canvas id="stars-bg" ref={starsRef}></canvas>
             <div className="overlay-content">
                 <header className="overlay-header">
-                    <h2 className="overlay-title">Personal Observatory</h2>
+                    <h2 className="overlay-title">Study Analytics</h2>
                     <button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
                 </header>
                 <div className="overlay-inner-content">
@@ -175,7 +175,10 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                         className="player-avatar" 
                                     />
                                     <div className="player-details-col">
-                                        <span className="player-name">{player.is_user ? 'You' : player.name}</span>
+                                        <span className="player-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {player.is_user ? 'You' : player.name}
+                                            {player.is_pro && <GoldBadge size="sm" />}
+                                        </span>
                                         <span className={`player-div-tag ${DIVISION_CONFIG[player.division]?.badgeClass || 'div-5'}`}>
                                             {player.division}
                                         </span>
@@ -196,8 +199,8 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                             className="player-avatar" 
                                         />
                                         <div className="player-details-col">
-                                            <span className="player-name">
-                                                You {data.my_standing.is_hidden && <span style={{ fontSize: '0.72rem', color: '#ffab40', fontWeight: 'normal' }}>(Unlisted)</span>}
+                                            <span className="player-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                You {(data.my_standing.is_pro || userProfile?.is_pro) && <GoldBadge size="sm" />} {data.my_standing.is_hidden && <span style={{ fontSize: '0.72rem', color: '#ffab40', fontWeight: 'normal' }}>(Unlisted)</span>}
                                             </span>
                                             <span className={`player-div-tag ${divMeta.badgeClass}`}>
                                                 {data.my_standing.division}
