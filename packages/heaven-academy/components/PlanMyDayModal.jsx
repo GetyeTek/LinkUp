@@ -60,7 +60,7 @@ const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
                             <img src={mironAvatarUrl} alt="Miron" onError={(e) => { e.target.style.display = 'none'; }} />
                         </div>
                         <div>
-                            <div className="pmd-miron-tag-title">Miron Flight Control</div>
+                            <div className="pmd-miron-tag-title">Miron Study Planner</div>
                         </div>
                     </div>
                     <button className="pmd-close-screen-btn" onClick={onClose} aria-label="Close">
@@ -75,9 +75,9 @@ const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
                             <div className="pmd-orb-pulse">
                                 <i className="fa-solid fa-sparkles"></i>
                             </div>
-                            <h3 style={{ fontSize: '1.2rem', margin: '1rem 0 0.25rem 0', color: '#fff' }}>Calibrating Flight Plan...</h3>
+                            <h3 style={{ fontSize: '1.2rem', margin: '1rem 0 0.25rem 0', color: '#fff' }}>Generating Study Plan...</h3>
                             <p style={{ fontSize: '0.85rem', color: '#888', maxWidth: '320px', lineHeight: 1.4 }}>
-                                Analyzing semester timeline, syllabus pacing, and personal question accuracy.
+                                Analyzing course textbook pacing, study habits, and question performance.
                             </p>
                         </div>
                     ) : error ? (
@@ -124,7 +124,7 @@ const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
                                             <div className="pmd-node-circle">{idx + 1}</div>
                                             <div className="pmd-step-content">
                                                 <span className="pmd-step-phase-tag">
-                                                    {block.time_label || `PHASE ${idx + 1}`} • {block.duration_minutes || 25} MINS
+                                                    {block.time_label || `PART ${idx + 1}`} • {block.duration_minutes || 25} MINS
                                                 </span>
                                                 <div className="pmd-step-subject-sub">
                                                     {block.course_title || block.course_code} {block.action?.page_number ? `• Page ${block.action.page_number}` : ''}
@@ -168,7 +168,7 @@ const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
                         </div>
 
                         <button className="pmd-master-launch-btn" onClick={() => handleExecute(blocks[0])}>
-                            <span>🚀 Launch Session</span>
+                            <span>Start Study Session</span>
                             <i className="fa-solid fa-arrow-right"></i>
                         </button>
                     </footer>
