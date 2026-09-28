@@ -74,7 +74,7 @@ const ExamPavilion = ({ university, onClose }) => {
                     <div className="pav-emblem-sm"><i className="fas fa-landmark"></i></div>
                     <div className="pav-header-text" style={{ flex: 1 }}>
                         <h1>{university.name}</h1>
-                        <p>Academic Pavilion</p>
+                        <p>Exam Archives</p>
                     </div>
                 </div>
             </header>
