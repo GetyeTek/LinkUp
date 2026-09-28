@@ -40,8 +40,37 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     
-    // Academic Privacy UI State (Pure UI)
-    const [showOnLeaderboard, setShowOnLeaderboard] = useState(true);
+    // Academic Privacy State (Persisted to Database)
+    const [showOnLeaderboard, setShowOnLeaderboard] = useState(userProfile?.show_on_leaderboard !== false);
+    const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
+
+    useEffect(() => {
+        if (userProfile?.show_on_leaderboard !== undefined) {
+            setShowOnLeaderboard(userProfile.show_on_leaderboard !== false);
+        }
+    }, [userProfile?.show_on_leaderboard]);
+
+    const handleToggleLeaderboard = async () => {
+        if (isUpdatingPrivacy || !sessionUser?.id) return;
+        const nextVal = !showOnLeaderboard;
+        setShowOnLeaderboard(nextVal);
+        if (userProfile) userProfile.show_on_leaderboard = nextVal;
+        setIsUpdatingPrivacy(true);
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ show_on_leaderboard: nextVal })
+                .eq('id', sessionUser.id);
+            if (error) throw error;
+        } catch (err) {
+            console.error('Failed to update leaderboard visibility:', err);
+            setShowOnLeaderboard(!nextVal);
+            if (userProfile) userProfile.show_on_leaderboard = !nextVal;
+        } finally {
+            setIsUpdatingPrivacy(false);
+        }
+    };
     
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState(null); // { type: 'error' | 'success', text: string }
@@ -162,7 +191,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                 <div className="pso-section">
                     <span className="pso-section-title">Academic Privacy</span>
                     
-                    <div className="pso-card" onClick={() => setShowOnLeaderboard(!showOnLeaderboard)} style={{ cursor: 'pointer' }}>
+                    <div className="pso-card" onClick={handleToggleLeaderboard} style={{ cursor: isUpdatingPrivacy ? 'wait' : 'pointer' }}>
                         <div className="pso-card-info">
                             <div className="pso-icon-box" style={{ background: 'rgba(241, 196, 15, 0.1)', color: 'var(--linkoin-gold, #f1c40f)' }}>
                                 <i className="fas fa-trophy"></i>
@@ -171,7 +200,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                                 <h4>Campus Leaderboard Visibility</h4>
                                 <p>
                                     {showOnLeaderboard 
-                                        ? 'Your rank and brain score appear on the Observatory ladder'
+                                        ? 'Your rank and Mastery Rating appear on the Observatory ladder'
                                         : 'Hidden from the campus ladder and peer rankings'}
                                 </p>
                             </div>
