@@ -10,7 +10,6 @@ import GlobalSearchOverlay from './components/GlobalSearchOverlay.jsx';
 import DiscoveryScreen from './components/DiscoveryScreen.jsx';
 import SquadsFeed from './components/SquadsFeed.jsx';
 import MessagesFeed from './components/MessagesFeed.jsx';
-import ExploreTab from './components/ExploreTab.jsx';
 
 const Connect = () => {
     const { shell, user: userProfile, sessionUser: currentUser, unreadCount, routePayload, clearRoutePayload } = usePlatform();
@@ -46,9 +45,7 @@ const Connect = () => {
     const [targetMessageId, setTargetMessageId] = useState(null); // Deep link scroller
     const [privateInviteData, setPrivateInviteData] = useState(null);
     
-    // Featured Events & Html Rooms
-    const [featuredEvents, setFeaturedEvents] = useState([]);
-    const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
+
 
     const isSessionLive = (metadata) => {
         if (!metadata?.is_live) return false;
@@ -95,10 +92,7 @@ const Connect = () => {
                 }
             });
             clearRoutePayload();
-        } else if (routePayload.action === 'open_explore_item') {
-            setActiveView('explore');
-            // We intentionally do NOT clear the payload here. ForYouFeed will read it, scroll, and clear it.
-        }
+
     }, [routePayload, currentUser]);
 
     useEffect(() => {
@@ -187,7 +181,6 @@ const Connect = () => {
 
         fetchConversations();
         fetchSuggestedSquads();
-        fetchFeaturedEvents();
         fetchCampusClasses();
         
         // 1. Subscribe to Realtime Messages, Read Receipts, and Conversation updates
@@ -247,7 +240,7 @@ const Connect = () => {
     useEffect(() => {
         const handleSubSwipe = (e) => {
             const { direction } = e.detail;
-            const views = ['messages', 'squads', 'class', 'explore'];
+            const views = ['messages', 'squads', 'class'];
             const currentIndex = views.indexOf(activeView);
             
             // Intercept the global swipe if we can shift tabs internally
@@ -293,20 +286,7 @@ const Connect = () => {
         if (error) console.error("Error fetching classes:", error);
     };
 
-    const fetchFeaturedEvents = async () => {
-        const { data } = await supabase.rpc('get_featured_events');
-        if (data) setFeaturedEvents(data);
-    };
 
-    const handleFeaturedAction = (event) => {
-        if (event.action_type === 'html_room' && event.html_content) {
-            setActiveHtmlRoom(event.html_content);
-        } else if (event.action_type === 'external_link' && event.external_url) {
-            window.open(event.external_url, '_blank', 'noopener,noreferrer');
-        } else if (event.action_type === 'app_route' && event.app_route) {
-            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: event.app_route }));
-        }
-    };
 
 
 
@@ -541,10 +521,6 @@ const Connect = () => {
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-users-rectangle"></i></div>
                                 <span className="text-label">Class</span>
                             </div>
-                            <div className={`option ${activeView === 'explore' ? 'active' : ''}`} onClick={() => { setActiveView('explore'); setIsHeaderCollapsed(false); }}>
-                                <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-compass"></i></div>
-                                <span className="text-label">Explore</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -586,23 +562,16 @@ const Connect = () => {
                     formatTime={formatTime}
                 />
 
-                <ExploreTab 
-                    activeView={activeView} 
-                    featuredEvents={featuredEvents}
-                    handleFeaturedAction={handleFeaturedAction}
-                />
             </div>
             
             {/* Standard Connect FAB */}
-            {activeView !== 'explore' && (
-                <div 
-                    className="connect-fab" 
-                    style={{ background: 'var(--accent-teal)', color: '#0c0c0c' }}
-                    onClick={() => setShowDiscovery(true)}
-                >
-                    <i className="fas fa-comment-medical"></i>
-                </div>
-            )}
+            <div 
+                className="connect-fab" 
+                style={{ background: 'var(--accent-teal)', color: '#0c0c0c' }}
+                onClick={() => setShowDiscovery(true)}
+            >
+                <i className="fas fa-comment-medical"></i>
+            </div>
 
             {showDiscovery && (
                 <DiscoveryScreen 
@@ -696,26 +665,7 @@ const Connect = () => {
                 </div>
             )}
 
-            {/* Immersive Sandboxed HTML Room Override */}
-            {activeHtmlRoom && (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#0c0c0c', display: 'flex', flexDirection: 'column', animation: 'fadeInModal 0.3s ease-out' }}>
-                    <header style={{ padding: '0.8rem 1.2rem', background: '#0c0c0c', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center' }}>
-                        <button 
-                            onClick={() => setActiveHtmlRoom(null)} 
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer', padding: '5px' }}
-                        >
-                            <i className="fas fa-chevron-left"></i>
-                        </button>
-                        <span style={{ marginLeft: '1rem', fontSize: '0.9rem', color: '#888', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px' }}>Platform Activity</span>
-                    </header>
-                    <iframe 
-                        srcDoc={activeHtmlRoom} 
-                        sandbox="allow-scripts allow-forms" 
-                        style={{ flex: 1, width: '100%', border: 'none' }} 
-                        title="LinkUp Sandbox Environment"
-                    />
-                </div>
-            )}
+
         </div>
     );
 };
