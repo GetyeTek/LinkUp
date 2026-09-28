@@ -208,7 +208,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                     <button className="icon-button" onClick={handleCloseEditor} disabled={saving}>
                         <i className="fas fa-chevron-left"></i>
                     </button>
-                    <h2>Account & Registry</h2>
+                    <h2>Account Settings</h2>
                     <div style={{ width: '40px' }}></div>
                 </header>
                 
@@ -280,7 +280,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                             </div>
                         </div>
 
-                        <h3 className="section-title" style={{marginTop: '1.5rem'}}>Academic Registry</h3>
+                        <h3 className="section-title" style={{marginTop: '1.5rem'}}>Academic Information</h3>
                         <div className="input-group-sm">
                             <label>University</label>
                             <select className="wizard-select" style={{ marginTop: '0.5rem' }} value={editForm.university_id} onChange={e => setEditForm({...editForm, university_id: e.target.value})}>
