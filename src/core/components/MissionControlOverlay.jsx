@@ -225,7 +225,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
         <div className={`fullscreen-overlay ${isActive ? 'is-active' : ''}`} id="mission-overlay">
             <div className="overlay-content">
                 <header className="overlay-header">
-                    <h2 className="overlay-title">Mission Control</h2>
+                    <h2 className="overlay-title">Tasks & Rewards</h2>
                     <button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
                 </header>
                 <div className="overlay-inner-content">
