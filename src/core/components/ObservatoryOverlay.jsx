@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-core';
 import './ObservatoryOverlay.css';
 
-const AnimatedValue = ({ target, isActive }) => {
+const AnimatedValue = ({ target = 0, isActive }) => {
     const [val, setVal] = useState(0);
     useEffect(() => {
-        if (isActive) {
+        if (isActive && target > 0) {
             let start = 0;
-            const duration = 2000;
-            const stepTime = 20;
+            const duration = 1400;
+            const stepTime = 25;
             const steps = duration / stepTime;
             const increment = target / steps;
             const timer = setInterval(() => {
@@ -21,14 +22,42 @@ const AnimatedValue = ({ target, isActive }) => {
             }, stepTime);
             return () => clearInterval(timer);
         } else {
-            setVal(0);
+            setVal(target || 0);
         }
     }, [isActive, target]);
     return <span>{val}</span>;
 };
 
+const DIVISION_CONFIG = {
+    'Division I': { icon: 'fa-shield-halved', badgeClass: 'div-1', label: 'Division I', min: 3500 },
+    'Division II': { icon: 'fa-crown', badgeClass: 'div-2', label: 'Division II', min: 2500 },
+    'Division III': { icon: 'fa-medal', badgeClass: 'div-3', label: 'Division III', min: 1500 },
+    'Division IV': { icon: 'fa-award', badgeClass: 'div-4', label: 'Division IV', min: 600 },
+    'Division V': { icon: 'fa-seedling', badgeClass: 'div-5', label: 'Division V', min: 0 }
+};
+
 const ObservatoryOverlay = ({ isActive, onClose }) => {
+    const { sessionUser } = usePlatform();
+    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState(null);
     const starsRef = useRef(null);
+
+    useEffect(() => {
+        if (!isActive || !sessionUser?.id) return;
+        setLoading(true);
+
+        supabase.rpc('get_personal_observatory_data', { p_user_id: sessionUser.id })
+            .then(({ data: res, error }) => {
+                if (!error && res) {
+                    setData(res);
+                }
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error('[Observatory] Failed to load telemetry:', err);
+                setLoading(false);
+            });
+    }, [isActive, sessionUser?.id]);
 
     useEffect(() => {
         if (isActive && starsRef.current) {
@@ -44,7 +73,12 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
             const initStars = () => {
                 stars = [];
                 for (let i = 0; i < 150; i++) {
-                    stars.push({ x: Math.random() * width, y: Math.random() * height, r: Math.random() * 1.5, s: Math.random() * 0.5 + 0.1 });
+                    stars.push({ 
+                        x: Math.random() * width, 
+                        y: Math.random() * height, 
+                        r: Math.random() * 1.5, 
+                        s: Math.random() * 0.5 + 0.1 
+                    });
                 }
             };
 
@@ -55,7 +89,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                     s.y -= s.s;
                     if (s.y < 0) { s.y = height; s.x = Math.random() * width; }
                     ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-                    ctx.fillStyle = 'white'; ctx.fill();
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; ctx.fill();
                 });
                 requestAnimationFrame(animate);
             };
@@ -68,56 +102,161 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
         }
     }, [isActive]);
 
+    const activeDivKey = data?.division || 'Division V';
+    const divMeta = DIVISION_CONFIG[activeDivKey] || DIVISION_CONFIG['Division V'];
+    const heatmapCells = data?.heatmap || [];
+    const weeklyBars = data?.weekly_velocity || [];
+    const maxWeeklyHours = Math.max(...weeklyBars.map(b => b.hours || 0), 2.0);
+
     return (
         <div className={`fullscreen-overlay ${isActive ? 'is-active' : ''}`}>
             <canvas id="stars-bg" ref={starsRef}></canvas>
             <div className="overlay-content">
                 <header className="overlay-header">
-                    <h2 className="overlay-title">Observatory</h2>
+                    <h2 className="overlay-title">Personal Observatory</h2>
                     <button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
                 </header>
                 <div className="overlay-inner-content">
+                    {/* Top Stat Cards */}
                     <section className="dashboard-section fade-in-up" style={{ transitionDelay: '0.1s' }}>
                         <div className="dashboard-scroll-wrapper">
                             <div className="dashboard-track">
-                                <div className="dashboard-card brain-score-card">
+                                <div className="dashboard-card mr-score-card">
+                                    <div className="icon"><i className="fas fa-chart-line"></i></div>
+                                    <div>
+                                        <div className="value">
+                                            <AnimatedValue target={data?.mastery_rating || 0} isActive={isActive} />
+                                        </div>
+                                        <div className="label">Mastery Rating (MR)</div>
+                                    </div>
+                                </div>
+                                <div className="dashboard-card">
+                                    <div className="icon" style={{ color: '#ffab40' }}><i className="fas fa-fire"></i></div>
+                                    <div>
+                                        <div className="value">
+                                            <AnimatedValue target={data?.current_streak || 0} isActive={isActive} />
+                                        </div>
+                                        <div className="label">Day Streak</div>
+                                    </div>
+                                </div>
+                                <div className="dashboard-card">
                                     <div className="icon"><i className="fas fa-brain"></i></div>
-                                    <div><div className="value"><AnimatedValue target={850} isActive={isActive} /></div><div className="label">Brain Score</div></div>
-                                </div>
-                                <div className="dashboard-card">
-                                    <div className="icon"><i className="fas fa-fire"></i></div>
-                                    <div><div className="value"><AnimatedValue target={28} isActive={isActive} /></div><div className="label">Day Streak</div></div>
-                                </div>
-                                <div className="dashboard-card">
-                                    <div className="icon"><i className="fas fa-book"></i></div>
-                                    <div><div className="value"><AnimatedValue target={12} isActive={isActive} /></div><div className="label">Topics Mastered</div></div>
+                                    <div>
+                                        <div className="value">
+                                            <AnimatedValue target={data?.topics_mastered || 0} isActive={isActive} />
+                                        </div>
+                                        <div className="label">Topics Mastered</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </section>
-                    <section className="rank-showcase-card fade-in-up" style={{ transitionDelay: '0.2s' }}>
-                        <header className="showcase-header"><div className="crest-emblem"><i className="fas fa-dragon"></i></div><div className="rank-title">Bronze Lancer</div></header>
+
+                    {/* Division Standing & Crest */}
+                    <section className={`rank-showcase-card ${divMeta.badgeClass} fade-in-up`} style={{ transitionDelay: '0.2s' }}>
+                        <header className="showcase-header">
+                            <div className={`crest-emblem ${divMeta.badgeClass}`}>
+                                <i className={`fas ${divMeta.icon}`}></i>
+                            </div>
+                            <h3 className="rank-title">{divMeta.label}</h3>
+                            <p className="rank-standing-subtitle">
+                                Global Rank #{data?.my_standing?.rank || '--'} of {data?.my_standing?.total_scholars || '--'} Scholars
+                            </p>
+                        </header>
+
+                        {/* Global Top 10 Ladder */}
+                        <div className="ladder-header-bar">
+                            <span>Global Top 10</span>
+                            <span>Mastery Rating</span>
+                        </div>
                         <div className="ladder-list">
-                            <div className="player-row"><div className="player-rank">#421</div><img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100" alt="Avatar" className="player-avatar" /><div className="player-name">S. Chen</div></div>
-                            <div className="player-row is-user"><div className="player-rank">#422</div><img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100" alt="Avatar" className="player-avatar" /><div className="player-name">You</div></div>
-                            <div className="player-row"><div className="player-rank">#423</div><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" alt="Avatar" className="player-avatar" /><div className="player-name">M. Grant</div></div>
+                            {(data?.leaderboard || []).map((player) => (
+                                <div 
+                                    key={player.id} 
+                                    className={`player-row ${player.is_user ? 'is-user' : ''} ${player.rank <= 3 ? `top-${player.rank}` : ''}`}
+                                >
+                                    <div className="player-rank">
+                                        {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : `#${player.rank}`}
+                                    </div>
+                                    <img 
+                                        src={player.avatar_url || getAvatarFallback(player.name)} 
+                                        alt={player.name} 
+                                        className="player-avatar" 
+                                    />
+                                    <div className="player-details-col">
+                                        <span className="player-name">{player.is_user ? 'You' : player.name}</span>
+                                        <span className={`player-div-tag ${DIVISION_CONFIG[player.division]?.badgeClass || 'div-5'}`}>
+                                            {player.division}
+                                        </span>
+                                    </div>
+                                    <div className="player-score-tag">{player.mastery_rating} MR</div>
+                                </div>
+                            ))}
+
+                            {/* User standing pin if outside top 10 */}
+                            {data?.my_standing && !data.my_standing.is_top10 && (
+                                <>
+                                    <div className="ladder-divider-dots">• • •</div>
+                                    <div className="player-row is-user pinned-user-row">
+                                        <div className="player-rank">#{data.my_standing.rank}</div>
+                                        <img 
+                                            src={data.my_standing.avatar_url || getAvatarFallback(data.my_standing.name)} 
+                                            alt="You" 
+                                            className="player-avatar" 
+                                        />
+                                        <div className="player-details-col">
+                                            <span className="player-name">You</span>
+                                            <span className={`player-div-tag ${divMeta.badgeClass}`}>
+                                                {data.my_standing.division}
+                                            </span>
+                                        </div>
+                                        <div className="player-score-tag">{data.my_standing.mastery_rating} MR</div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </section>
+
+                    {/* Analytics Suite (Real 49-Day Heatmap & Weekly Bars) */}
                     <section className="analytics-suite fade-in-up" style={{ transitionDelay: '0.3s' }}>
-                        <h2 className="section-title"><span>Analytics Suite</span></h2>
+                        <h2 className="section-title"><span>Study Analytics</span></h2>
                         <div className="analytics-grid">
                             <div>
-                                <h3 className="analytics-card-title">Commitment</h3>
+                                <h3 className="analytics-card-title">49-Day Commitment Grid</h3>
                                 <div className="heatmap-grid">
-                                    {[...Array(49)].map((_, i) => <div key={i} className={`heatmap-cell ${Math.random() > 0.7 ? 'level-3' : ''}`}></div>)}
+                                    {heatmapCells.map((cell, i) => (
+                                        <div 
+                                            key={i} 
+                                            className={`heatmap-cell level-${cell.level}`}
+                                            title={`${cell.date}: ${Math.round((cell.active_seconds || 0) / 60)} mins (${cell.interactions || 0} actions)`}
+                                        ></div>
+                                    ))}
+                                </div>
+                                <div className="heatmap-legend">
+                                    <span>Less</span>
+                                    <span className="legend-cell level-0"></span>
+                                    <span className="legend-cell level-1"></span>
+                                    <span className="legend-cell level-2"></span>
+                                    <span className="legend-cell level-3"></span>
+                                    <span>More</span>
                                 </div>
                             </div>
                             <div>
-                                <h3 className="analytics-card-title">Weekly Activity</h3>
+                                <h3 className="analytics-card-title">Weekly Study Velocity</h3>
                                 <div className="chart-bars">
-                                    <div className="bar-group"><div className="bar" style={{ height: '40%' }}></div><span className="bar-label">M</span></div>
-                                    <div className="bar-group"><div className="bar" style={{ height: '75%' }}></div><span className="bar-label">T</span></div>
-                                    <div className="bar-group"><div className="bar" style={{ height: '60%' }}></div><span className="bar-label">W</span></div>
+                                    {weeklyBars.map((b, i) => {
+                                        const pct = Math.min(100, Math.max(8, (b.hours / maxWeeklyHours) * 100));
+                                        return (
+                                            <div key={i} className={`bar-group ${b.is_today ? 'is-today' : ''}`}>
+                                                <div 
+                                                    className="bar" 
+                                                    style={{ height: `${pct}%` }}
+                                                    title={`${b.hours} hrs on ${b.day}`}
+                                                ></div>
+                                                <span className="bar-label">{b.day}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
