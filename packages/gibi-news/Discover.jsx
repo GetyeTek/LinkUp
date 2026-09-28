@@ -1,16 +1,37 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
 import { fetchLiveNewsFeed } from './api.js';
 import TelegramCard from './components/TelegramCard.jsx';
+import QAComposerModal from '@linkup/squad/components/QAComposerModal.jsx';
+import ReplyFullScreen from '@linkup/squad/components/ReplyFullScreen.jsx';
 import './Discover.css';
 
+const timeAgo = (isoString) => {
+    if (!isoString) return '';
+    const diff = Math.floor((new Date() - new Date(isoString)) / 60000);
+    if (diff < 60) return `${diff}m ago`;
+    const hrs = Math.floor(diff / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+};
+
 const Discover = () => {
-    const { shell, user, unreadCount } = usePlatform();
+    const { shell, user, sessionUser: currentUser, unreadCount, routePayload, clearRoutePayload } = usePlatform();
     const onOpenActivity = shell.openActivity;
     
     const [liveNews, setLiveNews] = useState([]);
     const [newsLoading, setNewsLoading] = useState(true);
     
+    // Explore Data States
+    const [liveSessions, setLiveSessions] = useState([]);
+    const [featuredEvents, setFeaturedEvents] = useState([]);
+    const [peerQuestions, setPeerQuestions] = useState([]);
+    const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
+    const [replyTarget, setReplyTarget] = useState(null);
+    const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+    const [joiningSquadId, setJoiningSquadId] = useState(null);
+    const [toastNotice, setToastNotice] = useState(null);
+
     // Pagination Engine States
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
