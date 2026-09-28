@@ -149,7 +149,9 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                             </div>
                             <h3 className="rank-title">{divMeta.label}</h3>
                             <p className="rank-standing-subtitle">
-                                Global Rank #{data?.my_standing?.rank || '--'} of {data?.my_standing?.total_scholars || '--'} Students
+                                {data?.my_standing?.is_hidden 
+                                    ? 'Global Rank: Hidden (Private)' 
+                                    : `Global Rank #${data?.my_standing?.rank || '--'} of ${data?.my_standing?.total_scholars || '--'} Students`}
                             </p>
                         </header>
 
@@ -187,14 +189,16 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                 <>
                                     <div className="ladder-divider-dots">• • •</div>
                                     <div className="player-row is-user pinned-user-row">
-                                        <div className="player-rank">#{data.my_standing.rank}</div>
+                                        <div className="player-rank">{data.my_standing.is_hidden ? '—' : `#${data.my_standing.rank}`}</div>
                                         <img 
                                             src={data.my_standing.avatar_url || getAvatarFallback(data.my_standing.name)} 
                                             alt="You" 
                                             className="player-avatar" 
                                         />
                                         <div className="player-details-col">
-                                            <span className="player-name">You</span>
+                                            <span className="player-name">
+                                                You {data.my_standing.is_hidden && <span style={{ fontSize: '0.72rem', color: '#ffab40', fontWeight: 'normal' }}>(Unlisted)</span>}
+                                            </span>
                                             <span className={`player-div-tag ${divMeta.badgeClass}`}>
                                                 {data.my_standing.division}
                                             </span>
