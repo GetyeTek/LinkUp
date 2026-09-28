@@ -7,8 +7,62 @@
 .profile-avatar-large { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-teal); box-shadow: 0 0 20px rgba(66, 215, 184, 0.4); }
 .user-info { flex-grow: 1; }
 .profile-name { font-size: 1.5rem; font-weight: 700; }
-.profile-level { font-size: 0.9rem; color: var(--text-secondary-dark); }
-.linkoin-balance-hero { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; background: rgba(30,30,30,0.7); backdrop-filter: blur(5px); border-radius: 99px; padding: 0.25rem 0.75rem; font-size: 0.8rem; width: fit-content; border: 1px solid var(--border-color); }
+.profile-division-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    margin-top: 4px;
+    width: fit-content;
+    border: 1px solid transparent;
+}
+.profile-division-pill.div-badge-1 {
+    background: rgba(66, 215, 184, 0.15);
+    color: var(--accent-teal);
+    border-color: rgba(66, 215, 184, 0.4);
+    box-shadow: 0 0 12px rgba(66, 215, 184, 0.25);
+}
+.profile-division-pill.div-badge-2 {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+    border-color: rgba(241, 196, 15, 0.4);
+}
+.profile-division-pill.div-badge-3 {
+    background: rgba(203, 213, 225, 0.15);
+    color: #cbd5e1;
+    border-color: rgba(203, 213, 225, 0.3);
+}
+.profile-division-pill.div-badge-4 {
+    background: rgba(234, 88, 12, 0.15);
+    color: #ea580c;
+    border-color: rgba(234, 88, 12, 0.3);
+}
+.profile-division-pill.div-badge-5 {
+    background: rgba(255, 255, 255, 0.08);
+    color: #aaa;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.linkoin-balance-hero { 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 0.5rem; 
+    margin-top: 0.5rem; 
+    background: rgba(22, 22, 26, 0.85); 
+    backdrop-filter: blur(8px); 
+    border-radius: 99px; 
+    padding: 0.3rem 0.85rem; 
+    font-size: 0.8rem; 
+    font-weight: 600;
+    width: fit-content; 
+    border: 1px solid var(--border-color); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
 .linkoin-balance-hero .linkoin-icon-sm { color: var(--linkoin-gold); }
 .portal-cards-container { display: flex; flex-direction: column; gap: 1.5rem; }
 .portal-card { display: flex; align-items: center; gap: 1.5rem; background: rgba(30, 30, 30, 0.6); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: 20px; padding: 1.25rem; cursor: pointer; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transition: transform 0.3s ease, box-shadow 0.3s ease; }
