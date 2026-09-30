@@ -11,6 +11,8 @@ import UpdatePasswordGate from './components/UpdatePasswordGate.jsx';
 import MironChat from './MironChat.jsx';
 import MironLiveSession from './components/MironLiveSession.jsx';
 import BottomNavigation from './components/BottomNavigation.jsx';
+import PremiumUpgradeOverlay from './components/PremiumUpgradeOverlay.jsx';
+import SupportAboutOverlay from './components/SupportAboutOverlay.jsx';
 import { useGlobalSwipe, telemetry, syncDeviceSession, heartbeatDeviceLease, claimDeviceLease, getDeviceId } from '@linkup-platform/sdk-core';
 
 const Discover = lazy(() => import('@linkup/gibi-news'));
@@ -394,7 +396,22 @@ const App = () => {
   }, [session]);
 
   const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [mironContext, setMironContext] = useState(null); // null means closed, object holds selection context
+
+  useEffect(() => {
+    const handleOpenPremium = () => setIsPremiumOpen(true);
+    const handleOpenSupport = () => setIsSupportOpen(true);
+
+    window.addEventListener('open-premium-modal', handleOpenPremium);
+    window.addEventListener('open-support-modal', handleOpenSupport);
+
+    return () => {
+      window.removeEventListener('open-premium-modal', handleOpenPremium);
+      window.removeEventListener('open-support-modal', handleOpenSupport);
+    };
+  }, []);
 
   useEffect(() => {
     const handleGlobalMironRequest = (e) => {
@@ -597,6 +614,8 @@ const App = () => {
         {renderContent()}
       </main>
       {isActivityOpen && <ActivityHub onClose={() => setIsActivityOpen(false)} />}
+      {isPremiumOpen && <PremiumUpgradeOverlay isActive={isPremiumOpen} onClose={() => setIsPremiumOpen(false)} />}
+      {isSupportOpen && <SupportAboutOverlay isActive={isSupportOpen} onClose={() => setIsSupportOpen(false)} />}
                                   {mironContext && (
                       <MironChat 
                         initialContext={mironContext.text} 
