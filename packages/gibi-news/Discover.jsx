@@ -1,46 +1,156 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase, usePlatform, getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import { fetchLiveNewsFeed } from './api.js';
 import TelegramCard from './components/TelegramCard.jsx';
-import QAComposerModal from '@linkup/squad/components/QAComposerModal.jsx';
-import ReplyFullScreen from '@linkup/squad/components/ReplyFullScreen.jsx';
+import AnnouncementCard from './components/AnnouncementCard.jsx';
 import './Discover.css';
 
-const timeAgo = (isoString) => {
-    if (!isoString) return '';
-    const diff = Math.floor((new Date() - new Date(isoString)) / 60000);
-    if (diff < 60) return `${diff}m ago`;
-    const hrs = Math.floor(diff / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
-};
-
 const Discover = () => {
-    const { shell, user, sessionUser: currentUser, unreadCount, routePayload, clearRoutePayload } = usePlatform();
+    const { shell, user, unreadCount, routePayload, clearRoutePayload } = usePlatform();
     const onOpenActivity = shell.openActivity;
     
     const [liveNews, setLiveNews] = useState([]);
-    const [newsLoading, setNewsLoading] = useState(true);
-    
-    // Explore Data States
-    const [liveSessions, setLiveSessions] = useState([]);
     const [featuredEvents, setFeaturedEvents] = useState([]);
-    const [peerQuestions, setPeerQuestions] = useState([]);
     const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
-    const [replyTarget, setReplyTarget] = useState(null);
-    const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
-    const [joiningSquadId, setJoiningSquadId] = useState(null);
-    const [toastNotice, setToastNotice] = useState(null);
+    const [newsLoading, setNewsLoading] = useState(true);
 
     // Pagination Engine States
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
 
+    // 1. Fetch Featured Announcements (Weighted)
+    const fetchAnnouncements = useCallback(async () => {
+        try {
+            const { data, error } = await supabase.rpc('get_featured_events');
+            if (!error && data) {
+                setFeaturedEvents(data);
+            }
+        } catch (err) {
+            console.warn('[Discover] Failed to fetch featured announcements:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchAnnouncements();
+    }, [fetchAnnouncements]);
+
+    // 2. Fetch Paginated Telegram News Feed
+    useEffect(() => {
+        let isMounted = true;
+        const loadNews = async () => {
+            if (page === 0) setNewsLoading(true);
+            else setIsFetchingMore(true);
+
+            try {
+                const data = await fetchLiveNewsFeed(page, 15);
+                if (!isMounted) return;
+
+                if (data.news && data.news.length > 0) {
+                    setLiveNews(prev => {
+                        const existingIds = new Set(prev.map(p => p.id));
+                        const newItems = data.news.filter(p => !existingIds.has(p.id));
+                        return page === 0 ? data.news : [...prev, ...newItems];
+                    });
+                    if (data.news.length < 15) setHasMore(false);
+                } else {
+                    setHasMore(false);
+                }
+            } catch (err) {
+                console.error('[Discover] Failed to load live feed:', err);
+            } finally {
+                if (isMounted) {
+                    setNewsLoading(false);
+                    setIsFetchingMore(false);
+                }
+            }
+        };
+        loadNews();
+        
+        return () => { isMounted = false; };
+    }, [page]);
+
+    // 3. Algorithmic Feed Interleaver based on Weight Metrics
+    const unifiedFeed = useMemo(() => {
+        if (!featuredEvents || featuredEvents.length === 0) {
+            return liveNews.map(n => ({ type: 'news', data: n, id: `feed-item-${n.id}` }));
+        }
+
+        // Tiers:
+        // > 80: High priority (top of the feed)
+        // 50 - 80: Middle priority (middle of the feed)
+        // 30 - 49: Low priority
+        // 1 - 29: Lowest priority
+        const tierHigh = featuredEvents.filter(e => (e.weight ?? 10) > 80);
+        const tierMid = featuredEvents.filter(e => (e.weight ?? 10) >= 50 && (e.weight ?? 10) <= 80);
+        const tierLow = featuredEvents.filter(e => (e.weight ?? 10) >= 30 && (e.weight ?? 10) < 50);
+        const tierLowest = featuredEvents.filter(e => (e.weight ?? 10) < 30);
+
+        const result = [];
+        let newsIdx = 0;
+
+        // 1. High priority items at the very top (index 0)
+        tierHigh.forEach(e => result.push({ type: 'announcement', data: e, id: `feed-item-${e.id}` }));
+
+        const pushNewsUntil = (count) => {
+            while (newsIdx < count && newsIdx < liveNews.length) {
+                result.push({ type: 'news', data: liveNews[newsIdx], id: `feed-item-${liveNews[newsIdx].id}` });
+                newsIdx++;
+            }
+        };
+
+        // 2. First 3 news posts
+        pushNewsUntil(3);
+
+        // 3. Middle priority items (weight 50 - 80)
+        tierMid.forEach(e => result.push({ type: 'announcement', data: e, id: `feed-item-${e.id}` }));
+
+        // 4. Next news posts up to 7
+        pushNewsUntil(7);
+
+        // 5. Low priority items (weight 30 - 49)
+        tierLow.forEach(e => result.push({ type: 'announcement', data: e, id: `feed-item-${e.id}` }));
+
+        // 6. Next news posts up to 12
+        pushNewsUntil(12);
+
+        // 7. Lowest priority items (weight 1 - 29)
+        tierLowest.forEach(e => result.push({ type: 'announcement', data: e, id: `feed-item-${e.id}` }));
+
+        // 8. Remainder of news
+        while (newsIdx < liveNews.length) {
+            result.push({ type: 'news', data: liveNews[newsIdx], id: `feed-item-${liveNews[newsIdx].id}` });
+            newsIdx++;
+        }
+
+        return result;
+    }, [liveNews, featuredEvents]);
+
+    // 4. Deep Link Resolver from Home tab or External routes
+    useEffect(() => {
+        if (routePayload?.action === 'open_explore_item') {
+            const targetId = routePayload.target_id;
+            if (targetId) {
+                setTimeout(() => {
+                    const el = document.getElementById(`feed-item-${targetId}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.add('highlight-feed-item');
+                        setTimeout(() => el.classList.remove('highlight-feed-item'), 2600);
+                    }
+                    clearRoutePayload?.();
+                }, 300);
+            } else {
+                clearRoutePayload?.();
+            }
+        }
+    }, [routePayload, clearRoutePayload, unifiedFeed]);
+
     const handleRefresh = async () => {
         setNewsLoading(true);
         setHasMore(true);
         try {
+            await fetchAnnouncements();
             const data = await fetchLiveNewsFeed(0, 15);
             if (data.news && data.news.length > 0) {
                 setLiveNews(data.news);
@@ -50,10 +160,20 @@ const Discover = () => {
                 setHasMore(false);
             }
         } catch (err) {
-            console.error("Failed to refresh feed:", err);
+            console.error('[Discover] Failed to refresh feed:', err);
         } finally {
             setNewsLoading(false);
             if (page !== 0) setPage(0);
+        }
+    };
+
+    const handleAnnouncementAction = (event) => {
+        if (event.action_type === 'html_room' && event.html_content) {
+            setActiveHtmlRoom(event.html_content);
+        } else if (event.action_type === 'external_link' && event.external_url) {
+            window.open(event.external_url, '_blank', 'noopener,noreferrer');
+        } else if (event.action_type === 'app_route' && event.app_route) {
+            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: event.app_route }));
         }
     };
 
@@ -71,42 +191,6 @@ const Discover = () => {
         
         if (node) observer.current.observe(node);
     }, [newsLoading, isFetchingMore, hasMore]);
-
-    useEffect(() => {
-        let isMounted = true;
-        const loadNews = async () => {
-            if (page === 0) setNewsLoading(true);
-            else setIsFetchingMore(true);
-
-            try {
-                const data = await fetchLiveNewsFeed(page, 15);
-                if (!isMounted) return;
-
-                if (data.news && data.news.length > 0) {
-                    setLiveNews(prev => {
-                        // Safe deduplication to prevent React key collision on rapid scrolling
-                        const existingIds = new Set(prev.map(p => p.id));
-                        const newItems = data.news.filter(p => !existingIds.has(p.id));
-                        return page === 0 ? data.news : [...prev, ...newItems];
-                    });
-                    // If we received fewer than 15 items, the database is exhausted
-                    if (data.news.length < 15) setHasMore(false);
-                } else {
-                    setHasMore(false);
-                }
-            } catch (err) {
-                console.error("Failed to load live feed:", err);
-            } finally {
-                if (isMounted) {
-                    setNewsLoading(false);
-                    setIsFetchingMore(false);
-                }
-            }
-        };
-        loadNews();
-        
-        return () => { isMounted = false; };
-    }, [page]);
 
     return (
         <div className="tab-content active" id="discover-content">
@@ -128,24 +212,36 @@ const Discover = () => {
             </header>
 
             <div className="feed-container">
-                {/* LIVE SCRAPED TELEGRAM FEED INJECTION */}
                 {newsLoading ? (
                     <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent-teal)' }}>
                         <i className="fas fa-circle-notch fa-spin fa-2x"></i>
                     </div>
                 ) : (
-                    liveNews.length > 0 ? (
+                    unifiedFeed.length > 0 ? (
                         <>
-                            {liveNews.map((post, index) => {
-                                // Attach the invisible tripwire to the absolute last item in the array
-                                if (liveNews.length === index + 1) {
+                            {unifiedFeed.map((item, index) => {
+                                const isLast = unifiedFeed.length === index + 1;
+                                const content = item.type === 'announcement' ? (
+                                    <AnnouncementCard 
+                                        key={item.id} 
+                                        event={item.data} 
+                                        onAction={handleAnnouncementAction} 
+                                    />
+                                ) : (
+                                    <TelegramCard 
+                                        key={item.id} 
+                                        post={item.data} 
+                                    />
+                                );
+
+                                if (isLast) {
                                     return (
-                                        <div key={post.id} ref={lastElementRef}>
-                                            <TelegramCard post={post} />
+                                        <div key={item.id} ref={lastElementRef}>
+                                            {content}
                                         </div>
                                     );
                                 }
-                                return <TelegramCard key={post.id} post={post} />;
+                                return content;
                             })}
                             
                             {isFetchingMore && (
@@ -194,6 +290,24 @@ const Discover = () => {
                     )
                 )}
             </div>
+
+            {/* Embedded HTML Room Sandbox Modal */}
+            {activeHtmlRoom && (
+                <div className="sandbox-modal-overlay">
+                    <header className="sandbox-modal-header">
+                        <button className="icon-button" onClick={() => setActiveHtmlRoom(null)}>
+                            <i className="fas fa-chevron-left"></i>
+                        </button>
+                        <span className="sandbox-modal-title">Campus Announcement</span>
+                    </header>
+                    <iframe
+                        srcDoc={activeHtmlRoom}
+                        sandbox="allow-scripts allow-forms"
+                        className="sandbox-iframe"
+                        title="Announcement Detail"
+                    />
+                </div>
+            )}
         </div>
     );
 };
