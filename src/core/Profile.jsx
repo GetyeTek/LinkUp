@@ -8,10 +8,11 @@ import PrivacySecurityOverlay from './components/PrivacySecurityOverlay.jsx';
 import './Profile.css';
 
 import AppearanceOverlay from './components/AppearanceOverlay.jsx';
+import SupportAboutOverlay from './components/SupportAboutOverlay.jsx';
 
 const Profile = () => {
     const { user: userProfile, sessionUser, theme, language, t } = usePlatform();
-    const [overlays, setOverlays] = useState({ observatory: false, mission: false, premium: false, privacy: false, appearance: false });
+    const [overlays, setOverlays] = useState({ observatory: false, mission: false, premium: false, privacy: false, appearance: false, support: false });
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     
     const handleLogout = async () => {
@@ -176,9 +177,9 @@ const Profile = () => {
                                 </span>
                                 <i className="fas fa-chevron-right list-item-chevron"></i>
                             </a>
-                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('privacy', true); }}><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">Privacy & Security</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
-                            <a href="#" className="list-item"><i className="fas fa-info-circle list-item-icon"></i><span className="list-item-text">Support & About</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
-                            <a href="#" className="list-item" onClick={handleLogout} style={{ color: '#ff4757' }}><i className="fas fa-sign-out-alt list-item-icon" style={{ color: '#ff4757' }}></i><span className="list-item-text">Log Out</span></a>
+                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('privacy', true); }}><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">{t('privacy_security', 'Privacy & Security')}</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
+                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('support', true); }}><i className="fas fa-info-circle list-item-icon"></i><span className="list-item-text">{t('support_about', 'Support & About')}</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
+                            <a href="#" className="list-item" onClick={handleLogout} style={{ color: '#ff4757' }}><i className="fas fa-sign-out-alt list-item-icon" style={{ color: '#ff4757' }}></i><span className="list-item-text">{t('logout', 'Log Out')}</span></a>
                         </div>
                     </div>
                 </div>
@@ -198,6 +199,7 @@ const Profile = () => {
             <PremiumUpgradeOverlay isActive={overlays.premium} onClose={() => toggleOverlay('premium', false)} />
             <PrivacySecurityOverlay isActive={overlays.privacy} onClose={() => toggleOverlay('privacy', false)} />
             <AppearanceOverlay isActive={overlays.appearance} onClose={() => toggleOverlay('appearance', false)} />
+            <SupportAboutOverlay isActive={overlays.support} onClose={() => toggleOverlay('support', false)} />
         </div>
     );
 };
