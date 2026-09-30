@@ -7,6 +7,8 @@ export { logQuestionAttempt } from './tracking.js';
 export { telemetry } from './telemetry.js';
 export { GoldBadge } from './components/GoldBadge.jsx';
 export * from './deviceSession.js';
+import translations from './translations.json';
+export { translations };
 
 export const getAvatarFallback = (name) => {
     if (!name || name === 'Deleted Account' || name === 'Unknown User') {
