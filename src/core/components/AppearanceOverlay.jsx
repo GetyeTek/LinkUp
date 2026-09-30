@@ -66,12 +66,11 @@ const AppearanceOverlay = ({ isActive, onClose }) => {
                             onClick={() => changeLanguage('en')}
                         >
                             <div className="ao-card-info">
-                                <div className="ao-icon-box" style={{ fontSize: '1.4rem' }}>
+                                <div className="ao-icon-box" style={{ fontSize: '1.3rem' }}>
                                     <span>🇺🇸</span>
                                 </div>
                                 <div className="ao-text-group">
-                                    <h4>{t('lang_english', 'English')}</h4>
-                                    <p>{t('lang_english_desc', 'United States / International')}</p>
+                                    <h4>English</h4>
                                 </div>
                             </div>
                             <div className="ao-indicator"></div>
@@ -82,12 +81,11 @@ const AppearanceOverlay = ({ isActive, onClose }) => {
                             onClick={() => changeLanguage('am')}
                         >
                             <div className="ao-card-info">
-                                <div className="ao-icon-box" style={{ fontSize: '1.4rem' }}>
+                                <div className="ao-icon-box" style={{ fontSize: '1.3rem' }}>
                                     <span>🇪🇹</span>
                                 </div>
                                 <div className="ao-text-group">
-                                    <h4>{t('lang_amharic', 'አማርኛ')}</h4>
-                                    <p>{t('lang_amharic_desc', 'የኢትዮጵያ ፌዴራላዊ የስራ ቋንቋ')}</p>
+                                    <h4>አማርኛ</h4>
                                 </div>
                             </div>
                             <div className="ao-indicator"></div>
