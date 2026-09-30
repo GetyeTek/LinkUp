@@ -70,54 +70,78 @@ const Discover = () => {
         return () => { isMounted = false; };
     }, [page]);
 
-    // 3. Algorithmic Feed Interleaver based on Weight Metrics
+    // 3. Algorithmic Feed Interleaver with Anti-Clumping & Tier Randomization
     const unifiedFeed = useMemo(() => {
         if (!featuredEvents || featuredEvents.length === 0) {
             return liveNews.map(n => ({ type: 'news', data: n, id: `feed-item-${n.id}` }));
         }
 
-        // Tiers:
-        // > 80: High priority (top of the feed)
-        // 50 - 80: Middle priority (middle of the feed)
-        // 30 - 49: Low priority
-        // 1 - 29: Lowest priority
-        const tierHigh = featuredEvents.filter(e => (e.weight ?? 10) > 80);
-        const tierMid = featuredEvents.filter(e => (e.weight ?? 10) >= 50 && (e.weight ?? 10) <= 80);
-        const tierLow = featuredEvents.filter(e => (e.weight ?? 10) >= 30 && (e.weight ?? 10) < 50);
-        const tierLowest = featuredEvents.filter(e => (e.weight ?? 10) < 30);
+        // Shuffle helper: Randomizes posts within the same tier/weight
+        const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+
+        // Filter and shuffle each priority tier
+        const tierHigh = shuffle(featuredEvents.filter(e => (e.weight ?? 10) > 80));
+        const tierMid = shuffle(featuredEvents.filter(e => (e.weight ?? 10) >= 50 && (e.weight ?? 10) <= 80));
+        const tierLow = shuffle(featuredEvents.filter(e => (e.weight ?? 10) >= 30 && (e.weight ?? 10) < 50));
+        const tierLowest = shuffle(featuredEvents.filter(e => (e.weight ?? 10) < 30));
 
         const result = [];
         let newsIdx = 0;
 
-        // 1. High priority items at the very top (index 0)
-        tierHigh.forEach(e => result.push({ type: 'announcement', data: e, id: `feed-item-${e.id}` }));
-
-        const pushNewsUntil = (count) => {
-            while (newsIdx < count && newsIdx < liveNews.length) {
+        // Pushes news items up to a specific index
+        const pushNewsUntil = (targetCount) => {
+            while (newsIdx < targetCount && newsIdx < liveNews.length) {
                 result.push({ type: 'news', data: liveNews[newsIdx], id: `feed-item-${liveNews[newsIdx].id}` });
                 newsIdx++;
             }
         };
 
-        // 2. First 3 news posts
-        pushNewsUntil(3);
+        // Anti-Clumping Helper: Never allows two announcement cards back-to-back
+        const pushAnnouncement = (event) => {
+            if (result.length > 0 && result[result.length - 1].type === 'announcement' && newsIdx < liveNews.length) {
+                result.push({ type: 'news', data: liveNews[newsIdx], id: `feed-item-${liveNews[newsIdx].id}` });
+                newsIdx++;
+            }
+            result.push({ type: 'announcement', data: event, id: `feed-item-${event.id}` });
+        };
 
-        // 3. Middle priority items (weight 50 - 80)
-        tierMid.forEach(e => result.push({ type: 'announcement', data: e, id: `feed-item-${e.id}` }));
+        // 1. High Priority (> 80): First item at slot 0; remaining high items spaced by news
+        if (tierHigh.length > 0) {
+            pushAnnouncement(tierHigh.shift());
+        }
+        while (tierHigh.length > 0) {
+            pushNewsUntil(newsIdx + 2);
+            pushAnnouncement(tierHigh.shift());
+        }
 
-        // 4. Next news posts up to 7
-        pushNewsUntil(7);
+        // 2. Advance to News post #3
+        pushNewsUntil(Math.max(newsIdx, 3));
 
-        // 5. Low priority items (weight 30 - 49)
-        tierLow.forEach(e => result.push({ type: 'announcement', data: e, id: `feed-item-${e.id}` }));
+        // 3. Middle Priority (50 - 80): Spaced out by at least 2 news items
+        while (tierMid.length > 0) {
+            pushAnnouncement(tierMid.shift());
+            if (tierMid.length > 0) pushNewsUntil(newsIdx + 2);
+        }
 
-        // 6. Next news posts up to 12
-        pushNewsUntil(12);
+        // 4. Advance to News post #7
+        pushNewsUntil(Math.max(newsIdx, 7));
 
-        // 7. Lowest priority items (weight 1 - 29)
-        tierLowest.forEach(e => result.push({ type: 'announcement', data: e, id: `feed-item-${e.id}` }));
+        // 5. Low Priority (30 - 49): Spaced out by at least 2 news items
+        while (tierLow.length > 0) {
+            pushAnnouncement(tierLow.shift());
+            if (tierLow.length > 0) pushNewsUntil(newsIdx + 2);
+        }
 
-        // 8. Remainder of news
+        // 6. Advance to News post #11
+        pushNewsUntil(Math.max(newsIdx, 11));
+
+        // 7. Lowest Priority (< 30): Spaced out so they never flood together
+        while (tierLowest.length > 0) {
+            pushAnnouncement(tierLowest.shift());
+            if (tierLowest.length > 0) pushNewsUntil(newsIdx + 2);
+        }
+
+        // 8. Append remaining news items
         while (newsIdx < liveNews.length) {
             result.push({ type: 'news', data: liveNews[newsIdx], id: `feed-item-${liveNews[newsIdx].id}` });
             newsIdx++;
