@@ -9,6 +9,7 @@ export { GoldBadge } from './components/GoldBadge.jsx';
 export * from './deviceSession.js';
 import translations from './translations.json';
 export { translations };
+export const MIRON_AVATAR_URL = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
 export const getAvatarFallback = (name) => {
     if (!name || name === 'Deleted Account' || name === 'Unknown User') {
