@@ -4,5 +4,57 @@
 .discover-title { font-family: 'Newsreader', serif; font-size: 2rem; font-weight: 500; line-height: 1; background: linear-gradient(45deg, var(--text-primary-dark) 60%, var(--accent-teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 #discover-header .header-actions { display: flex; align-items: center; gap: 1rem; }
 #discover-header .profile-avatar { width: 36px; height: 36px; }
-.feed-container { height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem; padding-bottom: 6rem; }
+.feed-container { height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem; padding-bottom: 6rem; scroll-behavior: smooth; }
+
+/* Deep Link Glow Pulse */
+@keyframes feedCardHighlight {
+    0% { transform: scale(1); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+    20% { transform: scale(1.02); box-shadow: 0 0 30px rgba(66, 215, 184, 0.6); border-color: var(--accent-teal); }
+    100% { transform: scale(1); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+}
+
+.highlight-feed-item {
+    animation: feedCardHighlight 2.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    z-index: 10;
+}
+
+/* Embedded Sandbox Reader Modal */
+.sandbox-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #0c0c0c;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.sandbox-modal-header {
+    padding: 0.8rem 1.2rem;
+    background: #0c0c0c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sandbox-modal-title {
+    font-size: 0.9rem;
+    color: #aaa;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.sandbox-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #0c0c0c;
+}
 .feed-slide { height: 450px; width: 100%; flex-shrink: 0; position: relative; }
