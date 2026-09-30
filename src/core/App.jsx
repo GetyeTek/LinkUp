@@ -111,7 +111,7 @@ const App = () => {
               am: {
                   nav_home: "ዋና ገጽ", nav_discover: "አግኝ", nav_study: "አጥና", nav_connect: "ተገናኝ", nav_profile: "መገለጫ",
                   settings_title: "ቅንብሮች", account_settings: "የመለያ ቅንብሮች", appearance: "ገጽታ እና ቋንቋ",
-                  theme_dark: "ጨለማ ሁነታ", theme_light: "ብርሃን ሁነታ", language: "የመተግበሪያ ቋንቋ",
+                  theme_dark: "ጨለማ ሁነታ", theme_light: "ብርሃን ሁነታ", language: "ቋንቋ",
                   lang_english: "English", lang_amharic: "አማርኛ", privacy_security: "ግላዊነት እና ደህንነት",
                   support_about: "ድጋፍ እና ስለ እኛ", logout: "ውጣ"
               }
