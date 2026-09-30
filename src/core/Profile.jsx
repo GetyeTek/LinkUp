@@ -8,11 +8,9 @@ import PrivacySecurityOverlay from './components/PrivacySecurityOverlay.jsx';
 import './Profile.css';
 
 import AppearanceOverlay from './components/AppearanceOverlay.jsx';
-import SupportAboutOverlay from './components/SupportAboutOverlay.jsx';
-
 const Profile = () => {
     const { user: userProfile, sessionUser, theme, language, t } = usePlatform();
-    const [overlays, setOverlays] = useState({ observatory: false, mission: false, premium: false, privacy: false, appearance: false, support: false });
+    const [overlays, setOverlays] = useState({ observatory: false, mission: false, privacy: false, appearance: false });
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     
     const handleLogout = async () => {
@@ -35,12 +33,7 @@ const Profile = () => {
         return () => window.removeEventListener('open-mission-control', handleOpenMission);
     }, []);
 
-    // Global Listener to open Premium Overlay externally
-    useEffect(() => {
-        const handleOpenPremium = () => toggleOverlay('premium', true);
-        window.addEventListener('open-premium-modal', handleOpenPremium);
-        return () => window.removeEventListener('open-premium-modal', handleOpenPremium);
-    }, []);
+
 
     // Helper to toggle overlays
     const toggleOverlay = (name, isOpen) => {
@@ -151,7 +144,7 @@ const Profile = () => {
                             </div>
                         </div>
                         
-                        <div className="portal-card premium-portal-card" onClick={() => toggleOverlay('premium', true)}>
+                        <div className="portal-card premium-portal-card" onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}>
                             <div className="premium-shimmer"></div>
                             <div className="portal-window" style={{ color: '#f1c40f' }}>
                                 <i className="fa-solid fa-crown"></i>
@@ -178,7 +171,7 @@ const Profile = () => {
                                 <i className="fas fa-chevron-right list-item-chevron"></i>
                             </a>
                             <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('privacy', true); }}><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">{t('privacy_security', 'Privacy & Security')}</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
-                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('support', true); }}><i className="fas fa-info-circle list-item-icon"></i><span className="list-item-text">{t('support_about', 'Support & About')}</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
+                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('open-support-modal')); }}><i className="fas fa-info-circle list-item-icon"></i><span className="list-item-text">{t('support_about', 'Support & About')}</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
                             <a href="#" className="list-item" onClick={handleLogout} style={{ color: '#ff4757' }}><i className="fas fa-sign-out-alt list-item-icon" style={{ color: '#ff4757' }}></i><span className="list-item-text">{t('logout', 'Log Out')}</span></a>
                         </div>
                     </div>
@@ -196,10 +189,8 @@ const Profile = () => {
 
             <MissionControlOverlay isActive={overlays.mission} onClose={() => toggleOverlay('mission', false)} />
             
-            <PremiumUpgradeOverlay isActive={overlays.premium} onClose={() => toggleOverlay('premium', false)} />
             <PrivacySecurityOverlay isActive={overlays.privacy} onClose={() => toggleOverlay('privacy', false)} />
             <AppearanceOverlay isActive={overlays.appearance} onClose={() => toggleOverlay('appearance', false)} />
-            <SupportAboutOverlay isActive={overlays.support} onClose={() => toggleOverlay('support', false)} />
         </div>
     );
 };
