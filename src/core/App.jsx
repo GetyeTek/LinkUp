@@ -598,7 +598,7 @@ const App = () => {
           clearRoutePayload: () => setRoutePayload(null),
           shell: { 
               openActivity: () => setIsActivityOpen(true), 
-              openMiron: (text) => setMironContext({ text }),
+              openMiron: (text, autoSend = false) => setMironContext({ text, autoSend }),
               markNotificationsRead: async () => {
                   setUnreadCount(0); // Optimistic UI
                   await supabase.from('notifications').update({ is_read: true }).eq('user_id', session?.user?.id).eq('is_read', false);
@@ -619,6 +619,7 @@ const App = () => {
                                   {mironContext && (
                       <MironChat 
                         initialContext={mironContext.text} 
+                        autoSend={mironContext.autoSend}
                         onClose={() => setMironContext(null)} 
                       />
                   )}
