@@ -7,9 +7,11 @@ import PremiumUpgradeOverlay from './components/PremiumUpgradeOverlay.jsx';
 import PrivacySecurityOverlay from './components/PrivacySecurityOverlay.jsx';
 import './Profile.css';
 
+import AppearanceOverlay from './components/AppearanceOverlay.jsx';
+
 const Profile = () => {
-    const { user: userProfile, sessionUser, theme, toggleTheme } = usePlatform();
-    const [overlays, setOverlays] = useState({ observatory: false, mission: false, premium: false, privacy: false });
+    const { user: userProfile, sessionUser, theme, language, t } = usePlatform();
+    const [overlays, setOverlays] = useState({ observatory: false, mission: false, premium: false, privacy: false, appearance: false });
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     
     const handleLogout = async () => {
@@ -166,10 +168,13 @@ const Profile = () => {
                             <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); setIsEditingProfile(true); }}>
                                 <i className="fas fa-user-pen list-item-icon"></i><span className="list-item-text">Account Settings</span><i className="fas fa-chevron-right list-item-chevron"></i>
                             </a>
-                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleTheme(); }}>
+                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('appearance', true); }}>
                                 <i className="fas fa-palette list-item-icon"></i>
-                                <span className="list-item-text">Appearance ({theme === 'dark' ? 'Dark Mode' : 'Light Mode'})</span>
-                                <i className="fas fa-sync-alt list-item-chevron"></i>
+                                <span className="list-item-text">{t('appearance', 'Appearance')}</span>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary-dark)', marginRight: '8px' }}>
+                                    {theme === 'dark' ? 'Dark' : 'Light'} • {language === 'am' ? 'አማርኛ' : 'EN'}
+                                </span>
+                                <i className="fas fa-chevron-right list-item-chevron"></i>
                             </a>
                             <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('privacy', true); }}><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">Privacy & Security</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
                             <a href="#" className="list-item"><i className="fas fa-info-circle list-item-icon"></i><span className="list-item-text">Support & About</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
@@ -192,6 +197,7 @@ const Profile = () => {
             
             <PremiumUpgradeOverlay isActive={overlays.premium} onClose={() => toggleOverlay('premium', false)} />
             <PrivacySecurityOverlay isActive={overlays.privacy} onClose={() => toggleOverlay('privacy', false)} />
+            <AppearanceOverlay isActive={overlays.appearance} onClose={() => toggleOverlay('appearance', false)} />
         </div>
     );
 };
