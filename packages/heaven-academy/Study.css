@@ -38,19 +38,115 @@
 .expand-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 6rem; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 1rem; }
 .expand-footer::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, var(--bg-dark) 30%, transparent 100%); pointer-events: none; }
 .show-all-btn { background-color: var(--surface-dark); color: var(--text-secondary-dark); border: 1px solid rgba(255,255,255,0.1); border-radius: 9999px; padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; position: relative; z-index: 2; }
-.observatory-widget { background-color: var(--surface-dark); border-radius: 16px; height: 120px; display: flex; align-items: center; cursor: pointer; position: relative; border: 1px solid rgba(255, 255, 255, 0.05); margin-top: 1.5rem; }
-.portal-cutout { width: 140px; height: 140px; position: absolute; left: -20px; top: 50%; transform: translateY(-50%); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.well-aperture { position: absolute; width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.05), transparent 70%); box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(255, 255, 255, 0.1); overflow: hidden; z-index: 2; }
-.progress-fill { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; z-index: 3; }
-.wave-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-.wave-path { fill: #30bda6; stroke: #30bda6; }
-.particles-container { position: absolute; width: 100%; height: 100%; border-radius: 50%; z-index: 10; }
-.portal-percentage { position: relative; z-index: 12; font-size: 1.8rem; font-weight: 700; color: white; text-shadow: 0 0 10px var(--accent-teal), 0 0 20px rgba(66, 215, 184, 0.5); pointer-events: none; }
-.widget-info { flex-grow: 1; text-align: left; color: white; padding-left: 130px; padding-right: 1rem; }
-.widget-title { font-size: 0.8rem; font-weight: 500; color: var(--text-secondary-dark); text-transform: uppercase; letter-spacing: 0.5px; }
-.widget-subtitle { font-size: 1.2rem; font-weight: 600; margin-top: 4px; }
-.widget-progress-bar { width: 100%; height: 6px; background-color: rgba(0,0,0,0.3); border-radius: 3px; margin-top: 12px; overflow: hidden; }
-.widget-progress-fill { width: var(--progress-percentage); height: 100%; background-color: var(--accent-teal); border-radius: 3px; }
+/* --- MISTAKE VAULT QUICK DRILL CARD --- */
+.study-drill-card {
+    background: linear-gradient(135deg, rgba(255, 95, 95, 0.08) 0%, var(--surface-dark) 100%);
+    border: 1px solid rgba(255, 95, 95, 0.25);
+    border-radius: 18px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    margin-top: 1.75rem;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.study-drill-card:hover {
+    border-color: rgba(255, 95, 95, 0.45);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(255, 95, 95, 0.15);
+}
+
+.study-drill-card:active {
+    transform: scale(0.985);
+}
+
+.drill-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(255, 95, 95, 0.15);
+    color: #ff5f5f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+    box-shadow: 0 0 15px rgba(255, 95, 95, 0.2);
+}
+
+.drill-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.drill-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #ff5f5f;
+    margin-bottom: 2px;
+}
+
+.drill-badge {
+    background: rgba(255, 95, 95, 0.2);
+    color: #ff5f5f;
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.65rem;
+}
+
+.drill-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.drill-subtitle {
+    font-size: 0.8rem;
+    color: #aaa;
+    margin: 0;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.drill-action-btn {
+    background: rgba(255, 95, 95, 0.15);
+    border: 1px solid rgba(255, 95, 95, 0.3);
+    color: #ff5f5f;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.drill-action-btn:hover {
+    background: #ff5f5f;
+    color: #0c0c0c;
+}
 
 .library-fullscreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; opacity: 0; pointer-events: none; clip-path: inset(10% 0 65% 0); transition: opacity 0.4s ease-in-out, clip-path 0.4s ease-in-out; }
 .library-fullscreen.is-expanded { opacity: 1; pointer-events: auto; clip-path: inset(0% 0% 0% 0%); }
