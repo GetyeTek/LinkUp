@@ -103,6 +103,159 @@ body.library-open { overflow: hidden; }
 .section-title { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary-dark); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
 .profile-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-teal); cursor: pointer; }
 
+/* Persistent Header Miron Summoner Button */
+.header-miron-btn {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.header-miron-btn:hover {
+    transform: scale(1.08);
+}
+
+.header-miron-btn:active {
+    transform: scale(0.95);
+}
+
+.header-miron-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--accent-teal);
+    box-shadow: 0 0 12px rgba(66, 215, 184, 0.45);
+    display: block;
+}
+
+.header-miron-pulse {
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent-teal);
+    animation: mironHeaderGlow 2.5s infinite ease-out;
+    pointer-events: none;
+}
+
+@keyframes mironHeaderGlow {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.2); opacity: 0; }
+    100% { transform: scale(1.2); opacity: 0; }
+}
+
+/* Home "Ask Miron" Quick Dock */
+.home-miron-dock-section {
+    margin-bottom: 1.75rem;
+}
+
+.home-miron-dock {
+    display: flex;
+    align-items: center;
+    background: var(--surface-dark);
+    border: 1px solid rgba(66, 215, 184, 0.25);
+    border-radius: 99px;
+    padding: 6px 6px 6px 14px;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-miron-dock:focus-within {
+    border-color: var(--accent-teal);
+    box-shadow: 0 10px 35px rgba(66, 215, 184, 0.2);
+}
+
+.home-miron-orb-wrap {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.home-miron-orb-wrap img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid var(--accent-teal);
+}
+
+.orb-sparkle-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-teal);
+    color: #0c0c0c;
+    font-size: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--surface-dark);
+}
+
+.home-miron-dock input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary-dark);
+    font-size: 0.92rem;
+    font-family: 'Poppins', sans-serif;
+    min-width: 0;
+}
+
+.home-miron-dock input::placeholder {
+    color: #888;
+    font-size: 0.88rem;
+}
+
+.home-miron-action-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+.home-miron-action-btn:active {
+    transform: scale(0.92);
+}
+
+.home-miron-action-btn.send {
+    background: var(--accent-teal);
+    color: #0c0c0c;
+    box-shadow: 0 0 10px rgba(66, 215, 184, 0.4);
+}
+
+.home-miron-action-btn.voice {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ccc;
+}
+
+.home-miron-action-btn.voice:hover {
+    color: var(--accent-teal);
+    background: rgba(66, 215, 184, 0.15);
+}
+
 /* Home Tab Basics */
 .hero-wrapper { position: relative; flex-shrink: 0; }
 .app-header { position: absolute; top: 0; left: 0; right: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; }
