@@ -56,7 +56,8 @@ import InlineChatCard from './components/InlineChatCard.jsx';
 import MironThreadSidebar from './components/MironThreadSidebar.jsx';
 import './MironChat.css';
 
-const MironChat = ({ onClose, initialContext }) => {
+const MironChat = ({ onClose, initialContext, autoSend = false }) => {
+    const autoSentRef = useRef(false);
     const { sessionUser } = usePlatform();
     const [avatarError, setAvatarError] = useState(false);
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
@@ -79,6 +80,14 @@ const MironChat = ({ onClose, initialContext }) => {
     }, []);
 
     const [copiedId, setCopiedId] = useState(null);
+
+    // Auto-Send query from Home Dock
+    useEffect(() => {
+        if (autoSend && initialContext && !autoSentRef.current && !isTyping) {
+            autoSentRef.current = true;
+            sendMessage(initialContext);
+        }
+    }, [autoSend, initialContext, isTyping]);
 
     // 1. Fetch Threads on Mount (Greets on Clean Canvas by Default)
     useEffect(() => {
