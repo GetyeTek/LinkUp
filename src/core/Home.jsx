@@ -9,11 +9,14 @@ const timeAgo = (isoString) => {
     return `${Math.floor(hrs/24)}d ago`;
 };
 
+import { MIRON_AVATAR_URL } from '@linkup-platform/sdk-core';
+
 const Home = () => {
     const { shell, user: userProfile, unreadCount } = usePlatform();
     const onOpenActivity = shell.openActivity;
     const [greeting, setGreeting] = useState('Hello');
     const [punctuation, setPunctuation] = useState('.');
+    const [mironQuery, setMironQuery] = useState('');
     const firstName = userProfile?.full_name?.split(' ')[0] || 'Scholar';
     const avatarUrl = userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`;
     const [lastRead, setLastRead] = useState(null);
@@ -159,7 +162,15 @@ const Home = () => {
                 <div className="hero-wrapper">
 <header className="app-header">
                         <div className="welcome-text"><h1>{greeting}, {firstName}{punctuation}</h1></div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                            <button 
+                                className="header-miron-btn" 
+                                onClick={() => shell.openMiron()} 
+                                title="Chat with Miron AI"
+                            >
+                                <img src={MIRON_AVATAR_URL} alt="Miron" className="header-miron-avatar" />
+                                <span className="header-miron-pulse"></span>
+                            </button>
                             <button className="icon-button notification-btn" onClick={onOpenActivity}>
                                 <i className="fas fa-bell"></i>
                                 {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
@@ -186,6 +197,56 @@ const Home = () => {
                 </div>
                 
                 <div className="page-content">
+                    {/* Interactive "Ask Miron" Quick Dock */}
+                    <section className="home-miron-dock-section">
+                        <div 
+                            className="home-miron-dock"
+                            onClick={() => !mironQuery.trim() && shell.openMiron()}
+                        >
+                            <div className="home-miron-orb-wrap">
+                                <img src={MIRON_AVATAR_URL} alt="Miron" />
+                                <span className="orb-sparkle-dot"><i className="fas fa-sparkles"></i></span>
+                            </div>
+                            <input 
+                                type="text"
+                                placeholder="Ask Miron a formula, concept, or question..."
+                                value={mironQuery}
+                                onChange={(e) => setMironQuery(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && mironQuery.trim()) {
+                                        e.preventDefault();
+                                        shell.openMiron(mironQuery.trim(), true);
+                                        setMironQuery('');
+                                    }
+                                }}
+                            />
+                            {mironQuery.trim() ? (
+                                <button 
+                                    className="home-miron-action-btn send"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        shell.openMiron(mironQuery.trim(), true);
+                                        setMironQuery('');
+                                    }}
+                                    title="Send to Miron"
+                                >
+                                    <i className="fas fa-arrow-up"></i>
+                                </button>
+                            ) : (
+                                <button 
+                                    className="home-miron-action-btn voice"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.dispatchEvent(new CustomEvent('miron:open-live-session'));
+                                    }}
+                                    title="Start Voice Session with Miron"
+                                >
+                                    <i className="fas fa-microphone"></i>
+                                </button>
+                            )}
+                        </div>
+                    </section>
+
                     <section className="priority-section">
                         <h2 className="section-label">Coming Up</h2>
                         <div className="priority-scroll-wrapper">
