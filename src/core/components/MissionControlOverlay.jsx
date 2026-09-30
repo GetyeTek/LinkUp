@@ -4,7 +4,7 @@ import './MissionControlOverlay.css';
 
 const MissionControlOverlay = ({ isActive, onClose }) => {
     const { sessionUser, user: userProfile } = usePlatform();
-    const [activeMissionTab, setActiveMissionTab] = useState('missions');
+    const [activeMissionTab, setActiveMissionTab] = useState('daily');
     
     // Telegram Mission States: 'loading' | 'unverified' | 'unclaimed' | 'claimed'
     const [tgMissionState, setTgMissionState] = useState('loading');
@@ -87,9 +87,10 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
         }
     }, [sessionUser?.id]);
 
-    // Check status on mount and when overlay opens
+    // Check status on mount and when overlay opens (always reset to Daily)
     useEffect(() => {
         if (isActive) {
+            setActiveMissionTab('daily');
             checkTgMissionStatus();
         }
     }, [isActive, checkTgMissionStatus]);
