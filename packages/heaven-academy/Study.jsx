@@ -11,7 +11,8 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './Study.css';
 
 const Study = () => {
-    const { shell, user: userProfile, unreadCount } = usePlatform();
+    const { shell, user: userProfile, unreadCount, routePayload, clearRoutePayload } = usePlatform();
+    const [mistakeCount, setMistakeCount] = useState(0);
     const onOpenActivity = shell.openActivity;
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
     const [activeExamFromBook, setActiveExamFromBook] = useState(null);
@@ -77,37 +78,26 @@ const Study = () => {
         }
     }, [isSearchActive]);
 
-    // 3. Wave Animation Logic for Observatory Widget
+    // 3. Mistake Vault Stats & Resume Routing
     useEffect(() => {
-        const wavePath = wavePathRef.current;
-        if (!wavePath) return;
-
-        let animationFrameId;
-        const size = 140;
-        const rootStyle = getComputedStyle(document.documentElement);
-        const cssProgress = rootStyle.getPropertyValue('--progress-percentage').trim() || '76%';
-        const progressValue = parseFloat(cssProgress) / 100;
-        
-        const surfaceLevel = size * (1 - progressValue);
-        let time = 0;
-        const waves = [{ freq: 10, amp: 1.5, speed: 0.05 }, { freq: 6, amp: 0.8, speed: -0.03 }];
-
-        const updateWave = () => {
-            let pathData = [`M 0 ${size}`];
-            for (let i = 0; i <= size; i += 5) {
-                let y = 0;
-                waves.forEach(wave => { y += wave.amp * Math.sin(i / wave.freq + time * wave.speed); });
-                pathData.push(`L ${i} ${surfaceLevel + y}`);
+        supabase.rpc('get_flashcard_deck_stats').then(({ data, error }) => {
+            if (!error && data && data.mistakes_due !== undefined) {
+                setMistakeCount(data.mistakes_due);
             }
-            pathData.push(`L ${size} ${size}`, 'Z');
-            if (wavePath) wavePath.setAttribute('d', pathData.join(' '));
-            time++;
-            animationFrameId = requestAnimationFrame(updateWave);
-        };
-
-        updateWave();
-        return () => cancelAnimationFrame(animationFrameId);
+        }).catch(() => {});
     }, []);
+
+    useEffect(() => {
+        if (routePayload?.action === 'resume_book' && routePayload.book_id) {
+            setTargetPage(routePayload.page || 1);
+            setActiveBook({
+                id: routePayload.book_id,
+                title: routePayload.title,
+                course_code: routePayload.course_code
+            });
+            clearRoutePayload?.();
+        }
+    }, [routePayload, clearRoutePayload]);
 
     // 4. Local Module listener for opening ExamSession directly from inline Book checkpoints
     useEffect(() => {
@@ -237,22 +227,27 @@ const Study = () => {
                             )}
                         </div>
 
-                        {/* Observatory Widget */}
-                        <div className="observatory-widget" id="observatoryWidget">
-                            <div className="portal-cutout">
-                                <span className="portal-percentage">76%</span>
-                                <div className="well-aperture">
-                                    <div className="particles-container"></div>
-                                    <div className="progress-fill">
-                                        <svg className="wave-svg"><path className="wave-path" ref={wavePathRef}></path></svg>
-                                    </div>
+                        {/* Mistake Vault Quick Recall Shortcut */}
+                        <div className="study-drill-card" onClick={() => setIsFlashcardsOpen(true)}>
+                            <div className="drill-icon-box">
+                                <i className="fas fa-bullseye"></i>
+                            </div>
+                            <div className="drill-details">
+                                <div className="drill-tag">
+                                    <span>Recall Training</span>
+                                    {mistakeCount > 0 && <span className="drill-badge">{mistakeCount} Due</span>}
                                 </div>
+                                <h4 className="drill-title">Mistake Vault Quick Drill</h4>
+                                <p className="drill-subtitle">
+                                    {mistakeCount > 0 
+                                        ? `${mistakeCount} missed questions ready for review.` 
+                                        : "Review concepts and questions you missed during practice."}
+                                </p>
                             </div>
-                            <div className="widget-info">
-                                <h3 className="widget-title">Global Challenge</h3>
-                                <p className="widget-subtitle">Collective Progress</p>
-                                <div className="widget-progress-bar"><div className="widget-progress-fill"></div></div>
-                            </div>
+                            <button className="drill-action-btn">
+                                <span>Practice</span>
+                                <i className="fas fa-arrow-right"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
