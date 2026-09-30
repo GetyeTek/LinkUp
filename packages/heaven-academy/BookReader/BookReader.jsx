@@ -117,6 +117,16 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     useEffect(() => {
         if (!book?.id || pages.length === 0) return;
 
+        // Persist last-read anchor for Home tab quick resume
+        try {
+            localStorage.setItem('linkup_last_book', JSON.stringify({
+                id: book.id,
+                title: book.title || 'Course Textbook',
+                course_code: book.course_code || '',
+                page: currentDisplayPage || 1
+            }));
+        } catch (e) {}
+
         const timer = setTimeout(() => {
             const { chapterTitle, sectionTitle } = resolveTocSection(tocData, currentDisplayPage);
             telemetry.setBookContext({
