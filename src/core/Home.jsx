@@ -16,8 +16,7 @@ const Home = () => {
     const [punctuation, setPunctuation] = useState('.');
     const firstName = userProfile?.full_name?.split(' ')[0] || 'Scholar';
     const avatarUrl = userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`;
-    const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
-    const [isFading, setIsFading] = useState(false);
+    const [lastRead, setLastRead] = useState(null);
     
     // Dynamic What's Next Data
       const [whatsNextData, setWhatsNextData] = useState({
@@ -95,12 +94,6 @@ const Home = () => {
         }));
     };
 
-    const tasks = [
-        { icon: 'fas fa-users', title: 'Physics Study Group', category: 'Collaboration', dueIn: '5d' },
-        { icon: 'fas fa-book-open', title: 'Chapter 5 Reading', category: 'Literature', dueIn: '9d' },
-        { icon: 'fas fa-flask', title: 'Lab Report Draft', category: 'Chemistry', dueIn: '12d' }
-    ];
-
     useEffect(() => {
         // Dynamic Time-Slipped Greeting Logic
         const currentHour = new Date().getHours();
@@ -124,19 +117,33 @@ const Home = () => {
             setPunctuation('?');
         }
 
-        // Task Rotation Logic
-        const interval = setInterval(() => {
-            setIsFading(true);
-            setTimeout(() => {
-                setCurrentTaskIndex((prev) => (prev + 1) % tasks.length);
-                setIsFading(false);
-            }, 400);
-        }, 4000);
-
-        return () => clearInterval(interval);
+        // Fetch Last Read Book from Local Storage Anchor
+        try {
+            const saved = localStorage.getItem('linkup_last_book');
+            if (saved) {
+                setLastRead(JSON.parse(saved));
+            }
+        } catch (e) {}
     }, []);
 
-    const currentTask = tasks[currentTaskIndex];
+    const handleResumeReading = () => {
+        if (!lastRead?.id) {
+            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'study' } }));
+            return;
+        }
+        window.dispatchEvent(new CustomEvent('navigate-tab', { 
+            detail: { 
+                tab: 'study',
+                payload: {
+                    action: 'resume_book',
+                    book_id: lastRead.id,
+                    title: lastRead.title,
+                    course_code: lastRead.course_code,
+                    page: lastRead.page || 1
+                }
+            } 
+        }));
+    };
 
     // Dynamic background based on time
     const getHeroImage = () => {
@@ -347,16 +354,23 @@ const Home = () => {
                         </section>
                     )}
 
-                    <section className="whats-next-section">
-                        <h2 className="section-label">Up Next</h2>
-                        <div className="next-task-container card-base">
-                            <div id="next-task-content" className={isFading ? 'is-fading' : ''}>
-                                <div className="task-icon"><i className={currentTask.icon}></i></div>
-                                <div className="task-details">
-                                    <div className="title">{currentTask.title}</div>
-                                    <div className="category">{currentTask.category}</div>
+                    <section className="resume-study-section">
+                        <h2 className="section-label">Continue Studying</h2>
+                        <div className="resume-study-card" onClick={handleResumeReading}>
+                            <div className="resume-book-icon">
+                                <i className="fas fa-book-open"></i>
+                            </div>
+                            <div className="resume-info">
+                                <div className="resume-tag">
+                                    <span>{lastRead?.course_code ? `${lastRead.course_code} • Page ${lastRead.page || 1}` : 'Curriculum Textbook'}</span>
                                 </div>
-                                <div className="task-countdown">{currentTask.dueIn}</div>
+                                <h3 className="resume-title">{lastRead?.title || 'Open Course Library'}</h3>
+                                <p className="resume-subtitle">
+                                    {lastRead ? `Pick up right where you left off on Page ${lastRead.page || 1}` : 'Tap to explore textbooks and exam archives'}
+                                </p>
+                            </div>
+                            <div className="resume-arrow-box">
+                                <i className="fas fa-arrow-right"></i>
                             </div>
                         </div>
                     </section>
