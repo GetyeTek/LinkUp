@@ -1,0 +1,196 @@
+/* --- STANDARD MINIMALIST SUPPORT & ABOUT PAGE --- */
+.sao-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: var(--bg-dark);
+    z-index: 5000;
+    display: flex;
+    flex-direction: column;
+    animation: slideInPage 0.25s ease-out;
+    font-family: 'Poppins', sans-serif;
+    color: var(--text-primary-dark);
+}
+
+.sao-header {
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    background: var(--surface-dark);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.sao-header h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.2px;
+}
+
+.sao-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    max-width: 680px;
+    margin: 0 auto;
+    width: 100%;
+}
+.sao-body::-webkit-scrollbar { display: none; }
+
+.sao-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sao-section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-left: 2px;
+}
+
+.sao-card {
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 1.25rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    line-height: 1.65;
+}
+
+.sao-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sao-card p {
+    font-size: 0.88rem;
+    color: #ccc;
+    margin: 0;
+}
+
+.sao-card p strong {
+    color: #fff;
+    font-weight: 600;
+}
+
+.sao-card ul {
+    margin: 0.25rem 0 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.86rem;
+    color: #ccc;
+}
+
+.sao-card li strong {
+    color: #fff;
+}
+
+/* Contact Cards Grid */
+.sao-contact-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sao-contact-card {
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.sao-contact-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sao-contact-card:active {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.sao-contact-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+}
+
+.sao-contact-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.sao-contact-icon.telegram {
+    background: rgba(41, 169, 234, 0.12);
+    color: #29A9EA;
+}
+
+.sao-contact-icon.email {
+    background: rgba(66, 215, 184, 0.12);
+    color: var(--accent-teal);
+}
+
+.sao-contact-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.sao-contact-text h4 {
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin: 0;
+    color: #fff;
+}
+
+.sao-contact-text span {
+    font-size: 0.78rem;
+    color: #888;
+    margin-top: 2px;
+    word-break: break-all;
+}
+
+.sao-contact-arrow {
+    color: #666;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.sao-footer-note {
+    text-align: center;
+    padding: 1rem 0 2rem;
+    font-size: 0.75rem;
+    color: #666;
+    line-height: 1.5;
+}
