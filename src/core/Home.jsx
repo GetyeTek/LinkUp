@@ -27,7 +27,6 @@ const Home = () => {
     loading: true
   });
   const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
-  const [showAboutModal, setShowAboutModal] = useState(false);
 
     const handleFeaturedAction = (event) => {
         if (event.action_type === 'html_room' && event.html_content) {
@@ -237,7 +236,7 @@ const Home = () => {
 
                   <div
                     className="promo-card about-us"
-                    onClick={() => setShowAboutModal(true)}
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-support-modal'))}
                   >
                     <div className="promo-icon-wrap">
                       <i className="fas fa-shield-heart"></i>
@@ -421,58 +420,7 @@ const Home = () => {
             </div>
           )}
 
-          {showAboutModal && (
-            <div className="custom-modal-overlay" style={{ zIndex: 99999 }}>
-              <div
-                className="custom-modal-card"
-                style={{ textAlign: 'center', padding: '2rem' }}
-              >
-                <div
-                  style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
-                    background: 'rgba(0,240,255,0.15)',
-                    color: '#00f0ff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '2rem',
-                    margin: '0 auto 1rem',
-                    boxShadow: '0 0 25px rgba(0,240,255,0.4)'
-                  }}
-                >
-                  <i className="fas fa-shield-heart"></i>
-                </div>
-                <h2
-                  style={{
-                    margin: '0 0 0.5rem 0',
-                    color: '#fff',
-                    fontSize: '1.4rem'
-                  }}
-                >
-                  Learn About Us
-                </h2>
-                <p
-                  style={{
-                    color: '#aaa',
-                    fontSize: '0.9rem',
-                    marginBottom: '1.5rem',
-                    lineHeight: 1.6
-                  }}
-                >
-                  LinkUp is an academic ecosystem built to empower university students across Ethiopia with real-time study stages, past exam archives, and Miron AI tutoring.
-                </p>
-                <button
-                  className="cm-btn-primary"
-                  style={{ width: '100%', padding: '12px' }}
-                  onClick={() => setShowAboutModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
+
         </div>
     );
 };
