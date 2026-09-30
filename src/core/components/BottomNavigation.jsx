@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './BottomNavigation.css';
 
 const tabIndex = {
@@ -10,6 +11,8 @@ const tabIndex = {
 };
 
 const BottomNavigation = ({ activeTab, setActiveTab }) => {
+    const { t } = usePlatform();
+
     return (
         <footer className="navigation-magic">
             <nav>
@@ -28,7 +31,7 @@ const BottomNavigation = ({ activeTab, setActiveTab }) => {
                 >
                     <a>
                         <span className="icon"><i className="fas fa-home"></i></span>
-                        <span className="text">Home</span>
+                        <span className="text">{t('nav_home', 'Home')}</span>
                     </a>
                 </li>
                 
@@ -38,7 +41,7 @@ const BottomNavigation = ({ activeTab, setActiveTab }) => {
                 >
                     <a>
                         <span className="icon"><i className="fas fa-compass"></i></span>
-                        <span className="text">Discover</span>
+                        <span className="text">{t('nav_discover', 'Discover')}</span>
                     </a>
                 </li>
 
@@ -48,7 +51,7 @@ const BottomNavigation = ({ activeTab, setActiveTab }) => {
                 >
                     <a>
                         <span className="icon"><i className="fas fa-book-open"></i></span>
-                        <span className="text">Study</span>
+                        <span className="text">{t('nav_study', 'Study')}</span>
                     </a>
                 </li>
 
@@ -58,7 +61,7 @@ const BottomNavigation = ({ activeTab, setActiveTab }) => {
                 >
                     <a>
                         <span className="icon"><i className="fas fa-users"></i></span>
-                        <span className="text">Connect</span>
+                        <span className="text">{t('nav_connect', 'Connect')}</span>
                     </a>
                 </li>
 
@@ -68,7 +71,7 @@ const BottomNavigation = ({ activeTab, setActiveTab }) => {
                 >
                     <a>
                         <span className="icon"><i className="fas fa-user"></i></span>
-                        <span className="text">Profile</span>
+                        <span className="text">{t('nav_profile', 'Profile')}</span>
                     </a>
                 </li>
             </nav>
