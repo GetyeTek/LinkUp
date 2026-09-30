@@ -112,6 +112,14 @@ const Study = () => {
                 <header className="study-header">
                     <h2 className="large-title">Study Hub</h2>
                     <div className="header-actions">
+                        <button 
+                            className="header-miron-btn" 
+                            onClick={() => shell.openMiron()} 
+                            title="Chat with Miron AI"
+                        >
+                            <img src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png" alt="Miron" className="header-miron-avatar" />
+                            <span className="header-miron-pulse"></span>
+                        </button>
                         <button className="icon-button notification-btn" onClick={onOpenActivity}>
                             <i className="fas fa-bell"></i>
                             {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
