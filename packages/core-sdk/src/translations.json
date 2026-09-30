@@ -16,9 +16,9 @@
     "theme_light_desc": "High-contrast clean daylight palette",
     "language": "Display Language",
     "lang_english": "English",
-    "lang_english_desc": "United States / International",
+    "lang_english_desc": "English",
     "lang_amharic": "አማርኛ",
-    "lang_amharic_desc": "የኢትዮጵያ ፌዴራላዊ የስራ ቋንቋ",
+    "lang_amharic_desc": "አማርኛ",
     "privacy_security": "Privacy & Security",
     "support_about": "Support & About",
     "logout": "Log Out"
@@ -40,9 +40,9 @@
     "theme_light_desc": "ንጹህና ብሩህ የቀን ገጽታ",
     "language": "የመተግበሪያ ቋንቋ",
     "lang_english": "English",
-    "lang_english_desc": "እንግሊዝኛ (ዓለም አቀፍ)",
+    "lang_english_desc": "English",
     "lang_amharic": "አማርኛ",
-    "lang_amharic_desc": "የኢትዮጵያ ፌዴራላዊ የስራ ቋንቋ",
+    "lang_amharic_desc": "አማርኛ",
     "privacy_security": "ግላዊነት እና ደህንነት",
     "support_about": "ድጋፍ እና ስለ እኛ",
     "logout": "ውጣ"
