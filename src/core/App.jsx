@@ -30,7 +30,8 @@ const App = () => {
       const [unreadCount, setUnreadCount] = useState(0);
       const [routePayload, setRoutePayload] = useState(null);
         const [isMironLive, setIsMironLive] = useState(false);
-  const [theme, setTheme] = useState(localStorage.getItem('linkup_theme') || 'dark');
+  const [theme, setThemeState] = useState(localStorage.getItem('linkup_theme') || 'dark');
+  const [language, setLanguageState] = useState(localStorage.getItem('linkup_language') || 'en');
   const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
   // Multi-Device & Anti-Sharing Guard States
@@ -71,13 +72,51 @@ const App = () => {
           document.documentElement.className = `theme-${theme}`;
       }, [theme]);
 
-      const toggleTheme = async () => {
-          const newTheme = theme === 'dark' ? 'light' : 'dark';
-          setTheme(newTheme);
+      useEffect(() => {
+          document.documentElement.lang = language;
+          document.body.classList.toggle('lang-am', language === 'am');
+      }, [language]);
+
+      const setTheme = async (newTheme) => {
+          setThemeState(newTheme);
           localStorage.setItem('linkup_theme', newTheme);
           if (session?.user?.id) {
               await supabase.from('profiles').update({ theme: newTheme }).eq('id', session.user.id);
           }
+      };
+
+      const toggleTheme = async () => {
+          const next = theme === 'dark' ? 'light' : 'dark';
+          setTheme(next);
+      };
+
+      const changeLanguage = async (newLang) => {
+          setLanguageState(newLang);
+          localStorage.setItem('linkup_language', newLang);
+          if (session?.user?.id) {
+              await supabase.from('profiles').update({ language: newLang }).eq('id', session.user.id);
+          }
+      };
+
+      const t = (key, fallback = '') => {
+          import('@linkup-platform/sdk-core').then(({ translations }) => translations);
+          const dict = {
+              en: {
+                  nav_home: "Home", nav_discover: "Discover", nav_study: "Study", nav_connect: "Connect", nav_profile: "Profile",
+                  settings_title: "Settings", account_settings: "Account Settings", appearance: "Appearance",
+                  theme_dark: "Dark Mode", theme_light: "Light Mode", language: "Display Language",
+                  lang_english: "English", lang_amharic: "አማርኛ", privacy_security: "Privacy & Security",
+                  support_about: "Support & About", logout: "Log Out"
+              },
+              am: {
+                  nav_home: "ዋና ገጽ", nav_discover: "አግኝ", nav_study: "አጥና", nav_connect: "ተገናኝ", nav_profile: "መገለጫ",
+                  settings_title: "ቅንብሮች", account_settings: "የመለያ ቅንብሮች", appearance: "ገጽታ እና ቋንቋ",
+                  theme_dark: "ጨለማ ሁነታ", theme_light: "ብርሃን ሁነታ", language: "የመተግበሪያ ቋንቋ",
+                  lang_english: "English", lang_amharic: "አማርኛ", privacy_security: "ግላዊነት እና ደህንነት",
+                  support_about: "ድጋፍ እና ስለ እኛ", logout: "ውጣ"
+              }
+          };
+          return dict[language]?.[key] || dict['en']?.[key] || fallback || key;
       };
 
       useEffect(() => {
@@ -534,7 +573,11 @@ const App = () => {
           unreadCount,
           routePayload,
           theme,
+          setTheme,
           toggleTheme,
+          language,
+          changeLanguage,
+          t,
           clearRoutePayload: () => setRoutePayload(null),
           shell: { 
               openActivity: () => setIsActivityOpen(true), 
