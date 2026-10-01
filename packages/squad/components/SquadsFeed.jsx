@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 
 const SquadsFeed = ({
     activeView,
@@ -18,6 +19,7 @@ const SquadsFeed = ({
     handleJoinSquad,
     joiningSquadId
 }) => {
+    const { t } = usePlatform();
     
     const myClasses = conversations
         .filter(c => c.type === 'group' && c.metadata?.focus === 'Class')
@@ -51,10 +53,10 @@ const SquadsFeed = ({
         <div id="squads-view" className={`hub-view ${activeView === 'squads' || activeView === 'class' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%', padding: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
-                    {activeView === 'class' ? 'Your Classes' : 'Your Groups'}
+                    {activeView === 'class' ? t('your_classes', 'Your Classes') : t('your_groups', 'Your Groups')}
                 </h3>
                 <button style={{ background: 'var(--accent-teal)', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen(true)}>
-                    <i className="fas fa-plus"></i> New {activeView === 'class' ? 'Class' : 'Group'}
+                    <i className="fas fa-plus"></i> {t('new', 'New')} {activeView === 'class' ? t('class_singular', 'Class') : t('group_singular', 'Group')}
                 </button>
             </div>
 
@@ -88,7 +90,7 @@ const SquadsFeed = ({
                             ))
                         )}
 
-                        <div className="squads-delimiter"><span>Campus Classes</span></div>
+                        <div className="squads-delimiter"><span>{t('campus_classes', 'Campus Classes')}</span></div>
                         
                         {campusClasses.filter(c => !c.is_member).length > 0 ? (
                             campusClasses.filter(c => !c.is_member).map(chat => (
@@ -113,7 +115,7 @@ const SquadsFeed = ({
                                         </div>
                                     </div>
                                     <button className="squad-join-btn" style={{ minWidth: '70px', textAlign: 'center' }} onClick={(e) => handleJoinSquad(chat.conversation_id, e)} disabled={joiningSquadId === chat.conversation_id}>
-                                        {joiningSquadId === chat.conversation_id ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join'}
+                                        {joiningSquadId === chat.conversation_id ? <i className="fas fa-circle-notch fa-spin"></i> : t('join', 'Join')}
                                     </button>
                                 </div>
                             ))
@@ -160,7 +162,7 @@ const SquadsFeed = ({
                             ))
                         )}
 
-                        <div className="squads-delimiter"><span>Suggested Groups</span></div>
+                        <div className="squads-delimiter"><span>{t('suggested_groups', 'Suggested Groups')}</span></div>
                         
                         {suggestedSquads.length > 0 ? (
                             suggestedSquads.map(chat => (
