@@ -108,6 +108,64 @@ const ChatBubble = ({
             );
         }
 
+        const bookQuoteAttachment = msg.attachments?.find(a => a.type === 'book_quote');
+        if (bookQuoteAttachment) {
+            return (
+                <div className={baseClass} style={{ padding: 0, overflow: 'hidden', background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                    {renderForward()}
+                    {renderReply()}
+                    <div className="chat-book-quote-card">
+                        <div className="cbq-topbar">
+                            <div className="cbq-book-info">
+                                <i className="fas fa-book-open"></i>
+                                <span className="cbq-title">{bookQuoteAttachment.book_title || bookQuoteAttachment.course_code || 'Textbook'}</span>
+                            </div>
+                            <span className="cbq-page-pill">Page {bookQuoteAttachment.page_number}</span>
+                        </div>
+                        <div className="cbq-body">
+                            <i className="fas fa-quote-left cbq-quote-icon"></i>
+                            <p className="cbq-text">{bookQuoteAttachment.text}</p>
+                        </div>
+                        {bookQuoteAttachment.book_id && (
+                            <div 
+                                className="cbq-footer"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.dispatchEvent(new CustomEvent('navigate-tab', {
+                                        detail: {
+                                            tab: 'study',
+                                            payload: {
+                                                action: 'resume_book',
+                                                book_id: bookQuoteAttachment.book_id,
+                                                title: bookQuoteAttachment.book_title,
+                                                course_code: bookQuoteAttachment.course_code,
+                                                page: bookQuoteAttachment.page_number
+                                            }
+                                        }
+                                    }));
+                                }}
+                            >
+                                <span>Read in Book</span>
+                                <i className="fas fa-arrow-right"></i>
+                            </div>
+                        )}
+                    </div>
+                    {msg.text && <div className="bubble-text-content" style={{ marginTop: '8px' }}>{msg.text}</div>}
+                    {isGroup && (
+                        <div className={`squad-time-meta ${isMine ? 'mine-meta' : ''}`}>
+                            {msg.is_edited && <span>edited</span>}
+                            {formatTime(msg.created_at)}
+                            {isMine && (
+                                msg.status === 'pending' ? <i className="fa-solid fa-clock" style={{fontSize: '0.6rem'}}></i> : 
+                                msg.status === 'failed' ? <i className="fa-solid fa-circle-exclamation" style={{color: '#ff5f5f', fontSize: '0.7rem'}} title="Message Failed"></i> : 
+                                <i className="fa-solid fa-check"></i>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         const bubbleClass = `${baseClass} ${hasMedia ? (isNaked ? 'media-bubble naked' : 'media-bubble captioned') : ''}`;
         return (
             <div className={bubbleClass}>
