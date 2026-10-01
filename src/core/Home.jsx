@@ -213,7 +213,7 @@ const Home = () => {
                             </div>
                             <input 
                                 type="text"
-                                placeholder="Ask Miron a formula, concept, or question..."
+                                placeholder={t('miron_dock_placeholder', 'Ask Miron a formula, concept, or question...')}
                                 value={mironQuery}
                                 onChange={(e) => setMironQuery(e.target.value)}
                                 onKeyDown={(e) => {
@@ -252,89 +252,89 @@ const Home = () => {
                     </section>
 
                     <section className="priority-section">
-                        <h2 className="section-label">Coming Up</h2>
+                        <h2 className="section-label">{t('coming_up', 'Coming Up')}</h2>
                         <div className="priority-scroll-wrapper">
                             <div className="priority-track">
                                 <div className="promo-card video-tour" onClick={() => window.dispatchEvent(new CustomEvent('tour:play-video'))}>
                                     <div className="promo-icon-wrap"><i className="fas fa-play"></i></div>
                                     <div>
-                                        <h3 className="promo-title">Learn LinkUp</h3>
-                                        <div className="promo-desc">Watch a quick guided tour of the platform's features.</div>
+                                        <h3 className="promo-title">{t('learn_linkup', 'Learn LinkUp')}</h3>
+                                        <div className="promo-desc">{t('learn_linkup_desc', "Watch a quick guided tour of the platform's features.")}</div>
                                     </div>
                                 </div>
-                                                  <div
-                    className="promo-card credits-mission"
-                    onClick={() => {
-                      window.dispatchEvent(
-                        new CustomEvent('navigate-tab', {
-                          detail: { tab: 'profile' }
-                        })
-                      );
-                      setTimeout(
-                        () =>
-                          window.dispatchEvent(
-                            new CustomEvent('open-mission-control')
-                          ),
-                        100
-                      );
-                    }}
-                  >
-                    <div className="promo-icon-wrap">
-                      <i className="fas fa-coins"></i>
-                    </div>
-                    <div>
-                      <h3 className="promo-title">Earn Credits</h3>
-                      <div className="promo-desc">
-                        Complete daily missions to collect Credits and unlock perks.
-                      </div>
-                    </div>
-                  </div>
+                                <div
+                                    className="promo-card credits-mission"
+                                    onClick={() => {
+                                      window.dispatchEvent(
+                                        new CustomEvent('navigate-tab', {
+                                          detail: { tab: 'profile' }
+                                        })
+                                      );
+                                      setTimeout(
+                                        () =>
+                                          window.dispatchEvent(
+                                            new CustomEvent('open-mission-control')
+                                          ),
+                                        100
+                                      );
+                                    }}
+                                  >
+                                    <div className="promo-icon-wrap">
+                                      <i className="fas fa-coins"></i>
+                                    </div>
+                                    <div>
+                                      <h3 className="promo-title">{t('earn_credits', 'Earn Credits')}</h3>
+                                      <div className="promo-desc">
+                                        {t('earn_credits_desc', 'Complete daily missions to collect Credits and unlock perks.')}
+                                      </div>
+                                    </div>
+                                  </div>
 
-                  <div
-                    className="promo-card buy-premium"
-                    onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
-                  >
-                    <span className="premium-badge">PRO</span>
-                    <div className="promo-icon-wrap">
-                      <i className="fas fa-crown"></i>
-                    </div>
-                    <div>
-                      <h3 className="promo-title">LinkUp Gold</h3>
-                      <div className="promo-desc">
-                        Unlock unlimited Miron AI, complete Exam Archives, & priority Audio Stages.
-                      </div>
-                    </div>
-                  </div>
+                                  <div
+                                    className="promo-card buy-premium"
+                                    onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
+                                  >
+                                    <span className="premium-badge">PRO</span>
+                                    <div className="promo-icon-wrap">
+                                      <i className="fas fa-crown"></i>
+                                    </div>
+                                    <div>
+                                      <h3 className="promo-title">{t('linkup_gold', 'LinkUp Gold')}</h3>
+                                      <div className="promo-desc">
+                                        {t('linkup_gold_desc', 'Unlock unlimited Miron AI, complete Exam Archives, & priority Audio Stages.')}
+                                      </div>
+                                    </div>
+                                  </div>
 
-                  <div
-                    className="promo-card about-us"
-                    onClick={() => window.dispatchEvent(new CustomEvent('open-support-modal'))}
-                  >
-                    <div className="promo-icon-wrap">
-                      <i className="fas fa-shield-heart"></i>
-                    </div>
-                    <div>
-                      <h3 className="promo-title">Learn About Us</h3>
-                      <div className="promo-desc">
-                        Built by students, for students. Discover the team & mission behind LinkUp.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
+                                  <div
+                                    className="promo-card about-us"
+                                    onClick={() => window.dispatchEvent(new CustomEvent('open-support-modal'))}
+                                  >
+                                    <div className="promo-icon-wrap">
+                                      <i className="fas fa-shield-heart"></i>
+                                    </div>
+                                    <div>
+                                      <h3 className="promo-title">{t('about_us', 'Learn About Us')}</h3>
+                                      <div className="promo-desc">
+                                        {t('about_us_desc', 'Built by students, for students. Discover the team & mission behind LinkUp.')}
+                                      </div>
+                                    </div>
+                                  </div>
+                            </div>
+                        </div>
+                    </section>
 
                     {/* OVERHAULED HIGH-FIDELITY DISCOVERY BAR */}
                     {(!whatsNextData.loading && (whatsNextData.live.length > 0 || whatsNextData.qa.length > 0 || whatsNextData.events.length > 0)) && (
                         <section className="discovery-section">
                             <div className="section-label-row">
-                                <h2 className="section-label" style={{margin: 0}}>Discover</h2>
+                                <h2 className="section-label" style={{margin: 0}}>{t('nav_discover', 'Discover')}</h2>
                                 <button 
                                     className="view-all-link" 
                                     style={{background: 'none', border: 'none', cursor: 'pointer'}}
                                     onClick={() => handleWnClick('All', null)}
                                 >
-                                    See All
+                                    {t('discover_all', 'See All')}
                                 </button>
                             </div>
 
@@ -420,18 +420,18 @@ const Home = () => {
                     )}
 
                     <section className="resume-study-section">
-                        <h2 className="section-label">Continue Studying</h2>
+                        <h2 className="section-label">{t('resume_study_title', 'Continue Studying')}</h2>
                         <div className="resume-study-card" onClick={handleResumeReading}>
                             <div className="resume-book-icon">
                                 <i className="fas fa-book-open"></i>
                             </div>
                             <div className="resume-info">
                                 <div className="resume-tag">
-                                    <span>{lastRead?.course_code ? `${lastRead.course_code} • Page ${lastRead.page || 1}` : 'Curriculum Textbook'}</span>
+                                    <span>{lastRead?.course_code ? `${lastRead.course_code} • Page ${lastRead.page || 1}` : t('curriculum_textbook', 'Curriculum Textbook')}</span>
                                 </div>
-                                <h3 className="resume-title">{lastRead?.title || 'Open Course Library'}</h3>
+                                <h3 className="resume-title">{lastRead?.title || t('resume_study_library', 'Open Course Library')}</h3>
                                 <p className="resume-subtitle">
-                                    {lastRead ? `Pick up right where you left off on Page ${lastRead.page || 1}` : 'Tap to explore textbooks and exam archives'}
+                                    {lastRead ? `Pick up right where you left off on Page ${lastRead.page || 1}` : t('resume_study_sub_default', 'Tap to explore textbooks and exam archives')}
                                 </p>
                             </div>
                             <div className="resume-arrow-box">
