@@ -94,6 +94,7 @@ const Connect = () => {
             });
             clearRoutePayload();
         } else if (routePayload.action === 'share_book_quote') {
+            console.log("[SharePipeline:2] Connect received share_book_quote action:", routePayload.quote);
             setActiveView('messages');
             setActiveChatId(null);
             shareMountTimeRef.current = Date.now();
@@ -433,6 +434,7 @@ const Connect = () => {
 
         if (forwardTargetMsg.is_quote) {
             const q = forwardTargetMsg.quote;
+            console.log("[SharePipeline:4] Executing quote share to destination:", targetChat?.conversation_id || targetChat);
             setMountedChats(prev => ({ ...prev, [targetChat.conversation_id]: targetChat }));
             setActiveChatId(targetChat.conversation_id);
             setForwardTargetMsg(null);
@@ -454,8 +456,10 @@ const Connect = () => {
             });
 
             if (error) {
+                console.error("[SharePipeline:Error] Sharing failed:", error);
                 setGlobalNotice(`Sharing blocked: ${error.message}`);
             } else {
+                console.log("[SharePipeline:5] Quote message successfully inserted into DB");
                 setToastNotice("Quote shared successfully");
             }
             return;
@@ -492,10 +496,20 @@ const Connect = () => {
     };
     
     const handleChatClick = (chat) => {
-        if (shareMountTimeRef.current && Date.now() - shareMountTimeRef.current < 350) {
+        if (shareMountTimeRef.current && Date.now() - shareMountTimeRef.current < 450) {
+            console.log("[SharePipeline:Guard] Dropped ghost click during immunity window:", chat);
+            return;
+        }
+        if (chat === 'notes') {
+            if (forwardTargetMsg) {
+                setToastNotice("Feature unavailable: Forwarding directly to Notes pending vault sync.");
+            } else {
+                setIsNotesOpen(true);
+            }
             return;
         }
         if (forwardTargetMsg) {
+            console.log("[SharePipeline:3] Destination selected for quote/forward:", chat);
             handleExecuteForward(chat);
         } else {
             setMountedChats(prev => ({ ...prev, [chat.conversation_id]: chat }));
