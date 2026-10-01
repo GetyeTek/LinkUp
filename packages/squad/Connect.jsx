@@ -460,7 +460,9 @@ const Connect = () => {
                 setGlobalNotice(`Sharing blocked: ${error.message}`);
             } else {
                 console.log("[SharePipeline:5] Quote message successfully inserted into DB");
-                setToastNotice("Quote shared successfully");
+                setTimeout(() => {
+                    setToastNotice("Quote shared to chat");
+                }, 650);
             }
             return;
         }
