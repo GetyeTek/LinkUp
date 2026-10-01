@@ -14,6 +14,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const [fatherName, setFatherName] = useState('');
     const [username, setUsername] = useState('');
     const [phone, setPhone] = useState('');
+    const [sex, setSex] = useState(userProfile?.sex || sessionUser?.user_metadata?.sex || '');
     const status = useUsernameCheck(username, '');
     const { status: phoneStatus, meta: phoneMeta } = usePhoneCheck(phone, userProfile?.phone || sessionUser?.user_metadata?.phone);
     const [loading, setLoading] = useState(false);
@@ -171,7 +172,11 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const currentWizardId = wizardSteps[stepIndex];
   
     const handleNextPhase = () => {
-        if (status !== 'available' || sureName.trim().length < 2 || (!localTelegramVerified && phoneStatus !== 'available')) {
+        if (status !== 'available' || sureName.trim().length < 2 || !sex || (!localTelegramVerified && phoneStatus !== 'available')) {
+            if (!sex) {
+                setClaimError("Please select your gender/sex to personalize your academic experience.");
+                return;
+            }
             if (!localTelegramVerified && phoneStatus !== 'available' && phone.length > 0) {
                 setClaimError("Please provide a valid and available phone number.");
             }
@@ -215,6 +220,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                 full_name: finalFullName,
                 avatar_url: finalAvatarUrl,
                 phone: normalizedPhone || null,
+                sex: sex || null,
                 university_id: academicData.university_id || null,
                 program: academicData.program || null,
                 department: academicData.department || null,
@@ -293,13 +299,43 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                   </div>
                 </div>
   
-                <UsernameField 
+                                <UsernameField 
                     username={username}
                     setUsername={setUsername}
                     status={status}
                     disabled={loading}
                 />
-  
+
+                <div className="input-group-sm">
+                    <label>Gender / ጾታ</label>
+                    <div className="sex-selector-row">
+                        <button
+                            type="button"
+                            className={`sex-card ${sex === 'male' ? 'active' : ''}`}
+                            onClick={() => setSex('male')}
+                            disabled={loading}
+                        >
+                            <span className="sex-icon">👨</span>
+                            <div className="sex-labels">
+                                <span className="sex-primary">ወንድ</span>
+                                <span className="sex-sub">Male</span>
+                            </div>
+                        </button>
+                        <button
+                            type="button"
+                            className={`sex-card ${sex === 'female' ? 'active' : ''}`}
+                            onClick={() => setSex('female')}
+                            disabled={loading}
+                        >
+                            <span className="sex-icon">👩</span>
+                            <div className="sex-labels">
+                                <span className="sex-primary">ሴት</span>
+                                <span className="sex-sub">Female</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
                 <div className="input-group-sm">
                   <label>Phone Number</label>
                   <div className={`handle-input-wrapper status-${localTelegramVerified ? 'available' : phoneStatus}`}>
