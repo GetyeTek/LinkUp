@@ -43,8 +43,8 @@ const ProgressiveMedia = ({ att }) => {
 const ChatMediaGallery = ({ attachments, setFullscreenGallery, handleDownload }) => {
     if (!attachments || attachments.length === 0) return null;
     
-    const mediaItems = attachments.filter(a => a.type.startsWith('image/') || a.type.startsWith('video/'));
-    const docItems = attachments.filter(a => !a.type.startsWith('image/') && !a.type.startsWith('video/'));
+    const mediaItems = (attachments || []).filter(a => a?.type && (a.type.startsWith('image/') || a.type.startsWith('video/')));
+    const docItems = (attachments || []).filter(a => a?.type && !a.type.startsWith('image/') && !a.type.startsWith('video/') && a.type !== 'book_quote' && a.type !== 'poll');
     const hasMoreMedia = mediaItems.length > 4;
     const displayMedia = mediaItems.slice(0, 4);
 
