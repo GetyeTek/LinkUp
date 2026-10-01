@@ -67,6 +67,8 @@
     transform-origin: 0 0;
     will-change: width, height;
     margin: 0 auto; /* Centers the container */
+    user-select: none !important;
+    -webkit-user-select: none !important;
 }
 
 #book-layer { 
@@ -78,9 +80,20 @@
     align-items: center; 
     gap: 40px; 
     padding: 40px 0; 
+    user-select: none !important;
+    -webkit-user-select: none !important;
 }
 
-.page-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 24px; position: relative; }
+.page-wrapper { 
+    width: 100%; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    gap: 24px; 
+    position: relative; 
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
 .page-canvas { background-color: var(--page-bg); color: var(--text-color); width: 794px; min-height: 1123px; padding: 60px 70px 40px 70px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,0.5); font-family: 'Times New Roman', Times, 'Nyala', 'Kefa', 'Abyssinica SIL', serif; display: flex; flex-direction: column; flex-shrink: 0; contain: content; /* Isolates layout calculations, entirely preventing the 'Void' glitch */ }
 .page-canvas * { 
     user-select: text !important; 
