@@ -149,7 +149,9 @@ const ChatBubble = ({
                             </div>
                         )}
                     </div>
-                    {msg.text && <div className="bubble-text-content" style={{ marginTop: '8px' }}>{msg.text}</div>}
+                    {msg.text && !msg.text.startsWith('📖 Quote:') && !msg.text.startsWith('[Quote:') && (
+                        <div className="bubble-text-content" style={{ marginTop: '8px' }}>{msg.text}</div>
+                    )}
                     {isGroup && (
                         <div className={`squad-time-meta ${isMine ? 'mine-meta' : ''}`}>
                             {msg.is_edited && <span>edited</span>}
