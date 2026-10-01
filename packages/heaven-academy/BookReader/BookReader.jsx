@@ -47,7 +47,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const menuRef = useRef(null);
     const miniFlowRef = useRef(null);
 
-    const { shell } = usePlatform();
+    const { shell, t } = usePlatform();
 
     // Mini Miron Local States
     const [miniMironText, setMiniMironText] = useState(null);
@@ -614,7 +614,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                         onMouseDown={(e) => { e.preventDefault(); handleMenuAction('ask_miron'); }}
                         onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); handleMenuAction('ask_miron'); }}
                     >
-                        <i className="fa-solid fa-wand-magic-sparkles"></i> <span>Ask Miron</span>
+                        <i className="fa-solid fa-wand-magic-sparkles"></i> <span>{t('ask_miron', 'Ask Miron')}</span>
                     </div>
                     <div className="ctx-grid" style={{marginTop: '8px'}}>
                         <div 
@@ -622,16 +622,16 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                             onMouseDown={(e) => { e.preventDefault(); handleMenuAction('copy'); }}
                             onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); handleMenuAction('copy'); }}
                         >
-                            <i className="fa-regular fa-copy"></i><span>Copy</span>
+                            <i className="fa-regular fa-copy"></i><span>{t('copy', 'Copy')}</span>
                         </div>
-                        <div className="ctx-btn"><i className="fa-solid fa-highlighter"></i><span>Highlight</span></div>
+                        <div className="ctx-btn"><i className="fa-solid fa-highlighter"></i><span>{t('highlight', 'Highlight')}</span></div>
                         <div 
                             className="ctx-btn"
                             onMouseDown={(e) => e.preventDefault()}
                             onTouchStart={(e) => e.stopPropagation()}
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMenuAction('share'); }}
                         >
-                            <i className="fa-solid fa-share-nodes"></i><span>Share</span>
+                            <i className="fa-solid fa-share-nodes"></i><span>{t('share', 'Share')}</span>
                         </div>
                     </div>
                 </div>
