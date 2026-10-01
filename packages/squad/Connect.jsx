@@ -451,7 +451,7 @@ const Connect = () => {
             const { error } = await supabase.from('messages').insert({
                 conversation_id: targetChat.conversation_id,
                 sender_id: currentUser.id,
-                text: '',
+                text: `📖 Quote: ${q.book_title || q.course_code || 'Textbook'} (p. ${q.page_number})`,
                 attachments: [attachment]
             });
 
@@ -504,7 +504,44 @@ const Connect = () => {
         }
         if (chat === 'notes') {
             if (forwardTargetMsg) {
-                setToastNotice("Feature unavailable: Forwarding directly to Notes pending vault sync.");
+                console.log("[SharePipeline:Notes] Saving quote to My Notes vault...");
+                supabase.rpc('get_or_create_notes', { req_user_id: currentUser.id }).then(async ({ data: notesConvId, error: notesErr }) => {
+                    if (notesErr || !notesConvId) {
+                        setGlobalNotice("Could not access your notes vault.");
+                        return;
+                    }
+
+                    if (forwardTargetMsg.is_quote) {
+                        const q = forwardTargetMsg.quote;
+                        const attachment = {
+                            type: 'book_quote',
+                            book_id: q.book_id,
+                            book_title: q.book_title,
+                            course_code: q.course_code,
+                            page_number: q.page_number,
+                            text: q.text
+                        };
+
+                        await supabase.from('messages').insert({
+                            conversation_id: notesConvId,
+                            sender_id: currentUser.id,
+                            text: `📖 Quote: ${q.book_title || q.course_code || 'Textbook'} (p. ${q.page_number})`,
+                            attachments: [attachment]
+                        });
+                    } else {
+                        await supabase.from('messages').insert({
+                            conversation_id: notesConvId,
+                            sender_id: currentUser.id,
+                            text: forwardTargetMsg.text,
+                            attachments: forwardTargetMsg.attachments || [],
+                            forward_meta: forwardTargetMsg.forward_meta || null
+                        });
+                    }
+
+                    setForwardTargetMsg(null);
+                    setToastNotice("Saved to My Notes");
+                    setIsNotesOpen(true);
+                });
             } else {
                 setIsNotesOpen(true);
             }
