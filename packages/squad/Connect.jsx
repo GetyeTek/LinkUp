@@ -41,6 +41,7 @@ const Connect = () => {
     const [globalNotice, setGlobalNotice] = useState(null);
     const [presenceSynced, setPresenceSynced] = useState(false);
     const activeChatRef = useRef(null);
+    const shareMountTimeRef = useRef(0);
     
     const [targetMessageId, setTargetMessageId] = useState(null); // Deep link scroller
     const [privateInviteData, setPrivateInviteData] = useState(null);
@@ -94,6 +95,8 @@ const Connect = () => {
             clearRoutePayload();
         } else if (routePayload.action === 'share_book_quote') {
             setActiveView('messages');
+            setActiveChatId(null);
+            shareMountTimeRef.current = Date.now();
             setForwardTargetMsg({
                 is_quote: true,
                 quote: routePayload.quote,
@@ -489,6 +492,9 @@ const Connect = () => {
     };
     
     const handleChatClick = (chat) => {
+        if (shareMountTimeRef.current && Date.now() - shareMountTimeRef.current < 350) {
+            return;
+        }
         if (forwardTargetMsg) {
             handleExecuteForward(chat);
         } else {
