@@ -34,14 +34,38 @@
 
 .mini-miron-title {
     font-family: 'Newsreader', serif;
-    font-weight: 500;
-    font-size: 1.1rem;
-    color: var(--accent);
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--accent, #42d7b8);
+    line-height: 1.2;
+}
+
+.mini-miron-meta-sub {
+    font-size: 0.72rem;
+    color: #888;
+    margin-top: 2px;
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 600;
 }
 
 .mini-miron-actions { 
     display: flex; 
     gap: 8px; 
+    align-items: center;
+}
+
+.mini-bubble p {
+    margin-bottom: 8px;
+    line-height: 1.45;
+}
+
+.mini-bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.mini-bubble strong {
+    color: var(--accent, #42d7b8);
+    font-weight: 600;
 }
 
 .mini-miron-flow {
