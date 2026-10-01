@@ -10,7 +10,9 @@
     border-bottom: 1px solid var(--border-color);
     z-index: 100;
     width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
+    overflow: hidden;
 }
 .chat-search-header .back-btn { flex-shrink: 0; }
 .chat-search-input-wrapper {
