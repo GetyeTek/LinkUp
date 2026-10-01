@@ -435,16 +435,19 @@ Highlighted Passage:
 
 ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}\n"""\n\n` : ''}Could you explain this concept in detail? Please break down the formulas, definitions, and reasoning clearly in your conversational tone.`;
 
+            const mironContextPayload = {
+                selectedText,
+                bookTitle,
+                courseCode,
+                pageNumber: currentDisplayPage,
+                sectionInfo,
+                surroundingText: fullPageText ? fullPageText.slice(0, 1800) : '',
+                fullPrompt: mironPrompt
+            };
+
+            setMiniMironText(mironContextPayload);
             window.getSelection()?.removeAllRanges();
             setContextMenu(null);
-
-            if (shell?.openMiron) {
-                shell.openMiron(mironPrompt, true);
-            } else {
-                window.dispatchEvent(new CustomEvent('open-full-miron-chat', {
-                    detail: { text: mironPrompt, autoSend: true }
-                }));
-            }
         }
         if (action === 'copy') {
             navigator.clipboard.writeText(contextMenu.text);
@@ -615,7 +618,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
             {/* --- MINI MIRON OVERLAY --- */}
             {miniMironText && (
                 <MiniMironOverlay 
-                    textContext={miniMironText} 
+                    context={miniMironText} 
                     onClose={() => setMiniMironText(null)} 
                 />
             )}
