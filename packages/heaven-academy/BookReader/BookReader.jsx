@@ -177,8 +177,8 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                     const assetInventory = [];
                     data.pages.forEach(p => {
                         (p.content_json || []).forEach((b, bIdx) => {
-                            const imgUrl = b.url || b.src || b.imageUrl || b.iconUrl || b.img;
-                            const isFig = b.type && (b.type.includes('figure') || b.type.includes('graphic') || b.type.includes('image'));
+                            const imgUrl = b?.url || b?.src || b?.imageUrl || b?.iconUrl || b?.img;
+                            const isFig = b?.type && typeof b.type === 'string' && (b.type.includes('figure') || b.type.includes('graphic') || b.type.includes('image'));
                             if (imgUrl || isFig) {
                                 assetInventory.push({
                                     page: p.page_number,
