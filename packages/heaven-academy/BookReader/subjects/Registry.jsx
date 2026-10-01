@@ -40,7 +40,7 @@ export const renderBookBlock = (block, idx, actions) => {
     if (!block) return null;
 
     const style = resolveStyles(block);
-    const bType = block.type || 'paragraph';
+    const bType = (typeof block.type === 'string' ? block.type : '') || 'paragraph';
     const bookTitle = actions?.bookTitle || block.bookTitle || '';
     const customClass = block.className || '';
     const blockClass = `book-block type-${bType} ${customClass}`.trim();
