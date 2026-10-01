@@ -426,6 +426,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
             setContextMenu(null);
         }
         if (action === 'share') {
+            const selectedText = contextMenu.text;
             const quotePayload = {
                 action: 'share_book_quote',
                 quote: {
@@ -433,17 +434,20 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                     book_title: book?.title || 'Textbook',
                     course_code: book?.course_code || '',
                     page_number: currentDisplayPage || 1,
-                    text: contextMenu.text
+                    text: selectedText
                 }
             };
+            console.log("[SharePipeline:1] Captured quote from book:", quotePayload.quote);
             window.getSelection()?.removeAllRanges();
             setContextMenu(null);
-            window.dispatchEvent(new CustomEvent('navigate-tab', {
-                detail: {
-                    tab: 'connect',
-                    payload: quotePayload
-                }
-            }));
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('navigate-tab', {
+                    detail: {
+                        tab: 'connect',
+                        payload: quotePayload
+                    }
+                }));
+            }, 50);
         }
     };
 
@@ -623,8 +627,9 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                         <div className="ctx-btn"><i className="fa-solid fa-highlighter"></i><span>Highlight</span></div>
                         <div 
                             className="ctx-btn"
-                            onMouseDown={(e) => { e.preventDefault(); handleMenuAction('share'); }}
-                            onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); handleMenuAction('share'); }}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMenuAction('share'); }}
                         >
                             <i className="fa-solid fa-share-nodes"></i><span>Share</span>
                         </div>
