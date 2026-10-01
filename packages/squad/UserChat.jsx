@@ -373,7 +373,8 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
             setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
         } catch (e) {
             const link = document.createElement('a');
-            link.href = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`;
+            const safeUrl = url || '';
+            link.href = `${safeUrl}${safeUrl.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename || 'file')}`;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
             document.body.appendChild(link);
