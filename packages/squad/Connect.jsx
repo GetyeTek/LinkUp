@@ -92,6 +92,15 @@ const Connect = () => {
                 }
             });
             clearRoutePayload();
+        } else if (routePayload.action === 'share_book_quote') {
+            setActiveView('messages');
+            setForwardTargetMsg({
+                is_quote: true,
+                quote: routePayload.quote,
+                text: `[Quote: ${routePayload.quote?.book_title} (p. ${routePayload.quote?.page_number})]`
+            });
+            setForwardSourceChat(null);
+            clearRoutePayload();
         }
     }, [routePayload, currentUser]);
 
@@ -409,8 +418,43 @@ const Connect = () => {
 
     const handleExecuteForward = async (targetChat) => {
         if (targetChat === 'miron') {
-            shell.openMiron(forwardTargetMsg.text);
+            if (forwardTargetMsg.is_quote) {
+                const q = forwardTargetMsg.quote;
+                shell.openMiron(`[Book Quote: ${q.book_title || q.course_code} (Page ${q.page_number})]\n"${q.text}"\n\nCould you explain this textbook passage?`, true);
+            } else {
+                shell.openMiron(forwardTargetMsg.text);
+            }
             setForwardTargetMsg(null);
+            return;
+        }
+
+        if (forwardTargetMsg.is_quote) {
+            const q = forwardTargetMsg.quote;
+            setMountedChats(prev => ({ ...prev, [targetChat.conversation_id]: targetChat }));
+            setActiveChatId(targetChat.conversation_id);
+            setForwardTargetMsg(null);
+
+            const attachment = {
+                type: 'book_quote',
+                book_id: q.book_id,
+                book_title: q.book_title,
+                course_code: q.course_code,
+                page_number: q.page_number,
+                text: q.text
+            };
+
+            const { error } = await supabase.from('messages').insert({
+                conversation_id: targetChat.conversation_id,
+                sender_id: currentUser.id,
+                text: '',
+                attachments: [attachment]
+            });
+
+            if (error) {
+                setGlobalNotice(`Sharing blocked: ${error.message}`);
+            } else {
+                setToastNotice("Quote shared successfully");
+            }
             return;
         }
 
@@ -487,7 +531,7 @@ const Connect = () => {
             <header className="interactive-header">
                 {forwardTargetMsg && !activeChatId && (
                     <div className="forward-mode-banner">
-                        <span>Forward to...</span>
+                        <span>{forwardTargetMsg.is_quote ? `Share quote from ${forwardTargetMsg.quote?.book_title || 'Book'} (p. ${forwardTargetMsg.quote?.page_number})...` : "Forward to..."}</span>
                         <button onClick={() => setForwardTargetMsg(null)}><i className="fas fa-times"></i></button>
                     </div>
                 )}
