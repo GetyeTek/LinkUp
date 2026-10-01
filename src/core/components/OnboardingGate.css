@@ -44,6 +44,70 @@
 .btn-crop-save { background: var(--accent-teal); color: black; }
 
 .onboarding-form { display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* 1-Tap Sex / Gender Selector */
+.sex-selector-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.sex-card {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    color: var(--text-primary-dark, #fff);
+    font-family: 'Poppins', sans-serif;
+}
+
+.sex-card:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.sex-card.active {
+    background: rgba(66, 215, 184, 0.12);
+    border-color: var(--accent-teal, #42d7b8);
+    color: var(--accent-teal, #42d7b8);
+    box-shadow: 0 0 15px rgba(66, 215, 184, 0.2);
+    transform: scale(1.02);
+}
+
+.sex-card:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.sex-icon {
+    font-size: 1.3rem;
+}
+
+.sex-labels {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    line-height: 1.2;
+}
+
+.sex-primary {
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.sex-sub {
+    font-size: 0.68rem;
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 .input-row { display: flex; gap: 1rem; }
 .input-group-sm { display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .input-group-sm label { font-size: 0.8rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
