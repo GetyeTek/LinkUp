@@ -108,22 +108,21 @@ const ChatBubble = ({
             );
         }
 
-        const bookQuoteAttachment = msg.attachments?.find(a => a.type === 'book_quote');
+        const bookQuoteAttachment = msg.attachments?.find(a => a?.type === 'book_quote');
         if (bookQuoteAttachment) {
             return (
-                <div className={baseClass} style={{ padding: 0, overflow: 'hidden', background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                <div className={baseClass} style={{ padding: 0, overflow: 'hidden', background: 'transparent', border: 'none', boxShadow: 'none', width: '100%' }}>
                     {renderForward()}
                     {renderReply()}
                     <div className="chat-book-quote-card">
                         <div className="cbq-topbar">
                             <div className="cbq-book-info">
-                                <i className="fas fa-book-open"></i>
+                                <span className="cbq-type-badge"><i className="fas fa-bookmark"></i> TEXTBOOK EXCERPT</span>
                                 <span className="cbq-title">{bookQuoteAttachment.book_title || bookQuoteAttachment.course_code || 'Textbook'}</span>
                             </div>
                             <span className="cbq-page-pill">Page {bookQuoteAttachment.page_number}</span>
                         </div>
                         <div className="cbq-body">
-                            <i className="fas fa-quote-left cbq-quote-icon"></i>
                             <p className="cbq-text">{bookQuoteAttachment.text}</p>
                         </div>
                         {bookQuoteAttachment.book_id && (
@@ -193,7 +192,7 @@ const ChatBubble = ({
         return (
             <div 
                 id={`sq-msg-${msg.id}`}
-                className={`squad-msg-group ${isMine ? 'mine' : 'theirs'}`} 
+                className={`squad-msg-group ${isMine ? 'mine' : 'theirs'} ${bookQuoteAttachment ? 'has-book-quote' : ''}`} 
                 style={{ zIndex: isMenuOpen ? 100 : 1 }}
                 onClick={handleBubbleClick}
             >
@@ -217,7 +216,7 @@ const ChatBubble = ({
     return (
         <div 
             id={`msg-${msg.id}`} 
-            className={`msg-prism-group ${isMine ? 'sent' : 'received'}`} 
+            className={`msg-prism-group ${isMine ? 'sent' : 'received'} ${bookQuoteAttachment ? 'has-book-quote' : ''}`} 
             style={{ zIndex: isMenuOpen ? 100 : 1 }}
             onClick={handleBubbleClick}
         >
