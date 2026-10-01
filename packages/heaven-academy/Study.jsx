@@ -11,7 +11,7 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './Study.css';
 
 const Study = () => {
-    const { shell, user: userProfile, unreadCount, routePayload, clearRoutePayload } = usePlatform();
+    const { shell, user: userProfile, unreadCount, routePayload, clearRoutePayload, t } = usePlatform();
     const [mistakeCount, setMistakeCount] = useState(0);
     const onOpenActivity = shell.openActivity;
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -110,7 +110,7 @@ const Study = () => {
         <div className="tab-content active" id="study-content">
             <div className="study-hub-view">
                 <header className="study-header">
-                    <h2 className="large-title">Study Hub</h2>
+                    <h2 className="large-title">{t('study_hub', 'Study Hub')}</h2>
                     <div className="header-actions">
                         <button 
                             className="header-miron-btn" 
@@ -138,7 +138,7 @@ const Study = () => {
                     {/* Library Preview / Trigger */}
                     <div id="library-preview-wrapper" className="library-preview-wrapper" onClick={() => setIsLibraryOpen(true)}>
                         <div className="library-fade-overlay"></div>
-                        <div className="expand-prompt"><span className="material-symbols-outlined">open_in_full</span> Tap to expand</div>
+                        <div className="expand-prompt"><span className="material-symbols-outlined">open_in_full</span> {t('tap_to_expand', 'Tap to expand')}</div>
                         <div className="vignette-bg pt-4">
                             <div style={{ height: '220px', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                                 <BookShelf 
@@ -157,7 +157,7 @@ const Study = () => {
                         <div className="compact-trigger" onClick={() => setIsPlannerOpen(true)}>
                             <div className="compact-orb"><span className="material-symbols-outlined">auto_awesome</span></div>
                             <div className="compact-text-content">
-                                <h3 className="compact-title">Plan My Day</h3>
+                                <h3 className="compact-title">{t('plan_my_day', 'Plan My Day')}</h3>
                                 <div className="compact-subtitle">
                                     <div className="typewriter-wrapper">
                                         <span className="typewriter-text">Let Miron structure your session...</span>
@@ -170,7 +170,7 @@ const Study = () => {
 
                         {/* Calibrated Guidance Path */}
                         <div className="guidance-path">
-                            <h3 className="guidance-title">Miron&apos;s Next Steps</h3>
+                            <h3 className="guidance-title">{t('miron_next_steps', "Miron's Next Steps")}</h3>
                             <div className="timeline">
                                 {(!pacingData || !pacingData.courses || pacingData.courses.length === 0) ? (
                                     <div className="timeline-item is-priority">
@@ -242,10 +242,10 @@ const Study = () => {
                             </div>
                             <div className="drill-details">
                                 <div className="drill-tag">
-                                    <span>Recall Training</span>
+                                    <span>{t('recall_training', 'Recall Training')}</span>
                                     {mistakeCount > 0 && <span className="drill-badge">{mistakeCount} Due</span>}
                                 </div>
-                                <h4 className="drill-title">Mistake Vault Quick Drill</h4>
+                                <h4 className="drill-title">{t('mistake_vault', 'Mistake Vault Quick Drill')}</h4>
                                 <p className="drill-subtitle">
                                     {mistakeCount > 0 
                                         ? `${mistakeCount} missed questions ready for review.` 
@@ -253,7 +253,7 @@ const Study = () => {
                                 </p>
                             </div>
                             <button className="drill-action-btn">
-                                <span>Practice</span>
+                                <span>{t('practice', 'Practice')}</span>
                                 <i className="fas fa-arrow-right"></i>
                             </button>
                         </div>
@@ -300,7 +300,7 @@ const Study = () => {
                                         className={`header-title-wrapper ${isHeaderExpanded ? 'expanded' : ''}`} 
                                         onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
                                     >
-                                        <h2>{shelfLevel === 'main' ? 'My Library' : 'Select University'}</h2>
+                                        <h2>{shelfLevel === 'main' ? t('my_library', 'My Library') : t('select_university', 'Select University')}</h2>
                                         <span className="material-symbols-outlined chevron-icon">expand_more</span>
                                     </div>
                                     <button className="icon-button" onClick={() => setIsSearchActive(true)}>
@@ -312,16 +312,16 @@ const Study = () => {
                         
                         <div className={`filter-pills-container ${isHeaderExpanded && !isSearchActive ? 'expanded' : ''}`}>
                             <div className="filter-pills library-filters">
-                                <div className={`chip ${activeCategory === 'All' ? 'active' : ''}`} onClick={() => setActiveCategory('All')}>All Books</div>
-                                <div className={`chip ${activeCategory === 'Textbooks' ? 'active' : ''}`} onClick={() => setActiveCategory('Textbooks')}>Textbooks</div>
+                                <div className={`chip ${activeCategory === 'All' ? 'active' : ''}`} onClick={() => setActiveCategory('All')}>{t('all_books', 'All Books')}</div>
+                                <div className={`chip ${activeCategory === 'Textbooks' ? 'active' : ''}`} onClick={() => setActiveCategory('Textbooks')}>{t('textbooks', 'Textbooks')}</div>
                                 <div className={`chip ${activeCategory === 'Exams' ? 'active' : ''}`} onClick={() => {
                                     setActiveCategory('Exams');
                                     setShelfLevel('universities');
-                                }}>Exams</div>
+                                }}>{t('exams', 'Exams')}</div>
                                 <div className={`chip ${activeCategory === 'Flashcards' ? 'active' : ''}`} onClick={() => {
                                     setActiveCategory('Flashcards');
                                     setIsFlashcardsOpen(true);
-                                }}>Flashcards</div>
+                                }}>{t('flashcards', 'Flashcards')}</div>
                             </div>
                         </div>
                     </header>
