@@ -26,6 +26,7 @@ const ChatBubble = ({
     const hasMedia = msg.attachments && msg.attachments.length > 0;
     const isNaked = hasMedia && (!msg.text || msg.text.trim() === '');
     const isMenuOpen = activeMenu?.msg?.id === msg.id;
+    const bookQuoteAttachment = msg.attachments?.find(a => a?.type === 'book_quote');
 
     const handleBubbleClick = (e) => {
         e.stopPropagation();
@@ -108,7 +109,6 @@ const ChatBubble = ({
             );
         }
 
-        const bookQuoteAttachment = msg.attachments?.find(a => a?.type === 'book_quote');
         if (bookQuoteAttachment) {
             return (
                 <div className={baseClass} style={{ padding: 0, overflow: 'hidden', background: 'transparent', border: 'none', boxShadow: 'none', width: '100%' }}>
