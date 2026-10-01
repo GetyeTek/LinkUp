@@ -37,11 +37,7 @@ const MessagesFeed = ({
 
                 {/* My Notes Entry */}
                 <div className="messages-list-item" style={{ background: 'rgba(66, 215, 184, 0.05)', border: '1px solid rgba(66, 215, 184, 0.2)' }} onClick={() => {
-                    if (forwardTargetMsg) {
-                        setToastNotice("Feature unavailable: Forwarding directly to Notes pending vault sync.");
-                    } else {
-                        setIsNotesOpen(true);
-                    }
+                    handleChatClick('notes');
                 }}>
                     <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#42d7b8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
                         <i className="fas fa-bookmark"></i>
