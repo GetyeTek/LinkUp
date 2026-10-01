@@ -57,7 +57,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
     const [expandedField, setExpandedField] = useState(null);
 
     const [editForm, setEditForm] = useState({
-        sureName: '', fatherName: '', username: '', bio: '', email: '', phone: '', university_id: '', 
+        sureName: '', fatherName: '', username: '', bio: '', email: '', phone: '', sex: '', university_id: '', 
         program: '', department: '', freshman_stream: '', target_department: '', year: ''
     });
     
@@ -79,6 +79,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                 bio: userProfile.bio || '',
                 email: sessionUser?.email || '',
                 phone: userProfile.phone || '',
+                sex: userProfile.sex || '',
                 university_id: userProfile.university_id || '',
                 program: userProfile.program || '',
                 department: userProfile.department || '',
@@ -150,6 +151,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
             bio: editForm.bio.trim(),
             avatar_url: finalAvatarUrl,
             phone: normalizedPhone || null,
+            sex: editForm.sex || null,
             university_id: editForm.university_id || null,
             program: editForm.program || null,
             department: editForm.department || null,
@@ -240,6 +242,36 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                             status={usernameStatus}
                             disabled={saving}
                         />
+
+                        <div className="input-group-sm" style={{ marginTop: '0.5rem' }}>
+                            <label>Gender / ጾታ</label>
+                            <div className="sex-selector-row">
+                                <button
+                                    type="button"
+                                    className={`sex-card ${editForm.sex === 'male' ? 'active' : ''}`}
+                                    onClick={() => setEditForm(prev => ({ ...prev, sex: 'male' }))}
+                                    disabled={saving}
+                                >
+                                    <span className="sex-icon">👨</span>
+                                    <div className="sex-labels">
+                                        <span className="sex-primary">ወንድ</span>
+                                        <span className="sex-sub">Male</span>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`sex-card ${editForm.sex === 'female' ? 'active' : ''}`}
+                                    onClick={() => setEditForm(prev => ({ ...prev, sex: 'female' }))}
+                                    disabled={saving}
+                                >
+                                    <span className="sex-icon">👩</span>
+                                    <div className="sex-labels">
+                                        <span className="sex-primary">ሴት</span>
+                                        <span className="sex-sub">Female</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
                         
                         <div className="input-group-sm" style={{ marginTop: '0.5rem' }}>
                             <label>About Me</label>
