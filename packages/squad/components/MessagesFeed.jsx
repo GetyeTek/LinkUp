@@ -1,5 +1,5 @@
 import React from 'react';
-import { getAvatarFallback } from '@linkup-platform/sdk-core';
+import { getAvatarFallback, usePlatform } from '@linkup-platform/sdk-core';
 
 const MessagesFeed = ({
     activeView,
@@ -15,6 +15,7 @@ const MessagesFeed = ({
     onlineUsers,
     formatTime
 }) => {
+    const { t } = usePlatform();
     return (
         <div id="messages-view" className={`hub-view ${activeView === 'messages' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
             <div className="messages-list">
@@ -43,12 +44,12 @@ const MessagesFeed = ({
                         <i className="fas fa-bookmark"></i>
                     </div>
                     <div className="message-info">
-                        <div className="name" style={{ color: '#42d7b8' }}>My Notes</div>
+                        <div className="name" style={{ color: '#42d7b8' }}>{t('my_notes', 'My Notes')}</div>
                         <div className="last-message">
                             {(() => {
                                 const note = conversations.find(c => c.type === 'notes');
-                                if (!note) return 'Save thoughts, files, or links here...';
-                                return note.last_message_text?.trim() || 'Save thoughts, files, or links here...';
+                                if (!note) return t('my_notes_subtitle', 'Save thoughts, files, or links here...');
+                                return note.last_message_text?.trim() || t('my_notes_subtitle', 'Save thoughts, files, or links here...');
                             })()}
                         </div>
                     </div>
