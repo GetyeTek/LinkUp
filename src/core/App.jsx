@@ -410,7 +410,8 @@ const App = () => {
   useEffect(() => {
     const handleGlobalMironRequest = (e) => {
       const text = e.detail?.text || null;
-      setMironContext({ text });
+      const autoSend = e.detail?.autoSend ?? true;
+      setMironContext({ text, autoSend });
     };
     window.addEventListener('open-full-miron-chat', handleGlobalMironRequest);
     return () => window.removeEventListener('open-full-miron-chat', handleGlobalMironRequest);
