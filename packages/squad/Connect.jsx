@@ -12,7 +12,7 @@ import SquadsFeed from './components/SquadsFeed.jsx';
 import MessagesFeed from './components/MessagesFeed.jsx';
 
 const Connect = () => {
-    const { shell, user: userProfile, sessionUser: currentUser, unreadCount, routePayload, clearRoutePayload } = usePlatform();
+    const { shell, user: userProfile, sessionUser: currentUser, unreadCount, routePayload, clearRoutePayload, t } = usePlatform();
     const [forwardTargetMsg, setForwardTargetMsg] = useState(null);
     const [forwardSourceChat, setForwardSourceChat] = useState(null);
     const [toastNotice, setToastNotice] = useState(null);
@@ -595,7 +595,7 @@ const Connect = () => {
                     </div>
                 )}
                 <div className="large-title-row">
-                    <h2 className="large-title">Social Hub</h2>
+                    <h2 className="large-title">{t('social_hub', 'Social Hub')}</h2>
                     <div className="header-actions">
                         <button className="icon-button" onClick={() => setIsGlobalSearchOpen(true)}>
                             <i className="fas fa-search"></i>
@@ -626,15 +626,15 @@ const Connect = () => {
                         <div className="icon-orbiter">
                             <div className={`option ${activeView === 'messages' ? 'active' : ''}`} onClick={() => { setActiveView('messages'); setIsHeaderCollapsed(false); }}>
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-paper-plane"></i></div>
-                                <span className="text-label">Messages</span>
+                                <span className="text-label">{t('messages', 'Messages')}</span>
                             </div>
                             <div className={`option ${activeView === 'squads' ? 'active' : ''}`} onClick={() => { setActiveView('squads'); setIsHeaderCollapsed(false); }}>
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-layer-group"></i></div>
-                                <span className="text-label">Groups</span>
+                                <span className="text-label">{t('groups', 'Groups')}</span>
                             </div>
                             <div className={`option ${activeView === 'class' ? 'active' : ''}`} onClick={() => { setActiveView('class'); setIsHeaderCollapsed(false); }}>
                                 <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-users-rectangle"></i></div>
-                                <span className="text-label">Class</span>
+                                <span className="text-label">{t('class', 'Class')}</span>
                             </div>
                         </div>
                     </div>
