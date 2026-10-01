@@ -19,6 +19,7 @@ const Home = () => {
     const [mironQuery, setMironQuery] = useState('');
     const firstName = userProfile?.full_name?.split(' ')[0] || 'Scholar';
     const avatarUrl = userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`;
+    const streak = userProfile?.streak ?? userProfile?.current_streak ?? 0;
     const [lastRead, setLastRead] = useState(null);
     
     // Dynamic What's Next Data
@@ -190,8 +191,12 @@ const Home = () => {
                     >
                         <div className="overlay"></div>
                         <div className="hero-summary">
-                            <h2>You're on track.</h2>
-                            <p>3 tasks are due this week.</p>
+                            <div className="hero-streak-pill">
+                                <i className="fas fa-fire"></i>
+                                <span>{streak} {streak === 1 ? 'Day Active' : 'Days Active'}</span>
+                            </div>
+                            <h2>{streak > 0 ? `${streak} Day Streak` : 'Start Your Streak'}</h2>
+                            <p>{streak > 0 ? 'Your daily learning consistency is on fire.' : 'Complete a study session today to start your streak.'}</p>
                         </div>
                     </section>
                 </div>
