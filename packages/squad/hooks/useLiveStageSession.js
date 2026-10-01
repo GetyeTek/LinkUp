@@ -74,7 +74,9 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
                 setPendingChunks(chunks);
             }
 
-            setLiveCredentials({ token: resToken.token, url: resToken.ws_url });
+            if (resToken.ws_url && resToken.token) {
+                setLiveCredentials({ token: resToken.token, url: resToken.ws_url });
+            }
             
             if (setupData) {
                 const resMeta = await invokeSocial({ 
@@ -101,7 +103,9 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
         try {
             const res = await invokeLiveToken({ conversation_id: chat.conversation_id });
             if (res.error) throw new Error(res.error);
-            setLiveCredentials({ token: res.token, url: res.ws_url });
+            if (res.ws_url && res.token) {
+                setLiveCredentials({ token: res.token, url: res.ws_url });
+            }
             setLiveState('full');
         } catch (err) {
             setAlertNotice({ title: "Connection Error", msg: err.message, success: false });
