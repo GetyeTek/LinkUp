@@ -87,3 +87,134 @@
     margin-top: 0;
     background: transparent !important;
 }
+
+/* --- CHAT BOOK QUOTE CARD (Distinctive White Paper Block) --- */
+.chat-book-quote-card {
+    background-color: #ffffff !important;
+    background-image: linear-gradient(#ffffff, #ffffff) !important;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    color-scheme: light only !important;
+    width: 100%;
+    min-width: 250px;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-book-quote-card:hover {
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.6);
+}
+
+.cbq-topbar {
+    background-color: #f4f4f6 !important;
+    border-bottom: 1px solid #e4e4e7 !important;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-family: 'Poppins', sans-serif;
+}
+
+.cbq-book-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.cbq-book-info i {
+    color: #ef4444 !important;
+    -webkit-text-fill-color: #ef4444 !important;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.cbq-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #27272a !important;
+    -webkit-text-fill-color: #27272a !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cbq-page-pill {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: #e4e4e7;
+    color: #52525b !important;
+    -webkit-text-fill-color: #52525b !important;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.cbq-body {
+    padding: 14px 16px;
+    position: relative;
+}
+
+.cbq-quote-icon {
+    font-size: 0.85rem;
+    color: #30bda6 !important;
+    -webkit-text-fill-color: #30bda6 !important;
+    margin-bottom: 6px;
+    display: block;
+    opacity: 0.8;
+}
+
+.cbq-text {
+    font-family: 'Newsreader', 'Times New Roman', serif;
+    font-size: 1.05rem;
+    line-height: 1.5;
+    color: #18181b !important;
+    -webkit-text-fill-color: #18181b !important;
+    font-style: italic;
+    text-align: justify;
+    hyphens: auto;
+    margin: 0;
+    word-break: break-word;
+}
+
+.cbq-footer {
+    background-color: #fafafa !important;
+    border-top: 1px solid #e4e4e7 !important;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #0d9488 !important;
+    -webkit-text-fill-color: #0d9488 !important;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cbq-footer:hover {
+    background-color: #f0fdf4 !important;
+    color: #047857 !important;
+    -webkit-text-fill-color: #047857 !important;
+}
+
+.cbq-footer i {
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+}
+
+.cbq-footer:hover i {
+    transform: translateX(3px);
+}
