@@ -6,7 +6,7 @@ import AnnouncementCard from './components/AnnouncementCard.jsx';
 import './Discover.css';
 
 const Discover = () => {
-    const { shell, user, unreadCount, routePayload, clearRoutePayload } = usePlatform();
+    const { shell, user, unreadCount, routePayload, clearRoutePayload, t } = usePlatform();
     const onOpenActivity = shell.openActivity;
     
     const [liveNews, setLiveNews] = useState([]);
@@ -219,7 +219,7 @@ const Discover = () => {
     return (
         <div className="tab-content active" id="discover-content">
             <header id="discover-header">
-                <h1 className="discover-title">Discover</h1>
+                <h1 className="discover-title">{t('nav_discover', 'Discover')}</h1>
                 <div className="header-actions">
                     <button 
                         className="header-miron-btn" 
@@ -294,7 +294,7 @@ const Discover = () => {
                             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', marginBottom: '0.5rem', boxShadow: '0 0 20px rgba(66, 215, 184, 0.15)' }}>
                                 <i className="fas fa-sparkles"></i>
                             </div>
-                            <h3 style={{ color: '#fff', fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>You're all caught up!</h3>
+                            <h3 style={{ color: '#fff', fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>{t('all_caught_up_excl', "You're all caught up!")}</h3>
                             <p style={{ fontSize: '0.85rem', color: '#888', maxWidth: '300px', lineHeight: 1.5, margin: '4px 0 1rem 0' }}>
                                 No new posts right now. We'll bring you the latest campus announcements as soon as they drop.
                             </p>
@@ -316,7 +316,7 @@ const Discover = () => {
                                     fontFamily: 'Poppins, sans-serif'
                                 }}
                             >
-                                <i className="fas fa-rotate-right"></i> Check for Updates
+                                <i className="fas fa-rotate-right"></i> {t('check_updates', 'Check for Updates')}
                             </button>
                         </div>
                     )
