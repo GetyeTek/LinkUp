@@ -7,7 +7,7 @@ import { useTextSelectionMenu } from './hooks/useTextSelectionMenu.js';
 import { useDraggable } from './hooks/useDraggable.js';
 import './BookReader.css';
 import { renderBookBlock } from './subjects/Registry.jsx';
-import { compileAIContext } from './subjects/utils.jsx';
+import { compileAIContext, extractTextFromBlock } from './subjects/utils.jsx';
 import BookLoader from '../components/BookLoader.jsx';
 import ReportModal from '../components/ReportModal.jsx';
 import TableOfContents from './components/TableOfContents.jsx';
@@ -416,9 +416,35 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const handleMenuAction = (action) => {
         if (!contextMenu) return; // Prevent crashes if selection clears milliseconds before tap
         if (action === 'ask_miron') {
-            setMiniMironText(contextMenu.text);
+            const selectedText = contextMenu.text;
+            const { chapterTitle, sectionTitle } = resolveTocSection(tocData, currentDisplayPage);
+            const bookTitle = book?.title || 'Course Textbook';
+            const courseCode = book?.course_code || '';
+            const sectionInfo = [chapterTitle, sectionTitle].filter(Boolean).join(' > ');
+            
+            const currentPageObj = pages.find(p => p.page_number === currentDisplayPage);
+            const fullPageText = (currentPageObj?.content_json || [])
+                .map(extractTextFromBlock)
+                .filter(Boolean)
+                .join('\n\n');
+
+            const mironPrompt = `[Textbook Inquiry: ${bookTitle}${courseCode ? ` (${courseCode})` : ''} | Page ${currentDisplayPage}${sectionInfo ? ` | Section: ${sectionInfo}` : ''}]
+
+Highlighted Passage:
+"${selectedText}"
+
+${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}\n"""\n\n` : ''}Could you explain this concept in detail? Please break down the formulas, definitions, and reasoning clearly in your conversational tone.`;
+
             window.getSelection()?.removeAllRanges();
             setContextMenu(null);
+
+            if (shell?.openMiron) {
+                shell.openMiron(mironPrompt, true);
+            } else {
+                window.dispatchEvent(new CustomEvent('open-full-miron-chat', {
+                    detail: { text: mironPrompt, autoSend: true }
+                }));
+            }
         }
         if (action === 'copy') {
             navigator.clipboard.writeText(contextMenu.text);
