@@ -13,7 +13,7 @@ import MironLiveSession from './components/MironLiveSession.jsx';
 import BottomNavigation from './components/BottomNavigation.jsx';
 import PremiumUpgradeOverlay from './components/PremiumUpgradeOverlay.jsx';
 import SupportAboutOverlay from './components/SupportAboutOverlay.jsx';
-import { useGlobalSwipe, telemetry, syncDeviceSession, heartbeatDeviceLease, claimDeviceLease, getDeviceId } from '@linkup-platform/sdk-core';
+import { useGlobalSwipe, telemetry, syncDeviceSession, heartbeatDeviceLease, claimDeviceLease, getDeviceId, translations } from '@linkup-platform/sdk-core';
 
 const Discover = lazy(() => import('@linkup/gibi-news'));
 const Study = lazy(() => import('@linkup/heaven-academy'));
@@ -100,25 +100,19 @@ const App = () => {
           }
       };
 
-      const t = (key, fallback = '') => {
-          import('@linkup-platform/sdk-core').then(({ translations }) => translations);
-          const dict = {
-              en: {
-                  nav_home: "Home", nav_discover: "Discover", nav_study: "Study", nav_connect: "Connect", nav_profile: "Profile",
-                  settings_title: "Settings", account_settings: "Account Settings", appearance: "Appearance",
-                  theme_dark: "Dark Mode", theme_light: "Light Mode", language: "Display Language",
-                  lang_english: "English", lang_amharic: "አማርኛ", privacy_security: "Privacy & Security",
-                  support_about: "Support & About", logout: "Log Out"
-              },
-              am: {
-                  nav_home: "ዋና ገጽ", nav_discover: "አግኝ", nav_study: "አጥና", nav_connect: "ተገናኝ", nav_profile: "መገለጫ",
-                  settings_title: "ቅንብሮች", account_settings: "የመለያ ቅንብሮች", appearance: "ገጽታ እና ቋንቋ",
-                  theme_dark: "ጨለማ ሁነታ", theme_light: "ብርሃን ሁነታ", language: "ቋንቋ",
-                  lang_english: "English", lang_amharic: "አማርኛ", privacy_security: "ግላዊነት እና ደህንነት",
-                  support_about: "ድጋፍ እና ስለ እኛ", logout: "ውጣ"
-              }
-          };
-          return dict[language]?.[key] || dict['en']?.[key] || fallback || key;
+      const t = (key, sexOrFallback = null, fallback = '') => {
+          const lang = language || 'en';
+          const dict = translations[lang] || translations['en'] || {};
+          let val = dict[key];
+          if (val && typeof val === 'object') {
+              const userSex = typeof sexOrFallback === 'string' && (sexOrFallback === 'male' || sexOrFallback === 'female') 
+                  ? sexOrFallback 
+                  : (userProfile?.sex || 'polite');
+              return val[userSex] || val['polite'] || val['male'] || fallback || key;
+          }
+          if (typeof val === 'string') return val;
+          if (typeof sexOrFallback === 'string' && sexOrFallback !== 'male' && sexOrFallback !== 'female') return sexOrFallback;
+          return fallback || key;
       };
 
       useEffect(() => {
