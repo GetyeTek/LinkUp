@@ -21,6 +21,24 @@ export const invokeBookReader = async (payload, signal = null) => {
     return response.json();
 };
 
+export const invokeMiron = async (payload) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${ACADEMY_GATEWAY}/functions/v1/miron-athena`, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'apikey': DUMMY_KEY,
+            'x-linkup-client': 'linkup-secure-client-2026',
+            ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        },
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+        throw new Error(`Miron Error: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+};
+
 export const invokePlanMyDay = async (payload = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
     const response = await fetch(`${ACADEMY_GATEWAY}/functions/v1/plan-my-day`, {
