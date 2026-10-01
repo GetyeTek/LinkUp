@@ -21,8 +21,7 @@ const MessagesFeed = ({
                 
                 {/* Static Miron Entry (Bot) */}
                 <div className="messages-list-item miron-chat-card" onClick={() => {
-                    if (forwardTargetMsg) handleExecuteForward('miron');
-                    else shell.openMiron(null);
+                    handleChatClick('miron');
                 }}>
                     <div className="miron-avatar-orb">
                         <span className="material-symbols-outlined">auto_awesome</span>
