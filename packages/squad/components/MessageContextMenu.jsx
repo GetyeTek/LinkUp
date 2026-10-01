@@ -52,11 +52,14 @@ const MessageContextMenu = ({
                     <i className="fa-solid fa-share"></i> Forward
                 </button>
             )}
-            {isMine && (
-                <button className="unified-ctx-btn" onClick={() => { onEdit(msg); onClose(); }}>
-                    <i className="fa-solid fa-pen"></i> Edit
-                </button>
-            )}
+            {(() => {
+                const isBookQuote = msg.attachments?.some(a => a?.type === 'book_quote');
+                return isMine && !isBookQuote && (
+                    <button className="unified-ctx-btn" onClick={() => { onEdit(msg); onClose(); }}>
+                        <i className="fa-solid fa-pen"></i> Edit
+                    </button>
+                );
+            })()}
             {canPin && (
                 <button className="unified-ctx-btn" onClick={() => { onPin(msg); onClose(); }}>
                     <i className="fa-solid fa-thumbtack"></i> Pin
