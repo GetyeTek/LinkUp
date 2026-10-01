@@ -4,9 +4,46 @@ export const useTextSelectionMenu = (viewportRef, pinchState, setContextMenu) =>
     useEffect(() => {
         let debounceTimer;
 
+        const enforceSinglePageSelection = () => {
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+            const range = selection.getRangeAt(0);
+            const getNodeElement = (node) => (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+            const startEl = getNodeElement(range.startContainer);
+            const endEl = getNodeElement(range.endContainer);
+
+            const startCanvas = startEl?.closest('.page-canvas');
+            const endCanvas = endEl?.closest('.page-canvas');
+
+            if (!startCanvas && !endCanvas) return;
+
+            if (startCanvas && endCanvas && startCanvas !== endCanvas) {
+                const startPageNum = parseInt(startCanvas.closest('.page-wrapper')?.getAttribute('data-page-number') || '0', 10);
+                const endPageNum = parseInt(endCanvas.closest('.page-wrapper')?.getAttribute('data-page-number') || '0', 10);
+
+                try {
+                    if (endPageNum > startPageNum) {
+                        range.setEnd(startCanvas, startCanvas.childNodes.length);
+                    } else if (endPageNum < startPageNum) {
+                        range.setStart(startCanvas, 0);
+                    }
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } catch (err) {}
+            } else if (startCanvas && !endCanvas) {
+                try {
+                    range.setEnd(startCanvas, startCanvas.childNodes.length);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } catch (err) {}
+            }
+        };
+
         const checkSelection = () => {
             if (pinchState.current?.isPinching) return;
             
+            enforceSinglePageSelection();
             const selection = window.getSelection();
             if (selection && selection.toString().trim().length > 0) {
                 try {
@@ -38,6 +75,7 @@ export const useTextSelectionMenu = (viewportRef, pinchState, setContextMenu) =>
         };
 
         const handleSelectionChange = () => {
+            enforceSinglePageSelection();
             setContextMenu(prev => prev !== null ? null : prev);
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(checkSelection, 500);
