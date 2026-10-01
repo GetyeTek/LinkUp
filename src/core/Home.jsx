@@ -191,11 +191,7 @@ const Home = () => {
                     >
                         <div className="overlay"></div>
                         <div className="hero-summary">
-                            <div className="hero-streak-pill">
-                                <i className="fas fa-fire"></i>
-                                <span>{streak} {streak === 1 ? 'Day Active' : 'Days Active'}</span>
-                            </div>
-                            <h2>{streak > 0 ? `${streak} Day Streak` : 'Start Your Streak'}</h2>
+                            <h2>{streak > 0 ? `${streak} Day Streak 🔥` : 'Start Your Streak 🔥'}</h2>
                             <p>{streak > 0 ? 'Your daily learning consistency is on fire.' : 'Complete a study session today to start your streak.'}</p>
                         </div>
                     </section>
