@@ -33,7 +33,7 @@ const MessageContextMenu = ({
                 </button>
             )}
             {(() => {
-                const downloadableAttachments = msg.attachments?.filter(a => a.type !== 'poll') || [];
+                const downloadableAttachments = msg.attachments?.filter(a => a && a.type !== 'poll' && a.type !== 'book_quote' && a.url) || [];
                 return canDownload && downloadableAttachments.length > 0 && (
                     <button className="unified-ctx-btn" onClick={() => {
                         if (downloadableAttachments.length > 1) {
