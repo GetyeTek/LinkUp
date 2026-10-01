@@ -12,7 +12,7 @@ const timeAgo = (isoString) => {
 import { MIRON_AVATAR_URL } from '@linkup-platform/sdk-core';
 
 const Home = () => {
-    const { shell, user: userProfile, unreadCount } = usePlatform();
+    const { shell, user: userProfile, unreadCount, language, t } = usePlatform();
     const onOpenActivity = shell.openActivity;
     const [greeting, setGreeting] = useState('Hello');
     const [punctuation, setPunctuation] = useState('.');
@@ -99,25 +99,28 @@ const Home = () => {
     };
 
     useEffect(() => {
-        // Dynamic Time-Slipped Greeting Logic
+        // Dynamic Time-Slipped Gender-Aware Greeting Logic
         const currentHour = new Date().getHours();
+        const userSex = userProfile?.sex || 'polite';
+        const isAm = (language === 'am');
+
         if (currentHour >= 0 && currentHour < 4) {
-            setGreeting('Burning the midnight oil');
+            setGreeting(isAm ? t('greeting_midnight', userSex, 'እኩለ ሌሊት ጥናት ላይ ነህ') : 'Burning the midnight oil');
             setPunctuation('?');
         } else if (currentHour >= 4 && currentHour < 7) {
-            setGreeting('Starting early');
+            setGreeting(isAm ? t('greeting_early', userSex, 'ማለዳ ጀምረሃል') : 'Starting early');
             setPunctuation('?');
         } else if (currentHour >= 7 && currentHour < 12) {
-            setGreeting('Good morning');
+            setGreeting(isAm ? t('greeting_morning', userSex, 'እንደምን አደርክ') : 'Good morning');
             setPunctuation('.');
         } else if (currentHour >= 12 && currentHour < 17) {
-            setGreeting('Good afternoon');
+            setGreeting(isAm ? t('greeting_afternoon', userSex, 'እንደምን ዋልክ') : 'Good afternoon');
             setPunctuation('.');
         } else if (currentHour >= 17 && currentHour < 21) {
-            setGreeting('Good evening');
+            setGreeting(isAm ? t('greeting_evening', userSex, 'እንደምን አመሸህ') : 'Good evening');
             setPunctuation('.');
         } else {
-            setGreeting('Preparing for tomorrow');
+            setGreeting(isAm ? t('greeting_late', userSex, 'ለነገ እየተዘጋጀህ ነው') : 'Preparing for tomorrow');
             setPunctuation('?');
         }
 
