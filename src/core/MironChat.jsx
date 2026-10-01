@@ -114,8 +114,13 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                 }
 
                 if (initialContext) {
-                    // If explicitly opened with a textbook highlight, start a contextual session
-                    await createNewThread("Passage Review", null, initialContext);
+                    const titleMatch = initialContext.match(/\[Textbook Inquiry:\s*([^\|\]]+)/i);
+                    const threadTitle = titleMatch ? titleMatch[1].trim() : "Textbook Study";
+                    if (autoSend) {
+                        await createNewThread(threadTitle, null, null);
+                    } else {
+                        await createNewThread(threadTitle, null, initialContext);
+                    }
                 } else {
                     // Mount directly onto the fresh greeting canvas
                     setActiveThread(null);
