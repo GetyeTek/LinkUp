@@ -518,7 +518,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
         } catch (e) {
             // Failsafe strictly using target blank to prevent routing crash
             const link = document.createElement('a');
-            link.href = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename)}`;
+            const safeUrl = url || '';
+            link.href = `${safeUrl}${safeUrl.includes('?') ? '&' : '?'}download=${encodeURIComponent(filename || 'file')}`;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
             document.body.appendChild(link);
