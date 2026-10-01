@@ -89,36 +89,43 @@
 }
 
 /* --- CHAT BOOK QUOTE CARD (Distinctive White Paper Block) --- */
+.squad-msg-group.has-book-quote,
+.msg-prism-group.has-book-quote {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.squad-msg-group.has-book-quote .squad-bubble-wrapper,
+.msg-prism-group.has-book-quote .prism-bubble {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
 .chat-book-quote-card {
     background-color: #ffffff !important;
     background-image: linear-gradient(#ffffff, #ffffff) !important;
-    border-radius: 16px;
+    border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
     color: #1a1a1a !important;
     -webkit-text-fill-color: #1a1a1a !important;
     color-scheme: light only !important;
-    width: 100%;
-    min-width: 250px;
-    max-width: 380px;
+    width: 100% !important;
+    max-width: 100% !important;
     display: flex;
     flex-direction: column;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.chat-book-quote-card:hover {
-    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.6);
+    box-sizing: border-box;
 }
 
 .cbq-topbar {
     background-color: #f4f4f6 !important;
     border-bottom: 1px solid #e4e4e7 !important;
-    padding: 8px 14px;
+    padding: 6px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
     font-family: 'Poppins', sans-serif;
 }
 
@@ -130,10 +137,20 @@
     min-width: 0;
 }
 
-.cbq-book-info i {
-    color: #ef4444 !important;
-    -webkit-text-fill-color: #ef4444 !important;
-    font-size: 0.85rem;
+.cbq-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 800;
+    background: rgba(66, 215, 184, 0.15);
+    color: #0d9488 !important;
+    -webkit-text-fill-color: #0d9488 !important;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
     flex-shrink: 0;
 }
 
@@ -161,28 +178,22 @@
 }
 
 .cbq-body {
-    padding: 14px 16px;
+    padding: 10px 14px;
     position: relative;
-}
-
-.cbq-quote-icon {
-    font-size: 0.85rem;
-    color: #30bda6 !important;
-    -webkit-text-fill-color: #30bda6 !important;
-    margin-bottom: 6px;
-    display: block;
-    opacity: 0.8;
+    background-color: #ffffff !important;
 }
 
 .cbq-text {
-    font-family: 'Newsreader', 'Times New Roman', serif;
-    font-size: 1.05rem;
-    line-height: 1.5;
-    color: #18181b !important;
-    -webkit-text-fill-color: #18181b !important;
-    font-style: italic;
+    font-family: 'Times New Roman', Times, 'Nyala', 'Abyssinica SIL', serif;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    font-style: normal;
     text-align: justify;
     hyphens: auto;
+    letter-spacing: -0.01em;
+    word-spacing: -0.03em;
     margin: 0;
     word-break: break-word;
 }
