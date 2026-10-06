@@ -267,9 +267,9 @@ const Home = () => {
                                       <i className="fas fa-crown"></i>
                                     </div>
                                     <div>
-                                      <h3 className="promo-title">{t('linkup_gold', 'LinkUp Gold')}</h3>
+                                      <h3 className="promo-title">{t('linkup_premium', 'LinkUp Premium')}</h3>
                                       <div className="promo-desc">
-                                        {t('linkup_gold_desc', 'Unlock unlimited Miron AI, complete Exam Archives, & priority Audio Stages.')}
+                                        {t('linkup_premium_desc', 'Unlock unlimited Miron AI, complete Exam Archives, & priority Audio Stages.')}
                                       </div>
                                     </div>
                                   </div>
