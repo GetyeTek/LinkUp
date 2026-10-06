@@ -22,59 +22,40 @@ const Home = () => {
     const streak = userProfile?.streak ?? userProfile?.current_streak ?? 0;
     const [lastRead, setLastRead] = useState(null);
     
-    // Dynamic What's Next Data
-      const [whatsNextData, setWhatsNextData] = useState({
-    live: [],
-    qa: [],
-    events: [],
-    loading: true
-  });
-  const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
-
-    const handleFeaturedAction = (event) => {
-        if (event.action_type === 'html_room' && event.html_content) {
-            setActiveHtmlRoom(event.html_content);
-        } else if (event.action_type === 'external_link' && event.external_url) {
-            window.open(event.external_url, '_blank', 'noopener,noreferrer');
-        } else if (event.action_type === 'app_route' && event.app_route) {
-            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: event.app_route }));
-        }
-    };
+    // Dynamic Live Stages Data
+    const [whatsNextData, setWhatsNextData] = useState({
+        live: [],
+        loading: true
+    });
 
     useEffect(() => {
         if (!userProfile?.id) return;
         let isMounted = true;
         
-        const fetchWhatsNextData = () => {
-            Promise.all([
-                supabase.rpc('get_live_study_sessions', { req_user_id: userProfile.id }),
-                supabase.rpc('get_peer_questions'),
-                supabase.rpc('get_featured_events')
-            ]).then(([liveRes, qaRes, eventsRes]) => {
-                if (isMounted) {
-                    setWhatsNextData({
-                        live: liveRes.data || [],
-                        qa: (qaRes.data || []).slice(0, 2),
-                        events: eventsRes.data || [],
-                        loading: false
-                    });
-                }
-            });
+        const fetchLiveSessions = () => {
+            supabase.rpc('get_live_study_sessions', { req_user_id: userProfile.id })
+                .then((liveRes) => {
+                    if (isMounted) {
+                        setWhatsNextData({
+                            live: liveRes.data || [],
+                            loading: false
+                        });
+                    }
+                });
         };
 
-        fetchWhatsNextData();
+        fetchLiveSessions();
 
         let debounceTimer;
         const triggerUpdate = () => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-                if (isMounted) fetchWhatsNextData();
-            }, 600); // 600ms debounce ensures edge functions finish writing all rows
+                if (isMounted) fetchLiveSessions();
+            }, 600);
         };
 
-        const channel = supabase.channel(`home_whats_next_${Date.now()}`)
+        const channel = supabase.channel(`home_live_${Date.now()}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, triggerUpdate)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'peer_questions' }, triggerUpdate)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, triggerUpdate)
             .subscribe();
 
@@ -84,19 +65,6 @@ const Home = () => {
             supabase.removeChannel(channel);
         };
     }, [userProfile?.id]);
-
-    const handleWnClick = (filterPill, targetId) => {
-        window.dispatchEvent(new CustomEvent('navigate-tab', { 
-            detail: { 
-                tab: 'discover', 
-                payload: { 
-                    action: 'open_explore_item', 
-                    target_pill: filterPill,
-                    target_id: targetId 
-                } 
-            } 
-        }));
-    };
 
     useEffect(() => {
         // Dynamic Time-Slipped Gender-Aware Greeting Logic
@@ -324,26 +292,32 @@ const Home = () => {
                         </div>
                     </section>
 
-                    {/* OVERHAULED HIGH-FIDELITY DISCOVERY BAR */}
-                    {(!whatsNextData.loading && (whatsNextData.live.length > 0 || whatsNextData.qa.length > 0 || whatsNextData.events.length > 0)) && (
+                    {/* CONDITIONAL LIVE STAGES CAROUSEL */}
+                    {(!whatsNextData.loading && whatsNextData.live.length > 0) && (
                         <section className="discovery-section">
                             <div className="section-label-row">
-                                <h2 className="section-label" style={{margin: 0}}>{t('nav_discover', 'Discover')}</h2>
-                                <button 
-                                    className="view-all-link" 
-                                    style={{background: 'none', border: 'none', cursor: 'pointer'}}
-                                    onClick={() => handleWnClick('All', null)}
-                                >
-                                    {t('discover_all', 'See All')}
-                                </button>
+                                <h2 className="section-label" style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <span style={{width: '8px', height: '8px', borderRadius: '50%', background: '#ff4757', display: 'inline-block', boxShadow: '0 0 8px #ff4757'}}></span>
+                                    {t('live_now', 'Live Now')}
+                                </h2>
+                                <span style={{fontSize: '0.75rem', color: 'var(--accent-teal)', fontFamily: 'Roboto Mono, monospace', fontWeight: 600}}>
+                                    {whatsNextData.live.length === 1 ? '1 Active Room' : `${whatsNextData.live.length} Active Rooms`}
+                                </span>
                             </div>
 
                             <div className="discovery-scroll-container">
-                                {/* The Live Orb (PRIORITY TOP) */}
-                                {whatsNextData.live.length > 0 && (
+                                {whatsNextData.live.map((session) => (
                                     <div 
+                                        key={session.id}
                                         className="live-orb-wrapper" 
-                                        onClick={() => handleWnClick('Study Groups', whatsNextData.live[0].id)}
+                                        onClick={() => {
+                                            window.dispatchEvent(new CustomEvent('navigate-tab', { 
+                                                detail: { 
+                                                    tab: 'connect', 
+                                                    payload: { action: 'open_chat', conversation_id: session.conversation_id, chat_type: 'group' } 
+                                                } 
+                                            }));
+                                        }}
                                     >
                                         <div className="live-orb-outer-ring">
                                             <div className="orb-halo-ring"></div>
@@ -359,62 +333,12 @@ const Home = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="orb-label-title">{whatsNextData.live[0].course_name}</div>
+                                        <div className="orb-label-title">{session.course_name || 'Study Room'}</div>
                                         <div className="orb-label-meta">
-                                            {whatsNextData.live.length > 1 ? `+${whatsNextData.live.length - 1} other sessions` : `${whatsNextData.live[0].participant_count || 1} attending`}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Featured Announcements */}
-                                {whatsNextData.events.map(ev => (
-                                    <div key={ev.id} className="premium-announcement-card" onClick={() => handleFeaturedAction(ev)}>
-                                        {ev.image_url ? (
-                                            <div className="pac-bg" style={{ backgroundImage: `url(${ev.image_url})` }}></div>
-                                        ) : (
-                                            <div className="pac-bg" style={{ background: 'radial-gradient(ellipse at 50% 30%, #1a2c3a 0%, #0f1012 80%)' }}></div>
-                                        )}
-                                        <div className="pac-overlay">
-                                            {ev.tag_text && <span className="pac-tag" style={{ color: ev.tag_color || 'var(--accent-teal)' }}>{ev.tag_text}</span>}
-                                            <h3 className="pac-title">{ev.title}</h3>
-                                            <div className="pac-footer">
-                                                <span>{ev.button_text || 'View'}</span>
-                                                <i className="fas fa-arrow-right"></i>
-                                            </div>
+                                            {session.participant_count ? `${session.participant_count} attending` : 'Join Stage'}
                                         </div>
                                     </div>
                                 ))}
-
-                                {/* Premium Q&A Glass Cards */}
-                                {whatsNextData.qa.map((q, idx) => {
-                                    const isTeal = idx % 2 !== 0;
-                                    const replyCount = q.replies_count || 0;
-                                    return (
-                                        <div 
-                                            key={q.id} 
-                                            className={`premium-qa-card ${isTeal ? 'teal-theme' : ''}`} 
-                                            onClick={() => handleWnClick('Q&A Forum', q.id)}
-                                        >
-                                            <div className="qac-header">
-                                                <img src={q.asker_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(q.asker_name || 'U')}&background=1e1e1e&color=42d7b8`} alt="Avatar" className="qac-avatar" />
-                                                <div className="qac-user-meta">
-                                                    <span className="qac-username">{q.asker_name}</span>
-                                                    <span className="qac-time">{timeAgo(q.created_at)}</span>
-                                                </div>
-                                            </div>
-                                            <div className="qac-body">
-                                                <h3 className="qac-title">{q.title}</h3>
-                                                <p className="qac-snippet">{q.body || 'Tap to view discussion...'}</p>
-                                            </div>
-                                            <div className="qac-footer">
-                                                <span className="qac-tag">{q.course_tag}</span>
-                                                <div className="qac-reply-indicator">
-                                                    <i className="far fa-comment-dots"></i> {replyCount} replies
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
                             </div>
                         </section>
                     )}
@@ -442,62 +366,7 @@ const Home = () => {
                 </div>
             </div>
 
-            {/* Sandbox Render Modal */}
-                      {activeHtmlRoom && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 99999,
-                background: '#0c0c0c',
-                display: 'flex',
-                flexDirection: 'column',
-                animation: 'fadeInModal 0.3s ease-out'
-              }}
-            >
-              <header
-                style={{
-                  padding: '0.8rem 1.2rem',
-                  background: '#0c0c0c',
-                  borderBottom: '1px solid rgba(255,255,255,0.08)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <button
-                  onClick={() => setActiveHtmlRoom(null)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: '1.2rem',
-                    cursor: 'pointer',
-                    padding: '5px'
-                  }}
-                >
-                  <i className="fas fa-chevron-left"></i>
-                </button>
-                <span
-                  style={{
-                    marginLeft: '1rem',
-                    fontSize: '0.9rem',
-                    color: '#888',
-                    fontWeight: 500,
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px'
-                  }}
-                >
-                  Platform Activity
-                </span>
-              </header>
-              <iframe
-                srcDoc={activeHtmlRoom}
-                sandbox="allow-scripts allow-forms"
-                style={{ flex: 1, width: '100%', border: 'none' }}
-                title="LinkUp Sandbox Environment"
-              />
-            </div>
-          )}
+
 
 
         </div>
