@@ -3,7 +3,7 @@ import './GoldBadge.css';
 
 export const GoldBadge = ({ size = 'md' }) => {
     return (
-        <span className={`linkup-gold-badge ${size}`} title="LinkUp Gold Member">
+        <span className={`linkup-gold-badge ${size}`} title="LinkUp Premium Member">
             <i className="fa-solid fa-circle-check"></i>
         </span>
     );
