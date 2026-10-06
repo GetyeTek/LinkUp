@@ -40,6 +40,31 @@
     background: transparent; 
 }
 
+/* Live Stage Indicator Badge on Tab Nav */
+.nav-live-indicator {
+    position: absolute;
+    top: 8px;
+    right: calc(50% - 16px);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ff4757;
+    color: #ffffff;
+    font-size: 0.48rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 8px rgba(255, 71, 87, 0.8);
+    animation: navLivePulse 1.8s infinite ease-in-out;
+    pointer-events: none;
+    z-index: 5;
+}
+
+@keyframes navLivePulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 6px rgba(255, 71, 87, 0.6); }
+    50% { transform: scale(1.18); box-shadow: 0 0 12px rgba(255, 71, 87, 1); }
+}
+
 /* Desktop Sidebar Overrides */
 @media (min-width: 900px) {
     .navigation-magic { 
@@ -64,4 +89,8 @@
     .navigation-magic .text { position: static; transform: none !important; opacity: 1; font-size: 1rem; }
     .navigation-magic li.active a { background: rgba(66, 215, 184, 0.15); }
     .navigation-magic .indicator { display: none; }
+    .nav-live-indicator {
+        top: 6px;
+        right: 6px;
+    }
 }
