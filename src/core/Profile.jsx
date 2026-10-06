@@ -98,8 +98,8 @@ const Profile = () => {
                                 <i className="fa-solid fa-crown"></i>
                             </div>
                             <div className="portal-content">
-                                <h2 className="portal-title" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f1c40f 60%, #d4ac0d 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: '"Newsreader", serif', fontWeight: 600 }}>{t('linkup_gold', 'LinkUp Gold')}</h2>
-                                <p className="portal-subtitle">{t('linkup_gold_sub', 'Upgrade to unlimited AI & Archives')}</p>
+                                <h2 className="portal-title" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f1c40f 60%, #d4ac0d 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: '"Newsreader", serif', fontWeight: 600 }}>{t('linkup_premium', 'LinkUp Premium')}</h2>
+                                <p className="portal-subtitle">{t('linkup_premium_sub', 'Upgrade to unlimited AI & Archives')}</p>
                             </div>
                         </div>
                     </div>
