@@ -20,7 +20,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     const [view, setView] = useState('pricing');
     const [plan, setPlan] = useState('annual'); // 'semester' (199) | 'annual' (299)
     const [selectedMethod, setSelectedMethod] = useState('cbe'); // 'cbe' | 'telebirr'
-    const [useCredits, setUseCredits] = useState(false);
+    const [useCredits, setUseCredits] = useState(true); // Auto-applied by default for instant gratification
     const [quote, setQuote] = useState({
         base_price: 299,
         discount_amount: 0,
@@ -309,7 +309,16 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     onClick={() => setPlan('semester')}
                                 >
                                     <div className="pu-plan-tag">Semester Pass</div>
-                                    <div className="pu-plan-price">199 <span>ETB</span></div>
+                                    <div className="pu-plan-price">
+                                        {useCredits && quote.discount_amount > 0 && plan === 'semester' ? (
+                                            <>
+                                                {quote.final_price} <span>ETB</span>
+                                                <span className="pu-price-slashed">199 ETB</span>
+                                            </>
+                                        ) : (
+                                            <>199 <span>ETB</span></>
+                                        )}
+                                    </div>
                                 </div>
                                 <div 
                                     className={`pu-plan-card ${plan === 'annual' ? 'active' : ''}`} 
@@ -317,39 +326,70 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 >
                                     <div className="pu-save-ribbon">Save 35%</div>
                                     <div className="pu-plan-tag">Annual Pass</div>
-                                    <div className="pu-plan-price">299 <span>ETB</span></div>
+                                    <div className="pu-plan-price">
+                                        {useCredits && quote.discount_amount > 0 && plan === 'annual' ? (
+                                            <>
+                                                {quote.final_price} <span>ETB</span>
+                                                <span className="pu-price-slashed">299 ETB</span>
+                                            </>
+                                        ) : (
+                                            <>299 <span>ETB</span></>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
                             {quote.credits_available > 0 && (
-                                <div 
-                                    className={`pu-credit-redeem-card ${useCredits ? 'active' : ''}`}
-                                    onClick={() => setUseCredits(!useCredits)}
-                                >
-                                    <div className="pu-crc-left">
-                                        <div className="pu-crc-checkbox">
-                                            {useCredits && <i className="fa-solid fa-check"></i>}
+                                <div className={`pu-voucher-ticket ${useCredits ? 'is-active' : 'is-saved'}`}>
+                                    <div className="pu-vt-header">
+                                        <div className="pu-vt-badge">
+                                            <i className="fa-solid fa-coins"></i>
+                                            <span>Your Earned Credits</span>
                                         </div>
-                                        <div className="pu-crc-text">
-                                            <div className="pu-crc-title">
-                                                <span>Redeem Scholar Credits</span>
-                                                {useCredits && quote.discount_amount > 0 && (
-                                                    <span className="pu-crc-pill">-{quote.discount_amount} ETB</span>
-                                                )}
-                                            </div>
-                                            <p className="pu-crc-sub">
+                                        {useCredits && quote.discount_amount > 0 && (
+                                            <span className="pu-vt-savings-badge">-{quote.discount_amount} ETB OFF</span>
+                                        )}
+                                    </div>
+
+                                    <div className="pu-vt-body">
+                                        <div className="pu-vt-info">
+                                            <h4>
+                                                {useCredits && quote.credits_applied > 0 
+                                                    ? `${quote.credits_applied} Credits Applied (${quote.discount_amount} ETB Saved)` 
+                                                    : 'Credits Preserved in Wallet'}
+                                            </h4>
+                                            <p>
                                                 {useCredits && quote.credits_applied > 0
-                                                    ? `Applying ${quote.credits_applied} credits (${quote.credits_remaining} saved for later)`
-                                                    : `Available: ${quote.credits_available} credits (up to 500 max / 50 ETB off)`}
+                                                    ? `Your missions and invite streak knocked ${quote.discount_amount} ETB off your membership! (${quote.credits_remaining} credits left for future perks)`
+                                                    : `You have ${quote.credits_available} credits saved. Tap Apply to deduct up to 500 credits (-50 ETB) from this order.`}
                                             </p>
                                         </div>
+                                        <button 
+                                            type="button"
+                                            className="pu-vt-toggle-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setUseCredits(!useCredits);
+                                            }}
+                                        >
+                                            {useCredits ? 'Save for Later' : 'Apply Credits'}
+                                        </button>
                                     </div>
                                 </div>
                             )}
 
                             <button className="pu-cta-gold-btn" onClick={() => setView('methods')}>
-                                <span>Proceed to Payment • {amountDue} ETB</span>
-                                <i className="fa-solid fa-arrow-right"></i>
+                                {useCredits && quote.discount_amount > 0 ? (
+                                    <>
+                                        <span>Pay {amountDue} ETB • Saved {quote.discount_amount} ETB!</span>
+                                        <i className="fa-solid fa-sparkles"></i>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>Proceed to Payment • {amountDue} ETB</span>
+                                        <i className="fa-solid fa-arrow-right"></i>
+                                    </>
+                                )}
                             </button>
 
                             <div className="pu-trust-footer">
