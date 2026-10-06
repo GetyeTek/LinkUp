@@ -16,8 +16,6 @@ const Profile = () => {
     const handleLogout = async () => {
         await supabase.auth.signOut();
     };
-    
-    const plexusRef = useRef(null);
 
     // Global Listener to open the Profile Editor externally
     useEffect(() => {
@@ -33,52 +31,10 @@ const Profile = () => {
         return () => window.removeEventListener('open-mission-control', handleOpenMission);
     }, []);
 
-
-
     // Helper to toggle overlays
     const toggleOverlay = (name, isOpen) => {
         setOverlays(prev => ({ ...prev, [name]: isOpen }));
     };
-
-    // Plexus Animation (Portal Card)
-    useEffect(() => {
-        const canvas = plexusRef.current;
-        let animationFrameId;
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            let w = canvas.width = 100;
-            let h = canvas.height = 100;
-            let points = [];
-            for(let i = 0; i < 15; i++) {
-                points.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, r: Math.random() * 1.5 + 1 });
-            }
-            
-            const update = () => {
-                ctx.clearRect(0, 0, w, h);
-                points.forEach(p => {
-                    p.x += p.vx; p.y += p.vy;
-                    if(p.x < 0 || p.x > w) p.vx *= -1;
-                    if(p.y < 0 || p.y > h) p.vy *= -1;
-                    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(66, 215, 184, 0.5)'; ctx.fill();
-                });
-                for(let i = 0; i < points.length; i++) {
-                    for(let j = i + 1; j < points.length; j++) {
-                        const dist = Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y);
-                        if(dist < 50) {
-                            ctx.beginPath(); ctx.moveTo(points[i].x, points[i].y); ctx.lineTo(points[j].x, points[j].y);
-                            ctx.strokeStyle = `rgba(66, 215, 184, ${1 - dist / 50})`; ctx.stroke();
-                        }
-                    }
-                }
-                animationFrameId = requestAnimationFrame(update);
-            };
-            update();
-        }
-        return () => {
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        };
-    }, []);
 
     return (
         <div className="tab-content active" id="profile-content">
@@ -94,29 +50,6 @@ const Profile = () => {
                                 {userProfile?.full_name || 'Student'}
                                 {userProfile?.is_pro && <GoldBadge size="lg" />}
                             </h1>
-                            {(() => {
-                                const level = userProfile?.level || 'Division V';
-                                const divIconMap = {
-                                    'Division I': 'fa-shield-halved',
-                                    'Division II': 'fa-crown',
-                                    'Division III': 'fa-medal',
-                                    'Division IV': 'fa-award',
-                                    'Division V': 'fa-seedling'
-                                };
-                                const divClassMap = {
-                                    'Division I': 'div-badge-1',
-                                    'Division II': 'div-badge-2',
-                                    'Division III': 'div-badge-3',
-                                    'Division IV': 'div-badge-4',
-                                    'Division V': 'div-badge-5'
-                                };
-                                return (
-                                    <div className={`profile-division-pill ${divClassMap[level] || 'div-badge-5'}`}>
-                                        <i className={`fas ${divIconMap[level] || 'fa-seedling'}`}></i>
-                                        <span>{level}</span>
-                                    </div>
-                                );
-                            })()}
                             <div className="linkoin-balance-hero" title="LinkUp Credits">
                                 <i className="fas fa-coins linkoin-icon-sm"></i>
                                 <span>{userProfile?.linkoin_balance ?? 0} Credits</span>
@@ -128,8 +61,23 @@ const Profile = () => {
                 <div className="page-content">
                     <div className="portal-cards-container">
                         <div className="portal-card" onClick={() => toggleOverlay('observatory', true)}>
-                            <div className="portal-window">
-                                <canvas className="plexus-canvas" ref={plexusRef}></canvas>
+                            <div className="portal-window" style={{ color: 'var(--accent-teal)' }}>
+                                <svg viewBox="0 0 100 100" style={{ width: '60px', height: '60px' }}>
+                                    <defs>
+                                        <linearGradient id="portal-analytics-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                                            <stop offset="0%" stopColor="#42d7b8" stopOpacity="0.1" />
+                                            <stop offset="100%" stopColor="#42d7b8" stopOpacity="0.8" />
+                                        </linearGradient>
+                                    </defs>
+                                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(66, 215, 184, 0.2)" strokeWidth="1.5" strokeDasharray="3 3" />
+                                    <circle cx="50" cy="50" r="28" fill="none" stroke="rgba(66, 215, 184, 0.25)" strokeWidth="1" />
+                                    <path d="M 22 70 L 40 54 L 56 60 L 78 34 L 78 78 L 22 78 Z" fill="url(#portal-analytics-grad)" />
+                                    <path d="M 22 70 L 40 54 L 56 60 L 78 34" fill="none" stroke="var(--accent-teal)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                    <circle cx="78" cy="34" r="4" fill="var(--accent-teal)" />
+                                    <circle cx="56" cy="60" r="3" fill="var(--accent-teal)" />
+                                    <circle cx="40" cy="54" r="3" fill="var(--accent-teal)" />
+                                    <circle cx="22" cy="70" r="3" fill="var(--accent-teal)" />
+                                </svg>
                             </div>
                             <div className="portal-content">
                                 <h2 className="portal-title">{t('study_analytics', 'Study Analytics')}</h2>
