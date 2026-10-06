@@ -20,6 +20,15 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     const [view, setView] = useState('pricing');
     const [plan, setPlan] = useState('annual'); // 'semester' (199) | 'annual' (299)
     const [selectedMethod, setSelectedMethod] = useState('cbe'); // 'cbe' | 'telebirr'
+    const [useCredits, setUseCredits] = useState(false);
+    const [quote, setQuote] = useState({
+        base_price: 299,
+        discount_amount: 0,
+        final_price: 299,
+        credits_applied: 0,
+        credits_available: 0,
+        credits_remaining: 0
+    });
     
     // Accounts loaded strictly from backend (Zero hardcoded fallbacks to prevent misrouted funds)
     const [accounts, setAccounts] = useState(null);
@@ -137,8 +146,21 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
         setReceiptPreview(URL.createObjectURL(file));
     };
 
+    // Fetch quote from backend whenever plan or credit toggle changes
+    useEffect(() => {
+        if (!sessionUser?.id || !isActive) return;
+        supabase.rpc('calculate_membership_quote', {
+            p_plan: plan,
+            p_use_credits: useCredits
+        }).then(({ data, error }) => {
+            if (!error && data) {
+                setQuote(data);
+            }
+        });
+    }, [plan, useCredits, sessionUser?.id, isActive]);
+
     // 1-Tap Copy Helper
-    const copyToClipboard = (text, key) => {
+    const copyToClipboard = (text, key) => />
         navigator.clipboard.writeText(text);
         setCopiedKey(key);
         if (navigator.vibrate) navigator.vibrate(20);
@@ -177,12 +199,16 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                 uploadedImageUrl = publicUrl;
             }
 
-            const amount = plan === 'semester' ? 199 : 299;
+            const amount = quote?.final_price ?? (plan === 'semester' ? 199 : 299);
+            const creditsUsed = quote?.credits_applied ?? 0;
+            const discountApplied = quote?.discount_amount ?? 0;
 
             const payload = {
                 user_id: sessionUser.id,
                 plan,
                 amount,
+                credits_applied: creditsUsed,
+                discount_applied: discountApplied,
                 payment_method: selectedMethod,
                 transaction_ref: txnRef.trim() || null,
                 sms_text: smsText.trim() || null,
@@ -213,7 +239,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
 
     if (!isActive) return null;
 
-    const amountDue = plan === 'semester' ? 199 : 299;
+    const amountDue = quote?.final_price ?? (plan === 'semester' ? 199 : 299);
 
     return (
         <div className={`pu-overlay-wrapper ${isActive ? 'is-active' : ''}`} onClick={onClose}>
@@ -255,7 +281,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 <i className="fa-solid fa-leaf pu-leaf-icon" style={{ transform: 'scaleX(-1)' }}></i>
                             </div>
 
-                            <h1 className="pu-modal-title">LinkUp Gold Pass</h1>
+                            <h1 className="pu-modal-title">LinkUp Premium Pass</h1>
                             <p className="pu-modal-subtitle">Unrestricted AI reasoning, complete multi-year exam pavilion archives, and live audio co-hosting.</p>
 
                             <div className="pu-perks-list">
@@ -294,6 +320,32 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     <div className="pu-plan-price">299 <span>ETB</span></div>
                                 </div>
                             </div>
+
+                            {quote.credits_available > 0 && (
+                                <div 
+                                    className={`pu-credit-redeem-card ${useCredits ? 'active' : ''}`}
+                                    onClick={() => setUseCredits(!useCredits)}
+                                >
+                                    <div className="pu-crc-left">
+                                        <div className="pu-crc-checkbox">
+                                            {useCredits && <i className="fa-solid fa-check"></i>}
+                                        </div>
+                                        <div className="pu-crc-text">
+                                            <div className="pu-crc-title">
+                                                <span>Redeem Scholar Credits</span>
+                                                {useCredits && quote.discount_amount > 0 && (
+                                                    <span className="pu-crc-pill">-{quote.discount_amount} ETB</span>
+                                                )}
+                                            </div>
+                                            <p className="pu-crc-sub">
+                                                {useCredits && quote.credits_applied > 0
+                                                    ? `Applying ${quote.credits_applied} credits (${quote.credits_remaining} saved for later)`
+                                                    : `Available: ${quote.credits_available} credits (up to 500 max / 50 ETB off)`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <button className="pu-cta-gold-btn" onClick={() => setView('methods')}>
                                 <span>Proceed to Payment • {amountDue} ETB</span>
@@ -563,7 +615,12 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                             </p>
 
                             <div className="pu-status-card">
-                                <div><strong>Plan:</strong> {existingSubmission?.plan === 'annual' ? 'Annual Pass (299 ETB)' : 'Semester Pass (199 ETB)'}</div>
+                                <div><strong>Plan:</strong> {existingSubmission?.plan === 'annual' ? 'Annual Pass' : 'Semester Pass'} ({existingSubmission?.amount || amountDue} ETB)</div>
+                                {existingSubmission?.discount_applied > 0 && (
+                                    <div style={{ marginTop: '4px', color: 'var(--green-accent)' }}>
+                                        <strong>Credits Applied:</strong> {existingSubmission.credits_applied} (-{existingSubmission.discount_applied} ETB)
+                                    </div>
+                                )}
                                 {existingSubmission?.transaction_ref && (
                                     <div style={{ marginTop: '4px' }}><strong>Txn Ref:</strong> {existingSubmission.transaction_ref}</div>
                                 )}
@@ -594,16 +651,16 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
 
                             <div className="pu-scholar-badge">
                                 <i className="fa-solid fa-check"></i>
-                                <span>Gold Pass Active</span>
+                                <span>Premium Pass Active</span>
                             </div>
 
-                            <h1 className="pu-modal-title" style={{ fontSize: '2rem' }}>You Are Gold!</h1>
+                            <h1 className="pu-modal-title" style={{ fontSize: '2rem' }}>You Are Premium!</h1>
                             <p className="pu-modal-subtitle">
                                 All academic privileges are fully unlocked on your account.
                             </p>
 
                             <div className="pu-status-card">
-                                <div><strong>Membership:</strong> LinkUp Gold Scholar</div>
+                                <div><strong>Membership:</strong> LinkUp Premium Scholar</div>
                                 {userProfile?.pro_expires_at && (
                                     <div style={{ marginTop: '4px' }}>
                                         <strong>Expires:</strong> {new Date(userProfile.pro_expires_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
