@@ -10,7 +10,7 @@ const tabIndex = {
     profile: 4
 };
 
-const BottomNavigation = ({ activeTab, setActiveTab }) => {
+const BottomNavigation = ({ activeTab, setActiveTab, hasActiveLive = false }) => {
     const { t } = usePlatform();
 
     return (
@@ -60,7 +60,14 @@ const BottomNavigation = ({ activeTab, setActiveTab }) => {
                     onClick={() => setActiveTab('connect')}
                 >
                     <a>
-                        <span className="icon"><i className="fas fa-users"></i></span>
+                        <span className="icon">
+                            <i className="fas fa-users"></i>
+                            {hasActiveLive && (
+                                <span className="nav-live-indicator" title="Live Stage Active">
+                                    <i className="fas fa-microphone-alt"></i>
+                                </span>
+                            )}
+                        </span>
                         <span className="text">{t('nav_connect', 'Connect')}</span>
                     </a>
                 </li>
