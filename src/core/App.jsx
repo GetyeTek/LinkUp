@@ -29,9 +29,10 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showOfflineBanner, setShowOfflineBanner] = useState(!navigator.onLine);
-      const [unreadCount, setUnreadCount] = useState(0);
-      const [routePayload, setRoutePayload] = useState(null);
-        const [isMironLive, setIsMironLive] = useState(false);
+        const [unreadCount, setUnreadCount] = useState(0);
+  const [routePayload, setRoutePayload] = useState(null);
+  const [isMironLive, setIsMironLive] = useState(false);
+  const [hasActiveLive, setHasActiveLive] = useState(false);
   const [theme, setThemeState] = useState(localStorage.getItem('linkup_theme') || 'dark');
   const [language, setLanguageState] = useState(localStorage.getItem('linkup_language') || 'en');
   const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
@@ -115,11 +116,30 @@ const App = () => {
           return fallback || key;
       };
 
-      useEffect(() => {
-        const handleOpenLive = () => setIsMironLive(true);
-        window.addEventListener('miron:open-live-session', handleOpenLive);
-        return () => window.removeEventListener('miron:open-live-session', handleOpenLive);
-      }, []);
+        useEffect(() => {
+    const handleOpenLive = () => setIsMironLive(true);
+    window.addEventListener('miron:open-live-session', handleOpenLive);
+    return () => window.removeEventListener('miron:open-live-session', handleOpenLive);
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const checkLiveSessions = async () => {
+      const { count } = await supabase.from('live_study_sessions').select('id', { count: 'exact', head: true });
+      setHasActiveLive((count || 0) > 0);
+    };
+    checkLiveSessions();
+
+    const liveChannel = supabase.channel('global_live_stage_indicator')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, () => {
+        checkLiveSessions();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(liveChannel);
+    };
+  }, [session?.user?.id]);
 
       useEffect(() => {
         const handleOnline = () => { 
@@ -626,7 +646,7 @@ const App = () => {
                       />
                   )}
 
-                  <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+                  <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} hasActiveLive={hasActiveLive} />
           </PlatformProvider>
         </div>
       );
