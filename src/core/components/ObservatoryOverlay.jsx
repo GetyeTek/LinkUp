@@ -28,13 +28,7 @@ const AnimatedValue = ({ target = 0, isActive }) => {
     return <span>{val}</span>;
 };
 
-const DIVISION_CONFIG = {
-    'Division I': { icon: 'fa-shield-halved', badgeClass: 'div-1', label: 'Division I', min: 3500 },
-    'Division II': { icon: 'fa-crown', badgeClass: 'div-2', label: 'Division II', min: 2500 },
-    'Division III': { icon: 'fa-medal', badgeClass: 'div-3', label: 'Division III', min: 1500 },
-    'Division IV': { icon: 'fa-award', badgeClass: 'div-4', label: 'Division IV', min: 600 },
-    'Division V': { icon: 'fa-seedling', badgeClass: 'div-5', label: 'Division V', min: 0 }
-};
+
 
 const ObservatoryOverlay = ({ isActive, onClose }) => {
     const { sessionUser } = usePlatform();
@@ -102,8 +96,6 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
         }
     }, [isActive]);
 
-    const activeDivKey = data?.division || 'Division V';
-    const divMeta = DIVISION_CONFIG[activeDivKey] || DIVISION_CONFIG['Division V'];
     const heatmapCells = data?.heatmap || [];
     const weeklyBars = data?.weekly_velocity || [];
     const maxWeeklyHours = Math.max(...weeklyBars.map(b => b.hours || 0), 2.0);
@@ -126,7 +118,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                     <div className="value">
                                         <AnimatedValue target={data?.mastery_rating || 0} isActive={isActive} />
                                     </div>
-                                    <div className="label">Mastery Rating (MR)</div>
+                                    <div className="label">Study Score</div>
                                 </div>
                             </div>
                             <div className="dashboard-card">
@@ -141,24 +133,24 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                         </div>
                     </section>
 
-                    {/* Division Standing & Crest */}
-                    <section className={`rank-showcase-card ${divMeta.badgeClass} fade-in-up`} style={{ transitionDelay: '0.2s' }}>
+                    {/* Campus Standing Showcase */}
+                    <section className="rank-showcase-card fade-in-up" style={{ transitionDelay: '0.2s' }}>
                         <header className="showcase-header">
-                            <div className={`crest-emblem ${divMeta.badgeClass}`}>
-                                <i className={`fas ${divMeta.icon}`}></i>
+                            <div className="crest-emblem">
+                                <i className="fas fa-trophy"></i>
                             </div>
-                            <h3 className="rank-title">{divMeta.label}</h3>
+                            <h3 className="rank-title">Campus Leaderboard</h3>
                             <p className="rank-standing-subtitle">
                                 {data?.my_standing?.is_hidden 
-                                    ? 'Global Rank: Hidden (Private)' 
-                                    : `Global Rank #${data?.my_standing?.rank || '--'} of ${data?.my_standing?.total_scholars || '--'} Students`}
+                                    ? 'Rank: Hidden (Private)' 
+                                    : `Rank #${data?.my_standing?.rank || '--'} of ${data?.my_standing?.total_scholars || '--'} Students`}
                             </p>
                         </header>
 
-                        {/* Global Top 10 Ladder */}
+                        {/* Top 10 Ladder */}
                         <div className="ladder-header-bar">
-                            <span>Global Top 10</span>
-                            <span>Mastery Rating</span>
+                            <span>Top Scholars</span>
+                            <span>Score</span>
                         </div>
                         <div className="ladder-list">
                             {(data?.leaderboard || []).map((player) => (
@@ -179,11 +171,8 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                             {player.is_user ? 'You' : player.name}
                                             {player.is_pro && <GoldBadge size="sm" />}
                                         </span>
-                                        <span className={`player-div-tag ${DIVISION_CONFIG[player.division]?.badgeClass || 'div-5'}`}>
-                                            {player.division}
-                                        </span>
                                     </div>
-                                    <div className="player-score-tag">{player.mastery_rating} MR</div>
+                                    <div className="player-score-tag">{player.mastery_rating} pts</div>
                                 </div>
                             ))}
 
@@ -202,11 +191,8 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                             <span className="player-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 You {(data.my_standing.is_pro || userProfile?.is_pro) && <GoldBadge size="sm" />} {data.my_standing.is_hidden && <span style={{ fontSize: '0.72rem', color: '#ffab40', fontWeight: 'normal' }}>(Unlisted)</span>}
                                             </span>
-                                            <span className={`player-div-tag ${divMeta.badgeClass}`}>
-                                                {data.my_standing.division}
-                                            </span>
                                         </div>
-                                        <div className="player-score-tag">{data.my_standing.mastery_rating} MR</div>
+                                        <div className="player-score-tag">{data.my_standing.mastery_rating} pts</div>
                                     </div>
                                 </>
                             )}
