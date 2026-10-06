@@ -25,9 +25,7 @@ const Study = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchActive, setIsSearchActive] = useState(false);
     const [activeCategory, setActiveCategory] = useState('All');
-    const [pacingData, setPacingData] = useState(null);
     const [targetPage, setTargetPage] = useState(undefined);
-    const [showAllPacing, setShowAllPacing] = useState(false);
     const [isPlannerOpen, setIsPlannerOpen] = useState(false);
     const [isFlashcardsOpen, setIsFlashcardsOpen] = useState(false);
     const searchInputRef = useRef(null);
@@ -62,13 +60,6 @@ const Study = () => {
                 if (data.universities) setUniversities(data.universities); 
             })
             .catch(err => console.error(err));
-
-        // Fetch Real-time Academic Pacing
-        supabase.rpc('get_student_academic_pacing').then(({ data, error }) => {
-            if (data && data.courses) {
-                setPacingData(data);
-            }
-        }).catch(err => console.error("Academic pacing error:", err));
     }, []);
 
     // 2. Search Focus Hook
@@ -168,72 +159,7 @@ const Study = () => {
                             <i className="fas fa-chevron-right action-chevron"></i>
                         </div>
 
-                        {/* Calibrated Guidance Path */}
-                        <div className="guidance-path">
-                            <h3 className="guidance-title">{t('miron_next_steps', "Miron's Next Steps")}</h3>
-                            <div className="timeline">
-                                {(!pacingData || !pacingData.courses || pacingData.courses.length === 0) ? (
-                                    <div className="timeline-item is-priority">
-                                        <div className="timeline-marker"><i className="fas fa-brain fa-xs"></i></div>
-                                        <div className="timeline-content">
-                                            <div className="item-text">
-                                                <h4 className="item-title">Calibrating Curriculum...</h4>
-                                                <p className="item-reason">Scanning academic calendar and course books.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    (showAllPacing ? pacingData.courses : pacingData.courses.slice(0, 3)).map((course, idx) => {
-                                        const isBehind = course.status === 'behind' || (course.status === 'not_started' && course.expected_chapter_index > 2);
-                                        const isAhead = course.status === 'ahead';
-                                        
-                                        const handleStart = () => {
-                                            if (isAhead) {
-                                                setIsLibraryOpen(true);
-                                                setShelfLevel('universities');
-                                            } else {
-                                                const destPage = course.user_current_page > 1 ? course.user_current_page : course.expected_chapter_page;
-                                                setTargetPage(destPage);
-                                                setActiveBook({
-                                                    id: course.book_id,
-                                                    title: course.book_title,
-                                                    course_code: course.course_code
-                                                });
-                                            }
-                                        };
 
-                                        return (
-                                            <div key={course.book_id || idx} className={`timeline-item ${course.is_priority ? 'is-priority' : ''}`}>
-                                                <div className="timeline-marker">
-                                                    <i className={`fas ${isBehind ? 'fa-bolt' : isAhead ? 'fa-award' : 'fa-book-open'} fa-xs`}></i>
-                                                </div>
-                                                <div className="timeline-content">
-                                                    <div className="item-text">
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                                                            <h4 className="item-title">{course.book_title}</h4>
-                                                            {isBehind && <span style={{ fontSize: '0.62rem', background: 'rgba(255, 95, 95, 0.15)', color: '#ff5f5f', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>CATCH UP</span>}
-                                                            {isAhead && <span style={{ fontSize: '0.62rem', background: 'rgba(255, 215, 0, 0.15)', color: 'var(--linkoin-gold)', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>AHEAD</span>}
-                                                        </div>
-                                                        <p className="item-reason">{course.recommendation_msg}</p>
-                                                    </div>
-                                                    <button className="item-action-btn" onClick={handleStart}>
-                                                        {isAhead ? 'Practice' : 'Start'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
-                            {pacingData?.courses?.length > 3 && (
-                                <div className="expand-footer">
-                                    <button className="show-all-btn" onClick={() => setShowAllPacing(!showAllPacing)}>
-                                        <i className={`fas fa-chevron-${showAllPacing ? 'up' : 'down'} fa-xs`}></i> 
-                                        {showAllPacing ? 'Show Less' : `Show All (${pacingData.courses.length}) Courses`}
-                                    </button>
-                                </div>
-                            )}
-                        </div>
 
                         {/* Mistake Vault Quick Recall Shortcut */}
                         <div className="study-drill-card" onClick={() => setIsFlashcardsOpen(true)}>
