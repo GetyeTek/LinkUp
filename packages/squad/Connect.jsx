@@ -502,6 +502,14 @@ const Connect = () => {
             console.log("[SharePipeline:Guard] Dropped ghost click during immunity window:", chat);
             return;
         }
+        if (chat === 'miron') {
+            if (forwardTargetMsg) {
+                handleExecuteForward('miron');
+            } else {
+                shell.openMiron();
+            }
+            return;
+        }
         if (chat === 'notes') {
             if (forwardTargetMsg) {
                 console.log("[SharePipeline:Notes] Saving quote to My Notes vault...");
