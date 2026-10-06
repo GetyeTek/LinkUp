@@ -160,7 +160,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     }, [plan, useCredits, sessionUser?.id, isActive]);
 
     // 1-Tap Copy Helper
-    const copyToClipboard = (text, key) => />
+    const copyToClipboard = (text, key) => {
         navigator.clipboard.writeText(text);
         setCopiedKey(key);
         if (navigator.vibrate) navigator.vibrate(20);
