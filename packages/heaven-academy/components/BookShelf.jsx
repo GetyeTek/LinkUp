@@ -12,13 +12,13 @@ const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigge
 
     if (previewMode) {
         return (
-            <div className="bookshelf-perspective">
+            <div className="bookshelf-perspective preview-shelf">
                 <div className="book-container">
                     {items.length === 0 ? (
                         <div style={{color:'rgba(255,255,255,0.5)', gridColumn:'span 3', textAlign:'center', paddingTop:'2rem'}}>Loading...</div>
                     ) : (
                         items.map((item, i) => (
-                            <div className="book-group" key={i}>
+                            <div className={`book-group ${i >= 3 ? 'desktop-only-book' : ''}`} key={i}>
                                 <BookCard 
                                     item={item} 
                                     isUniversity={false} 
