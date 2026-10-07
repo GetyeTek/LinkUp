@@ -4,17 +4,25 @@
     inset: 0;
     z-index: 99999;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: rgba(6, 4, 3, 0.85);
-    padding: max(1.5rem, env(safe-area-inset-top)) 1rem max(2rem, env(safe-area-inset-bottom));
+    justify-content: center;
+    align-items: flex-start;
+    background: rgba(6, 4, 3, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: max(1rem, env(safe-area-inset-top)) 0.85rem max(2rem, env(safe-area-inset-bottom));
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.25s ease;
     font-family: 'Poppins', sans-serif;
+}
+
+@media (min-height: 740px) {
+    .pu-overlay-wrapper {
+        align-items: center;
+    }
 }
 
 .pu-overlay-wrapper.is-active {
@@ -37,9 +45,12 @@
 
 /* Ambient Backlight Aura */
 .pu-ambient-backlight {
-    position: fixed;
-    width: 600px;
-    height: 600px;
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    height: 500px;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(241, 196, 15, 0.15) 0%, rgba(66, 215, 184, 0.08) 40%, transparent 70%);
     pointer-events: none;
@@ -54,19 +65,20 @@
 
 /* Master Modal Card */
 .pu-modal-card {
-    margin: auto 0;
+    margin: 0 auto;
     position: relative;
     z-index: 10;
     width: 100%;
-    max-width: 480px;
-    border-radius: 28px;
-    overflow: hidden; /* Fix: cleanly clips background hero & 300% shimmer line to rounded corners */
+    max-width: 460px;
+    border-radius: 26px;
+    overflow: hidden;
     background: var(--surface-glass);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     border: 1px solid var(--border-gold);
-    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.95), 0 0 40px rgba(241, 196, 15, 0.1);
-    animation: puModalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.95), 0 0 35px rgba(241, 196, 15, 0.1);
+    animation: puModalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0; /* Prevents container from squishing card dimensions */
 }
 
 @keyframes puModalPop {
@@ -139,7 +151,7 @@
 .pu-modal-content {
     position: relative;
     z-index: 5;
-    padding: 2.25rem 2rem 2rem 2rem;
+    padding: 1.85rem 1.4rem 1.4rem 1.4rem;
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -148,17 +160,17 @@
 
 /* 3D Floating Circular Sun-Orb Crown */
 .pu-crown-orb-pure {
-    width: 78px;
-    height: 78px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
-    margin-bottom: 1rem;
+    margin-bottom: 0.65rem;
     background: radial-gradient(circle at 35% 30%, #fff3a8 0%, #f1c40f 45%, #b78a08 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.1rem;
+    font-size: 1.7rem;
     color: #0c0805;
-    box-shadow: 0 12px 35px rgba(241, 196, 15, 0.45), inset 0 0 15px rgba(255, 255, 255, 0.6);
+    box-shadow: 0 10px 25px rgba(241, 196, 15, 0.45), inset 0 0 15px rgba(255, 255, 255, 0.6);
     animation: puOrbFloat 4s infinite ease-in-out;
     border: 2px solid rgba(255, 255, 255, 0.3);
 }
@@ -190,21 +202,21 @@
 
 .pu-modal-title {
     font-family: 'Newsreader', serif;
-    font-size: 2.3rem;
+    font-size: 1.95rem;
     font-weight: 600;
     line-height: 1.15;
     background: var(--gold-text-grad);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.25rem;
     text-shadow: 0 2px 15px rgba(0,0,0,0.7);
 }
 
 .pu-modal-subtitle {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: #d0c5bb;
-    line-height: 1.5;
-    margin-bottom: 1.75rem;
+    line-height: 1.4;
+    margin-bottom: 1.15rem;
     max-width: 380px;
     text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
@@ -213,21 +225,21 @@
 .pu-perks-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 7px;
     width: 100%;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.15rem;
     text-align: left;
 }
 
 .pu-perk-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     background: rgba(255, 255, 255, 0.04);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 11px 14px;
-    border-radius: 14px;
+    padding: 8px 12px;
+    border-radius: 12px;
     transition: all 0.2s ease;
 }
 
@@ -267,17 +279,17 @@
 /* Plan Switcher */
 .pu-plan-switcher {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     width: 100%;
-    margin-top: 0.5rem;
-    margin-bottom: 0.75rem;
+    margin-top: 0.35rem;
+    margin-bottom: 0.6rem;
 }
 
 .pu-plan-card {
     flex: 1;
-    padding: 16px 14px 14px;
-    min-height: 126px;
-    border-radius: 18px;
+    padding: 13px 12px 11px;
+    min-height: 114px;
+    border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(0, 0, 0, 0.5);
     text-align: left;
