@@ -36,9 +36,17 @@ const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigge
         );
     }
 
+    const [itemsPerRow, setItemsPerRow] = React.useState(window.innerWidth >= 900 ? 6 : 3);
+
+    React.useEffect(() => {
+        const handleResize = () => setItemsPerRow(window.innerWidth >= 900 ? 6 : 3);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const rows = [];
-    for (let i = 0; i < items.length; i += 3) {
-        rows.push(items.slice(i, i + 3));
+    for (let i = 0; i < items.length; i += itemsPerRow) {
+        rows.push(items.slice(i, i + itemsPerRow));
     }
 
     if(rows.length === 0) return (
