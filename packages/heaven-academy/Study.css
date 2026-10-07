@@ -10,7 +10,7 @@
 .expand-prompt { position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--text-secondary-dark); background-color: rgba(0,0,0,0.3); backdrop-filter: blur(4px); padding: 0.25rem 0.75rem; border-radius: 9999px; }
 .expand-prompt .material-symbols-outlined { font-size: 0.875rem; }
 .study-section { padding: 1rem; }
-.compact-trigger { background-color: var(--surface-dark); border-radius: var(--radius-main); padding: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; position: relative; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.05); }
+.compact-trigger { background-color: var(--surface-dark); border-radius: var(--radius-main); padding: 1rem; margin-bottom: 1rem; display: flex; align-items: center; position: relative; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.05); }
 .compact-orb { width: 80px; height: 80px; border-radius: 50%; background-image: linear-gradient(45deg, var(--accent-teal) 0%, #30bda6 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px 0px #42d7b880; animation: pulse-orb-sm 3s infinite ease-in-out; position: absolute; left: 0; top: 50%; transform: translate(-25%, -50%); }
 .compact-orb .material-symbols-outlined { font-size: 2.5rem; color: var(--bg-dark); font-variation-settings: 'FILL' 1, 'wght' 600; }
 @keyframes pulse-orb-sm { 0%, 100% { box-shadow: 0 0 15px 0px #42d7b880; } 50% { box-shadow: 0 0 25px 3px #42d7b880; } }
@@ -48,7 +48,7 @@
     align-items: center;
     gap: 1.1rem;
     cursor: pointer;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -146,7 +146,8 @@
     align-items: center;
     gap: 1rem;
     cursor: pointer;
-    margin-top: 1.75rem;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
 }
@@ -318,14 +319,72 @@
 .library-search-empty i { font-size: 2.5rem; color: var(--accent-teal); opacity: 0.6; }
 
 @media (min-width: 900px) {
-    #study-content .study-hub-content { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2rem; padding: 2rem; max-width: 1400px; margin: 0 auto; overflow: visible; }
-    .study-header { flex-shrink: 0; padding: 1rem 2rem; max-width: 1400px; margin: 0 auto; width: 100%; }
-    .library-preview-wrapper { grid-column: span 5; min-height: 400px; cursor: pointer; z-index: 10; }
-    .library-preview-wrapper .vignette-bg { height: 100%; border-radius: 24px; }
-    .study-section { display: contents; }
-    .resume-study-card { grid-column: span 7; margin: 0; }
-    .compact-trigger { grid-column: span 7; margin: 0; }
-    .study-drill-card { grid-column: span 7; margin: 0; }
+    .study-header {
+        flex-shrink: 0;
+        padding: 1.25rem 2.5rem 0.75rem 2.5rem;
+        max-width: 1360px;
+        margin: 0 auto;
+        width: 100%;
+        background: transparent;
+        border-bottom: 1px solid var(--border-color);
+        position: static;
+    }
+    .study-header h2 {
+        font-size: 2.2rem;
+    }
+
+    #study-content .study-hub-content {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 2.5rem;
+        padding: 1.75rem 2.5rem 4rem 2.5rem;
+        max-width: 1360px;
+        margin: 0 auto;
+        width: 100%;
+        align-items: start;
+        box-sizing: border-box;
+    }
+
+    /* Left Shelf Cabinet */
+    .library-preview-wrapper {
+        grid-column: span 5;
+        height: 100%;
+        min-height: 420px;
+        cursor: pointer;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+    }
+    .library-preview-wrapper .vignette-bg {
+        height: 100%;
+        border-radius: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+
+    /* Right Action Stack: Clean Unified Column */
+    .study-section {
+        grid-column: span 7;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        padding: 0;
+    }
+
+    .compact-trigger {
+        margin: 0;
+        width: 100%;
+    }
+    .resume-study-card {
+        margin: 0;
+        width: 100%;
+    }
+    .study-drill-card {
+        margin: 0;
+        width: 100%;
+    }
+
     .guidance-path { grid-column: span 7; margin-top: 1rem; }
     .observatory-widget { grid-column: span 5; margin-top: 2rem; }
     
