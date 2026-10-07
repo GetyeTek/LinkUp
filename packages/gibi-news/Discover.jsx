@@ -150,6 +150,15 @@ const Discover = () => {
         return result;
     }, [liveNews, featuredEvents]);
 
+    // Concept B: Channel Filtering
+    const [selectedChannel, setSelectedChannel] = useState('all');
+
+    const filteredFeed = useMemo(() => {
+        if (selectedChannel === 'all') return unifiedFeed;
+        if (selectedChannel === 'announcements') return unifiedFeed.filter(item => item.type === 'announcement');
+        return unifiedFeed.filter(item => item.type === 'news' && (item.data?.channel?.toLowerCase() || '').includes(selectedChannel.toLowerCase()));
+    }, [unifiedFeed, selectedChannel]);
+
     // 4. Deep Link Resolver from Home tab or External routes
     useEffect(() => {
         if (routePayload?.action === 'open_explore_item') {
@@ -243,84 +252,154 @@ const Discover = () => {
                 </div>
             </header>
 
-            <div className="feed-container">
-                {newsLoading ? (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent-teal)' }}>
-                        <i className="fas fa-circle-notch fa-spin fa-2x"></i>
-                    </div>
-                ) : (
-                    unifiedFeed.length > 0 ? (
-                        <>
-                            {unifiedFeed.map((item, index) => {
-                                const isLast = unifiedFeed.length === index + 1;
-                                const content = item.type === 'announcement' ? (
-                                    <AnnouncementCard 
-                                        key={item.id} 
-                                        event={item.data} 
-                                        onAction={handleAnnouncementAction} 
-                                    />
-                                ) : (
-                                    <TelegramCard 
-                                        key={item.id} 
-                                        post={item.data} 
-                                    />
-                                );
-
-                                if (isLast) {
-                                    return (
-                                        <div key={item.id} ref={lastElementRef}>
-                                            {content}
-                                        </div>
-                                    );
-                                }
-                                return content;
-                            })}
-                            
-                            {isFetchingMore && (
-                                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--accent-teal)' }}>
-                                    <i className="fas fa-circle-notch fa-spin fa-lg"></i>
-                                </div>
-                            )}
-                            
-                            {!hasMore && (
-                                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#888', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                                    <i className="fas fa-check-circle" style={{marginBottom: '0.5rem', display: 'block', color: 'var(--accent-teal)'}}></i>
-                                    You're all caught up.
-                                </div>
-                            )}
-                        </>
+            <div className="discover-workspace">
+                <div className="feed-container">
+                    {newsLoading ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent-teal)' }}>
+                            <i className="fas fa-circle-notch fa-spin fa-2x"></i>
+                        </div>
                     ) : (
-                        <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: '#aaa', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', marginBottom: '0.5rem', boxShadow: '0 0 20px rgba(66, 215, 184, 0.15)' }}>
-                                <i className="fas fa-sparkles"></i>
+                        filteredFeed.length > 0 ? (
+                            <>
+                                {filteredFeed.map((item, index) => {
+                                    const isLast = filteredFeed.length === index + 1;
+                                    const content = item.type === 'announcement' ? (
+                                        <AnnouncementCard 
+                                            key={item.id} 
+                                            event={item.data} 
+                                            onAction={handleAnnouncementAction} 
+                                        />
+                                    ) : (
+                                        <TelegramCard 
+                                            key={item.id} 
+                                            post={item.data} 
+                                        />
+                                    );
+
+                                    if (isLast) {
+                                        return (
+                                            <div key={item.id} ref={lastElementRef}>
+                                                {content}
+                                            </div>
+                                        );
+                                    }
+                                    return content;
+                                })}
+                                
+                                {isFetchingMore && (
+                                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--accent-teal)' }}>
+                                        <i className="fas fa-circle-notch fa-spin fa-lg"></i>
+                                    </div>
+                                )}
+                                
+                                {!hasMore && (
+                                    <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#888', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                                        <i className="fas fa-check-circle" style={{marginBottom: '0.5rem', display: 'block', color: 'var(--accent-teal)'}}></i>
+                                        You're all caught up.
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: '#aaa', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', marginBottom: '0.5rem', boxShadow: '0 0 20px rgba(66, 215, 184, 0.15)' }}>
+                                    <i className="fas fa-sparkles"></i>
+                                </div>
+                                <h3 style={{ color: '#fff', fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>{t('all_caught_up_excl', "You're all caught up!")}</h3>
+                                <p style={{ fontSize: '0.85rem', color: '#888', maxWidth: '300px', lineHeight: 1.5, margin: '4px 0 1rem 0' }}>
+                                    {selectedChannel !== 'all' ? 'No updates in this channel right now.' : "No new posts right now. We'll bring you the latest campus announcements as soon as they drop."}
+                                </p>
+                                <button 
+                                    onClick={handleRefresh}
+                                    style={{
+                                        background: 'rgba(66, 215, 184, 0.1)',
+                                        border: '1px solid var(--accent-teal)',
+                                        color: 'var(--accent-teal)',
+                                        padding: '10px 22px',
+                                        borderRadius: '12px',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        transition: 'all 0.2s ease',
+                                        fontFamily: 'Poppins, sans-serif'
+                                    }}
+                                >
+                                    <i className="fas fa-rotate-right"></i> {t('check_updates', 'Check for Updates')}
+                                </button>
                             </div>
-                            <h3 style={{ color: '#fff', fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>{t('all_caught_up_excl', "You're all caught up!")}</h3>
-                            <p style={{ fontSize: '0.85rem', color: '#888', maxWidth: '300px', lineHeight: 1.5, margin: '4px 0 1rem 0' }}>
-                                No new posts right now. We'll bring you the latest campus announcements as soon as they drop.
-                            </p>
+                        )
+                    )}
+                </div>
+
+                {/* Concept B: Desktop Editorial Sidebar */}
+                <aside className="discover-desktop-sidebar">
+                    <div className="dds-card filter-card">
+                        <h3 className="dds-title"><i className="fas fa-layer-group"></i> Feed Channels</h3>
+                        <div className="dds-channels-list">
                             <button 
-                                onClick={handleRefresh}
-                                style={{
-                                    background: 'rgba(66, 215, 184, 0.1)',
-                                    border: '1px solid var(--accent-teal)',
-                                    color: 'var(--accent-teal)',
-                                    padding: '10px 22px',
-                                    borderRadius: '12px',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.2s ease',
-                                    fontFamily: 'Poppins, sans-serif'
-                                }}
+                                className={`dds-channel-btn ${selectedChannel === 'all' ? 'active' : ''}`}
+                                onClick={() => setSelectedChannel('all')}
                             >
-                                <i className="fas fa-rotate-right"></i> {t('check_updates', 'Check for Updates')}
+                                <div className="dds-ch-left">
+                                    <span className="dds-ch-icon all"><i className="fas fa-globe"></i></span>
+                                    <span>All Updates</span>
+                                </div>
+                                <span className="dds-ch-count">{unifiedFeed.length}</span>
+                            </button>
+
+                            <button 
+                                className={`dds-channel-btn ${selectedChannel === 'announcements' ? 'active' : ''}`}
+                                onClick={() => setSelectedChannel('announcements')}
+                            >
+                                <div className="dds-ch-left">
+                                    <span className="dds-ch-icon ann"><i className="fas fa-bullhorn"></i></span>
+                                    <span>Announcements</span>
+                                </div>
+                                <span className="dds-ch-count">{featuredEvents.length}</span>
+                            </button>
+
+                            <button 
+                                className={`dds-channel-btn ${selectedChannel === 'tikvah' ? 'active' : ''}`}
+                                onClick={() => setSelectedChannel('tikvah')}
+                            >
+                                <div className="dds-ch-left">
+                                    <span className="dds-ch-icon tg"><i className="fab fa-telegram-plane"></i></span>
+                                    <span>Tikvah University</span>
+                                </div>
+                                <span className="dds-ch-badge">Live</span>
                             </button>
                         </div>
-                    )
-                )}
+                    </div>
+
+                    <div className="dds-card info-card">
+                        <div className="dds-info-header">
+                            <span className="dds-pulse-dot"></span>
+                            <h4>Live Campus Feed</h4>
+                        </div>
+                        <p className="dds-desc">
+                            Real-time notices syndicated from official campus channels and verified academic bulletins.
+                        </p>
+                        <button className="dds-refresh-btn" onClick={handleRefresh} disabled={newsLoading}>
+                            <i className={`fas fa-rotate-right ${newsLoading ? 'fa-spin' : ''}`}></i>
+                            <span>Check for Updates</span>
+                        </button>
+                    </div>
+
+                    <div className="dds-card dispatch-card">
+                        <h4>Got News or Event Tips?</h4>
+                        <p>Share verified notices or department updates with the LinkUp student community.</p>
+                        <a 
+                            href="https://t.me/linkupregistrationbot" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="dds-dispatch-link"
+                        >
+                            <i className="fab fa-telegram"></i> Submit to Dispatch
+                        </a>
+                    </div>
+                </aside>
             </div>
 
             {/* Embedded HTML Room Sandbox Modal */}
