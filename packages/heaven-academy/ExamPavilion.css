@@ -16,6 +16,10 @@
 }
 
 @media (min-width: 900px) {
+    .pavilion-overlay { position: absolute !important; }
+}
+
+@media (min-width: 900px) {
     .pavilion-header {
         max-width: 1200px;
         margin: 0 auto;
