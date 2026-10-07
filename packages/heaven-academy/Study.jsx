@@ -28,8 +28,28 @@ const Study = () => {
     const [targetPage, setTargetPage] = useState(undefined);
     const [isPlannerOpen, setIsPlannerOpen] = useState(false);
     const [isFlashcardsOpen, setIsFlashcardsOpen] = useState(false);
+    const [lastRead, setLastRead] = useState(null);
     const searchInputRef = useRef(null);
     const wavePathRef = useRef(null);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('linkup_last_book');
+            if (saved) {
+                setLastRead(JSON.parse(saved));
+            }
+        } catch (e) {}
+    }, []);
+
+    const handleResumeReading = () => {
+        if (!lastRead?.id) return;
+        setTargetPage(lastRead.page || 1);
+        setActiveBook({
+            id: lastRead.id,
+            title: lastRead.title,
+            course_code: lastRead.course_code
+        });
+    };
 
     // 1. Fetch Main Books, Universities, & Academic Pacing
     useEffect(() => {
@@ -144,6 +164,27 @@ const Study = () => {
                     </div>
 
                     <div className="study-section">
+                        {/* Current Study Desk Anchor */}
+                        {lastRead && (
+                            <div className="resume-study-card" onClick={handleResumeReading}>
+                                <div className="resume-book-icon">
+                                    <i className="fas fa-book-open"></i>
+                                </div>
+                                <div className="resume-info">
+                                    <div className="resume-tag">
+                                        <span>{lastRead.course_code ? `${lastRead.course_code} • Page ${lastRead.page || 1}` : t('curriculum_textbook', 'Curriculum Textbook')}</span>
+                                    </div>
+                                    <h3 className="resume-title">{lastRead.title}</h3>
+                                    <p className="resume-subtitle">
+                                        {t('resume_study_desc', `Pick up right where you left off on Page ${lastRead.page || 1}`).replace('{page}', lastRead.page || 1)}
+                                    </p>
+                                </div>
+                                <div className="resume-arrow-box">
+                                    <i className="fas fa-arrow-right"></i>
+                                </div>
+                            </div>
+                        )}
+
                         {/* AI Planner Trigger */}
                         <div className="compact-trigger" onClick={() => setIsPlannerOpen(true)}>
                             <div className="compact-orb"><span className="material-symbols-outlined">auto_awesome</span></div>
