@@ -101,6 +101,23 @@ const Home = () => {
         } catch (e) {}
     }, []);
 
+    // Global Desktop Keyboard Shortcut (Cmd/Ctrl + K to focus AI dock)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                const inputEl = document.querySelector('.home-miron-dock input');
+                if (inputEl) {
+                    inputEl.focus();
+                } else {
+                    shell.openMiron();
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     const handleResumeReading = () => {
         if (!lastRead?.id) {
             window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'study' } }));
@@ -192,30 +209,59 @@ const Home = () => {
                                     }
                                 }}
                             />
-                            {mironQuery.trim() ? (
-                                <button 
-                                    className="home-miron-action-btn send"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        shell.openMiron(mironQuery.trim(), true);
-                                        setMironQuery('');
-                                    }}
-                                    title="Send to Miron"
-                                >
-                                    <i className="fas fa-arrow-up"></i>
-                                </button>
-                            ) : (
-                                <button 
-                                    className="home-miron-action-btn voice"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        window.dispatchEvent(new CustomEvent('miron:open-live-session'));
-                                    }}
-                                    title="Start Voice Session with Miron"
-                                >
-                                    <i className="fas fa-microphone"></i>
-                                </button>
-                            )}
+                            <div className="home-miron-dock-right">
+                                <span className="home-miron-kbd-hint">Ctrl K</span>
+                                {mironQuery.trim() ? (
+                                    <button 
+                                        className="home-miron-action-btn send"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            shell.openMiron(mironQuery.trim(), true);
+                                            setMironQuery('');
+                                        }}
+                                        title="Send to Miron"
+                                    >
+                                        <i className="fas fa-arrow-up"></i>
+                                    </button>
+                                ) : (
+                                    <button 
+                                        className="home-miron-action-btn voice"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            window.dispatchEvent(new CustomEvent('miron:open-live-session'));
+                                        }}
+                                        title="Start Voice Session with Miron"
+                                    >
+                                        <i className="fas fa-microphone"></i>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        <div className="home-miron-quick-chips">
+                            <button 
+                                type="button"
+                                className="miron-chip-btn"
+                                onClick={() => shell.openMiron("Explain the key concepts of our current course chapters", true)}
+                            >
+                                <i className="fas fa-sparkles"></i>
+                                <span>Summarize Chapter</span>
+                            </button>
+                            <button 
+                                type="button"
+                                className="miron-chip-btn"
+                                onClick={() => shell.openMiron("Generate 3 practice quiz questions from my textbooks", true)}
+                            >
+                                <i className="fas fa-brain"></i>
+                                <span>Quiz Me</span>
+                            </button>
+                            <button 
+                                type="button"
+                                className="miron-chip-btn"
+                                onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'study' } }))}
+                            >
+                                <i className="fas fa-bullseye"></i>
+                                <span>Recall Training</span>
+                            </button>
                         </div>
                     </section>
 
