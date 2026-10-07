@@ -4,7 +4,243 @@
 .discover-title { font-family: 'Newsreader', serif; font-size: 2rem; font-weight: 500; line-height: 1; background: linear-gradient(45deg, var(--text-primary-dark) 60%, var(--accent-teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 #discover-header .header-actions { display: flex; align-items: center; gap: 1rem; }
 #discover-header .profile-avatar { width: 36px; height: 36px; }
+
+.discover-workspace {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 65px);
+    overflow: hidden;
+}
+
+.discover-desktop-sidebar {
+    display: none;
+}
+
 .feed-container { height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem; padding-bottom: 6rem; scroll-behavior: smooth; }
+
+@media (min-width: 900px) {
+    #discover-header {
+        max-width: 1360px;
+        margin: 0 auto;
+        width: 100%;
+        background: transparent;
+        padding: 1.25rem 2.5rem 0.75rem 2.5rem;
+        border-bottom: 1px solid var(--border-color);
+        position: static;
+    }
+
+    .discover-title {
+        font-size: 2.2rem;
+    }
+
+    .discover-workspace {
+        flex-direction: row;
+        gap: 2.5rem;
+        max-width: 1360px;
+        margin: 0 auto;
+        width: 100%;
+        height: calc(100% - 80px);
+        padding: 1.75rem 2.5rem 3rem 2.5rem;
+        box-sizing: border-box;
+    }
+
+    .feed-container {
+        flex: 1;
+        max-width: 760px;
+        padding: 0 0.5rem 4rem 0;
+        height: 100%;
+        scrollbar-width: thin;
+    }
+
+    .discover-desktop-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        width: 340px;
+        flex-shrink: 0;
+        overflow-y: auto;
+        padding-bottom: 3rem;
+        scrollbar-width: none;
+    }
+    .discover-desktop-sidebar::-webkit-scrollbar { display: none; }
+
+    .dds-card {
+        background: var(--surface-dark);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 1.25rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .dds-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-secondary-dark);
+        margin: 0 0 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .dds-channels-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .dds-channel-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        color: var(--text-primary-dark);
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.88rem;
+        font-weight: 500;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .dds-channel-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .dds-channel-btn.active {
+        background: rgba(66, 215, 184, 0.1);
+        border-color: var(--accent-teal);
+        color: var(--accent-teal);
+        font-weight: 600;
+    }
+
+    .dds-ch-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .dds-ch-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+    }
+    .dds-ch-icon.all { background: rgba(255, 255, 255, 0.08); color: #fff; }
+    .dds-ch-icon.ann { background: rgba(241, 196, 15, 0.15); color: #f1c40f; }
+    .dds-ch-icon.tg { background: rgba(41, 169, 234, 0.15); color: #29A9EA; }
+
+    .dds-ch-count {
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #888;
+        background: rgba(255, 255, 255, 0.06);
+        padding: 2px 7px;
+        border-radius: 6px;
+    }
+
+    .dds-channel-btn.active .dds-ch-count {
+        background: var(--accent-teal);
+        color: #0c0c0c;
+    }
+
+    .dds-ch-badge {
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--accent-teal);
+        background: rgba(66, 215, 184, 0.15);
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+
+    .dds-info-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+    .dds-pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #22c55e;
+        box-shadow: 0 0 8px #22c55e;
+    }
+    .dds-info-header h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #fff;
+    }
+    .dds-desc {
+        font-size: 0.8rem;
+        color: #aaa;
+        line-height: 1.45;
+        margin: 0 0 1rem 0;
+    }
+    .dds-refresh-btn {
+        width: 100%;
+        background: rgba(66, 215, 184, 0.12);
+        border: 1px solid var(--accent-teal);
+        color: var(--accent-teal);
+        padding: 10px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+        font-family: 'Poppins', sans-serif;
+    }
+    .dds-refresh-btn:hover {
+        background: var(--accent-teal);
+        color: #0c0c0c;
+    }
+
+    .dispatch-card h4 {
+        margin: 0 0 4px 0;
+        font-size: 0.95rem;
+        color: #fff;
+    }
+    .dispatch-card p {
+        font-size: 0.8rem;
+        color: #aaa;
+        line-height: 1.4;
+        margin: 0 0 1rem 0;
+    }
+    .dds-dispatch-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #29A9EA;
+        text-decoration: none;
+        background: rgba(41, 169, 234, 0.12);
+        border: 1px solid rgba(41, 169, 234, 0.3);
+        padding: 9px 14px;
+        border-radius: 12px;
+        transition: all 0.2s;
+        width: 100%;
+        justify-content: center;
+    }
+    .dds-dispatch-link:hover {
+        background: #29A9EA;
+        color: #0c0c0c;
+    }
+}
 
 /* Deep Link Glow Pulse */
 @keyframes feedCardHighlight {
