@@ -549,7 +549,7 @@ export default {
         }
 
         else if (cb.data === 'help_support') {
-          const helpText = `ℹ️ *Help & Support*\n\nLinkUp is an academic platform for university students.\n\n• *Authentication*: Login links are valid for 5 minutes and are single-use.\n• *Support*: If you need help, please contact your class coordinator or support @getyetek.`;
+          const helpText = `ℹ️ *Help & Support*\n\nLinkUp is an academic platform for university students.\n\n• *Authentication*: Login links are valid for 5 minutes and are single-use.\n• *Support*: If you need help, please contact your class coordinator or support @linkupregistrationbot.`;
           
           await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
             method: 'POST',
