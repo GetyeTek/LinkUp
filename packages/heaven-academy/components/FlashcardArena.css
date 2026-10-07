@@ -10,6 +10,10 @@
     animation: fadeInModal 0.25s ease-out;
 }
 
+@media (min-width: 900px) {
+    .fca-overlay { position: absolute; }
+}
+
 .fca-topbar {
     padding: 16px 20px;
     display: flex;
