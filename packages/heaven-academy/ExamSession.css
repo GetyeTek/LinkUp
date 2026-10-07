@@ -3,7 +3,7 @@
     --cyber-gold: #b1d34b;
     position: fixed;
     inset: 0;
-    z-index: 3000;
+    z-index: 12000;
     background-color: var(--bg-dark);
     color: var(--text-primary-dark);
     display: flex;
