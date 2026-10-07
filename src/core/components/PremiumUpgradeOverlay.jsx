@@ -199,9 +199,9 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                 uploadedImageUrl = publicUrl;
             }
 
-            const amount = quote?.final_price ?? (plan === 'semester' ? 199 : 299);
-            const creditsUsed = quote?.credits_applied ?? 0;
-            const discountApplied = quote?.discount_amount ?? 0;
+            const amount = amountDue;
+            const creditsUsed = (useCredits && quote?.credits_applied) ? quote.credits_applied : 0;
+            const discountApplied = (useCredits && quote?.discount_amount) ? quote.discount_amount : 0;
 
             const payload = {
                 user_id: sessionUser.id,
@@ -239,7 +239,10 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
 
     if (!isActive) return null;
 
-    const amountDue = quote?.final_price ?? (plan === 'semester' ? 199 : 299);
+    const discount = (useCredits && quote?.discount_amount) ? quote.discount_amount : 0;
+    const semesterFinal = Math.max(0, 199 - discount);
+    const annualFinal = Math.max(0, 299 - discount);
+    const amountDue = plan === 'semester' ? semesterFinal : annualFinal;
 
     return (
         <div className={`pu-overlay-wrapper ${isActive ? 'is-active' : ''}`} onClick={onClose}>
@@ -308,80 +311,95 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     className={`pu-plan-card ${plan === 'semester' ? 'active' : ''}`} 
                                     onClick={() => setPlan('semester')}
                                 >
+                                    {discount > 0 && (
+                                        <div className="pu-plan-ribbon credit-ribbon">
+                                            <i className="fa-solid fa-coins"></i> -{discount} ETB Credits
+                                        </div>
+                                    )}
                                     <div className="pu-plan-tag">Semester Pass</div>
-                                    <div className="pu-plan-price">
-                                        {useCredits && quote.discount_amount > 0 && plan === 'semester' ? (
-                                            <>
-                                                {quote.final_price} <span>ETB</span>
-                                                <span className="pu-price-slashed">199 ETB</span>
-                                            </>
-                                        ) : (
-                                            <>199 <span>ETB</span></>
-                                        )}
-                                    </div>
+                                    
+                                    {discount > 0 ? (
+                                        <div className="pu-formula-box">
+                                            <div className="pu-math-row">
+                                                <span className="pu-base-struck">199 ETB</span>
+                                                <span className="pu-math-sub">-{discount} ETB</span>
+                                            </div>
+                                            <div className="pu-plan-price">
+                                                {semesterFinal} <span>ETB</span>
+                                            </div>
+                                            <span className="pu-credits-used-note">
+                                                <i className="fa-solid fa-circle-check"></i> {quote.credits_applied} credits applied
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="pu-formula-box">
+                                            <div className="pu-plan-price">
+                                                199 <span>ETB</span>
+                                            </div>
+                                            <span className="pu-plan-period-note">Single semester</span>
+                                        </div>
+                                    )}
                                 </div>
+
                                 <div 
                                     className={`pu-plan-card ${plan === 'annual' ? 'active' : ''}`} 
                                     onClick={() => setPlan('annual')}
                                 >
-                                    <div className="pu-save-ribbon">Save 35%</div>
-                                    <div className="pu-plan-tag">Annual Pass</div>
-                                    <div className="pu-plan-price">
-                                        {useCredits && quote.discount_amount > 0 && plan === 'annual' ? (
-                                            <>
-                                                {quote.final_price} <span>ETB</span>
-                                                <span className="pu-price-slashed">299 ETB</span>
-                                            </>
+                                    <div className={`pu-plan-ribbon ${discount > 0 ? 'fused-ribbon' : 'annual-ribbon'}`}>
+                                        {discount > 0 ? (
+                                            <><i className="fa-solid fa-bolt"></i> -{discount} ETB + Best Value</>
                                         ) : (
-                                            <>299 <span>ETB</span></>
+                                            'Save 35%'
                                         )}
                                     </div>
+                                    <div className="pu-plan-tag">Annual Pass</div>
+
+                                    {discount > 0 ? (
+                                        <div className="pu-formula-box">
+                                            <div className="pu-math-row">
+                                                <span className="pu-base-struck">299 ETB</span>
+                                                <span className="pu-math-sub">-{discount} ETB</span>
+                                            </div>
+                                            <div className="pu-plan-price">
+                                                {annualFinal} <span>ETB</span>
+                                            </div>
+                                            <span className="pu-credits-used-note">
+                                                <i className="fa-solid fa-circle-check"></i> {quote.credits_applied} credits applied
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="pu-formula-box">
+                                            <div className="pu-plan-price">
+                                                299 <span>ETB</span>
+                                            </div>
+                                            <span className="pu-plan-period-note">Full academic year</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {quote.credits_available > 0 && (
-                                <div className={`pu-voucher-ticket ${useCredits ? 'is-active' : 'is-saved'}`}>
-                                    <div className="pu-vt-header">
-                                        <div className="pu-vt-badge">
-                                            <i className="fa-solid fa-coins"></i>
-                                            <span>Your Earned Credits</span>
-                                        </div>
-                                        {useCredits && quote.discount_amount > 0 && (
-                                            <span className="pu-vt-savings-badge">-{quote.discount_amount} ETB OFF</span>
-                                        )}
-                                    </div>
-
-                                    <div className="pu-vt-body">
-                                        <div className="pu-vt-info">
-                                            <h4>
-                                                {useCredits && quote.credits_applied > 0 
-                                                    ? `${quote.credits_applied} Credits Applied (${quote.discount_amount} ETB Saved)` 
-                                                    : 'Credits Preserved in Wallet'}
-                                            </h4>
-                                            <p>
-                                                {useCredits && quote.credits_applied > 0
-                                                    ? `Your missions and invite streak knocked ${quote.discount_amount} ETB off your membership! (${quote.credits_remaining} credits left for future perks)`
-                                                    : `You have ${quote.credits_available} credits saved. Tap Apply to deduct up to 500 credits (-50 ETB) from this order.`}
-                                            </p>
-                                        </div>
-                                        <button 
-                                            type="button"
-                                            className="pu-vt-toggle-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setUseCredits(!useCredits);
-                                            }}
-                                        >
-                                            {useCredits ? 'Save for Later' : 'Apply Credits'}
-                                        </button>
-                                    </div>
+                                <div className="pu-wallet-footnote">
+                                    <span className="pu-footnote-text">
+                                        <i className="fa-solid fa-coins" style={{ color: 'var(--gold-main)', marginRight: '6px' }}></i>
+                                        {useCredits && quote.credits_applied > 0
+                                            ? `Your earned credits applied (${quote.credits_remaining} saved for later)`
+                                            : `${quote.credits_available} credits saved in your wallet`}
+                                    </span>
+                                    <button 
+                                        type="button" 
+                                        className="pu-footnote-toggle-btn"
+                                        onClick={() => setUseCredits(!useCredits)}
+                                    >
+                                        {useCredits ? 'Save for later' : 'Apply credits'}
+                                    </button>
                                 </div>
                             )}
 
                             <button className="pu-cta-gold-btn" onClick={() => setView('methods')}>
-                                {useCredits && quote.discount_amount > 0 ? (
+                                {discount > 0 ? (
                                     <>
-                                        <span>Pay {amountDue} ETB • Saved {quote.discount_amount} ETB!</span>
+                                        <span>Proceed • Pay {amountDue} ETB (Saved {discount} ETB)</span>
                                         <i className="fa-solid fa-sparkles"></i>
                                     </>
                                 ) : (
