@@ -328,7 +328,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                                 {semesterFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-credits-used-note">
-                                                <i className="fa-solid fa-circle-check"></i> {quote.credits_applied} credits applied
+                                                <i className="fa-solid fa-circle-check"></i> <u>{quote.credits_applied} credits</u> applied from your wallet
                                             </span>
                                         </div>
                                     ) : (
@@ -364,7 +364,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                                 {annualFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-credits-used-note">
-                                                <i className="fa-solid fa-circle-check"></i> {quote.credits_applied} credits applied
+                                                <i className="fa-solid fa-circle-check"></i> <u>{quote.credits_applied} credits</u> applied from your wallet
                                             </span>
                                         </div>
                                     ) : (
@@ -408,6 +408,10 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                         <i className="fa-solid fa-arrow-right"></i>
                                     </>
                                 )}
+                            </button>
+
+                            <button className="pu-secondary-btn" onClick={() => setView('verify')}>
+                                <i className="fa-solid fa-receipt" style={{ marginRight: '6px' }}></i> Already Transferred? Verify Payment
                             </button>
 
                             <div className="pu-trust-footer">
@@ -541,7 +545,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                             </button>
 
                             <div className="pu-trust-footer">
-                                <span>Questions? Contact support {accounts?.support_contact || '@getyetek'}</span>
+                                <span>Questions? Contact support <a href="https://t.me/linkupregistrationbot" target="_blank" rel="noopener noreferrer" className="pu-support-link">@linkupregistrationbot</a></span>
                             </div>
                         </>
                     )}
@@ -684,7 +688,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 )}
                                 <div style={{ marginTop: '4px' }}><strong>Status:</strong> <span style={{ color: 'var(--gold-main)', fontWeight: 600 }}>Under Review</span></div>
                                 <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#888' }}>
-                                    If not approved within 24 hours, please contact support {accounts?.support_contact || '@getyetek'}.
+                                    If not approved within 24 hours, please contact support <a href="https://t.me/linkupregistrationbot" target="_blank" rel="noopener noreferrer" className="pu-support-link">@linkupregistrationbot</a>.
                                 </div>
                             </div>
 
