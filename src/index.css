@@ -256,6 +256,20 @@ body.library-open { overflow: hidden; }
     background: rgba(66, 215, 184, 0.15);
 }
 
+.home-miron-dock-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.home-miron-kbd-hint {
+    display: none;
+}
+
+.home-miron-quick-chips {
+    display: none;
+}
+
 /* Home Tab Basics */
 .hero-wrapper { position: relative; flex-shrink: 0; }
 .app-header { 
@@ -685,15 +699,202 @@ body.library-open { overflow: hidden; }
     .main-content { flex-grow: 1; height: 100%; overflow: hidden; display: flex; flex-direction: column; background: radial-gradient(circle at top right, #1e1e1e, #0c0c0c); z-index: 1; }
     .tab-content.active { display: flex; width: 100%; height: 100%; overflow-y: auto; scroll-behavior: smooth; }
     .page-content, .scrollable-content { height: auto; overflow: visible; }
-    #home-content .page-content { display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: auto auto; gap: 2rem; max-width: 1400px; margin: 0 auto; width: 100%; padding-bottom: 4rem; }
-    .hero-wrapper { max-width: 1400px; margin: 0 auto; width: 100%; padding: 2rem 2rem 0; }
-    .welcome-hero { height: 290px; min-height: 290px; border-radius: 24px; }
-    .priority-section { grid-column: span 8; margin: 0; }
-    .priority-scroll-wrapper { overflow: visible; }
-    .priority-track { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 0; }
-    .priority-card { width: 100%; min-height: 160px; }
-    .resume-study-section { grid-column: span 4; }
-    .resume-study-card { height: 100%; min-height: 160px; }
+    #home-content .page-content {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 2rem;
+        max-width: 1360px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 1.75rem 2.5rem 4rem;
+        align-items: start;
+    }
+    .hero-wrapper {
+        max-width: 1360px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 1.5rem 2.5rem 0;
+    }
+    .app-header {
+        position: static;
+        padding: 0 0 1.25rem 0;
+    }
+    .app-header .welcome-text h1 {
+        font-size: 1.85rem;
+        font-weight: 700;
+        text-shadow: none;
+    }
+    .welcome-hero {
+        height: 200px;
+        min-height: 200px;
+        border-radius: 20px;
+        padding: 2rem 2.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+    .hero-summary h2 {
+        font-size: 2.2rem;
+    }
+
+    /* Desktop Miron Command Bar */
+    .home-miron-dock-section {
+        grid-column: span 12;
+        margin-bottom: 0;
+    }
+    .home-miron-dock {
+        padding: 8px 10px 8px 18px;
+        border-radius: 20px;
+        background: var(--surface-dark);
+        border: 1px solid rgba(66, 215, 184, 0.3);
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+    }
+    .home-miron-dock input {
+        font-size: 1rem;
+    }
+    .home-miron-orb-wrap {
+        width: 38px;
+        height: 38px;
+    }
+    .home-miron-orb-wrap img {
+        width: 38px;
+        height: 38px;
+    }
+    .home-miron-action-btn {
+        width: 42px;
+        height: 42px;
+        font-size: 1.05rem;
+    }
+    .home-miron-kbd-hint {
+        display: inline-flex;
+        align-items: center;
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-secondary-dark);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border-color);
+        padding: 3px 8px;
+        border-radius: 6px;
+        letter-spacing: 0.5px;
+    }
+    .home-miron-quick-chips {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+    .miron-chip-btn {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border-color);
+        border-radius: 99px;
+        padding: 6px 14px;
+        color: var(--text-secondary-dark);
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        font-family: 'Poppins', sans-serif;
+    }
+    .miron-chip-btn:hover {
+        background: rgba(66, 215, 184, 0.1);
+        border-color: var(--accent-teal);
+        color: var(--text-primary-dark);
+        transform: translateY(-1px);
+    }
+    .miron-chip-btn i {
+        color: var(--accent-teal);
+        font-size: 0.75rem;
+    }
+
+    /* Desktop Live Audio Stages */
+    .discovery-section {
+        grid-column: span 12;
+        margin-bottom: 0;
+    }
+    .section-label-row {
+        padding: 0;
+    }
+    .discovery-scroll-container {
+        padding: 0.5rem 0 0.5rem 0;
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 1.25rem;
+        overflow-x: visible;
+    }
+    .live-orb-wrapper {
+        width: 100%;
+        background: var(--surface-dark);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 1.25rem 1rem;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .live-orb-wrapper:hover {
+        transform: translateY(-4px);
+        border-color: var(--accent-teal);
+        box-shadow: 0 12px 30px rgba(66, 215, 184, 0.15);
+    }
+
+    /* Desktop Coming Up & Continue Studying Bento Alignment */
+    .priority-section {
+        grid-column: span 8;
+        margin: 0;
+    }
+    .priority-section .section-label {
+        margin-bottom: 1rem;
+    }
+    .priority-scroll-wrapper {
+        overflow: visible;
+        margin: 0;
+        padding: 0;
+    }
+    .priority-track {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.25rem;
+        padding: 0;
+    }
+    .promo-card {
+        flex: unset;
+        width: 100%;
+        min-height: 175px;
+    }
+    .resume-study-section {
+        grid-column: span 4;
+        margin: 0;
+        position: sticky;
+        top: 1.5rem;
+    }
+    .resume-study-section .section-label {
+        margin-bottom: 1rem;
+    }
+    .resume-study-card {
+        min-height: 235px;
+        padding: 1.75rem;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    .resume-study-card .resume-title {
+        font-size: 1.2rem;
+        line-height: 1.35;
+        white-space: normal;
+    }
+    .resume-study-card .resume-subtitle {
+        white-space: normal;
+        line-height: 1.5;
+    }
+    .resume-arrow-box {
+        align-self: flex-end;
+        width: 44px;
+        height: 44px;
+    }
     .fullscreen-overlay, .pavilion-overlay { display: flex !important; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.85); clip-path: none !important; z-index: 9999 !important; position: fixed; inset: 0; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
     .fullscreen-overlay.is-active { opacity: 1; pointer-events: auto; visibility: visible; }
     .overlay-content, .pavilion-overlay { width: 900px !important; height: 85vh !important; margin: auto; position: fixed !important; inset: 0 !important; background: var(--bg-dark); border-radius: 24px; border: 1px solid var(--border-color); box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; }
