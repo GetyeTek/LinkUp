@@ -347,7 +347,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 >
                                     <div className={`pu-plan-ribbon ${discount > 0 ? 'fused-ribbon' : 'annual-ribbon'}`}>
                                         {discount > 0 ? (
-                                            <><i className="fa-solid fa-bolt"></i> -{discount} ETB + Best Value</>
+                                            <><i className="fa-solid fa-bolt"></i> -{discount} ETB + 35%</>
                                         ) : (
                                             'Save 35%'
                                         )}
