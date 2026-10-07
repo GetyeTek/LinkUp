@@ -164,6 +164,21 @@ const Study = () => {
                     </div>
 
                     <div className="study-section">
+                        {/* AI Planner Trigger */}
+                        <div className="compact-trigger" onClick={() => setIsPlannerOpen(true)}>
+                            <div className="compact-orb"><span className="material-symbols-outlined">auto_awesome</span></div>
+                            <div className="compact-text-content">
+                                <h3 className="compact-title">{t('plan_my_day', 'Plan My Day')}</h3>
+                                <div className="compact-subtitle">
+                                    <div className="typewriter-wrapper">
+                                        <span className="typewriter-text">Let Miron structure your session...</span>
+                                        <span className="blinking-cursor"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <i className="fas fa-chevron-right action-chevron"></i>
+                        </div>
+
                         {/* Current Study Desk Anchor */}
                         {lastRead && (
                             <div className="resume-study-card" onClick={handleResumeReading}>
@@ -184,21 +199,6 @@ const Study = () => {
                                 </div>
                             </div>
                         )}
-
-                        {/* AI Planner Trigger */}
-                        <div className="compact-trigger" onClick={() => setIsPlannerOpen(true)}>
-                            <div className="compact-orb"><span className="material-symbols-outlined">auto_awesome</span></div>
-                            <div className="compact-text-content">
-                                <h3 className="compact-title">{t('plan_my_day', 'Plan My Day')}</h3>
-                                <div className="compact-subtitle">
-                                    <div className="typewriter-wrapper">
-                                        <span className="typewriter-text">Let Miron structure your session...</span>
-                                        <span className="blinking-cursor"></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <i className="fas fa-chevron-right action-chevron"></i>
-                        </div>
 
 
 
