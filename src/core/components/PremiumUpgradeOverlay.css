@@ -60,7 +60,7 @@
     width: 100%;
     max-width: 480px;
     border-radius: 28px;
-    overflow: visible;
+    overflow: hidden; /* Fix: cleanly clips background hero & 300% shimmer line to rounded corners */
     background: var(--surface-glass);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
@@ -267,21 +267,26 @@
 /* Plan Switcher */
 .pu-plan-switcher {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     width: 100%;
-    margin-bottom: 1.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.75rem;
 }
 
 .pu-plan-card {
     flex: 1;
-    padding: 12px 14px;
-    border-radius: 16px;
+    padding: 16px 14px 14px;
+    min-height: 126px;
+    border-radius: 18px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(0, 0, 0, 0.5);
     text-align: left;
     cursor: pointer;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .pu-plan-card.active {
@@ -291,7 +296,7 @@
 }
 
 .pu-plan-tag {
-    font-size: 0.65rem;
+    font-size: 0.68rem;
     color: #b0a095;
     text-transform: uppercase;
     font-weight: 700;
@@ -300,139 +305,136 @@
 
 .pu-plan-card.active .pu-plan-tag { color: var(--gold-light); }
 
+.pu-formula-box {
+    display: flex;
+    flex-direction: column;
+    margin-top: 4px;
+}
+
+.pu-math-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.pu-base-struck {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    color: #777;
+    text-decoration: line-through;
+    font-weight: 500;
+}
+
+.pu-math-sub {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--green-accent);
+}
+
 .pu-plan-price {
     font-family: 'Roboto Mono', monospace;
-    font-size: 1.35rem;
-    font-weight: 700;
+    font-size: 1.45rem;
+    font-weight: 800;
     color: #fff;
-    margin-top: 2px;
+    line-height: 1.1;
+    margin: 2px 0;
 }
 
 .pu-plan-price span {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     color: #aaa;
     font-weight: 400;
 }
 
-/* Auto-Applied Scholar Credit Voucher Ticket */
-.pu-voucher-ticket {
-    width: 100%;
-    background: linear-gradient(135deg, rgba(20, 25, 23, 0.95) 0%, rgba(12, 16, 15, 0.95) 100%);
-    border: 1px dashed rgba(66, 215, 184, 0.45);
-    border-radius: 16px;
-    padding: 12px 14px;
-    margin-bottom: 1.5rem;
-    position: relative;
-    text-align: left;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(66, 215, 184, 0.05);
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.pu-voucher-ticket.is-saved {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: none;
-}
-
-.pu-vt-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-}
-
-.pu-vt-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'Roboto Mono', monospace;
+.pu-credits-used-note {
     font-size: 0.68rem;
+    color: #bbb;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+    font-weight: 500;
+}
+
+.pu-credits-used-note i {
+    color: var(--green-accent);
+    font-size: 0.65rem;
+}
+
+.pu-plan-period-note {
+    font-size: 0.7rem;
+    color: #777;
+    margin-top: 2px;
+}
+
+.pu-plan-ribbon {
+    position: absolute;
+    top: -10px;
+    right: 10px;
+    font-size: 0.62rem;
     font-weight: 800;
-    color: var(--gold-main);
-    letter-spacing: 0.8px;
+    padding: 3px 9px;
+    border-radius: 7px;
+    letter-spacing: 0.5px;
+    z-index: 5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 4px;
     text-transform: uppercase;
 }
 
-.pu-vt-savings-badge {
-    background: var(--green-accent);
-    color: #0c0805;
-    font-family: 'Roboto Mono', monospace;
-    font-size: 0.72rem;
-    font-weight: 900;
-    padding: 2px 8px;
-    border-radius: 99px;
-    letter-spacing: 0.5px;
-    box-shadow: 0 2px 10px rgba(66, 215, 184, 0.35);
+.pu-plan-ribbon.credit-ribbon {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.pu-vt-body {
+.pu-plan-ribbon.annual-ribbon {
+    background: var(--gold-gradient);
+    color: #0c0805;
+}
+
+.pu-plan-ribbon.fused-ribbon {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #0c0805;
+}
+
+.pu-wallet-footnote {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    width: 100%;
+    margin-bottom: 1.25rem;
+    padding: 0 4px;
+    font-size: 0.75rem;
+    color: #aaa;
 }
 
-.pu-vt-info h4 {
-    font-size: 0.86rem;
-    font-weight: 700;
-    color: #fff;
-    margin: 0 0 2px 0;
+.pu-footnote-text {
+    display: flex;
+    align-items: center;
 }
 
-.pu-vt-info p {
-    font-size: 0.74rem;
-    color: #b5aba2;
-    line-height: 1.35;
-    margin: 0;
-}
-
-.pu-vt-toggle-btn {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #ddd;
-    padding: 6px 12px;
-    border-radius: 10px;
-    font-family: 'Poppins', sans-serif;
-    font-size: 0.74rem;
+.pu-footnote-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--gold-main);
+    font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s;
-    flex-shrink: 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+    transition: opacity 0.2s;
 }
 
-.pu-vt-toggle-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: #fff;
-}
-
-.pu-voucher-ticket.is-saved .pu-vt-toggle-btn {
-    background: rgba(66, 215, 184, 0.15);
-    border-color: var(--green-accent);
-    color: var(--green-accent);
-}
-
-/* Strikethrough pricing style */
-.pu-price-slashed {
-    font-size: 0.78rem !important;
-    color: #888 !important;
-    text-decoration: line-through;
-    margin-left: 6px;
-    font-weight: 500 !important;
-}
-
-.pu-save-ribbon {
-    position: absolute;
-    top: -9px;
-    right: 8px;
-    background: var(--gold-gradient);
-    color: #0c0805;
-    font-size: 0.6rem;
-    font-weight: 800;
-    padding: 2px 8px;
-    border-radius: 6px;
-    letter-spacing: 0.5px;
-    box-shadow: 0 2px 10px rgba(241, 196, 15, 0.4);
+.pu-footnote-toggle-btn:hover {
+    opacity: 0.8;
 }
 
 /* Gold CTA Button */
@@ -838,8 +840,9 @@
     .pu-modal-title { font-size: 1.8rem; }
     .pu-perk-item { padding: 8px 12px; }
     .pu-perk-text { font-size: 0.78rem; }
-    .pu-plan-switcher { margin-bottom: 1rem; gap: 8px; }
-    .pu-plan-card { padding: 10px 12px; }
-    .pu-plan-price { font-size: 1.15rem; }
+    .pu-plan-switcher { margin-bottom: 0.75rem; gap: 8px; }
+    .pu-plan-card { padding: 12px 10px 10px; min-height: 115px; }
+    .pu-plan-price { font-size: 1.25rem; }
+    .pu-plan-ribbon { font-size: 0.58rem; padding: 2px 7px; top: -8px; right: 6px; }
     .pu-cta-gold-btn { font-size: 0.9rem; padding: 14px; }
 }
