@@ -362,18 +362,37 @@
 }
 
 .pu-credits-used-note {
-    font-size: 0.68rem;
-    color: #bbb;
+    font-size: 0.72rem;
+    color: #fff;
     display: flex;
     align-items: center;
     gap: 5px;
-    margin-top: 2px;
-    font-weight: 500;
+    margin-top: 3px;
+    font-weight: 700;
+}
+
+.pu-credits-used-note u {
+    text-decoration: underline;
+    text-decoration-color: var(--green-accent);
+    text-underline-offset: 3px;
+    color: var(--green-accent);
 }
 
 .pu-credits-used-note i {
     color: var(--green-accent);
-    font-size: 0.65rem;
+    font-size: 0.68rem;
+}
+
+.pu-support-link {
+    color: var(--gold-main);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.pu-support-link:hover {
+    color: var(--gold-light);
 }
 
 .pu-plan-period-note {
