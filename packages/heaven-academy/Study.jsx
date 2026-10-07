@@ -151,9 +151,9 @@ const Study = () => {
                         <div className="library-fade-overlay"></div>
                         <div className="expand-prompt"><span className="material-symbols-outlined">open_in_full</span> {t('tap_to_expand', 'Tap to expand')}</div>
                         <div className="vignette-bg pt-4">
-                            <div style={{ height: '220px', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                            <div className="preview-shelf-inner">
                                 <BookShelf 
-                                    items={books.slice(0, 3)} 
+                                    items={books.slice(0, 6)} 
                                     previewMode={true} 
                                     onBookClick={setActiveBook} 
                                     onExamTrigger={() => { setIsLibraryOpen(true); setShelfLevel('universities'); }} 
