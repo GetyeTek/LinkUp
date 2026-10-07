@@ -1,14 +1,50 @@
 /* --- ACADEMIC PAVILION UI --- */
 .pavilion-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 2200;
-    background-color: var(--bg-dark);
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+    z-index: 11000 !important;
+    background-color: var(--bg-dark) !important;
     color: var(--text-primary-dark);
     font-family: 'Poppins', sans-serif;
     display: flex;
     flex-direction: column;
     animation: pavilionFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 900px) {
+    .pavilion-header {
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        padding-top: 3rem;
+    }
+    .pav-selector-area {
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        padding-top: 0.5rem;
+    }
+    .pav-segmented-control {
+        max-width: 460px;
+        margin: 0 auto;
+    }
+    .pavilion-scroll {
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 1.5rem;
+        align-content: start;
+        padding-top: 1rem;
+    }
+    .pav-archive-end {
+        grid-column: 1 / -1;
+    }
 }
 
 @keyframes pavilionFade { from { opacity: 0; transform: scale(1.02); } to { opacity: 1; transform: scale(1); } }
