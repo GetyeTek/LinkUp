@@ -840,9 +840,9 @@ body.library-open { overflow: hidden; }
         box-shadow: 0 12px 30px rgba(66, 215, 184, 0.15);
     }
 
-    /* Desktop Coming Up & Continue Studying Bento Alignment */
+    /* Desktop Coming Up Full-Span Bento Grid */
     .priority-section {
-        grid-column: span 8;
+        grid-column: span 12;
         margin: 0;
     }
     .priority-section .section-label {
@@ -855,7 +855,7 @@ body.library-open { overflow: hidden; }
     }
     .priority-track {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
         gap: 1.25rem;
         padding: 0;
     }
@@ -863,37 +863,6 @@ body.library-open { overflow: hidden; }
         flex: unset;
         width: 100%;
         min-height: 175px;
-    }
-    .resume-study-section {
-        grid-column: span 4;
-        margin: 0;
-        position: sticky;
-        top: 1.5rem;
-    }
-    .resume-study-section .section-label {
-        margin-bottom: 1rem;
-    }
-    .resume-study-card {
-        min-height: 235px;
-        padding: 1.75rem;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
-    }
-    .resume-study-card .resume-title {
-        font-size: 1.2rem;
-        line-height: 1.35;
-        white-space: normal;
-    }
-    .resume-study-card .resume-subtitle {
-        white-space: normal;
-        line-height: 1.5;
-    }
-    .resume-arrow-box {
-        align-self: flex-end;
-        width: 44px;
-        height: 44px;
     }
     .fullscreen-overlay, .pavilion-overlay { display: flex !important; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.85); clip-path: none !important; z-index: 9999 !important; position: fixed; inset: 0; opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
     .fullscreen-overlay.is-active { opacity: 1; pointer-events: auto; visibility: visible; }
