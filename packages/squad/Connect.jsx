@@ -511,6 +511,7 @@ const Connect = () => {
             return;
         }
         if (chat === 'notes') {
+            setActiveChatId(null);
             if (forwardTargetMsg) {
                 console.log("[SharePipeline:Notes] Saving quote to My Notes vault...");
                 supabase.rpc('get_or_create_notes', { req_user_id: currentUser.id }).then(async ({ data: notesConvId, error: notesErr }) => {
@@ -559,6 +560,7 @@ const Connect = () => {
             console.log("[SharePipeline:3] Destination selected for quote/forward:", chat);
             handleExecuteForward(chat);
         } else {
+            setIsNotesOpen(false);
             setMountedChats(prev => ({ ...prev, [chat.conversation_id]: chat }));
             setActiveChatId(chat.conversation_id);
             setConversations(prev => prev.map(c => c.conversation_id === chat.conversation_id ? { ...c, unread_count: 0 } : c));
@@ -595,106 +597,144 @@ const Connect = () => {
 
     return (
         <div className={`tab-content active ${isHeaderCollapsed ? 'header-collapsed' : ''}`} id="connect-content">
-            <header className="interactive-header">
-                {forwardTargetMsg && !activeChatId && (
-                    <div className="forward-mode-banner">
-                        <span>{forwardTargetMsg.is_quote ? `Share quote from ${forwardTargetMsg.quote?.book_title || 'Book'} (p. ${forwardTargetMsg.quote?.page_number})...` : "Forward to..."}</span>
-                        <button onClick={() => setForwardTargetMsg(null)}><i className="fas fa-times"></i></button>
+            <aside className="connect-sidebar">
+                <header className="interactive-header">
+                    {forwardTargetMsg && !activeChatId && (
+                        <div className="forward-mode-banner">
+                            <span>{forwardTargetMsg.is_quote ? `Share quote from ${forwardTargetMsg.quote?.book_title || 'Book'} (p. ${forwardTargetMsg.quote?.page_number})...` : "Forward to..."}</span>
+                            <button onClick={() => setForwardTargetMsg(null)}><i className="fas fa-times"></i></button>
+                        </div>
+                    )}
+                    <div className="large-title-row">
+                        <h2 className="large-title">{t('social_hub', 'Social Hub')}</h2>
+                        <div className="header-actions">
+                            <button className="icon-button" onClick={() => setIsGlobalSearchOpen(true)}>
+                                <i className="fas fa-search"></i>
+                            </button>
+                            <button 
+                                className="header-miron-btn" 
+                                onClick={() => shell.openMiron()} 
+                                title="Chat with Miron AI"
+                            >
+                                <img src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png" alt="Miron" className="header-miron-avatar" />
+                                <span className="header-miron-pulse"></span>
+                            </button>
+                            <button className="icon-button notification-btn" onClick={onOpenActivity}>
+                                <i className="fas fa-bell"></i>
+                                {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+                            </button>
+                            <img 
+                                src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} 
+                                alt="Profile" 
+                                className="profile-avatar" 
+                                onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }))}
+                                style={{ cursor: 'pointer' }}
+                            />
+                        </div>
                     </div>
-                )}
-                <div className="large-title-row">
-                    <h2 className="large-title">{t('social_hub', 'Social Hub')}</h2>
-                    <div className="header-actions">
-                        <button className="icon-button" onClick={() => setIsGlobalSearchOpen(true)}>
-                            <i className="fas fa-search"></i>
-                        </button>
-                        <button 
-                            className="header-miron-btn" 
-                            onClick={() => shell.openMiron()} 
-                            title="Chat with Miron AI"
-                        >
-                            <img src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png" alt="Miron" className="header-miron-avatar" />
-                            <span className="header-miron-pulse"></span>
-                        </button>
-                        <button className="icon-button notification-btn" onClick={onOpenActivity}>
-                            <i className="fas fa-bell"></i>
-                            {unreadCount > 0 && <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
-                        </button>
-                        <img 
-                            src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} 
-                            alt="Profile" 
-                            className="profile-avatar" 
-                            onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'profile' } }))}
-                            style={{ cursor: 'pointer' }}
-                        />
-                    </div>
-                </div>
-                <div className="main-nav-row">
-                    <div className="orbiter-container">
-                        <div className="icon-orbiter">
-                            <div className={`option ${activeView === 'messages' ? 'active' : ''}`} onClick={() => { setActiveView('messages'); setIsHeaderCollapsed(false); }}>
-                                <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-paper-plane"></i></div>
-                                <span className="text-label">{t('messages', 'Messages')}</span>
-                            </div>
-                            <div className={`option ${activeView === 'squads' ? 'active' : ''}`} onClick={() => { setActiveView('squads'); setIsHeaderCollapsed(false); }}>
-                                <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-layer-group"></i></div>
-                                <span className="text-label">{t('groups', 'Groups')}</span>
-                            </div>
-                            <div className={`option ${activeView === 'class' ? 'active' : ''}`} onClick={() => { setActiveView('class'); setIsHeaderCollapsed(false); }}>
-                                <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-users-rectangle"></i></div>
-                                <span className="text-label">{t('class', 'Class')}</span>
+                    <div className="main-nav-row">
+                        <div className="orbiter-container">
+                            <div className="icon-orbiter">
+                                <div className={`option ${activeView === 'messages' ? 'active' : ''}`} onClick={() => { setActiveView('messages'); setIsHeaderCollapsed(false); }}>
+                                    <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-paper-plane"></i></div>
+                                    <span className="text-label">{t('messages', 'Messages')}</span>
+                                </div>
+                                <div className={`option ${activeView === 'squads' ? 'active' : ''}`} onClick={() => { setActiveView('squads'); setIsHeaderCollapsed(false); }}>
+                                    <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-layer-group"></i></div>
+                                    <span className="text-label">{t('groups', 'Groups')}</span>
+                                </div>
+                                <div className={`option ${activeView === 'class' ? 'active' : ''}`} onClick={() => { setActiveView('class'); setIsHeaderCollapsed(false); }}>
+                                    <div className="icon-wrapper"><div className="orbiter-indicator"></div><i className="fa-solid fa-users-rectangle"></i></div>
+                                    <span className="text-label">{t('class', 'Class')}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </header>
+
+                <div className="content-panel">
+                    <SquadsFeed 
+                        activeView={activeView}
+                        handleScroll={handleScroll}
+                        setIsGroupCreatorOpen={setGroupCreatorMode}
+                        conversations={conversations}
+                        suggestedSquads={suggestedSquads}
+                        campusClasses={campusClasses}
+                        handleChatClick={handleChatClick}
+                        isSessionLive={isSessionLive}
+                        formatTime={formatTime}
+                        forwardTargetMsg={forwardTargetMsg}
+                        setToastNotice={setToastNotice}
+                        setGlobalNotice={setGlobalNotice}
+                        setMountedChats={setMountedChats}
+                        setActiveChatId={setActiveChatId}
+                        handleJoinSquad={handleJoinSquad}
+                        joiningSquadId={joiningSquadId}
+                        activeChatId={activeChatId}
+                    />
+
+                    <MessagesFeed 
+                        activeView={activeView}
+                        handleScroll={handleScroll}
+                        forwardTargetMsg={forwardTargetMsg}
+                        handleExecuteForward={handleExecuteForward}
+                        shell={shell}
+                        setIsNotesOpen={setIsNotesOpen}
+                        setToastNotice={setToastNotice}
+                        conversations={conversations}
+                        handleChatClick={handleChatClick}
+                        isSessionLive={isSessionLive}
+                        onlineUsers={onlineUsers}
+                        formatTime={formatTime}
+                        activeChatId={activeChatId}
+                        isNotesOpen={isNotesOpen}
+                    />
                 </div>
-            </header>
-
-            <div className="content-panel">
                 
-                <SquadsFeed 
-                    activeView={activeView}
-                    handleScroll={handleScroll}
-                    setIsGroupCreatorOpen={setGroupCreatorMode}
-                    conversations={conversations}
-                    suggestedSquads={suggestedSquads}
-                    campusClasses={campusClasses}
-                    handleChatClick={handleChatClick}
-                    isSessionLive={isSessionLive}
-                    formatTime={formatTime}
-                    forwardTargetMsg={forwardTargetMsg}
-                    setToastNotice={setToastNotice}
-                    setGlobalNotice={setGlobalNotice}
-                    setMountedChats={setMountedChats}
-                    setActiveChatId={setActiveChatId}
-                    handleJoinSquad={handleJoinSquad}
-                    joiningSquadId={joiningSquadId}
-                />
+                {/* Standard Connect FAB */}
+                <div 
+                    className="connect-fab" 
+                    style={{ background: 'var(--accent-teal)', color: '#0c0c0c' }}
+                    onClick={() => setShowDiscovery(true)}
+                >
+                    <i className="fas fa-comment-medical"></i>
+                </div>
+            </aside>
 
-                <MessagesFeed 
-                    activeView={activeView}
-                    handleScroll={handleScroll}
-                    forwardTargetMsg={forwardTargetMsg}
-                    handleExecuteForward={handleExecuteForward}
-                    shell={shell}
-                    setIsNotesOpen={setIsNotesOpen}
-                    setToastNotice={setToastNotice}
-                    conversations={conversations}
-                    handleChatClick={handleChatClick}
-                    isSessionLive={isSessionLive}
-                    onlineUsers={onlineUsers}
-                    formatTime={formatTime}
-                />
+            <section className="connect-chat-stage">
+                {(!activeChatId && !isNotesOpen) && (
+                    <div className="connect-empty-stage">
+                        <div className="ces-graphic-orb">
+                            <i className="fas fa-comments"></i>
+                        </div>
+                        <h3 className="ces-title">Select a Conversation</h3>
+                        <p className="ces-subtitle">
+                            Choose a direct message, campus class, study squad, or open My Notes to collaborate.
+                        </p>
+                        <div className="ces-actions-row">
+                            <button className="ces-action-btn" onClick={() => setShowDiscovery(true)}>
+                                <i className="fas fa-user-plus"></i> Find Classmates
+                            </button>
+                            <button className="ces-action-btn" onClick={() => setGroupCreatorMode('academic')}>
+                                <i className="fas fa-layer-group"></i> Create Study Squad
+                            </button>
+                        </div>
+                    </div>
+                )}
 
-            </div>
-            
-            {/* Standard Connect FAB */}
-            <div 
-                className="connect-fab" 
-                style={{ background: 'var(--accent-teal)', color: '#0c0c0c' }}
-                onClick={() => setShowDiscovery(true)}
-            >
-                <i className="fas fa-comment-medical"></i>
-            </div>
+                {Object.entries(mountedChats).map(([id, chat]) => {
+                    const isHidden = activeChatId !== id;
+                    if (chat.type === 'dm') {
+                        return <UserChat key={id} isHidden={isHidden} chat={chat} currentUser={currentUser} targetMessageId={targetMessageId} isOnline={onlineUsers.has(chat.other_user_id)} onClose={() => closeChat(id)} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(chat); minimizeChat(); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />;
+                    }
+                    if (chat.type === 'group') {
+                        return <GroupChat key={id} isHidden={isHidden} chat={chat} currentUser={currentUser} targetMessageId={targetMessageId} onClose={() => closeChat(id)} onMinimize={minimizeChat} onJoin={handleJoinSquad} isJoining={joiningSquadId === chat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(chat); minimizeChat(); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} onlineUsers={onlineUsers} presenceSynced={presenceSynced} />;
+                    }
+                    return null;
+                })}
+                
+                {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
+            </section>
 
             {showDiscovery && (
                 <DiscoveryScreen 
@@ -721,18 +761,6 @@ const Connect = () => {
                 />
             )}
 
-            {Object.entries(mountedChats).map(([id, chat]) => {
-                const isHidden = activeChatId !== id;
-                if (chat.type === 'dm') {
-                    return <UserChat key={id} isHidden={isHidden} chat={chat} currentUser={currentUser} targetMessageId={targetMessageId} isOnline={onlineUsers.has(chat.other_user_id)} onClose={() => closeChat(id)} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(chat); minimizeChat(); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} />;
-                }
-                if (chat.type === 'group') {
-                    return <GroupChat key={id} isHidden={isHidden} chat={chat} currentUser={currentUser} targetMessageId={targetMessageId} onClose={() => closeChat(id)} onMinimize={minimizeChat} onJoin={handleJoinSquad} isJoining={joiningSquadId === chat.conversation_id} onForward={(msg) => { setForwardTargetMsg(msg); setForwardSourceChat(chat); minimizeChat(); }} onOriginClick={handleOriginClick} onOpenUser={(uid) => setViewingUserId(uid)} onlineUsers={onlineUsers} presenceSynced={presenceSynced} />;
-                }
-                return null;
-            })}
-            
-            {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
             {viewingUserId && <UserInfoPanel userId={viewingUserId} currentUser={currentUser} onClose={() => setViewingUserId(null)} />}
             {groupCreatorMode && <GroupCreator currentUser={currentUser} initialMode={typeof groupCreatorMode === 'string' ? groupCreatorMode : null} onClose={() => setGroupCreatorMode(null)} onCreated={() => { setGroupCreatorMode(null); fetchConversations(); fetchCampusClasses(); fetchSuggestedSquads(); }} />}
             
@@ -787,8 +815,6 @@ const Connect = () => {
                     </div>
                 </div>
             )}
-
-
         </div>
     );
 };
