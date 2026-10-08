@@ -179,3 +179,22 @@
 .si-save-btn:active:not(:disabled) { transform: scale(0.98); }
 .si-disband-btn { width: 100%; background: rgba(255, 95, 95, 0.1); color: #ff5f5f; border: 1px solid rgba(255, 95, 95, 0.3); padding: 14px; border-radius: 12px; font-weight: 700; font-size: 0.95rem; cursor: pointer; margin-top: 1rem; transition: transform 0.2s; }
 .si-disband-btn:active { transform: scale(0.98); }
+
+@media (min-width: 900px) {
+    .si-overlay {
+        position: absolute !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: auto !important;
+        width: 400px !important;
+        border-left: 1px solid var(--border-color) !important;
+        box-shadow: -15px 0 45px rgba(0, 0, 0, 0.7) !important;
+        z-index: 70 !important;
+        animation: slideInInspector 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    }
+    @keyframes slideInInspector {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+    }
+}
