@@ -18,3 +18,27 @@
 .tier-1 { background: rgba(66, 215, 184, 0.15); color: var(--accent-teal); }
 .tier-2 { background: rgba(155, 89, 182, 0.15); color: #9b59b6; }
 .tier-3 { background: rgba(255, 255, 255, 0.05); color: #888; }
+
+@media (min-width: 900px) {
+    .discovery-screen {
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 40 !important;
+        animation: none !important;
+        background: var(--bg-dark) !important;
+    }
+    .discovery-header {
+        max-width: 720px;
+        margin: 0 auto;
+        width: 100%;
+        background: transparent;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.25rem 1.5rem;
+    }
+    .discovery-body {
+        max-width: 720px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 1.75rem 1.5rem 3rem 1.5rem;
+    }
+}
