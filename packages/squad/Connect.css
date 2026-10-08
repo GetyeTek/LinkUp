@@ -142,13 +142,18 @@
 #connect-content.header-collapsed .large-title { transform: translateY(-20px); }
 #connect-content.header-collapsed .main-nav-row { border-bottom: 1px solid var(--border-color); }
 
-
+/* Mobile Base Defaults */
+.connect-sidebar { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; }
+.connect-chat-stage { display: contents; }
+.connect-empty-stage { display: none; }
 
 .content-panel { flex-grow: 1; overflow: hidden; position: relative; }
 .hub-view { display: none; height: 100%; }
 .hub-view.active { display: block; }
 .messages-list { display: flex; flex-direction: column; gap: 8px; padding: 1rem; }
-.messages-list-item { display: flex; align-items: center; gap: 12px; padding: 12px; background-color: var(--surface-dark); border-radius: 12px; cursor: pointer; }
+.messages-list-item { display: flex; align-items: center; gap: 12px; padding: 12px; background-color: var(--surface-dark); border: 1px solid transparent; border-radius: 14px; cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+.messages-list-item:hover { background-color: rgba(255, 255, 255, 0.06); }
+.messages-list-item.active-chat-item { background: rgba(66, 215, 184, 0.12) !important; border-color: var(--accent-teal) !important; box-shadow: 0 4px 15px rgba(66, 215, 184, 0.15) !important; }
 .messages-list-item img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
 .message-info { flex-grow: 1; overflow: hidden; }
 .message-info .name { font-weight: 600; }
@@ -186,8 +191,164 @@
     100% { transform: scale(1.4); opacity: 0; }
 }
 
+/* ==============================================================================
+   DESKTOP MASTER-DETAIL SPLIT PANE ARCHITECTURE (>= 900px)
+   ============================================================================== */
 @media (min-width: 900px) {
-    #connect-content .content-panel { overflow-y: auto; height: 100%; padding: 2rem; }
-    #connect-content .interactive-header { max-width: 1200px; margin: 0 auto; width: 100%; }
-    .messages-list { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
+    #connect-content {
+        display: flex !important;
+        flex-direction: row !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+        background: var(--bg-dark);
+    }
+
+    /* Left Sidebar: Fixed Width Navigation & Feeds */
+    .connect-sidebar {
+        width: 380px;
+        min-width: 340px;
+        max-width: 420px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--border-color);
+        background: rgba(14, 14, 17, 0.95);
+        position: relative;
+        flex-shrink: 0;
+        z-index: 20;
+    }
+
+    #connect-content .interactive-header {
+        max-width: none;
+        width: 100%;
+        margin: 0;
+        background: transparent;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    #connect-content .large-title-row {
+        height: 70px;
+        padding: 1.25rem 1.25rem 0.5rem;
+    }
+
+    #connect-content .large-title {
+        font-size: 1.6rem;
+    }
+
+    #connect-content .main-nav-row {
+        padding: 0.4rem 1.25rem;
+    }
+
+    #connect-content .content-panel {
+        overflow-y: auto;
+        height: calc(100% - 130px);
+        padding: 0;
+        scrollbar-width: thin;
+    }
+
+    .messages-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 0.85rem;
+        max-width: none;
+        margin: 0;
+    }
+
+    #squads-view {
+        padding: 1rem !important;
+    }
+
+    .connect-fab {
+        position: absolute;
+        bottom: 1.25rem;
+        right: 1.25rem;
+        box-shadow: 0 8px 25px rgba(66, 215, 184, 0.35);
+    }
+
+    /* Right Main Chat Stage */
+    .connect-chat-stage {
+        display: flex;
+        flex: 1;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at 70% 30%, rgba(66, 215, 184, 0.03) 0%, var(--bg-dark) 70%);
+        min-width: 0;
+    }
+
+    /* Empty State in Right Stage */
+    .connect-empty-stage {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+        padding: 3rem;
+        text-align: center;
+        user-select: none;
+    }
+
+    .ces-graphic-orb {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(66, 215, 184, 0.1);
+        color: var(--accent-teal);
+        border: 2px solid rgba(66, 215, 184, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 0 35px rgba(66, 215, 184, 0.2);
+    }
+
+    .ces-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #fff;
+        margin: 0 0 6px 0;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .ces-subtitle {
+        font-size: 0.88rem;
+        color: #888;
+        max-width: 380px;
+        line-height: 1.5;
+        margin: 0 0 1.75rem 0;
+    }
+
+    .ces-actions-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .ces-action-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        color: #fff;
+        padding: 10px 18px;
+        border-radius: 12px;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .ces-action-btn:hover {
+        background: rgba(66, 215, 184, 0.12);
+        border-color: var(--accent-teal);
+        color: var(--accent-teal);
+        transform: translateY(-2px);
+    }
 }
