@@ -13,7 +13,9 @@ const MessagesFeed = ({
     handleChatClick,
     isSessionLive,
     onlineUsers,
-    formatTime
+    formatTime,
+    activeChatId,
+    isNotesOpen
 }) => {
     const { t } = usePlatform();
     return (
@@ -37,9 +39,16 @@ const MessagesFeed = ({
                 </div>
 
                 {/* My Notes Entry */}
-                <div className="messages-list-item" style={{ background: 'rgba(66, 215, 184, 0.05)', border: '1px solid rgba(66, 215, 184, 0.2)' }} onClick={() => {
-                    handleChatClick('notes');
-                }}>
+                <div 
+                    className={`messages-list-item ${isNotesOpen ? 'active-chat-item' : ''}`} 
+                    style={{ 
+                        background: isNotesOpen ? 'rgba(66, 215, 184, 0.12)' : 'rgba(66, 215, 184, 0.05)', 
+                        border: isNotesOpen ? '1px solid var(--accent-teal)' : '1px solid rgba(66, 215, 184, 0.2)' 
+                    }} 
+                    onClick={() => {
+                        handleChatClick('notes');
+                    }}
+                >
                     <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#42d7b8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
                         <i className="fas fa-bookmark"></i>
                     </div>
@@ -62,8 +71,9 @@ const MessagesFeed = ({
                         const isDm = chat.type === 'dm';
                         const title = isDm ? chat.other_user_name : chat.title;
                         const avatar = isDm ? chat.other_user_avatar : chat.avatar_url;
+                        const isActiveChat = activeChatId === chat.conversation_id;
                         return (
-                            <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
+                            <div className={`messages-list-item ${isActiveChat ? 'active-chat-item' : ''}`} key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
                                 <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                                     {isDm ? (
                                         <img src={avatar || getAvatarFallback(title)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(title); }} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
