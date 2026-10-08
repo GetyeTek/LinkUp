@@ -149,3 +149,12 @@
 .mq-q-content .katex-display::-webkit-scrollbar, .mq-opt-content .katex-display::-webkit-scrollbar {
     display: none;
 }
+
+@media (min-width: 900px) {
+    .miron-quiz-card {
+        margin: 20px 0 !important;
+        border-radius: 16px !important;
+        border: 1px solid var(--border-color) !important;
+        overflow: hidden;
+    }
+}
