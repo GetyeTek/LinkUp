@@ -210,6 +210,7 @@
         align-items: center !important;
         justify-content: center !important;
         padding: 2rem !important;
+        padding-left: calc(260px + 2rem) !important;
         animation: fadeInModal 0.25s ease-out !important;
     }
 
