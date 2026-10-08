@@ -70,3 +70,26 @@
 .gs-status { font-size: 0.75rem; font-weight: 600; color: var(--accent-teal); }
 .gs-status.unjoined { color: #888; }
 .not-found-state { text-align: center; color: #ff5f5f; font-size: 0.85rem; margin-top: 1rem; padding: 1rem; background: rgba(255,95,95,0.1); border-radius: 12px; }
+
+@media (min-width: 900px) {
+    .global-search-overlay {
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 50 !important;
+        max-width: 100% !important;
+        animation: none !important;
+    }
+    .gs-header {
+        max-width: 720px;
+        margin: 0 auto;
+        width: 100%;
+        background: transparent;
+        padding: 1rem 1.5rem;
+    }
+    .gs-body {
+        max-width: 720px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 1.5rem;
+    }
+}
