@@ -33,4 +33,21 @@
 .ui-full-settings-btn:active { transform: scale(0.98); }
 .ui-save-btn { width: 100%; background: var(--accent-teal); color: #000; border: none; border-radius: 12px; padding: 14px; font-weight: 700; font-family: 'Poppins', sans-serif; font-size: 0.95rem; cursor: pointer; transition: transform 0.2s; margin-top: 0.5rem; box-shadow: 0 4px 15px rgba(66, 215, 184, 0.2); }
 .ui-save-btn:disabled { background: rgba(255,255,255,0.1); color: #888; cursor: not-allowed; box-shadow: none; }
-.ui-save-btn:active:not(:disabled) { transform: scale(0.98); }
+.ui-save-btn:not(:disabled):active { transform: scale(0.98); }
+
+@media (min-width: 900px) {
+    .user-info-overlay {
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 60 !important;
+        animation: none !important;
+    }
+    .ui-hero {
+        padding: 2.5rem 1.5rem 1rem;
+    }
+    .ui-body {
+        max-width: 680px;
+        margin: 0 auto;
+        width: 100%;
+    }
+}
