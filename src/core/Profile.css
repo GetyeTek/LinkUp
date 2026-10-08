@@ -48,6 +48,43 @@
     border-color: rgba(255, 255, 255, 0.15);
 }
 
+.profile-handle-tag {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--accent-teal);
+    font-weight: 600;
+    margin-top: 1px;
+}
+
+.hero-actions-desktop {
+    display: none;
+}
+
+.hero-edit-profile-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-edit-profile-btn:hover {
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+    color: #0c0c0c;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(66, 215, 184, 0.3);
+}
+
 .linkoin-balance-hero { 
     display: inline-flex; 
     align-items: center; 
@@ -115,9 +152,94 @@
 
 /* --- DESKTOP ADJUSTMENTS FOR PROFILE TAB --- */
 @media (min-width: 900px) {
-    #profile-content .scrollable-content { overflow-y: auto; height: 100%; }
-    .profile-hero { height: 300px; display: flex; align-items: flex-end; padding-bottom: 2rem; }
-    .portal-cards-container { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
-    .settings-group { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; padding-bottom: 4rem; }
-    .premium-portal-card { grid-column: 1 / -1; }
+    #profile-content .scrollable-content { 
+        overflow-y: auto; 
+        height: 100%; 
+        scrollbar-width: thin;
+    }
+
+    .profile-hero { 
+        height: 250px; 
+        max-width: 1240px; 
+        margin: 0 auto; 
+        width: 100%; 
+        display: flex; 
+        align-items: flex-end; 
+        padding-bottom: 1.5rem; 
+    }
+
+    .profile-banner {
+        height: 190px;
+        border-radius: 0 0 24px 24px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .hero-content {
+        width: 100%;
+        padding: 0 2.5rem;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-start;
+        gap: 1.5rem;
+    }
+
+    .profile-avatar-wrapper {
+        width: 110px;
+        height: 110px;
+        margin-right: 0;
+    }
+
+    .user-info {
+        flex-grow: 1;
+    }
+
+    .hero-actions-desktop {
+        display: flex;
+        align-items: center;
+        margin-left: auto;
+    }
+
+    /* 3-Column Bento Grid Showcase */
+    .portal-cards-container { 
+        display: grid !important; 
+        grid-template-columns: repeat(3, 1fr) !important; 
+        gap: 1.5rem !important; 
+        max-width: 1240px !important; 
+        margin: 0 auto !important; 
+        padding: 0 2.5rem !important; 
+    }
+
+    .portal-card {
+        padding: 1.5rem;
+        min-height: 140px;
+    }
+
+    .premium-portal-card { 
+        grid-column: span 1 !important; 
+    }
+
+    /* Centered Compact Settings Panel */
+    .settings-group { 
+        max-width: 780px !important; 
+        margin: 2.75rem auto 0 auto !important; 
+        padding: 0 1.5rem !important; 
+        padding-bottom: 5rem !important; 
+    }
+
+    .settings-list {
+        background: var(--surface-dark);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    .list-item {
+        padding: 1.15rem 1.4rem;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .list-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        padding-left: 1.75rem;
+    }
 }
