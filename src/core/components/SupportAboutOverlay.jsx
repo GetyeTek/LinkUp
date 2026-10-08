@@ -135,7 +135,8 @@ const SupportAboutOverlay = ({ isActive, onClose }) => {
                 </div>
             </div>
         </div>
-    );
+    </div>
+);
 };
 
 export default SupportAboutOverlay;
