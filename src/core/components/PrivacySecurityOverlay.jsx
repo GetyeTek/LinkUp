@@ -178,16 +178,17 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     };
 
     return (
-        <div className="pso-overlay">
-            <header className="pso-header" style={{ justifyContent: 'flex-start', gap: '1.25rem' }}>
-                <button className="icon-button" onClick={onClose} style={{ marginLeft: '-0.5rem' }}>
-                    <i className="fas fa-chevron-left"></i>
-                </button>
-                <h2>Privacy & Security</h2>
-            </header>
+        <div className="pso-overlay" onClick={onClose}>
+            <div className="pso-dialog-card" onClick={e => e.stopPropagation()}>
+                <header className="pso-header" style={{ justifyContent: 'flex-start', gap: '1.25rem' }}>
+                    <button className="icon-button" onClick={onClose} style={{ marginLeft: '-0.5rem' }}>
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
+                    <h2>Privacy & Security</h2>
+                </header>
 
-            <div className="pso-body">
-                {/* 1. Academic Privacy Section */}
+                <div className="pso-body">
+                    {/* 1. Academic Privacy Section */}
                 <div className="pso-section">
                     <span className="pso-section-title">Academic Privacy</span>
                     
@@ -272,6 +273,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                             {hasPassword ? 'Change' : 'Set Up'}
                         </button>
                     </div>
+                </div>
                 </div>
             </div>
 
