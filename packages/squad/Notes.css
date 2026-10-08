@@ -105,3 +105,29 @@
     font-size: 0.9rem;
 }
 
+@media (min-width: 900px) {
+    .notes-overlay {
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 10 !important;
+        border-radius: 0 !important;
+        animation: none !important;
+    }
+    .notes-overlay .notes-header .icon-button:first-child {
+        display: none !important;
+    }
+    .notes-flow {
+        max-width: 960px;
+        margin: 0 auto;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .note-card {
+        max-width: 640px;
+    }
+    .notes-dock {
+        max-width: 960px;
+        margin: 0 auto;
+    }
+}
+
