@@ -17,7 +17,8 @@ const SquadsFeed = ({
     setMountedChats,
     setActiveChatId,
     handleJoinSquad,
-    joiningSquadId
+    joiningSquadId,
+    activeChatId
 }) => {
     const { t } = usePlatform();
     
@@ -70,7 +71,7 @@ const SquadsFeed = ({
                             </div>
                         ) : (
                             myClasses.map(chat => (
-                                <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
+                                <div className={`messages-list-item ${activeChatId === chat.conversation_id ? 'active-chat-item' : ''}`} key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
                                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                                         {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
                                         <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
@@ -141,7 +142,7 @@ const SquadsFeed = ({
                             </div>
                         ) : (
                             mySquads.map(chat => (
-                                <div className="messages-list-item" key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
+                                <div className={`messages-list-item ${activeChatId === chat.conversation_id ? 'active-chat-item' : ''}`} key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
                                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                                         {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
                                         <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
