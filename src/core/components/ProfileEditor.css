@@ -96,3 +96,45 @@
 .pe-btn:active:not(:disabled) { transform: scale(0.98); }
 .pe-btn.save { width: 100%; background: var(--accent-teal); color: #000; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1rem; margin-top: 1rem; box-shadow: 0 4px 15px rgba(66, 215, 184, 0.2); }
 .pe-btn.save:disabled { background: rgba(255,255,255,0.1); color: #666; cursor: not-allowed; box-shadow: none; }
+
+@media (min-width: 900px) {
+    .profile-edit-overlay {
+        background: rgba(0, 0, 0, 0.78) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 2rem !important;
+        animation: fadeInModal 0.25s ease-out !important;
+    }
+
+    .profile-edit-card {
+        max-width: 780px !important;
+        width: 100% !important;
+        max-height: 88vh !important;
+        height: auto !important;
+        background: var(--surface-dark) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 24px !important;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75) !important;
+        overflow: hidden !important;
+        animation: popModal 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    .pe-header {
+        border-radius: 24px 24px 0 0;
+        background: rgba(18, 18, 22, 0.95);
+    }
+
+    .pe-body {
+        padding: 2rem 2.5rem;
+    }
+
+    .pe-footer {
+        padding: 1.25rem 2.5rem calc(1.25rem + env(safe-area-inset-bottom, 10px));
+        background: rgba(18, 18, 22, 0.95);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        gap: 12px;
+    }
+}
