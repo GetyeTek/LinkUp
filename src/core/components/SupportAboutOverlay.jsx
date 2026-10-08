@@ -8,16 +8,17 @@ const SupportAboutOverlay = ({ isActive, onClose }) => {
     if (!isActive) return null;
 
     return (
-        <div className="sao-overlay">
-            <header className="sao-header">
-                <button className="icon-button" onClick={onClose} style={{ marginLeft: '-0.5rem', marginRight: '0.75rem' }}>
-                    <i className="fas fa-chevron-left"></i>
-                </button>
-                <h2>{t('support_about', 'Support & About')}</h2>
-            </header>
+        <div className="sao-overlay" onClick={onClose}>
+            <div className="sao-dialog-card" onClick={e => e.stopPropagation()}>
+                <header className="sao-header">
+                    <button className="icon-button" onClick={onClose} style={{ marginLeft: '-0.5rem', marginRight: '0.75rem' }}>
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
+                    <h2>{t('support_about', 'Support & About')}</h2>
+                </header>
 
-            <div className="sao-body">
-                {/* 1. What is LinkUp */}
+                <div className="sao-body">
+                    {/* 1. What is LinkUp */}
                 <div className="sao-section">
                     <span className="sao-section-title">About the Platform</span>
                     <div className="sao-card">
