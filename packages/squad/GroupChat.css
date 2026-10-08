@@ -674,3 +674,29 @@
     margin-left: -8px; 
     color: var(--accent-teal);
 }
+
+@media (min-width: 900px) {
+    .squad-chat-overlay {
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 10 !important;
+        border-radius: 0 !important;
+        animation: none !important;
+    }
+    .squad-chat-overlay .squad-header .back-btn {
+        display: none !important;
+    }
+    .squad-flow {
+        max-width: 960px;
+        margin: 0 auto;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .squad-bubble-wrapper {
+        max-width: 640px;
+    }
+    .squad-chat-overlay .unified-dock {
+        max-width: 960px;
+        margin: 0 auto;
+    }
+}
