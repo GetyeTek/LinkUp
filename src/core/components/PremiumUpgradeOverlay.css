@@ -25,6 +25,12 @@
     }
 }
 
+@media (min-width: 900px) {
+    .pu-overlay-wrapper {
+        padding-left: calc(260px + 1rem) !important;
+    }
+}
+
 .pu-overlay-wrapper.is-active {
     opacity: 1;
     pointer-events: auto;
