@@ -50,10 +50,18 @@ const Profile = () => {
                                 {userProfile?.full_name || 'Student'}
                                 {userProfile?.is_pro && <GoldBadge size="lg" />}
                             </h1>
+                            {userProfile?.username && (
+                                <div className="profile-handle-tag">@{userProfile.username}</div>
+                            )}
                             <div className="linkoin-balance-hero" title="LinkUp Credits">
                                 <i className="fas fa-coins linkoin-icon-sm"></i>
                                 <span>{userProfile?.linkoin_balance ?? 0} Credits</span>
                             </div>
+                        </div>
+                        <div className="hero-actions-desktop">
+                            <button className="hero-edit-profile-btn" onClick={() => setIsEditingProfile(true)}>
+                                <i className="fas fa-user-pen"></i> Edit Profile
+                            </button>
                         </div>
                     </div>
                 </div>
