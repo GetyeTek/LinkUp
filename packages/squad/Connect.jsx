@@ -702,7 +702,7 @@ const Connect = () => {
             </aside>
 
             <section className="connect-chat-stage">
-                {(!activeChatId && !isNotesOpen) && (
+                {(!activeChatId && !isNotesOpen && !showDiscovery && !isGlobalSearchOpen && !viewingUserId) && (
                     <div className="connect-empty-stage">
                         <div className="ces-graphic-orb">
                             <i className="fas fa-comments"></i>
@@ -734,34 +734,34 @@ const Connect = () => {
                 })}
                 
                 {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
+
+                {showDiscovery && (
+                    <DiscoveryScreen 
+                        currentUser={currentUser} 
+                        onClose={() => setShowDiscovery(false)} 
+                        onStartChat={startDirectMessage}
+                        onOpenSearch={() => setIsGlobalSearchOpen(true)}
+                    />
+                )}
+
+                {isGlobalSearchOpen && (
+                    <GlobalSearchOverlay 
+                        currentUser={currentUser} 
+                        onClose={() => setIsGlobalSearchOpen(false)} 
+                        onSelectUser={startDirectMessage} 
+                        onSelectGroup={(group) => {
+                            if (forwardTargetMsg) {
+                                setToastNotice("You must join this group first to forward messages.");
+                                return;
+                            }
+                            setMountedChats(prev => ({ ...prev, [group.conversation_id]: group }));
+                            setActiveChatId(group.conversation_id);
+                        }} 
+                    />
+                )}
+
+                {viewingUserId && <UserInfoPanel userId={viewingUserId} currentUser={currentUser} onClose={() => setViewingUserId(null)} />}
             </section>
-
-            {showDiscovery && (
-                <DiscoveryScreen 
-                    currentUser={currentUser} 
-                    onClose={() => setShowDiscovery(false)} 
-                    onStartChat={startDirectMessage}
-                    onOpenSearch={() => setIsGlobalSearchOpen(true)}
-                />
-            )}
-
-            {isGlobalSearchOpen && (
-                <GlobalSearchOverlay 
-                    currentUser={currentUser} 
-                    onClose={() => setIsGlobalSearchOpen(false)} 
-                    onSelectUser={startDirectMessage} 
-                    onSelectGroup={(group) => {
-                        if (forwardTargetMsg) {
-                            setToastNotice("You must join this group first to forward messages.");
-                            return;
-                        }
-                        setMountedChats(prev => ({ ...prev, [group.conversation_id]: group }));
-                        setActiveChatId(group.conversation_id);
-                    }} 
-                />
-            )}
-
-            {viewingUserId && <UserInfoPanel userId={viewingUserId} currentUser={currentUser} onClose={() => setViewingUserId(null)} />}
             {groupCreatorMode && <GroupCreator currentUser={currentUser} initialMode={typeof groupCreatorMode === 'string' ? groupCreatorMode : null} onClose={() => setGroupCreatorMode(null)} onCreated={() => { setGroupCreatorMode(null); fetchConversations(); fetchCampusClasses(); fetchSuggestedSquads(); }} />}
             
             {privateInviteData && (
