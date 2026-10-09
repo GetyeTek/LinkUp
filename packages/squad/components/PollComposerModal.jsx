@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import './PollComposerModal.css';
 
 const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
@@ -86,7 +87,7 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
     // Button is deliberately kept enabled so the user can click it and see the guided validation error scroll
     const isValid = true;
 
-    return (
+    return createPortal(
         <div className="poll-composer-overlay" onClick={onClose}>
             <div className="poll-composer-sheet" onClick={e => e.stopPropagation()}>
                 <header className="poll-comp-header">
@@ -211,7 +212,8 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
 
                 <button className="poll-submit-btn" disabled={!isValid} onClick={handleSubmit}>{initialPollData ? 'Update Poll' : 'Create Poll'}</button>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
