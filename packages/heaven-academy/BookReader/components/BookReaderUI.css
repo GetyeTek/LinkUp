@@ -61,6 +61,116 @@
     .variant-toggle-btn .variant-label { display: none; }
 }
 
+/* Desktop Toolbar and Zoom Cluster */
+.reader-desktop-tools {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-right: 12px;
+}
+
+.reader-zoom-cluster {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+    padding: 2px 4px;
+    gap: 2px;
+}
+
+.reader-zoom-btn {
+    background: transparent;
+    border: none;
+    color: #aaa;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    transition: all 0.15s ease;
+}
+
+.reader-zoom-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.reader-zoom-btn:active {
+    transform: scale(0.9);
+}
+
+.reader-zoom-indicator {
+    background: transparent;
+    border: none;
+    color: var(--accent, #42d7b8);
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0 6px;
+    cursor: pointer;
+    min-width: 44px;
+    text-align: center;
+}
+
+.reader-zoom-indicator:hover {
+    text-decoration: underline;
+}
+
+.reader-fit-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: #ccc;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 99px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+}
+
+.reader-fit-btn:hover {
+    background: var(--accent, #42d7b8);
+    color: #0c0c0c;
+}
+
+.reader-theme-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ccc;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.reader-theme-btn:hover {
+    color: var(--accent, #42d7b8);
+    border-color: var(--accent, #42d7b8);
+    transform: rotate(15deg);
+}
+
+@media (min-width: 900px) {
+    .reader-desktop-tools {
+        display: flex;
+    }
+    .fab-container {
+        display: none !important;
+    }
+}
+
 .reader-footer { background-color: rgba(18, 18, 18, 0.95); backdrop-filter: blur(12px); color: #e0e0e0; display: flex; align-items: center; gap: 12px; padding: 0 16px; height: calc(54px + env(safe-area-inset-bottom, 10px)); padding-bottom: env(safe-area-inset-bottom, 10px); border-top: 1px solid rgba(255,255,255,0.05); transform: translateY(0); transition: transform 0.3s; }
 #ui-layer.hidden .reader-footer { transform: translateY(100%); }
 
