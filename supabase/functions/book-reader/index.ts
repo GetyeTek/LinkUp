@@ -66,17 +66,23 @@ serve(async (req) => {
     // 4. LEGACY EXAMS LISTING
     if (action === "list_exams") {
       const { university_id } = body;
-      const { data, error } = await supabase
+      let query = supabase
         .from('exams')
-        .select(`id, exam_type, date, time_allowed_minutes, total_marks, courses(code, name)`)
-        .eq('university_id', university_id)
+        .select(`id, exam_type, date, time_allowed_minutes, total_marks, university_id, courses(code, name), universities(name)`)
         .order('created_at', { ascending: false });
+
+      if (university_id && university_id !== 'all') {
+        query = query.eq('university_id', university_id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
-      const mappedExams = data.map(exam => ({
+      const mappedExams = (data || []).map(exam => ({
         ...exam,
         course_name: exam.courses?.name || 'General Assessment',
-        course_code: exam.courses?.code || 'EXAM'
+        course_code: exam.courses?.code || 'EXAM',
+        university_name: exam.universities?.name || null
       }));
       return new Response(JSON.stringify({ exams: mappedExams }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
