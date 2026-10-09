@@ -77,3 +77,27 @@
 .csm-text { font-size: 0.95rem; line-height: 1.5; color: var(--text-primary-dark); }
 .csm-highlight { background: rgba(66, 215, 184, 0.3); color: var(--accent-teal); font-weight: bold; padding: 2px 4px; border-radius: 4px; }
 .csm-empty { text-align: center; padding: 3rem 1rem; color: #666; font-style: italic; }
+
+@media (min-width: 900px) {
+    .chat-search-modal-overlay {
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        animation: fadeInModal 0.2s ease-out;
+    }
+
+    .chat-search-modal {
+        width: 100%;
+        max-width: 620px;
+        max-height: 75vh;
+        background: var(--surface-dark);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
+        overflow: hidden;
+        animation: popModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+}
