@@ -36,14 +36,23 @@
     .toc-drawer.open { transform: translateY(0); }
 }
 
-/* Desktop: Left Sidebar */
+/* Desktop: Non-blocking Left Sidebar */
 @media (min-width: 900px) {
+    .toc-backdrop {
+        display: none !important;
+    }
+
     .toc-drawer {
-        top: 0; left: 0; bottom: 0;
-        width: 350px;
+        top: 44px;
+        left: 0;
+        bottom: calc(54px + env(safe-area-inset-bottom, 10px));
+        width: 330px;
         border-right: 1px solid var(--ctx-border);
         transform: translateX(-100%);
-        border-top: none; border-bottom: none; border-left: none;
+        border-top: none;
+        border-bottom: none;
+        border-left: none;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4);
     }
     .toc-drawer.open { transform: translateX(0); }
 }
