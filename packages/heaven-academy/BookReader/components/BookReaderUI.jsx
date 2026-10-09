@@ -21,7 +21,13 @@ const BookReaderUI = ({
     lastDisplayPage,
     pageCountRef,
     viewMode = 'text',
-    setViewMode
+    setViewMode,
+    currentTheme,
+    zoomDisplay,
+    onZoomIn,
+    onZoomOut,
+    onZoomFit,
+    onZoomReset
 }) => {
     return (
         <>
@@ -41,6 +47,29 @@ const BookReaderUI = ({
                     <div className="header-left">
                         <div className="icon-btn" onClick={onClose}><i className="fa-solid fa-chevron-left"></i></div>
                         <div className="header-title">{book?.title || 'Loading Document'}</div>
+                    </div>
+
+                    {/* Desktop Toolbar: Zoom & Theme */}
+                    <div className="reader-desktop-tools">
+                        <div className="reader-zoom-cluster">
+                            <button className="reader-zoom-btn" onClick={onZoomOut} title="Zoom Out">
+                                <i className="fa-solid fa-minus"></i>
+                            </button>
+                            <button className="reader-zoom-indicator" onClick={onZoomReset} title="Reset Zoom">
+                                {zoomDisplay || 100}%
+                            </button>
+                            <button className="reader-zoom-btn" onClick={onZoomIn} title="Zoom In">
+                                <i className="fa-solid fa-plus"></i>
+                            </button>
+                            <button className="reader-fit-btn" onClick={onZoomFit} title="Fit to Screen">
+                                <i className="fa-solid fa-arrows-left-right-to-line"></i>
+                                <span>Fit</span>
+                            </button>
+                        </div>
+
+                        <button className="reader-theme-btn" onClick={toggleTheme} title={`Theme: ${currentTheme || 'Dark'}`}>
+                            <i className={`fa-solid ${currentTheme === 'light' ? 'fa-sun' : currentTheme === 'sepia' ? 'fa-scroll' : 'fa-moon'}`}></i>
+                        </button>
                     </div>
 
                     {/* 3-Way Mode Switcher */}
