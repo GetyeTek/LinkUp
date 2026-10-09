@@ -23,29 +23,31 @@ const ReplyFullScreen = ({ replyTarget, onClose, onSuccess, onError }) => {
     };
 
     return (
-        <div className="reply-fs-overlay">
-            <header className="reply-fs-header">
-                <button className="icon-button" onClick={onClose}>
-                    <i className="fas fa-times"></i>
-                </button>
-                <h2 style={{color: '#fff', fontSize: '1.1rem', margin: 0}}>Reply to {replyTarget.asker_name}</h2>
-                <button className="icon-button" style={{color: 'var(--accent-teal)'}} onClick={handleSendReply} disabled={isSubmittingQA || !replyText.trim()}>
-                    {isSubmittingQA ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-paper-plane"></i>}
-                </button>
-            </header>
-            <div className="reply-fs-body">
-                <div className="reply-ref-card">
-                    <div className="reply-ref-asker">{replyTarget.course_tag} • Asked by {replyTarget.asker_name}</div>
-                    <div className="reply-ref-title">{replyTarget.title}</div>
-                    {replyTarget.body && <div className="reply-ref-body">{replyTarget.body}</div>}
+        <div className="reply-fs-overlay" onClick={onClose}>
+            <div className="reply-fs-card" onClick={e => e.stopPropagation()}>
+                <header className="reply-fs-header">
+                    <button className="icon-button" onClick={onClose}>
+                        <i className="fas fa-times"></i>
+                    </button>
+                    <h2 style={{color: '#fff', fontSize: '1.1rem', margin: 0}}>Reply to {replyTarget.asker_name}</h2>
+                    <button className="icon-button" style={{color: 'var(--accent-teal)'}} onClick={handleSendReply} disabled={isSubmittingQA || !replyText.trim()}>
+                        {isSubmittingQA ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-paper-plane"></i>}
+                    </button>
+                </header>
+                <div className="reply-fs-body">
+                    <div className="reply-ref-card">
+                        <div className="reply-ref-asker">{replyTarget.course_tag} • Asked by {replyTarget.asker_name}</div>
+                        <div className="reply-ref-title">{replyTarget.title}</div>
+                        {replyTarget.body && <div className="reply-ref-body">{replyTarget.body}</div>}
+                    </div>
+                    <textarea 
+                        className="reply-textarea" 
+                        placeholder="Write your explanation or answer here..."
+                        value={replyText}
+                        onChange={e => setReplyText(e.target.value)}
+                        autoFocus
+                    ></textarea>
                 </div>
-                <textarea 
-                    className="reply-textarea" 
-                    placeholder="Write your explanation or answer here..."
-                    value={replyText}
-                    onChange={e => setReplyText(e.target.value)}
-                    autoFocus
-                ></textarea>
             </div>
         </div>
     );
