@@ -58,6 +58,38 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const lastDisplayPage = useRef(targetPageNumber || 1);
     const [currentDisplayPage, setCurrentDisplayPage] = useState(targetPageNumber || 1);
     const cachedDocHeight = useRef(0);
+    const [zoomDisplay, setZoomDisplay] = useState(100);
+
+    const applyScale = (newScale) => {
+        if (!layerRef.current || !scrollContainerRef.current || !viewportRef.current) return;
+        const clamped = Math.max(0.4, Math.min(newScale, 2.5));
+        const oldScale = currentScale.current;
+        const viewport = viewportRef.current;
+
+        const focusY = (viewport.scrollTop + viewport.clientHeight / 2) / oldScale;
+        const focusX = (viewport.scrollLeft + viewport.clientWidth / 2) / oldScale;
+
+        currentScale.current = clamped;
+        setZoomDisplay(Math.round(clamped * 100));
+
+        scrollContainerRef.current.style.width = `${baseCanvasWidth * clamped}px`;
+        scrollContainerRef.current.style.height = `${cachedDocHeight.current * clamped}px`;
+        layerRef.current.style.transform = `scale(${clamped})`;
+
+        viewport.scrollTop = (focusY * clamped) - (viewport.clientHeight / 2);
+        viewport.scrollLeft = (focusX * clamped) - (viewport.clientWidth / 2);
+    };
+
+    const handleZoomIn = () => applyScale(currentScale.current + 0.15);
+    const handleZoomOut = () => applyScale(currentScale.current - 0.15);
+    const handleZoomFit = () => {
+        if (viewportRef.current) {
+            const vw = viewportRef.current.clientWidth;
+            const fitScale = (vw - 40) / baseCanvasWidth;
+            applyScale(Math.min(fitScale, 1.8));
+        }
+    };
+    const handleZoomReset = () => applyScale(minScale.current);
     
     // Gestural Engine Refs
     const swipeRef = useRef({ startX: 0, startY: 0 });
@@ -237,6 +269,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 const fitScale = (vw - 20) / baseCanvasWidth;
                 minScale.current = Math.min(fitScale, 1.0);
                 currentScale.current = minScale.current;
+                setZoomDisplay(Math.round(minScale.current * 100));
 
                 const unscaledH = layerRef.current.offsetHeight;
                 cachedDocHeight.current = unscaledH;
@@ -522,7 +555,19 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 onScroll={handleScroll}
                 onTouchStart={handleGestureStart}
                 onTouchEnd={handleGestureEnd}
-                onContextMenu={(e) => e.preventDefault()} /* Kills native right-click/long-press menu on Android/Desktop */
+                onContextMenu={(e) => {
+                    const sel = window.getSelection();
+                    const text = sel ? sel.toString().trim() : '';
+                    if (text.length > 0) {
+                        e.preventDefault();
+                        const menuWidth = 280;
+                        const menuHeight = 140;
+                        let x = Math.max(10, Math.min(e.clientX, window.innerWidth - menuWidth - 10));
+                        let y = Math.max(10, Math.min(e.clientY - menuHeight - 10, window.innerHeight - menuHeight - 10));
+                        if (y < 60) y = e.clientY + 15;
+                        setContextMenu({ x, y, text });
+                    }
+                }}
                 style={{ display: viewMode === 'text' ? 'block' : 'none' }}
             >
                 <div id="scroll-container" ref={scrollContainerRef} style={{ opacity: layoutReady ? 1 : 0, transition: 'opacity 0.3s ease' }}>
@@ -687,6 +732,12 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 pageCountRef={pageCountRef}
                 viewMode={viewMode}
                 setViewMode={setViewMode}
+                currentTheme={currentTheme}
+                zoomDisplay={zoomDisplay}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                onZoomFit={handleZoomFit}
+                onZoomReset={handleZoomReset}
             />
         </div>
     );
