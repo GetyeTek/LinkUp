@@ -1,8 +1,9 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 const AdminSettingsModal = ({ localChatInfo, toggleAdminSetting, onClose }) => {
-    return (
-        <div className="custom-modal-overlay" onClick={onClose}>
+    return createPortal(
+        <div className="custom-modal-overlay" style={{ zIndex: 100001 }} onClick={onClose}>
             <div className="custom-modal-card" onClick={e => e.stopPropagation()}>
                 <h3 style={{marginBottom: '1.5rem'}}><i className="fas fa-key" style={{color: 'var(--accent-teal)', marginRight: '8px'}}></i> Admin Controls</h3>
                 
@@ -52,7 +53,8 @@ const AdminSettingsModal = ({ localChatInfo, toggleAdminSetting, onClose }) => {
                     <button className="cm-btn-primary" style={{width: '100%'}} onClick={onClose}>Done</button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
