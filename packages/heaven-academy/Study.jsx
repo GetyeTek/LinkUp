@@ -22,6 +22,7 @@ const Study = () => {
     const [universities, setUniversities] = useState([]);
     const [shelfLevel, setShelfLevel] = useState('main'); // 'main' or 'universities'
     const [selectedUniversity, setSelectedUniversity] = useState(null);
+    const [isExamPavilionOpen, setIsExamPavilionOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchActive, setIsSearchActive] = useState(false);
     const [activeCategory, setActiveCategory] = useState('All');
@@ -156,7 +157,7 @@ const Study = () => {
                                     items={books.slice(0, 6)} 
                                     previewMode={true} 
                                     onBookClick={setActiveBook} 
-                                    onExamTrigger={() => { setIsLibraryOpen(true); setShelfLevel('universities'); }} 
+                                    onExamTrigger={() => setIsExamPavilionOpen(true)} 
                                     onFlashcardTrigger={() => setIsFlashcardsOpen(true)}
                                 />
                             </div>
@@ -282,8 +283,7 @@ const Study = () => {
                                 <div className={`chip ${activeCategory === 'All' ? 'active' : ''}`} onClick={() => setActiveCategory('All')}>{t('all_books', 'All Books')}</div>
                                 <div className={`chip ${activeCategory === 'Textbooks' ? 'active' : ''}`} onClick={() => setActiveCategory('Textbooks')}>{t('textbooks', 'Textbooks')}</div>
                                 <div className={`chip ${activeCategory === 'Exams' ? 'active' : ''}`} onClick={() => {
-                                    setActiveCategory('Exams');
-                                    setShelfLevel('universities');
+                                    setIsExamPavilionOpen(true);
                                 }}>{t('exams', 'Exams')}</div>
                                 <div className={`chip ${activeCategory === 'Flashcards' ? 'active' : ''}`} onClick={() => {
                                     setActiveCategory('Flashcards');
@@ -327,8 +327,11 @@ const Study = () => {
                                             items={currentList} 
                                             isUniversity={shelfLevel === 'universities'}
                                             onBookClick={setActiveBook}
-                                            onUniversityClick={setSelectedUniversity}
-                                            onExamTrigger={() => setShelfLevel('universities')}
+                                            onUniversityClick={(uni) => {
+                                                setSelectedUniversity(uni);
+                                                setIsExamPavilionOpen(true);
+                                            }}
+                                            onExamTrigger={() => setIsExamPavilionOpen(true)}
                                             onFlashcardTrigger={() => setIsFlashcardsOpen(true)}
                                         />
                                     );
@@ -347,7 +350,17 @@ const Study = () => {
                     targetPageNumber={targetPage}
                 />
             )}
-            {selectedUniversity && <ExamPavilion university={selectedUniversity} onClose={() => setSelectedUniversity(null)} />}
+            {(isExamPavilionOpen || selectedUniversity) && (
+                <ExamPavilion 
+                    university={selectedUniversity} 
+                    universities={universities}
+                    homeUniversityId={userProfile?.university_id}
+                    onClose={() => {
+                        setIsExamPavilionOpen(false);
+                        setSelectedUniversity(null);
+                    }} 
+                />
+            )}
             {activeExamFromBook && <ExamSession exam={activeExamFromBook} onClose={() => setActiveExamFromBook(null)} />}
             
             <PlanMyDayModal 
@@ -362,8 +375,7 @@ const Study = () => {
                             course_code: taskBlock.course_code
                         });
                     } else if (taskBlock?.action?.type === 'open_exam' || taskBlock?.task_type === 'drill') {
-                        setIsLibraryOpen(true);
-                        setShelfLevel('universities');
+                        setIsExamPavilionOpen(true);
                     }
                 }}
             />
