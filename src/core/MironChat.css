@@ -494,10 +494,25 @@
 
 .capsule-send:active { transform: scale(0.9); }
 
+.athena-chat-stage {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+}
+
 /* ==============================================================================
    DESKTOP MIRON CHAT ERGONOMIC WORKSPACE (>= 900px)
    ============================================================================== */
 @media (min-width: 900px) {
+    .miron-chat-overlay {
+        flex-direction: row !important;
+        display: flex !important;
+    }
+
     .athena-header {
         max-width: 900px;
         margin: 0 auto;
