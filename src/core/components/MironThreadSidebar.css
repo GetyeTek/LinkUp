@@ -53,16 +53,6 @@
     font-size: 0.95rem;
 }
 
-.mts-thread-count {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 0.72rem;
-    background: rgba(255, 255, 255, 0.08);
-    color: #aaa;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-weight: 600;
-}
-
 .mts-new-btn {
     display: flex;
     align-items: center;
@@ -114,16 +104,16 @@
 .mts-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    border-radius: 14px;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border-color);
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
     flex-shrink: 0;
-    min-height: 64px;
+    min-height: 50px;
     box-sizing: border-box;
 }
 
@@ -139,35 +129,16 @@
     box-shadow: 0 4px 15px rgba(66, 215, 184, 0.15);
 }
 
-.mts-icon-wrap {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    color: #aaa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    flex-shrink: 0;
-    transition: all 0.2s;
-}
-
-.mts-item.active .mts-icon-wrap {
-    background: var(--accent-teal);
-    color: #0c0c0c;
-}
-
 .mts-info {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     min-width: 0;
 }
 
 .mts-title {
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     font-weight: 500;
     color: var(--text-primary-dark);
     white-space: nowrap;
@@ -184,17 +155,17 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: #888;
 }
 
 .mts-badge {
     font-family: 'Roboto Mono', monospace;
-    font-size: 0.62rem;
+    font-size: 0.58rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 2px 6px;
+    padding: 1px 5px;
     border-radius: 4px;
     background: rgba(66, 215, 184, 0.15);
     color: var(--accent-teal);
@@ -204,17 +175,17 @@
     background: transparent;
     border: none;
     color: #666;
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
     flex-shrink: 0;
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
 .mts-item:hover .mts-delete-btn {
