@@ -15,7 +15,7 @@ import PageQuestionsBlock from './components/PageQuestionsBlock.jsx';
 import MiniMironOverlay from './components/MiniMironOverlay.jsx';
 import BookReaderUI from './components/BookReaderUI.jsx';
 import VisualNotebookViewer from './components/VisualNotebookViewer.jsx';
-import { usePlatform, telemetry } from '@linkup-platform/sdk-core';
+import { usePlatform, telemetry, supabase } from '@linkup-platform/sdk-core';
 
 const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexOverride }) => {
     const [loading, setLoading] = useState(true);
@@ -30,6 +30,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
 
     // Course Variant Modes: 'text' (standard PDF/JSON) | 'visual_en' | 'visual_am'
     const [viewMode, setViewMode] = useState('text');
+    const [visualLangs, setVisualLangs] = useState([]);
     
     // TOC & Scrubber States
     const [tocData, setTocData] = useState([]);
@@ -173,6 +174,23 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
 
         return () => clearTimeout(timer);
     }, [currentDisplayPage, tocData, book?.id, book?.course_code, pages.length]);
+
+    // Probe available visual notebook languages for current course
+    useEffect(() => {
+        if (!book?.course_code) return;
+        supabase
+            .from('course_visual_notebooks')
+            .select('language')
+            .eq('course_code', book.course_code)
+            .limit(10)
+            .then(({ data, error }) => {
+                if (!error && data) {
+                    const unique = [...new Set(data.map(d => d.language).filter(Boolean))];
+                    setVisualLangs(unique);
+                }
+            })
+            .catch(() => {});
+    }, [book?.course_code]);
 
     // 1. Fetch Pages and Mount Dynamic Custom CSS
     useEffect(() => {
@@ -739,6 +757,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 onZoomOut={handleZoomOut}
                 onZoomFit={handleZoomFit}
                 onZoomReset={handleZoomReset}
+                visualLangs={visualLangs}
             />
         </div>
     );
