@@ -125,8 +125,12 @@ const App = () => {
   useEffect(() => {
     if (!session?.user?.id) return;
     const checkLiveSessions = async () => {
-      const { count } = await supabase.from('live_study_sessions').select('id', { count: 'exact', head: true });
-      setHasActiveLive((count || 0) > 0);
+      try {
+        const { data } = await supabase.rpc('get_live_study_sessions', { req_user_id: session.user.id });
+        setHasActiveLive(Array.isArray(data) && data.length > 0);
+      } catch (e) {
+        setHasActiveLive(false);
+      }
     };
     checkLiveSessions();
 
