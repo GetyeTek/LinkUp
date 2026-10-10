@@ -27,7 +27,8 @@ const BookReaderUI = ({
     onZoomIn,
     onZoomOut,
     onZoomFit,
-    onZoomReset
+    onZoomReset,
+    visualLangs = []
 }) => {
     return (
         <>
@@ -72,33 +73,64 @@ const BookReaderUI = ({
                         </button>
                     </div>
 
-                    {/* 3-Way Mode Switcher */}
-                    <div className="header-variant-toggle">
-                        <button 
-                            className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
-                            onClick={() => setViewMode('text')}
-                            title="Standard Book"
-                        >
-                            <i className="fas fa-book-open"></i>
-                            <span className="variant-label">Book</span>
-                        </button>
-                        <button 
-                            className={`variant-toggle-btn ${viewMode === 'visual_en' ? 'active' : ''}`}
-                            onClick={() => setViewMode('visual_en')}
-                            title="Visual Notebook (English)"
-                        >
-                            <i className="fas fa-sparkles"></i>
-                            <span className="variant-label">Visual EN</span>
-                        </button>
-                        <button 
-                            className={`variant-toggle-btn ${viewMode === 'visual_am' ? 'am-active' : ''}`}
-                            onClick={() => setViewMode('visual_am')}
-                            title="Visual Notebook (Amharic)"
-                        >
-                            <span>🇪🇹</span>
-                            <span className="variant-label">አማርኛ</span>
-                        </button>
-                    </div>
+                    {/* Adaptive Mode Switcher */}
+                    {(() => {
+                        const hasBoth = visualLangs.includes('en') && visualLangs.includes('am');
+                        const singleTarget = visualLangs.includes('am') && !visualLangs.includes('en') ? 'visual_am' : 'visual_en';
+                        const isVisualActive = viewMode === 'visual_en' || viewMode === 'visual_am';
+
+                        if (hasBoth) {
+                            return (
+                                <div className="header-variant-toggle">
+                                    <button 
+                                        className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
+                                        onClick={() => setViewMode('text')}
+                                        title="Standard Book"
+                                    >
+                                        <i className="fas fa-book-open"></i>
+                                        <span className="variant-label">Book</span>
+                                    </button>
+                                    <button 
+                                        className={`variant-toggle-btn ${viewMode === 'visual_en' ? 'active' : ''}`}
+                                        onClick={() => setViewMode('visual_en')}
+                                        title="Visual Note (English)"
+                                    >
+                                        <i className="fas fa-sparkles"></i>
+                                        <span className="variant-label">Visual EN</span>
+                                    </button>
+                                    <button 
+                                        className={`variant-toggle-btn ${viewMode === 'visual_am' ? 'am-active' : ''}`}
+                                        onClick={() => setViewMode('visual_am')}
+                                        title="Visual Note (Amharic)"
+                                    >
+                                        <span>🇪🇹</span>
+                                        <span className="variant-label">አማርኛ</span>
+                                    </button>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div className="header-variant-toggle">
+                                <button 
+                                    className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
+                                    onClick={() => setViewMode('text')}
+                                    title="Standard Book"
+                                >
+                                    <i className="fas fa-book-open"></i>
+                                    <span className="variant-label">Book</span>
+                                </button>
+                                <button 
+                                    className={`variant-toggle-btn ${isVisualActive ? 'active' : ''}`}
+                                    onClick={() => setViewMode(singleTarget)}
+                                    title="Visual Note"
+                                >
+                                    <i className="fas fa-sparkles"></i>
+                                    <span className="variant-label">Visual Note</span>
+                                </button>
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 <div className="ui-bar reader-footer">
