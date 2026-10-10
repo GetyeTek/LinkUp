@@ -320,10 +320,22 @@
     }
 
     #connect-content .content-panel {
-        overflow-y: auto;
+        overflow: hidden;
         height: calc(100% - 135px);
         padding: 0;
-        scrollbar-width: thin;
+    }
+
+    #connect-content .content-panel::-webkit-scrollbar,
+    #messages-view::-webkit-scrollbar,
+    #squads-view::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    #connect-content .content-panel,
+    #messages-view,
+    #squads-view {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
     }
 
     .messages-list {
