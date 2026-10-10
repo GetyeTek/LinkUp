@@ -62,6 +62,7 @@ const ExamPavilion = ({
     const [campusScope, setCampusScope] = useState('my_campus'); // 'my_campus' | 'other_campuses' | 'all'
     const [termFilter, setTermFilter] = useState('all'); // 'all' | 'midterm' | 'final'
     const [activeSession, setActiveSession] = useState(null);
+    const [expandedUnis, setExpandedUnis] = useState({});
 
     // Fetch all exams once on mount
     useEffect(() => {
@@ -181,6 +182,54 @@ const ExamPavilion = ({
             return true;
         });
     }, [selectedSubject, campusScope, termFilter, homeUniversityId]);
+
+    // Group filtered exams by University (Campus Dossier Architecture)
+    const groupedVaultExams = useMemo(() => {
+        if (!vaultExams || vaultExams.length === 0) return [];
+
+        const map = new Map();
+        vaultExams.forEach(exam => {
+            const uniId = exam.university_id || 'unknown';
+            const uniName = exam.university_name || 'University Assessment';
+            const isHome = homeUniversityId && exam.university_id === homeUniversityId;
+
+            if (!map.has(uniId)) {
+                map.set(uniId, {
+                    university_id: uniId,
+                    university_name: uniName,
+                    is_home: isHome,
+                    exams: []
+                });
+            }
+            map.get(uniId).exams.push(exam);
+        });
+
+        // Sort papers within each university descending by year / date
+        map.forEach(group => {
+            group.exams.sort((a, b) => {
+                const dateA = String(a.date || '').toLowerCase();
+                const dateB = String(b.date || '').toLowerCase();
+                return dateB.localeCompare(dateA);
+            });
+        });
+
+        // Sort campuses: Home campus always first, then by number of available papers
+        const groups = Array.from(map.values());
+        groups.sort((a, b) => {
+            if (a.is_home) return -1;
+            if (b.is_home) return 1;
+            return b.exams.length - a.exams.length || a.university_name.localeCompare(b.university_name);
+        });
+
+        return groups;
+    }, [vaultExams, homeUniversityId]);
+
+    const toggleUniversity = (uniId) => {
+        setExpandedUnis(prev => ({
+            ...prev,
+            [uniId]: !prev[uniId]
+        }));
+    };
 
     const activeSubjectCounts = useMemo(() => {
         if (!selectedSubject) return { total: 0, myCampus: 0, otherCampuses: 0, midterms: 0, finals: 0 };
@@ -362,9 +411,9 @@ const ExamPavilion = ({
                         </div>
                     </div>
 
-                    {/* Finite Exam Cards List */}
+                    {/* Campus Dossier / Accordion Hub */}
                     <main className="pav-vault-body">
-                        {vaultExams.length === 0 ? (
+                        {groupedVaultExams.length === 0 ? (
                             <div className="pav-empty-state">
                                 <i className="fas fa-folder-open"></i>
                                 <h3>No Exams in this Category</h3>
@@ -383,44 +432,81 @@ const ExamPavilion = ({
                                 )}
                             </div>
                         ) : (
-                            <div className="pav-vault-list">
-                                {vaultExams.map(exam => {
-                                    const displayDate = exam.date || 'Past Paper';
-                                    const displayType = (exam.exam_type || 'Exam').toUpperCase();
-                                    const displayTime = exam.time_allowed_minutes ? `${exam.time_allowed_minutes}m` : '60m';
-                                    const displayMarks = exam.total_marks ? `${exam.total_marks} Marks` : '50 Marks';
-                                    const uniName = exam.university_name || 'University Assessment';
-                                    const isHomePaper = homeUniversityId && exam.university_id === homeUniversityId;
+                            <div className="pav-campus-dossier-list">
+                                {groupedVaultExams.map(group => {
+                                    const isExpanded = expandedUnis[group.university_id] ?? (group.is_home || groupedVaultExams.length <= 2);
+                                    const uniIcon = group.is_home ? 'fa-star' : (universityIconMap[group.university_name] || 'fa-landmark');
 
                                     return (
                                         <div 
-                                            key={exam.id}
-                                            className={`pav-exam-card ${isHomePaper ? 'home-paper' : ''}`}
-                                            onClick={() => setActiveSession(exam)}
+                                            key={group.university_id} 
+                                            className={`pav-campus-folder ${group.is_home ? 'is-home-folder' : ''} ${isExpanded ? 'expanded' : ''}`}
                                         >
-                                            <div className="pec-header">
-                                                <span className={`pec-uni-badge ${isHomePaper ? 'gold' : ''}`}>
-                                                    <i className={`fa-solid ${isHomePaper ? 'fa-star' : (universityIconMap[uniName] || 'fa-landmark')}`}></i>
-                                                    {uniName}
-                                                </span>
-                                                <span className="pec-date">{displayDate}</span>
+                                            <div 
+                                                className="pcf-header"
+                                                onClick={() => toggleUniversity(group.university_id)}
+                                            >
+                                                <div className="pcf-header-left">
+                                                    <div className={`pcf-icon-box ${group.is_home ? 'gold' : ''}`}>
+                                                        <i className={`fa-solid ${uniIcon}`}></i>
+                                                    </div>
+                                                    <div className="pcf-title-col">
+                                                        <div className="pcf-uni-name-row">
+                                                            <h4 className="pcf-uni-name">{group.university_name}</h4>
+                                                            {group.is_home && <span className="pcf-home-pill">Your Campus</span>}
+                                                        </div>
+                                                        <span className="pcf-paper-count">
+                                                            {group.exams.length} {group.exams.length === 1 ? 'Exam Paper' : 'Exam Papers'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pcf-header-right">
+                                                    <span className="pcf-chevron">
+                                                        <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`}></i>
+                                                    </span>
+                                                </div>
                                             </div>
 
-                                            <h3 className="pec-title">
-                                                {displayType} Examination
-                                            </h3>
+                                            {isExpanded && (
+                                                <div className="pcf-paper-rows">
+                                                    {group.exams.map(exam => {
+                                                        const displayDate = exam.date || 'Past Paper';
+                                                        const isFinal = (exam.exam_type || '').toLowerCase().includes('final');
+                                                        const displayType = isFinal ? 'FINAL' : 'MIDTERM';
+                                                        const displayTime = exam.time_allowed_minutes ? `${exam.time_allowed_minutes}m` : '60m';
+                                                        const displayMarks = exam.total_marks ? `${exam.total_marks} Marks` : '50 Marks';
 
-                                            <div className="pec-footer">
-                                                <div className="pec-meta-item">
-                                                    <i className="far fa-clock"></i> {displayTime}
+                                                        return (
+                                                            <div 
+                                                                key={exam.id} 
+                                                                className="pcf-paper-row"
+                                                                onClick={() => setActiveSession(exam)}
+                                                            >
+                                                                <div className="ppr-left">
+                                                                    <span className={`ppr-term-badge ${isFinal ? 'final' : 'midterm'}`}>
+                                                                        {displayType}
+                                                                    </span>
+                                                                    <span className="ppr-date">{displayDate}</span>
+                                                                </div>
+
+                                                                <div className="ppr-meta">
+                                                                    <span className="ppr-meta-item">
+                                                                        <i className="far fa-clock"></i> {displayTime}
+                                                                    </span>
+                                                                    <span className="ppr-meta-item">
+                                                                        <i className="far fa-file-alt"></i> {displayMarks}
+                                                                    </span>
+                                                                </div>
+
+                                                                <button className="ppr-practice-btn">
+                                                                    <i className="fas fa-bolt"></i> Practice
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
-                                                <div className="pec-meta-item">
-                                                    <i className="far fa-file-alt"></i> {displayMarks}
-                                                </div>
-                                                <button className="pec-practice-btn">
-                                                    <i className="fas fa-bolt"></i> Practice
-                                                </button>
-                                            </div>
+                                            )}
                                         </div>
                                     );
                                 })}
