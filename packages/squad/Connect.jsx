@@ -608,9 +608,6 @@ const Connect = () => {
                     <div className="large-title-row">
                         <h2 className="large-title">{t('social_hub', 'Social Hub')}</h2>
                         <div className="header-actions">
-                            <button className="icon-button connect-desktop-newchat-btn" onClick={() => setShowDiscovery(true)} title="Find Classmates & Groups">
-                                <i className="fas fa-user-plus"></i>
-                            </button>
                             <button className="icon-button" onClick={() => setIsGlobalSearchOpen(true)}>
                                 <i className="fas fa-search"></i>
                             </button>
