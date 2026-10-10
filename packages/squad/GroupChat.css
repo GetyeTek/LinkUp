@@ -699,4 +699,26 @@
         max-width: 960px;
         margin: 0 auto;
     }
+
+    /* Live Immersive Stage Desktop Layout */
+    .immersive-header {
+        max-width: 960px;
+        margin: 0 auto;
+        width: 100%;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .stage-core {
+        max-width: 960px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 2.5rem 2rem;
+    }
+    .pinned-hero-card,
+    .stage-questions-box,
+    .host-mod-panel {
+        max-width: 680px;
+    }
+    .immersive-dock {
+        max-width: 680px;
+    }
 }
