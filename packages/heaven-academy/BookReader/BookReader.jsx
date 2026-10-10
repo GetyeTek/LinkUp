@@ -558,7 +558,8 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 onContextMenu={(e) => {
                     const sel = window.getSelection();
                     const text = sel ? sel.toString().trim() : '';
-                    if (text.length > 0) {
+                    const isInsideCanvas = !!e.target.closest('.page-canvas');
+                    if (text.length > 0 && isInsideCanvas) {
                         e.preventDefault();
                         const menuWidth = 280;
                         const menuHeight = 140;
