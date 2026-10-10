@@ -47,11 +47,13 @@ export const getBookColor = (title) => {
 };
 
 const BookCard = ({ item, isUniversity, isExamTrigger, isFlashcardTrigger, previewMode, onClick }) => {
+    const hasCover = Boolean(item.cover_url);
+
     return (
         <div 
             className={`book-immersive ${isExamTrigger ? 'is-stack' : ''} ${isFlashcardTrigger ? 'is-flashcard-stack' : ''} ${isUniversity ? 'is-heritage' : ''} ${previewMode ? 'preview-mode' : ''}`}
             style={{ 
-                backgroundImage: (isUniversity || isExamTrigger || isFlashcardTrigger) ? 'none' : (item.cover_url ? `url("${item.cover_url}")` : getBookColor(item.title)),
+                backgroundImage: (isUniversity || isExamTrigger || isFlashcardTrigger) ? 'none' : (hasCover ? `url("${item.cover_url}")` : getBookColor(item.title || item.name || '')),
             }}
             onClick={onClick}
         >
@@ -77,6 +79,16 @@ const BookCard = ({ item, isUniversity, isExamTrigger, isFlashcardTrigger, previ
                     </div>
                     <div className="tilet-border-sm bottom"></div>
                 </>
+            ) : !hasCover ? (
+                <div className="book-typography-cover">
+                    <div className="btc-gold-frame">
+                        {item.course_code && <span className="btc-course-code">{item.course_code}</span>}
+                        <h3 className="btc-title">{item.title || item.name}</h3>
+                        <div className="btc-ornament">
+                            <i className="fas fa-book-bookmark"></i>
+                        </div>
+                    </div>
+                </div>
             ) : (
                 <div className="info-overlay">
                     <h3 className="title">{item.title}</h3>
