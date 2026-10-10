@@ -484,10 +484,18 @@ const ExamPavilion = ({
                                                                 onClick={() => setActiveSession(exam)}
                                                             >
                                                                 <div className="ppr-left">
-                                                                    <span className={`ppr-term-badge ${isFinal ? 'final' : 'midterm'}`}>
-                                                                        {displayType}
-                                                                    </span>
-                                                                    <span className="ppr-date">{displayDate}</span>
+                                                                    <div className={`ppr-badge-orb ${isFinal ? 'final' : 'midterm'}`}>
+                                                                        <i className={`fas ${isFinal ? 'fa-award' : 'fa-file-lines'}`}></i>
+                                                                    </div>
+                                                                    <div className="ppr-title-group">
+                                                                        <div className="ppr-headline">
+                                                                            <span className="ppr-exam-title">{displayType} Examination</span>
+                                                                            <span className={`ppr-term-badge ${isFinal ? 'final' : 'midterm'}`}>
+                                                                                {displayType}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className="ppr-date-sub"><i className="far fa-calendar-alt"></i> {displayDate}</span>
+                                                                    </div>
                                                                 </div>
 
                                                                 <div className="ppr-meta">
