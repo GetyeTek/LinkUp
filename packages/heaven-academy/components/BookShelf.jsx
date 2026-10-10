@@ -70,11 +70,6 @@ const BookShelf = ({ items, isUniversity, previewMode, onBookClick, onExamTrigge
                                     isFlashcardTrigger={item.isFlashcardTrigger}
                                     onClick={() => handleAction(item)}
                                 />
-                                <div className="book-label-plate" onClick={() => handleAction(item)}>
-                                    <span className="book-plate-title">
-                                        {item.isExamTrigger ? 'Past Exams & Tests' : item.isFlashcardTrigger ? 'Flashcard Decks' : (item.title || item.name)}
-                                    </span>
-                                </div>
                             </div>
                         ))}
                     </div>
