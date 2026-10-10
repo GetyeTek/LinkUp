@@ -202,6 +202,12 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 const data = await invokeBookReader({ action: 'get_book_pages', book_id: book.id });
                 
                 if (data.custom_css) {
+                    // Universal Theme Normalizer: Redirect hardcoded black/white rules to active theme variables
+                    const normalizedCss = data.custom_css
+                        .replace(/\bcolor\s*:\s*(#000000|#000|black|#1a1a1a|#111111|#222222|#333333|#333|#444444|#444|rgb\(\s*0\s*,\s*0\s*,\s*0\s*\))\s*;?/gi, 'color: var(--text-color);')
+                        .replace(/\bbackground(?:-color)?\s*:\s*(#ffffff|#fff|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))\s*;?/gi, 'background-color: var(--page-bg);')
+                        .replace(/\bborder(?:-[a-z]+)?\s*:\s*([^;}]*?)(#000000|#000|black)\b/gi, 'border: 1px solid var(--border);');
+
                     const styleId = `dynamic-book-style-${book.id}`;
                     styleTag = document.getElementById(styleId);
                     if (!styleTag) {
@@ -209,7 +215,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                         styleTag.id = styleId;
                         document.head.appendChild(styleTag);
                     }
-                    styleTag.textContent = data.custom_css;
+                    styleTag.textContent = normalizedCss;
                 }
 
                 if (data.pages && data.pages.length > 0) {
