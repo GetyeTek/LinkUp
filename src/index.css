@@ -898,4 +898,5 @@ body.library-open { overflow: hidden; }
     }
     .overlay-header { flex-shrink: 0; }
     .overlay-inner-content { overflow-y: auto; }
+    .video-tour-player { object-fit: contain; }
 }
