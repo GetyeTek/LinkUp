@@ -9,7 +9,7 @@
     background: rgba(6, 4, 3, 0.88);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    padding: max(1rem, env(safe-area-inset-top)) 0.85rem max(2rem, env(safe-area-inset-bottom));
+    padding: max(2rem, calc(env(safe-area-inset-top) + 1.25rem)) 0.85rem max(2.5rem, calc(env(safe-area-inset-bottom) + 1.5rem));
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -19,9 +19,9 @@
     font-family: 'Poppins', sans-serif;
 }
 
-@media (min-height: 740px) {
+@media (min-height: 840px) {
     .pu-overlay-wrapper {
-        align-items: center;
+        align-items: safe center;
     }
 }
 
@@ -71,7 +71,7 @@
 
 /* Master Modal Card */
 .pu-modal-card {
-    margin: 0 auto;
+    margin: auto;
     position: relative;
     z-index: 10;
     width: 100%;
@@ -84,7 +84,7 @@
     border: 1px solid var(--border-gold);
     box-shadow: 0 25px 80px rgba(0, 0, 0, 0.95), 0 0 35px rgba(241, 196, 15, 0.1);
     animation: puModalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    flex-shrink: 0; /* Prevents container from squishing card dimensions */
+    flex-shrink: 0;
 }
 
 @keyframes puModalPop {
@@ -129,24 +129,24 @@
 /* Header Action Buttons */
 .pu-close-btn, .pu-back-btn {
     position: absolute;
-    top: 1rem;
+    top: 14px;
     width: 38px;
     height: 38px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(0, 0, 0, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.25);
     color: #fff;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 30;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
     transition: all 0.25s ease;
 }
 
-.pu-close-btn { right: 1rem; }
-.pu-back-btn { left: 1rem; }
+.pu-close-btn { right: 14px; }
+.pu-back-btn { left: 14px; }
 
 .pu-close-btn:hover, .pu-back-btn:hover {
     color: #fff;
@@ -515,24 +515,35 @@
 }
 
 .pu-secondary-btn {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #d0c5bb;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(241, 196, 15, 0.35);
+    color: #fff;
     width: 100%;
-    padding: 14px;
+    padding: 14px 18px;
     border-radius: 16px;
     font-weight: 600;
     font-size: 0.92rem;
     cursor: pointer;
-    transition: all 0.2s ease;
-    margin-top: 10px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    margin-top: 12px;
     font-family: 'Poppins', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .pu-secondary-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(241, 196, 15, 0.15);
+    border-color: var(--gold-main);
+    color: var(--gold-light);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(241, 196, 15, 0.2);
+}
+
+.pu-secondary-btn:active {
+    transform: scale(0.98);
 }
 
 /* Trust Badge */
