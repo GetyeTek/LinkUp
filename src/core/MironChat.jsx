@@ -63,9 +63,10 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
     // Multi-Thread States
+    // Multi-Thread States
     const [threads, setThreads] = useState([]);
-    const [activeThread, setActiveThread] = useState(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [activeThreadId, setActiveThreadId] = useState(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 900);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -289,7 +290,11 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
 
         // Lazy Thread Creation on first message send
         if (!currentThread) {
-            const dynamicTitle = textToSend.length > 35 ? textToSend.slice(0, 35).trim() + '...' : textToSend;
+            const cleanBase = textToSend
+                .replace(/^\[(?:Textbook Inquiry|Book Quote|Quiz Submission):?\s*([^\|\]]+).*?\]/is, '$1')
+                .replace(/^\[[^\]]+\]\s*/g, '')
+                .trim();
+            const dynamicTitle = cleanBase.length > 38 ? cleanBase.slice(0, 38).trim() + '...' : (cleanBase || "Study Session");
             try {
                 const { data: newThread, error: threadErr } = await supabase
                     .from('miron_threads')
@@ -463,7 +468,8 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                 onDeleteThread={deleteThread}
             />
 
-            <header className="athena-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="athena-chat-stage">
+                <header className="athena-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <button className="athena-close" onClick={onClose} style={{ background: 'transparent' }}>
                         <i className="fas fa-chevron-left"></i>
@@ -674,6 +680,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                     </button>
                 </div>
             </footer>
+            </div>
         </div>
     );
 };
