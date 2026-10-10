@@ -45,9 +45,27 @@ export const useTextSelectionMenu = (viewportRef, pinchState, setContextMenu) =>
             
             enforceSinglePageSelection();
             const selection = window.getSelection();
-            if (selection && selection.toString().trim().length > 0) {
+            if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+                const text = selection.toString().trim();
+                if (!text) {
+                    setContextMenu(null);
+                    return;
+                }
+
+                const range = selection.getRangeAt(0);
+                const startEl = range.startContainer?.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer?.parentElement;
+                const endEl = range.endContainer?.nodeType === Node.ELEMENT_NODE ? range.endContainer : range.endContainer?.parentElement;
+
+                const startCanvas = startEl?.closest('.page-canvas');
+                const endCanvas = endEl?.closest('.page-canvas');
+
+                // Strictly restrict context menu to text selected inside .page-canvas within the book viewport
+                if (!startCanvas || !endCanvas || !viewportRef.current?.contains(startCanvas)) {
+                    setContextMenu(null);
+                    return;
+                }
+
                 try {
-                    const range = selection.getRangeAt(0);
                     const rect = range.getBoundingClientRect();
                     if (rect.width === 0 && rect.height === 0) return;
                     
@@ -71,6 +89,8 @@ export const useTextSelectionMenu = (viewportRef, pinchState, setContextMenu) =>
                     
                     setContextMenu({ x, y, text: selection.toString() });
                 } catch(e) {}
+            } else {
+                setContextMenu(null);
             }
         };
 
