@@ -93,3 +93,15 @@
 .type-study { --cat-color: #42d7b8; }
 .type-social { --cat-color: #9b59b6; }
 .type-reward { --cat-color: #ffcf7d; }
+
+@media (min-width: 900px) {
+    .activity-overlay {
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+    .pulse-container {
+        max-width: 440px;
+        box-shadow: -20px 0 60px rgba(0, 0, 0, 0.8);
+    }
+}
