@@ -520,12 +520,14 @@
     color: var(--accent-teal, #42d7b8);
 }
 
-/* High-Density Paper Rows */
+/* High-Density Paper Rows with Weighted Card Feel */
 .pcf-paper-rows {
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     flex-direction: column;
-    background: rgba(0, 0, 0, 0.25);
+    gap: 8px;
+    padding: 12px 14px 14px;
+    background: rgba(0, 0, 0, 0.35);
     animation: folderExpand 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -535,43 +537,90 @@
 }
 
 .pcf-paper-row {
-    padding: 12px 18px;
+    padding: 14px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
     cursor: pointer;
-    transition: background 0.15s ease, transform 0.15s ease;
-}
-
-.pcf-paper-row:last-child {
-    border-bottom: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .pcf-paper-row:hover {
     background: rgba(66, 215, 184, 0.06);
+    border-color: rgba(66, 215, 184, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(66, 215, 184, 0.15);
 }
 
 .pcf-paper-row:active {
-    transform: scale(0.99);
+    transform: scale(0.985);
 }
 
 .ppr-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-width: 0;
     flex: 1;
 }
 
+.ppr-badge-orb {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.ppr-badge-orb.final {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+    border: 1px solid rgba(241, 196, 15, 0.3);
+}
+
+.ppr-badge-orb.midterm {
+    background: rgba(66, 215, 184, 0.12);
+    color: var(--accent-teal, #42d7b8);
+    border: 1px solid rgba(66, 215, 184, 0.25);
+}
+
+.ppr-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.ppr-headline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ppr-exam-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .ppr-term-badge {
     font-family: 'Roboto Mono', monospace;
-    font-size: 0.68rem;
+    font-size: 0.62rem;
     font-weight: 800;
     letter-spacing: 0.5px;
-    padding: 3px 8px;
-    border-radius: 6px;
+    padding: 2px 6px;
+    border-radius: 5px;
     flex-shrink: 0;
 }
 
@@ -587,14 +636,12 @@
     border: 1px solid rgba(66, 215, 184, 0.25);
 }
 
-.ppr-date {
-    font-family: 'Poppins', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.ppr-date-sub {
+    font-size: 0.72rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .ppr-meta {
@@ -622,10 +669,10 @@
     background: var(--accent-teal, #42d7b8);
     color: #0c0c0c;
     border: none;
-    padding: 6px 14px;
+    padding: 7px 14px;
     border-radius: 8px;
     font-family: 'Poppins', sans-serif;
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     font-weight: 700;
     cursor: pointer;
     display: flex;
@@ -656,15 +703,27 @@
     .pcf-uni-name {
         font-size: 0.9rem;
     }
+    .pcf-paper-rows {
+        padding: 8px 10px 10px;
+        gap: 6px;
+    }
     .pcf-paper-row {
-        padding: 10px 14px;
+        padding: 10px 12px;
         gap: 8px;
+    }
+    .ppr-badge-orb {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8rem;
+    }
+    .ppr-headline .ppr-term-badge {
+        display: none;
+    }
+    .ppr-exam-title {
+        font-size: 0.84rem;
     }
     .ppr-meta-item:nth-child(2) {
         display: none;
-    }
-    .ppr-date {
-        font-size: 0.82rem;
     }
     .ppr-practice-btn {
         padding: 5px 10px;
