@@ -977,7 +977,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                                 <i className="fas fa-microphone-slash"></i>
                                 {new Date(myMutedUntil).getFullYear() > 2100 ? "You have been permanently restricted from posting." : `You are restricted from posting until ${new Date(myMutedUntil).toLocaleString()}.`}
                             </div>
-                        ) : !canPost ? (
+                        ) : (!isLoading && !canPost) ? (
                             <div className="squad-muted-notice" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: '#aaa', justifyContent: 'center' }}>
                                 <i className="fas fa-lock"></i> Only admins can send messages right now.
                             </div>
