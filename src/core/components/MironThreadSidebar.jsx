@@ -1,6 +1,19 @@
 import React from 'react';
 import './MironThreadSidebar.css';
 
+const cleanThreadTitle = (rawTitle) => {
+    if (!rawTitle) return "New Conversation";
+    let cleaned = rawTitle;
+    const inquiryMatch = cleaned.match(/\[Textbook Inquiry:\s*([^\|\]]+)/i);
+    if (inquiryMatch) return inquiryMatch[1].trim();
+    const quoteMatch = cleaned.match(/\[Book Quote:\s*([^\|\(\]]+)/i);
+    if (quoteMatch) return `${quoteMatch[1].trim()} Excerpt`;
+    const quizMatch = cleaned.match(/\[Quiz Submission:\s*([^\]]+)\]/i);
+    if (quizMatch) return `${quizMatch[1].trim()} Quiz`;
+    cleaned = cleaned.replace(/^\[[^\]]+\]\s*/g, '').trim();
+    return cleaned || rawTitle;
+};
+
 const MironThreadSidebar = ({
     isOpen,
     onClose,
@@ -11,6 +24,18 @@ const MironThreadSidebar = ({
     onDeleteThread
 }) => {
     if (!isOpen) return null;
+
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 900;
+
+    const handleSelect = (t) => {
+        onSelectThread(t);
+        if (!isDesktop) onClose();
+    };
+
+    const handleNew = () => {
+        onNewThread();
+        if (!isDesktop) onClose();
+    };
 
     const formatThreadTime = (isoString) => {
         if (!isoString) return '';
@@ -26,16 +51,20 @@ const MironThreadSidebar = ({
     };
 
     return (
-        <div className="mts-overlay" onClick={onClose}>
+        <div className="mts-overlay" onClick={!isDesktop ? onClose : undefined}>
             <div className="mts-drawer" onClick={e => e.stopPropagation()}>
                 <header className="mts-header">
-                    <h3><i className="fas fa-sparkles"></i> Miron History</h3>
-                    <button className="icon-button" onClick={onClose} style={{ width: '32px', height: '32px' }}>
+                    <h3>
+                        <i className="fas fa-sparkles"></i> 
+                        <span>Miron History</span>
+                        {threads.length > 0 && <span className="mts-thread-count">{threads.length}</span>}
+                    </h3>
+                    <button className="icon-button mts-close-btn" onClick={onClose} title="Close Sidebar" style={{ width: '32px', height: '32px' }}>
                         <i className="fas fa-times"></i>
                     </button>
                 </header>
 
-                <button className="mts-new-btn" onClick={() => { onNewThread(); onClose(); }}>
+                <button className="mts-new-btn" onClick={handleNew}>
                     <i className="fas fa-plus"></i> New Conversation
                 </button>
 
@@ -47,10 +76,13 @@ const MironThreadSidebar = ({
                             <div 
                                 key={t.id} 
                                 className={`mts-item ${t.id === activeThreadId ? 'active' : ''}`}
-                                onClick={() => { onSelectThread(t); onClose(); }}
+                                onClick={() => handleSelect(t)}
                             >
+                                <div className="mts-icon-wrap">
+                                    <i className={t.course_code ? "fas fa-book-open" : "fas fa-message"}></i>
+                                </div>
                                 <div className="mts-info">
-                                    <span className="mts-title">{t.title || 'Untitled Session'}</span>
+                                    <span className="mts-title">{cleanThreadTitle(t.title)}</span>
                                     <div className="mts-meta">
                                         {t.course_code && <span className="mts-badge">{t.course_code}</span>}
                                         <span>{formatThreadTime(t.last_message_at || t.created_at)}</span>
