@@ -57,7 +57,6 @@ const MironThreadSidebar = ({
                     <h3>
                         <i className="fas fa-sparkles"></i> 
                         <span>Miron History</span>
-                        {threads.length > 0 && <span className="mts-thread-count">{threads.length}</span>}
                     </h3>
                     <button className="icon-button mts-close-btn" onClick={onClose} title="Close Sidebar" style={{ width: '32px', height: '32px' }}>
                         <i className="fas fa-times"></i>
@@ -78,9 +77,6 @@ const MironThreadSidebar = ({
                                 className={`mts-item ${t.id === activeThreadId ? 'active' : ''}`}
                                 onClick={() => handleSelect(t)}
                             >
-                                <div className="mts-icon-wrap">
-                                    <i className={t.course_code ? "fas fa-book-open" : "fas fa-message"}></i>
-                                </div>
                                 <div className="mts-info">
                                     <span className="mts-title">{cleanThreadTitle(t.title)}</span>
                                     <div className="mts-meta">
