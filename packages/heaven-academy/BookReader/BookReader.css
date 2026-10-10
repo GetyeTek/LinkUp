@@ -21,10 +21,10 @@
 }
 .theme-dark { 
     --bg-color: #0d0d0d; 
-    --page-bg: #1a1a1a; 
-    --text-color: #d0d0d0; 
+    --page-bg: #141416; 
+    --text-color: #f3f4f6; 
     --accent: #42d7b8; 
-    --border: #333333;
+    --border: rgba(255, 255, 255, 0.12);
     
     /* Theme-aware Context Menu variables */
     --ctx-bg: rgba(22, 22, 22, 0.96);
@@ -98,7 +98,7 @@
     user-select: none !important;
     -webkit-user-select: none !important;
 }
-.page-canvas { background-color: var(--page-bg); color: var(--text-color); width: 794px; min-height: 1123px; padding: 60px 70px 40px 70px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,0.5); font-family: 'Times New Roman', Times, 'Nyala', 'Kefa', 'Abyssinica SIL', serif; display: flex; flex-direction: column; flex-shrink: 0; contain: content; /* Isolates layout calculations, entirely preventing the 'Void' glitch */ }
+.page-canvas { background-color: var(--page-bg); color: var(--text-color); width: 794px; min-height: 1123px; padding: 60px 70px 40px 70px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,0.5); font-family: 'Times New Roman', Times, 'Nyala', 'Kefa', 'Abyssinica SIL', serif; display: flex; flex-direction: column; flex-shrink: 0; contain: content; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; border: 1px solid rgba(255, 255, 255, 0.04); }
 .page-canvas * { 
     user-select: text !important; 
     -webkit-user-select: text !important; 
@@ -133,6 +133,7 @@
     font-weight: 700;
     margin-right: 8px;
     color: var(--accent);
+    opacity: 0.9;
 }
 
 .book-graphic-container {
@@ -176,6 +177,7 @@
 .book-bullet-char {
     flex-shrink: 0;
     color: var(--accent);
+    opacity: 0.85;
     font-weight: bold;
 }
 
@@ -256,14 +258,14 @@
 .ai-btn-inline {
     display: inline-block;
     width: auto;
-    background: rgba(66, 215, 184, 0.1);
-    border: 1px solid var(--accent);
+    background: rgba(66, 215, 184, 0.08);
+    border: 1px solid rgba(66, 215, 184, 0.35);
     border-radius: 12px;
     padding: 2px 8px;
     font-size: 12px;
     color: var(--accent);
     font-family: 'Poppins', sans-serif;
-    font-weight: bold;
+    font-weight: 600;
     margin-left: 8px;
     cursor: pointer;
     transition: transform 0.2s;
