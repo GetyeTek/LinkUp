@@ -411,7 +411,9 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                             </button>
 
                             <button className="pu-secondary-btn" onClick={() => setView('verify')}>
-                                <i className="fa-solid fa-receipt" style={{ marginRight: '6px' }}></i> Already Transferred? Verify Payment
+                                <i className="fa-solid fa-receipt" style={{ color: 'var(--gold-main)' }}></i>
+                                <span>Already Transferred? Verify Payment</span>
+                                <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.8rem', marginLeft: 'auto', opacity: 0.8 }}></i>
                             </button>
 
                             <div className="pu-trust-footer">
