@@ -47,6 +47,14 @@ export const resolveStyles = (item) => {
     const rawStyle = item.style || {};
     const resolved = { ...rawStyle };
 
+    // Universal theme protection: Strip hardcoded black text colors from PDF extraction
+    if (resolved.color) {
+        const c = String(resolved.color).toLowerCase().trim();
+        if (['#000', '#000000', 'black', '#1a1a1a', '#111', '#111111', '#222', '#222222', '#333', '#333333', 'rgb(0,0,0)', 'rgb(0, 0, 0)'].includes(c)) {
+            delete resolved.color;
+        }
+    }
+
     if (rawStyle.align) {
         resolved.textAlign = rawStyle.align;
         if (rawStyle.align === 'center') {
