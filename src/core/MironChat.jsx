@@ -63,6 +63,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
     // Multi-Thread States
+    // Multi-Thread States
     const [threads, setThreads] = useState([]);
     const [activeThread, setActiveThread] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 900);
