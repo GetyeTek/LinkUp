@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getCachedBookCover } from '@linkup-platform/sdk-core';
 import { marked } from 'https://esm.sh/marked';
 import DOMPurify from 'dompurify';
 import { renderBookBlock } from '../BookReader/subjects/Registry.jsx';
@@ -280,11 +281,23 @@ const ExamQuestionCard = ({
                         <div className="hint-loader"><i className="fas fa-circle-notch fa-spin"></i> Locating document source...</div>
                     ) : hints[q.id].data?.found ? (
                         <>
-                            <div className="document-snapshot">
-                                <div className="snapshot-topbar">
-                                    <span><i className="fas fa-file-pdf"></i> {hints[q.id].data.book_title}</span>
-                                    <span>Page {hints[q.id].data.page_number}</span>
-                                </div>
+                            {(() => {
+                                const hintCover = hints[q.id].data.cover_url || getCachedBookCover(hints[q.id].data.book_id) || getCachedBookCover(hints[q.id].data.book_title);
+                                return (
+                                    <div className="document-snapshot">
+                                        <div className="snapshot-topbar">
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {hintCover ? (
+                                                    <img src={hintCover} alt="" className="snapshot-mini-cover" />
+                                                ) : (
+                                                    <i className="fas fa-file-pdf"></i>
+                                                )}
+                                                {hints[q.id].data.book_title}
+                                            </span>
+                                            <span>Page {hints[q.id].data.page_number}</span>
+                                        </div>
+                                );
+                            })()}
                                 <div className="snapshot-content">
                                     {hints[q.id].data.block ? renderBookBlock(hints[q.id].data.block, 0, {}) : <p>{hints[q.id].data.snippet}</p>}
                                 </div>
