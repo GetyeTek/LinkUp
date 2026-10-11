@@ -238,14 +238,24 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                                     <i className="fas fa-check-circle"></i> Linked
                                 </div>
                             ) : (
-                                <a 
-                                    href={`https://t.me/linkupregistrationbot?start=verify_${sessionUser?.id}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
+                                <button 
+                                    onClick={async () => {
+                                        setIsUpdatingPrivacy(true);
+                                        try {
+                                            const { data, error } = await supabase.rpc('generate_telegram_link_token');
+                                            if (error || !data) throw new Error("Could not generate secure link.");
+                                            window.open(`https://t.me/linkupregistrationbot?start=link_${data}`, '_blank', 'noopener,noreferrer');
+                                        } catch (err) {
+                                            setStatusMsg({ type: 'error', text: err.message || "Failed to initiate verification." });
+                                        } finally {
+                                            setIsUpdatingPrivacy(false);
+                                        }
+                                    }}
+                                    disabled={isUpdatingPrivacy}
                                     className="pso-action-btn pso-tg-btn"
                                 >
-                                    Verify <i className="fas fa-arrow-up-right-from-square" style={{ fontSize: '0.72rem', marginLeft: '4px' }}></i>
-                                </a>
+                                    {isUpdatingPrivacy ? <i className="fas fa-circle-notch fa-spin"></i> : <>Verify <i className="fas fa-arrow-up-right-from-square" style={{ fontSize: '0.72rem', marginLeft: '4px' }}></i></>}
+                                </button>
                             )}
                         </div>
                         <p className="pso-section-hint">
