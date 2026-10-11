@@ -100,9 +100,11 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             let reconnectTimer = null;
             let timeoutId;
 
-            const connectWS = () => {
+            const connectWS = async () => {
                 if (!isMounted) return;
-                ws = new WebSocket(gatewayUrl);
+                const { data: { session } } = await supabase.auth.getSession();
+                const token = session?.access_token || '';
+                ws = new WebSocket(`${gatewayUrl}&token=${encodeURIComponent(token)}`);
                 aiSocketRef.current = ws;
 
                 ws.onopen = () => {
