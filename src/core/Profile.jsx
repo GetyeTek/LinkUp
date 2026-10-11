@@ -13,7 +13,8 @@ const Profile = () => {
     const [overlays, setOverlays] = useState({ observatory: false, mission: false, privacy: false, appearance: false });
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [hasPassword, setHasPassword] = useState(true);
-    const [directPasswordModal, setDirectPasswordModal] = useState(false);
+    const [privacyTarget, setPrivacyTarget] = useState(null);
+    const [editorHighlightTarget, setEditorHighlightTarget] = useState(null);
     
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -51,24 +52,32 @@ const Profile = () => {
     const toggleOverlay = (name, isOpen) => {
         setOverlays(prev => ({ ...prev, [name]: isOpen }));
         if (!isOpen && name === 'privacy') {
-            setDirectPasswordModal(false);
+            setPrivacyTarget(null);
         }
     };
 
-    // Calculate Completion Math
+    // Calculate Comprehensive Completion Math across all settings fields
     const isTelegramVerified = Boolean(userProfile?.registered_with_telegram && userProfile?.phone);
     const hasUni = Boolean(userProfile?.university_id);
     const hasDept = Boolean(userProfile?.department);
+    const hasProg = Boolean(userProfile?.program);
+    const isFreshman = userProfile?.department === 'Freshman';
+    const hasAcademicSub = isFreshman 
+        ? Boolean(userProfile?.freshman_stream && userProfile?.target_department)
+        : Boolean(userProfile?.year);
     const hasBio = Boolean(userProfile?.bio?.trim());
     const hasSex = Boolean(userProfile?.sex);
     const hasCustomAvatar = Boolean(userProfile?.avatar_url && !userProfile.avatar_url.includes('ui-avatars.com'));
 
     let completionScore = 0;
-    if (hasUni) completionScore += 20;
-    if (hasDept) completionScore += 20;
-    if (hasCustomAvatar) completionScore += 15;
-    if (hasBio) completionScore += 15;
+    if (hasUni) completionScore += 15;
+    if (hasDept) completionScore += 15;
+    if (hasProg) completionScore += 10;
+    if (hasAcademicSub) completionScore += 10;
+    if (hasCustomAvatar) completionScore += 10;
+    if (hasBio) completionScore += 10;
     if (hasSex) completionScore += 10;
+    // Subtotal for Account Settings fields = 80%
     if (hasPassword) completionScore += 10;
     if (isTelegramVerified) completionScore += 10;
 
@@ -79,7 +88,7 @@ const Profile = () => {
     if (!hasPassword) {
         nextAction = {
             type: 'password',
-            label: 'Set Password • Remember it!',
+            label: 'Set Password',
             badge: '+10%',
             icon: 'fas fa-key'
         };
@@ -90,30 +99,58 @@ const Profile = () => {
             badge: '+10%',
             icon: 'fab fa-telegram-plane'
         };
-    } else if (!hasUni || !hasDept) {
+    } else if (!hasUni) {
         nextAction = {
             type: 'editor',
-            label: 'Complete Academic Info',
-            badge: !hasUni && !hasDept ? '+40%' : '+20%',
+            target: 'university',
+            label: 'Select University',
+            badge: '+15%',
             icon: 'fas fa-graduation-cap'
+        };
+    } else if (!hasDept) {
+        nextAction = {
+            type: 'editor',
+            target: 'department',
+            label: 'Choose Department',
+            badge: '+15%',
+            icon: 'fas fa-building-columns'
+        };
+    } else if (!hasProg) {
+        nextAction = {
+            type: 'editor',
+            target: 'program',
+            label: 'Select Program',
+            badge: '+10%',
+            icon: 'fas fa-clock'
+        };
+    } else if (!hasAcademicSub) {
+        nextAction = {
+            type: 'editor',
+            target: 'academic_sub',
+            label: isFreshman ? 'Select Stream' : 'Select Year',
+            badge: '+10%',
+            icon: 'fas fa-book-bookmark'
         };
     } else if (!hasBio) {
         nextAction = {
             type: 'editor',
-            label: 'Add About Me',
-            badge: '+15%',
+            target: 'bio',
+            label: 'Write Bio',
+            badge: '+10%',
             icon: 'fas fa-pencil'
         };
     } else if (!hasCustomAvatar) {
         nextAction = {
             type: 'editor',
-            label: 'Upload Avatar',
-            badge: '+15%',
+            target: 'avatar',
+            label: 'Add Avatar',
+            badge: '+10%',
             icon: 'fas fa-camera'
         };
     } else if (!hasSex) {
         nextAction = {
             type: 'editor',
+            target: 'sex',
             label: 'Select Gender',
             badge: '+10%',
             icon: 'fas fa-venus-mars'
@@ -123,12 +160,13 @@ const Profile = () => {
     const handleExecuteNextAction = () => {
         if (!nextAction) return;
         if (nextAction.type === 'password') {
-            setDirectPasswordModal(true);
+            setPrivacyTarget('password');
             toggleOverlay('privacy', true);
         } else if (nextAction.type === 'telegram') {
-            setDirectPasswordModal(false);
+            setPrivacyTarget('telegram');
             toggleOverlay('privacy', true);
         } else if (nextAction.type === 'editor') {
+            setEditorHighlightTarget(nextAction.target || null);
             setIsEditingProfile(true);
         }
     };
@@ -139,29 +177,50 @@ const Profile = () => {
                 <div className="profile-hero">
                     <div className="profile-banner"></div>
                     <div className="hero-content">
-                        <div className="profile-avatar-wrapper">
-                            <svg className="profile-completion-ring-svg" viewBox="0 0 120 120">
-                                <defs>
-                                    <linearGradient id="profile-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#42d7b8" />
-                                        <stop offset="100%" stopColor="#f1c40f" />
-                                    </linearGradient>
-                                </defs>
-                                <circle cx="60" cy="60" r="54" className="profile-ring-bg" />
-                                <circle 
-                                    cx="60" cy="60" r="54" 
-                                    className="profile-ring-fill"
-                                    style={{
-                                        strokeDasharray: '339.29',
-                                        strokeDashoffset: `${339.29 - (339.29 * completionScore) / 100}`
-                                    }}
-                                />
-                            </svg>
-                            <img src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar-large" />
-                            <div className={`profile-completion-badge ${completionScore === 100 ? 'complete' : ''}`}>
-                                {completionScore === 100 ? <i className="fas fa-check"></i> : `${completionScore}%`}
+                        <div className="profile-avatar-column">
+                            <div className="profile-avatar-wrapper">
+                                <svg className="profile-completion-ring-svg" viewBox="0 0 140 140">
+                                    <defs>
+                                        <linearGradient id="profile-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stopColor="#42d7b8" />
+                                            <stop offset="100%" stopColor="#f1c40f" />
+                                        </linearGradient>
+                                    </defs>
+                                    <circle cx="70" cy="70" r="63" className="profile-ring-bg" />
+                                    <circle 
+                                        cx="70" cy="70" r="63" 
+                                        className="profile-ring-fill"
+                                        style={{
+                                            strokeDasharray: '395.84',
+                                            strokeDashoffset: `${395.84 - (395.84 * completionScore) / 100}`
+                                        }}
+                                    />
+                                </svg>
+                                <img src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`} alt="Profile" className="profile-avatar-large" />
+                                <div className={`profile-completion-badge ${completionScore === 100 ? 'complete' : ''}`}>
+                                    {completionScore === 100 ? <i className="fas fa-check"></i> : `${completionScore}%`}
+                                </div>
                             </div>
+
+                            {/* Prominent Action Trigger positioned directly beneath the avatar circle */}
+                            {nextAction && completionScore < 100 ? (
+                                <button 
+                                    className="profile-next-action-pill"
+                                    onClick={handleExecuteNextAction}
+                                    title="Complete this task"
+                                >
+                                    <i className={nextAction.icon}></i>
+                                    <span>{nextAction.label}</span>
+                                    <span className="pna-badge">{nextAction.badge}</span>
+                                </button>
+                            ) : completionScore === 100 ? (
+                                <div className="profile-next-action-pill verified-complete">
+                                    <i className="fas fa-shield-check"></i>
+                                    <span>100% Completed</span>
+                                </div>
+                            ) : null}
                         </div>
+
                         <div className="user-info">
                             <h1 className="profile-name" style={{ display: 'flex', alignItems: 'center' }}>
                                 {userProfile?.full_name || 'Student'}
@@ -170,28 +229,12 @@ const Profile = () => {
                             {userProfile?.username && (
                                 <div className="profile-handle-tag">@{userProfile.username}</div>
                             )}
-                            <div className="profile-hero-badges-row">
-                                <div className="linkoin-balance-hero" title="LinkUp Credits">
-                                    <i className="fas fa-coins linkoin-icon-sm"></i>
-                                    <span>{userProfile?.linkoin_balance ?? 0} Credits</span>
-                                </div>
-                                {nextAction && completionScore < 100 ? (
-                                    <button 
-                                        className="profile-next-action-pill"
-                                        onClick={handleExecuteNextAction}
-                                    >
-                                        <i className={nextAction.icon}></i>
-                                        <span>{nextAction.label}</span>
-                                        <span className="pna-badge">{nextAction.badge}</span>
-                                    </button>
-                                ) : completionScore === 100 ? (
-                                    <div className="profile-next-action-pill verified-complete">
-                                        <i className="fas fa-shield-check"></i>
-                                        <span>Verified Scholar</span>
-                                    </div>
-                                ) : null}
+                            <div className="linkoin-balance-hero" title="LinkUp Credits">
+                                <i className="fas fa-coins linkoin-icon-sm"></i>
+                                <span>{userProfile?.linkoin_balance ?? 0} Credits</span>
                             </div>
                         </div>
+
                         <div className="hero-actions-desktop">
                             <button className="hero-edit-profile-btn" onClick={() => setIsEditingProfile(true)}>
                                 <i className="fas fa-user-pen"></i> Edit Profile
@@ -272,10 +315,14 @@ const Profile = () => {
             
             <ProfileEditor 
                 isOpen={isEditingProfile} 
-                onClose={() => setIsEditingProfile(false)} 
+                onClose={() => {
+                    setIsEditingProfile(false);
+                    setEditorHighlightTarget(null);
+                }} 
                 userProfile={userProfile} 
                 sessionUser={sessionUser} 
                 onProfileUpdated={updateUserProfile}
+                highlightTarget={editorHighlightTarget}
             />
 
             <MissionControlOverlay isActive={overlays.mission} onClose={() => toggleOverlay('mission', false)} />
@@ -283,7 +330,7 @@ const Profile = () => {
             <PrivacySecurityOverlay 
                 isActive={overlays.privacy} 
                 onClose={() => toggleOverlay('privacy', false)} 
-                initialPasswordOpen={directPasswordModal}
+                initialTarget={privacyTarget}
             />
             <AppearanceOverlay isActive={overlays.appearance} onClose={() => toggleOverlay('appearance', false)} />
         </div>
