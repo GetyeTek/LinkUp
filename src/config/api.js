@@ -7,7 +7,7 @@ const GATEWAY_BASE = 'https://linkup-gateway.getyeteklu2.workers.dev';
 export const MIRON_ENDPOINT = `${GATEWAY_BASE}/functions/v1/miron-athena`;
 
 // The fake key that tricks sniffers. The Worker replaces this securely.
-const DUMMY_KEY = 'plt_pub_1a99f3c4d5e68d9e0a2f8d73b';
+const API_KEY = 'sb_publishable_B9mxFwLJl8WWw_Y9C28LtA_AfKYATEc';
 
 export const invokeMiron = async (payload) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -16,8 +16,7 @@ export const invokeMiron = async (payload) => {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY, // Pass dummy key
-            'x-linkup-client': 'linkup-secure-client-2026',
+            'apikey': API_KEY,
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload)
