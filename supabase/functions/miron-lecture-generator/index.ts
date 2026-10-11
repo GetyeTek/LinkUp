@@ -60,12 +60,25 @@ serve(async (req) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
     try {
-        const body = await req.json();
-        const action = body.action || "generate_lecture";
-        
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) throw new Error("Missing Authorization header");
+        const token = authHeader.replace('Bearer ', '').trim();
+
         const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
         const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const isServiceRole = token === SUPABASE_KEY;
+        let authedUserId: string | null = null;
+
+        if (!isServiceRole) {
+            const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+            if (authErr || !user) throw new Error("Unauthorized");
+            authedUserId = user.id;
+        }
+
+        const body = await req.json();
+        const action = body.action || "generate_lecture";
 
         const getGeminiKey = async () => {
             const { data, error } = await supabase.rpc('lease_gemini_api_key');
@@ -104,6 +117,20 @@ serve(async (req) => {
         if (action === "generate_lecture") {
             const { book_id, chapter_title, conversation_id } = body;
             if (!conversation_id) throw new Error("conversation_id parameter is required for stateful generation.");
+
+            // Security: If called by an authenticated user, verify they hold admin/owner privileges in the group
+            if (authedUserId) {
+                const { data: member, error: memErr } = await supabase
+                    .from('conversation_members')
+                    .select('role')
+                    .eq('conversation_id', conversation_id)
+                    .eq('user_id', authedUserId)
+                    .single();
+
+                if (memErr || !member || !['owner', 'admin'].includes(member.role)) {
+                    throw new Error("Access Denied: Only group owners or admins are authorized to trigger lecture generation.");
+                }
+            }
 
             // 1. Fetch Session State for State Machine logic
             let { data: session, error: sessErr } = await supabase.from('live_study_sessions')
