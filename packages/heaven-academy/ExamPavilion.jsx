@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { invokeBookReader } from './api.js';
 import { universityIconMap } from './components/BookCard.jsx';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, getCachedBookCover } from '@linkup-platform/sdk-core';
 import ExamSession from './ExamSession.jsx';
 import './ExamPavilion.css';
 
@@ -121,6 +121,7 @@ const ExamPavilion = ({
                     code,
                     name,
                     icon: COURSE_ICONS[code] || 'fa-book-open',
+                    cover_url: getCachedBookCover(code) || getCachedBookCover(name),
                     exams: [],
                     myCampusCount: 0,
                     otherCampusCount: 0
@@ -317,10 +318,19 @@ const ExamPavilion = ({
                                         key={hub.code} 
                                         className="pav-subject-card"
                                         onClick={() => handleOpenSubject(hub)}
+                                        style={hub.cover_url ? {
+                                            backgroundImage: `linear-gradient(145deg, rgba(22, 22, 26, 0.94) 0%, rgba(14, 14, 18, 0.97) 100%), url("${hub.cover_url}")`,
+                                            backgroundSize: 'cover',
+                                            backgroundPosition: 'center'
+                                        } : {}}
                                     >
                                         <div className="psc-top-row">
-                                            <div className="psc-icon-box">
-                                                <i className={`fa-solid ${hub.icon}`}></i>
+                                            <div className={`psc-icon-box ${hub.cover_url ? 'has-cover' : ''}`}>
+                                                {hub.cover_url ? (
+                                                    <img src={hub.cover_url} alt="" className="psc-mini-cover" />
+                                                ) : (
+                                                    <i className={`fa-solid ${hub.icon}`}></i>
+                                                )}
                                             </div>
                                             <span className="psc-code-tag">{hub.code}</span>
                                         </div>
@@ -351,15 +361,32 @@ const ExamPavilion = ({
             ) : (
                 /* VIEW 2: COURSE VAULT (NO INFINITE SCROLL) */
                 <div className="pav-vault-view">
-                    <header className="pav-vault-header">
-                        <button className="icon-button pav-back-btn" onClick={() => setSelectedSubject(null)} title="Back to Courses">
-                            <i className="fas fa-chevron-left"></i>
-                        </button>
-                        <div className="pav-vault-title-group">
-                            <h2>{selectedSubject.name}</h2>
-                            <span className="pvt-code">{selectedSubject.code}</span>
-                        </div>
-                    </header>
+                    {(() => {
+                        const subjectCover = selectedSubject.cover_url || getCachedBookCover(selectedSubject.code);
+                        return (
+                            <header className="pav-vault-header">
+                                <button className="icon-button pav-back-btn" onClick={() => setSelectedSubject(null)} title="Back to Courses">
+                                    <i className="fas fa-chevron-left"></i>
+                                </button>
+                                <div className="pav-vault-title-group">
+                                    {subjectCover && (
+                                        <img src={subjectCover} alt="" className="pvt-mini-cover" />
+                                    )}
+                                    <h2>{selectedSubject.name}</h2>
+                                    <span className="pvt-code">{selectedSubject.code}</span>
+                                </div>
+                                {subjectCover && (
+                                    <button 
+                                        className="pvt-read-book-btn" 
+                                        onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'study', payload: { action: 'resume_book', course_code: selectedSubject.code, title: selectedSubject.name } } }))}
+                                        title="Open Course Textbook"
+                                    >
+                                        <i className="fas fa-book-open"></i> <span>Textbook</span>
+                                    </button>
+                                )}
+                            </header>
+                        );
+                    })()}
 
                     {/* Scope Selector: My Campus vs Other Campuses */}
                     <div className="pav-vault-toolbar">
