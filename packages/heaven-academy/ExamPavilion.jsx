@@ -319,18 +319,14 @@ const ExamPavilion = ({
                                         className="pav-subject-card"
                                         onClick={() => handleOpenSubject(hub)}
                                         style={hub.cover_url ? {
-                                            backgroundImage: `linear-gradient(145deg, rgba(22, 22, 26, 0.94) 0%, rgba(14, 14, 18, 0.97) 100%), url("${hub.cover_url}")`,
+                                            backgroundImage: `linear-gradient(145deg, rgba(14, 14, 18, 0.65) 0%, rgba(10, 10, 14, 0.82) 100%), url("${hub.cover_url}")`,
                                             backgroundSize: 'cover',
                                             backgroundPosition: 'center'
                                         } : {}}
                                     >
                                         <div className="psc-top-row">
-                                            <div className={`psc-icon-box ${hub.cover_url ? 'has-cover' : ''}`}>
-                                                {hub.cover_url ? (
-                                                    <img src={hub.cover_url} alt="" className="psc-mini-cover" />
-                                                ) : (
-                                                    <i className={`fa-solid ${hub.icon}`}></i>
-                                                )}
+                                            <div className="psc-icon-box">
+                                                <i className={`fa-solid ${hub.icon}`}></i>
                                             </div>
                                             <span className="psc-code-tag">{hub.code}</span>
                                         </div>
@@ -369,9 +365,6 @@ const ExamPavilion = ({
                                     <i className="fas fa-chevron-left"></i>
                                 </button>
                                 <div className="pav-vault-title-group">
-                                    {subjectCover && (
-                                        <img src={subjectCover} alt="" className="pvt-mini-cover" />
-                                    )}
                                     <h2>{selectedSubject.name}</h2>
                                     <span className="pvt-code">{selectedSubject.code}</span>
                                 </div>
