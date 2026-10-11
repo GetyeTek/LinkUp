@@ -615,6 +615,7 @@ const App = () => {
           changeLanguage,
           t,
           clearRoutePayload: () => setRoutePayload(null),
+          updateUserProfile: (updates) => setUserProfile(prev => ({ ...prev, ...updates })),
           shell: { 
               openActivity: () => setIsActivityOpen(true), 
               openMiron: (text, autoSend = false) => setMironContext({ text, autoSend }),
