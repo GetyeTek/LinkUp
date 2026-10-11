@@ -116,11 +116,12 @@ serve(async (req) => {
       }
     }
 
-    // 3. Generate Magic OTP Link
+    // 3. Generate Magic OTP Link with Environment-Aware Redirect
+    const clientOrigin = meta.client_origin || Deno.env.get('APP_URL') || 'https://getyetek.github.io/LinkUp/';
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: targetEmail,
-      options: { redirectTo: 'https://getyetek.github.io/LinkUp/' }
+      options: { redirectTo: clientOrigin }
     });
 
     if (linkError) {
