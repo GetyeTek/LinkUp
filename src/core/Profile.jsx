@@ -9,7 +9,7 @@ import './Profile.css';
 
 import AppearanceOverlay from './components/AppearanceOverlay.jsx';
 const Profile = () => {
-    const { user: userProfile, sessionUser, theme, language, t } = usePlatform();
+    const { user: userProfile, sessionUser, theme, language, t, updateUserProfile } = usePlatform();
     const [overlays, setOverlays] = useState({ observatory: false, mission: false, privacy: false, appearance: false });
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     
@@ -141,6 +141,7 @@ const Profile = () => {
                 onClose={() => setIsEditingProfile(false)} 
                 userProfile={userProfile} 
                 sessionUser={sessionUser} 
+                onProfileUpdated={updateUserProfile}
             />
 
             <MissionControlOverlay isActive={overlays.mission} onClose={() => toggleOverlay('mission', false)} />
