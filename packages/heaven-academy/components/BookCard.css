@@ -11,7 +11,15 @@
 .heritage-title { font-family: 'Cinzel', serif; color: #c5a059; font-size: 0.55rem; letter-spacing: 1px; line-height: 1.3; margin-top: 2px; text-transform: uppercase; }
 
 /* Normalized Stack (Exams) */
-.book-immersive.is-stack { background: linear-gradient(145deg, #3d2b1f, #1a1410) !important; border: 1px solid rgba(255, 215, 0, 0.1); box-shadow: 5px 5px 20px rgba(0,0,0,0.5); z-index: 5; }
+/* Normalized Stack (Exams) */
+.book-immersive.is-stack { 
+    background: linear-gradient(145deg, #3d2b1f, #1a1410);
+    background-size: cover;
+    background-position: center;
+    border: 1px solid rgba(255, 215, 0, 0.2); 
+    box-shadow: 5px 5px 20px rgba(0,0,0,0.5); 
+    z-index: 5; 
+}
 .book-immersive.is-stack::before { content: ''; position: absolute; inset: 0; background: inherit; border-radius: inherit; box-shadow: -2px -2px 0 0 #2a1f10, -3px -3px 0 0 #eaddcf, -5px -5px 0 0 #3d2b1f, -6px -6px 0 0 #eaddcf; z-index: -1; transition: transform 0.3s ease; }
 .exam-stack-content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0.5rem; background: radial-gradient(circle at center, rgba(255, 215, 0, 0.05) 0%, transparent 80%); }
 .exam-stack-content .emblem { font-size: 1.2rem; color: var(--linkoin-gold); margin-bottom: 4px; }
@@ -19,71 +27,11 @@
 .book-group:hover .book-immersive.is-stack::before { transform: translate(-4px, -4px); }
 .book-group:hover .book-immersive.is-stack { transform: scale(1.02); }
 
-/* Dynamic Typography Book Cover (When no image wallpaper exists) */
-.book-typography-cover {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-    box-sizing: border-box;
-    border-left: 4px solid rgba(0, 0, 0, 0.45);
-    box-shadow: inset 4px 0 10px rgba(0, 0, 0, 0.6);
-    overflow: hidden;
-}
-
-.btc-gold-frame {
-    width: 100%;
-    height: 100%;
-    border: 1px solid rgba(255, 215, 0, 0.35);
-    border-radius: 2px;
-    padding: 10px 6px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    text-align: center;
-    background: rgba(0, 0, 0, 0.2);
-    box-sizing: border-box;
-}
-
-.btc-course-code {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: var(--accent-teal, #42d7b8);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
-.btc-title {
-    font-family: 'Cinzel', serif;
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: #fff;
-    line-height: 1.25;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin: auto 0;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-}
-
-.btc-ornament {
-    color: #f1c40f;
-    font-size: 0.75rem;
-    opacity: 0.85;
-    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
-}
-
 /* Tactile Flashcard Box */
 .book-immersive.is-flashcard-stack {
-    background: linear-gradient(135deg, #0e241f 0%, #061310 100%) !important;
+    background: linear-gradient(135deg, #0e241f 0%, #061310 100%);
+    background-size: cover;
+    background-position: center;
     border: 1.5px solid rgba(66, 215, 184, 0.4);
     box-shadow: 0 0 15px rgba(66, 215, 184, 0.25), 5px 5px 20px rgba(0,0,0,0.5);
     z-index: 5;
