@@ -6,7 +6,7 @@ export default {
     }
 
     const secretHeader = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
-    if (env.TELEGRAM_WEBHOOK_SECRET && secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
+    if (!env.TELEGRAM_WEBHOOK_SECRET || secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
       return new Response("Unauthorized", { status: 403 });
     }
 
