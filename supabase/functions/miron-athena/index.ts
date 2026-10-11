@@ -539,7 +539,8 @@ serve(async (req) => {
               }
 
               if (targetNamespaces.length === 0) {
-                const { data } = await supabase.from('books').select('id');
+                // Safeguard: Limit to 10 most recent books to prevent Pinecone rate limits on global queries
+                const { data } = await supabase.from('books').select('id').order('created_at', { ascending: false }).limit(10);
                 if (data) targetNamespaces = data.map(b => b.id);
               }
 
