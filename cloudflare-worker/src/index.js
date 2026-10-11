@@ -86,8 +86,9 @@ export default {
     }
 
     // B. Existing API Gateway / Proxy Routing (CORS, Scrubbing, Supabase redirection)
-    const REAL_SUPABASE_URL = 'https://ryaxynjczfwqyqvpmorl.supabase.co';
-    const REAL_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5YXh5bmpjemZ3cXlxdnBtb3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NDkwMTEsImV4cCI6MjA5NzEyNTAxMX0.739vHhzkh4as9K4afPylbaMBsupGR_rFTgpATDYiWOY';
+    const REAL_SUPABASE_URL = env.SUPABASE_URL || 'https://ryaxynjczfwqyqvpmorl.supabase.co';
+    const REAL_ANON_KEY = env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5YXh5bmpjemZ3cXlxdnBtb3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NDkwMTEsImV4cCI6MjA5NzEyNTAxMX0.739vHhzkh4as9K4afPylbaMBsupGR_rFTgpATDYiWOY';
+    const EXPECTED_CLIENT_SECRET = env.LINKUP_CLIENT_SECRET || 'linkup-secure-client-2026';
     
     // Valid Tenant Signatures (Fake keys from micro-frontends)
     const VALID_TENANT_KEYS = [
@@ -119,7 +120,7 @@ export default {
                        url.pathname.startsWith('/realtime/');
 
     // Security: Require Custom Header (Gateway Handshake)
-    if (request.method !== 'OPTIONS' && !isBypassed && clientSecret !== 'linkup-secure-client-2026') {
+    if (request.method !== 'OPTIONS' && !isBypassed && clientSecret !== EXPECTED_CLIENT_SECRET) {
       console.error(`[Gateway] ⛔ Blocked request missing valid client secret.`);
       return new Response(JSON.stringify({ error: "Unauthorized Client" }), { status: 403, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
