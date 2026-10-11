@@ -4,14 +4,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // NOTE: Replace this placeholder with the actual URL Cloudflare gives you after deployment
 const supabaseUrl = 'https://linkup-gateway.getyeteklu2.workers.dev';
 
-// Fake proprietary key to mask Supabase signature.
-// The Cloudflare Worker intercepts this and injects the real Supabase key server-side.
-const supabaseAnonKey = 'sys_pub_5e22b8c9d0a18d9e0a2f8d73b';
+const supabaseAnonKey = 'sb_publishable_B9mxFwLJl8WWw_Y9C28LtA_AfKYATEc';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  global: {
-    headers: {
-      'x-linkup-client': 'linkup-secure-client-2026'
-    }
-  }
-});
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
