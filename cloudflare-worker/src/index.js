@@ -1,9 +1,21 @@
 // ==============================================================================
-// 1. THE UNIFIED API GATEWAY & ROUTER (DECOUPLED FROM GEMINI LIVE)
+// 1. THE UNIFIED API GATEWAY & REVERSE PROXY
 // ==============================================================================
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    const REAL_SUPABASE_URL = env.SUPABASE_URL || 'https://ryaxynjczfwqyqvpmorl.supabase.co';
+    const REAL_ANON_KEY = env.SUPABASE_ANON_KEY || 'sb_publishable_B9mxFwLJl8WWw_Y9C28LtA_AfKYATEc';
+
+    // Security: Strict Origin Whitelist
+    const ALLOWED_ORIGINS = [
+      'https://getyetek.github.io',
+      'https://getyeteklu2.github.io',
+      'http://localhost:8080',
+      'http://localhost:5173',
+      'http://localhost:3000'
+    ];
+
     console.log(`[Gateway] 🚀 Incoming Request: ${request.method} ${url.pathname}`);
 
     // Telegram Image Redirect Proxy (Zero-Storage Solution)
@@ -28,13 +40,11 @@ export default {
         }
 
         const html = await response.text();
-        // Regex extracts background-image URL inside the HTML embed widget
         const regex = /background-image:\s*url\(\s*['"]?([^'")]+)['"]?\s*\)/i;
         const match = html.match(regex);
 
         if (match && match[1]) {
           const freshImgUrl = match[1];
-          // Return 302 redirect with caching so Cloudflare edge caches the fresh redirect for 1 hour
           return new Response(null, {
             status: 302,
             headers: {
@@ -59,7 +69,6 @@ export default {
           return new Response(JSON.stringify({error: "Gemini Live Worker unlinked"}), {status: 500, headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}});
       }
 
-      // Security: Validate origin and token before allowing WebSocket handshake
       if (request.headers.get("Upgrade") === "websocket") {
         const incomingOrigin = request.headers.get('Origin');
         if (incomingOrigin && !ALLOWED_ORIGINS.includes(incomingOrigin)) {
@@ -85,49 +94,11 @@ export default {
       return env.GEMINI_WORKER.fetch(request);
     }
 
-    // B. Existing API Gateway / Proxy Routing (CORS, Scrubbing, Supabase redirection)
-    const REAL_SUPABASE_URL = env.SUPABASE_URL || 'https://ryaxynjczfwqyqvpmorl.supabase.co';
-    const REAL_ANON_KEY = env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5YXh5bmpjemZ3cXlxdnBtb3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NDkwMTEsImV4cCI6MjA5NzEyNTAxMX0.739vHhzkh4as9K4afPylbaMBsupGR_rFTgpATDYiWOY';
-    const EXPECTED_CLIENT_SECRET = env.LINKUP_CLIENT_SECRET || 'linkup-secure-client-2026';
-    
-    // Valid Tenant Signatures (Fake keys from micro-frontends)
-    const VALID_TENANT_KEYS = [
-      'sys_pub_5e22b8c9d0a18d9e0a2f8d73b', // Core SDK
-      'gn_pub_8f72c3b4a5e68d9e0a2f8d73b',  // News Module
-      'ha_pub_4b91e8c7d6f58d9e0a2f8d73b',  // Academy Module
-      'sq_pub_2d66a1b8c9e08d9e0a2f8d73b',  // Squad Module
-      'plt_pub_1a99f3c4d5e68d9e0a2f8d73b'  // Platform Services
-    ];
-
-    // Security: Strict Origin Whitelist
-    const ALLOWED_ORIGINS = [
-      'https://getyetek.github.io',    // Your Actual GitHub Pages Production Site
-      'https://getyeteklu2.github.io', // Fallback
-      'http://localhost:8080',         // Your Local Dev
-      'http://localhost:5173',         // Vite Default
-      'http://localhost:3000'
-    ];
-
+    // B. Clean Reverse Proxy to Supabase
     const incomingOrigin = request.headers.get('Origin');
     const requestedHeaders = request.headers.get('Access-Control-Request-Headers');
-    const clientSecret = request.headers.get('x-linkup-client');
-
-    // Detect browser direct media serving, file downloads, auth redirects, or native WebSockets
-    const isBypassed = url.pathname.startsWith('/storage/v1/object/public/') || 
-                       url.pathname.startsWith('/storage/v1/object/sign/') ||
-                       url.pathname.startsWith('/storage/v1/render/image/public/') ||
-                       url.pathname.startsWith('/auth/v1/') || 
-                       url.pathname.startsWith('/realtime/');
-
-    // Security: Require Custom Header (Gateway Handshake)
-    if (request.method !== 'OPTIONS' && !isBypassed && clientSecret !== EXPECTED_CLIENT_SECRET) {
-      console.error(`[Gateway] ⛔ Blocked request missing valid client secret.`);
-      return new Response(JSON.stringify({ error: "Unauthorized Client" }), { status: 403, headers: { 'Access-Control-Allow-Origin': '*' } });
-    }
-
-    // If the origin is unlisted, we treat it as an unauthorized proxy attempt
-    const isAllowed = ALLOWED_ORIGINS.includes(incomingOrigin);
-    const corsOrigin = isAllowed ? incomingOrigin : 'https://unauthorized-origin-blocked';
+    const isAllowed = !incomingOrigin || ALLOWED_ORIGINS.includes(incomingOrigin);
+    const corsOrigin = isAllowed ? (incomingOrigin || '*') : 'https://unauthorized-origin-blocked';
 
     if (request.method === 'OPTIONS') {
       console.log(`[Gateway] 🛡️ Preflight: ${incomingOrigin} (Allowed: ${isAllowed})`);
@@ -135,14 +106,13 @@ export default {
         headers: {
           'Access-Control-Allow-Origin': corsOrigin,
           'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': requestedHeaders || 'authorization, x-client-info, apikey, content-type, prefer, range, x-supabase-api-version, x-linkup-client',
+          'Access-Control-Allow-Headers': requestedHeaders || 'authorization, x-client-info, apikey, content-type, prefer, range, x-supabase-api-version',
           'Access-Control-Allow-Credentials': 'true',
           'Access-Control-Max-Age': '86400',
         }
       });
     }
 
-    // Block non-OPTIONS requests from unauthorized origins
     if (incomingOrigin && !isAllowed) {
       console.error(`[Gateway] ⛔ Blocked unauthorized request from: ${incomingOrigin}`);
       return new Response(JSON.stringify({ error: "Unauthorized environment" }), { 
@@ -151,46 +121,18 @@ export default {
       });
     }
 
-    // Map request to the real Supabase backend
     const targetUrl = new URL(url.pathname + url.search, REAL_SUPABASE_URL);
-
     const modifiedHeaders = new Headers(request.headers);
 
-    // The Scrubbing Engine (Tenant Resolution)
-    let keysSwapped = false;
-    
-    // A. Swap apikey header if it matches ANY known tenant key
-    const reqApiKey = modifiedHeaders.get('apikey');
-    if (reqApiKey && VALID_TENANT_KEYS.includes(reqApiKey)) {
+    // Ensure apikey header is present for upstream Supabase dispatch
+    if (!modifiedHeaders.get('apikey')) {
       modifiedHeaders.set('apikey', REAL_ANON_KEY);
-      keysSwapped = true;
     }
-    
-    // B. Swap apikey query parameter (CRITICAL FOR WEBSOCKETS / REALTIME)
-    const queryApiKey = targetUrl.searchParams.get('apikey');
-    if (queryApiKey && VALID_TENANT_KEYS.includes(queryApiKey)) {
-      targetUrl.searchParams.set('apikey', REAL_ANON_KEY);
-      keysSwapped = true;
+    if (!targetUrl.searchParams.has('apikey')) {
+      targetUrl.searchParams.set('apikey', modifiedHeaders.get('apikey') || REAL_ANON_KEY);
     }
 
-    console.log(`[Gateway] 🔀 Routing ${request.method} to: ${targetUrl.toString()}`);
-    
-    // Check Authorization header
-    const authHeader = modifiedHeaders.get('authorization');
-    if (authHeader) {
-      for (const tenantKey of VALID_TENANT_KEYS) {
-        if (authHeader.includes(tenantKey)) {
-          const updatedAuth = authHeader.replace(tenantKey, REAL_ANON_KEY);
-          modifiedHeaders.set('authorization', updatedAuth);
-          keysSwapped = true;
-          break;
-        }
-      }
-    }
-
-    if (keysSwapped) {
-      console.log('[Gateway] 🔑 Security Swap: Successfully replaced dummy key with REAL_ANON_KEY.');
-    }
+    console.log(`[Gateway] 🔀 Proxying ${request.method} to: ${targetUrl.toString()}`);
 
     const init = {
       method: request.method,
