@@ -204,6 +204,59 @@
     box-shadow: 0 0 15px rgba(66, 215, 184, 0.2);
 }
 
+.psc-icon-box.has-cover {
+    background: transparent;
+    box-shadow: none;
+}
+
+.psc-mini-cover {
+    width: 34px;
+    height: 46px;
+    border-radius: 4px;
+    object-fit: cover;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 10px rgba(66, 215, 184, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transform: rotate(-3deg);
+    transition: transform 0.2s ease;
+}
+
+.pav-subject-card:hover .psc-mini-cover {
+    transform: rotate(0deg) scale(1.05);
+}
+
+.pvt-mini-cover {
+    width: 24px;
+    height: 32px;
+    border-radius: 3px;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.pvt-read-book-btn {
+    background: rgba(66, 215, 184, 0.12);
+    border: 1px solid var(--accent-teal);
+    color: var(--accent-teal);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.pvt-read-book-btn:hover {
+    background: var(--accent-teal);
+    color: #0c0c0c;
+}
+
 .psc-code-tag {
     font-family: 'Roboto Mono', monospace;
     font-size: 0.72rem;
