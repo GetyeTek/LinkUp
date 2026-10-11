@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-10-11T11:03:07.007Z
+-- Date: 2026-10-11T11:27:26.903Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -237,7 +237,6 @@ Table: live_stage_questions | Policy: Members can read live questions | Cmd: SEL
 Table: poll_votes | Policy: Public read for poll votes | Cmd: SELECT | Using: true
 Table: linkoin_transactions | Policy: Users can view their own transactions | Cmd: SELECT | Using: (auth.uid() = user_id)
 Table: referrals | Policy: Users can view their own referrals | Cmd: SELECT | Using: ((auth.uid() = referrer_id) OR (auth.uid() = referee_id))
-null
 Table: user_course_progress | Policy: Users can read own course progress | Cmd: SELECT | Using: (auth.uid() = user_id)
 Table: user_course_progress | Policy: Users can insert/update own course progress | Cmd: ALL | Using: (auth.uid() = user_id)
 Table: miron_threads | Policy: Users can manage their own miron threads | Cmd: ALL | Using: (auth.uid() = user_id)
@@ -253,6 +252,8 @@ Table: book_flashcard_progress | Policy: Allow authenticated read for bfp | Cmd:
 Table: user_flashcard_srs | Policy: Users manage their own flashcard SRS | Cmd: ALL | Using: (auth.uid() = user_id)
 Table: user_custom_flashcards | Policy: Users own their custom flashcards | Cmd: ALL | Using: (auth.uid() = user_id)
 Table: course_visual_notebooks | Policy: Allow public read access to visual course notebooks | Cmd: SELECT | Using: true
+Table: telegram_login_tokens | Policy: Deny all public access to telegram_login_tokens | Cmd: ALL | Using: false
+null
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -295,6 +296,104 @@ BEGIN
         NEW.sender_id := auth.uid();
     END IF;
     RETURN NEW;
+END;
+
+
+-- Function: enforce_pending_on_insert
+
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        NEW.status := 'pending';
+    END IF;
+    RETURN NEW;
+END;
+
+
+-- Function: merge_transient_account
+
+BEGIN
+    IF p_old_user_id IS NULL OR p_new_user_id IS NULL OR p_old_user_id = p_new_user_id THEN
+        RETURN;
+    END IF;
+
+    -- Transfer Question Attempts
+    UPDATE public.user_question_attempts 
+    SET user_id = p_new_user_id 
+    WHERE user_id = p_old_user_id;
+
+    -- Transfer Course Progress (handle conflicts gracefully)
+    INSERT INTO public.user_course_progress (
+        user_id, book_id, course_code, current_page, furthest_page,
+        chapter_title, section_title, reading_seconds, completion_pct,
+        last_read_at, updated_at
+    )
+    SELECT 
+        p_new_user_id, book_id, course_code, current_page, furthest_page,
+        chapter_title, section_title, reading_seconds, completion_pct,
+        last_read_at, updated_at
+    FROM public.user_course_progress
+    WHERE user_id = p_old_user_id
+    ON CONFLICT (user_id, book_id) DO UPDATE SET
+        reading_seconds = user_course_progress.reading_seconds + EXCLUDED.reading_seconds,
+        furthest_page = GREATEST(user_course_progress.furthest_page, EXCLUDED.furthest_page),
+        completion_pct = GREATEST(user_course_progress.completion_pct, EXCLUDED.completion_pct);
+
+    DELETE FROM public.user_course_progress WHERE user_id = p_old_user_id;
+
+    -- Transfer Daily Telemetry
+    INSERT INTO public.user_daily_telemetry (
+        user_id, date, total_active_seconds, time_home_seconds,
+        time_discover_seconds, time_books_seconds, time_connect_seconds,
+        time_exam_seconds, time_miron_seconds, total_interactions, updated_at
+    )
+    SELECT 
+        p_new_user_id, date, total_active_seconds, time_home_seconds,
+        time_discover_seconds, time_books_seconds, time_connect_seconds,
+        time_exam_seconds, time_miron_seconds, total_interactions, updated_at
+    FROM public.user_daily_telemetry
+    WHERE user_id = p_old_user_id
+    ON CONFLICT (user_id, date) DO UPDATE SET
+        total_active_seconds = user_daily_telemetry.total_active_seconds + EXCLUDED.total_active_seconds,
+        total_interactions = user_daily_telemetry.total_interactions + EXCLUDED.total_interactions;
+
+    DELETE FROM public.user_daily_telemetry WHERE user_id = p_old_user_id;
+
+    -- Transfer Flashcards and SRS state
+    UPDATE public.user_custom_flashcards SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+    UPDATE public.user_mistake_flashcards SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+    
+    INSERT INTO public.user_flashcard_srs (
+        user_id, card_id, card_type, interval_days, ease_factor,
+        repetitions, lapses, state, last_reviewed_at, next_review_at
+    )
+    SELECT 
+        p_new_user_id, card_id, card_type, interval_days, ease_factor,
+        repetitions, lapses, state, last_reviewed_at, next_review_at
+    FROM public.user_flashcard_srs
+    WHERE user_id = p_old_user_id
+    ON CONFLICT (user_id, card_id) DO NOTHING;
+
+    DELETE FROM public.user_flashcard_srs WHERE user_id = p_old_user_id;
+
+    -- Transfer Miron Threads and Messages
+    UPDATE public.miron_threads SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+    UPDATE public.miron_messages SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+
+    -- Transfer Conversation Memberships
+    INSERT INTO public.conversation_members (conversation_id, user_id, role, last_read_at, muted_until)
+    SELECT conversation_id, p_new_user_id, role, last_read_at, muted_until
+    FROM public.conversation_members
+    WHERE user_id = p_old_user_id
+    ON CONFLICT (conversation_id, user_id) DO NOTHING;
+
+    DELETE FROM public.conversation_members WHERE user_id = p_old_user_id;
+
+    -- Consolidate Credits
+    UPDATE public.profiles
+    SET linkoin_balance = COALESCE(linkoin_balance, 0) + (
+        SELECT COALESCE(linkoin_balance, 0) FROM public.profiles WHERE id = p_old_user_id
+    )
+    WHERE id = p_new_user_id;
 END;
 
 
