@@ -2,7 +2,7 @@ import { supabase } from '@linkup-platform/sdk-core';
 
 // Specific endpoint for the News Team
 const NEWS_GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev'; 
-const DUMMY_KEY = 'gn_pub_8f72c3b4a5e68d9e0a2f8d73b';
+const API_KEY = 'sb_publishable_B9mxFwLJl8WWw_Y9C28LtA_AfKYATEc';
 
 export const invokeNewsSync = async (payload = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -10,8 +10,7 @@ export const invokeNewsSync = async (payload = {}) => {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY,
-            'x-linkup-client': 'linkup-secure-client-2026',
+            'apikey': API_KEY,
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload)
@@ -32,8 +31,7 @@ export const fetchLiveNewsFeed = async (page = 0, limit = 15, channel = null) =>
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY,
-            'x-linkup-client': 'linkup-secure-client-2026',
+            'apikey': API_KEY,
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         }
     });
