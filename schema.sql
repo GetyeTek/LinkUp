@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-10-08T11:07:10.872Z
+-- Date: 2026-10-11T11:03:07.007Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -257,6 +257,47 @@ Table: course_visual_notebooks | Policy: Allow public read access to visual cour
 -- ========================
 -- FUNCTIONS & RPCs
 -- ========================
+-- Function: generate_telegram_link_token
+
+DECLARE
+    v_token text;
+BEGIN
+    v_token := encode(gen_random_bytes(16), 'hex');
+    -- Store as a temporary intent token (telegram_id = 0 indicates system intent)
+    INSERT INTO public.telegram_login_tokens (token_hash, telegram_id, expires_at, metadata)
+    VALUES (v_token, 0, now() + interval '15 minutes', jsonb_build_object('user_id', auth.uid(), 'type', 'link_intent'));
+    RETURN v_token;
+END;
+
+
+-- Function: protect_payment_status_fn
+
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        IF NEW.status IS DISTINCT FROM OLD.status THEN
+            RAISE EXCEPTION 'Security Violation: You are not authorized to approve payment statuses.';
+        END IF;
+        -- Lock financial columns from client-side tampering
+        NEW.amount := OLD.amount;
+        NEW.plan := OLD.plan;
+        NEW.credits_applied := OLD.credits_applied;
+        NEW.discount_applied := OLD.discount_applied;
+    END IF;
+    RETURN NEW;
+END;
+
+
+-- Function: force_message_sender_fn
+
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        -- Strictly force the real authenticated user as the sender
+        NEW.sender_id := auth.uid();
+    END IF;
+    RETURN NEW;
+END;
+
+
 -- Function: get_pending_mistake_batch
 
 BEGIN
@@ -1514,37 +1555,6 @@ BEGIN
     END IF;
 
     RETURN conv_id;
-END;
-
-
--- Function: protect_profile_fields
-
-BEGIN
-    IF auth.role() = 'authenticated' THEN
-        -- Protected Gamification
-        NEW.linkoin_balance = OLD.linkoin_balance;
-        NEW.level = OLD.level;
-        
-        -- Protected Pro / Gold Status (Zero-Trust Anti-Spoof Guard)
-        NEW.is_pro = OLD.is_pro;
-        NEW.pro_expires_at = OLD.pro_expires_at;
-
-        -- Protected Identity & Telegram Trust
-        NEW.telegram_id = OLD.telegram_id;
-        NEW.telegram_username = OLD.telegram_username;
-        NEW.registered_with_telegram = OLD.registered_with_telegram;
-
-        -- Phone Normalization (Enforce consistency on any client updates)
-        IF NEW.phone IS NOT NULL THEN
-            NEW.phone := replace(NEW.phone, ' ', '');
-            IF NEW.phone LIKE '0%' THEN
-                NEW.phone := '+251' || substring(NEW.phone from 2);
-            ELSIF NEW.phone NOT LIKE '+%' THEN
-                NEW.phone := '+' || NEW.phone;
-            END IF;
-        END IF;
-    END IF;
-    RETURN NEW;
 END;
 
 
@@ -3526,6 +3536,45 @@ BEGIN
     WHERE user_id = auth.uid();
 
     RETURN COALESCE(v_res, '[]'::jsonb);
+END;
+
+
+-- Function: protect_profile_fields
+
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        -- Protected Gamification
+        NEW.linkoin_balance = OLD.linkoin_balance;
+        NEW.level = OLD.level;
+        
+        -- Protected Pro / Gold Status (Zero-Trust Anti-Spoof Guard)
+        NEW.is_pro = OLD.is_pro;
+        NEW.pro_expires_at = OLD.pro_expires_at;
+
+        -- Phone Normalization (Enforce consistency on any client updates)
+        IF NEW.phone IS NOT NULL THEN
+            NEW.phone := replace(NEW.phone, ' ', '');
+            IF NEW.phone LIKE '0%' THEN
+                NEW.phone := '+251' || substring(NEW.phone from 2);
+            ELSIF NEW.phone NOT LIKE '+%' THEN
+                NEW.phone := '+' || NEW.phone;
+            END IF;
+        END IF;
+
+        -- Identity & Telegram Trust Invalidation
+        -- If the phone number is changed or removed, invalidate Telegram credentials
+        IF NEW.phone IS DISTINCT FROM OLD.phone THEN
+            NEW.registered_with_telegram := false;
+            NEW.telegram_id := NULL;
+            NEW.telegram_username := NULL;
+        ELSE
+            -- Preserve trusted Telegram credentials if phone didn't change
+            NEW.telegram_id := OLD.telegram_id;
+            NEW.telegram_username := OLD.telegram_username;
+            NEW.registered_with_telegram := OLD.registered_with_telegram;
+        END IF;
+    END IF;
+    RETURN NEW;
 END;
 
 
