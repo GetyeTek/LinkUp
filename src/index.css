@@ -607,6 +607,27 @@ body.library-open { overflow: hidden; }
     transform: scale(0.985);
 }
 
+.resume-book-icon.has-cover {
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible;
+}
+
+.resume-cover-img {
+    width: 38px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.6), 0 0 10px rgba(66, 215, 184, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transform: rotate(-3deg);
+    transition: transform 0.2s ease;
+}
+
+.resume-study-card:hover .resume-cover-img {
+    transform: rotate(0deg) scale(1.06);
+}
+
 .resume-book-icon {
     width: 48px;
     height: 48px;
