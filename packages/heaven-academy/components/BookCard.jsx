@@ -48,25 +48,32 @@ export const getBookColor = (title) => {
 
 const BookCard = ({ item, isUniversity, isExamTrigger, isFlashcardTrigger, previewMode, onClick }) => {
     const hasCover = Boolean(item.cover_url);
+    const shouldShowCover = hasCover && !isUniversity;
 
     return (
         <div 
             className={`book-immersive ${isExamTrigger ? 'is-stack' : ''} ${isFlashcardTrigger ? 'is-flashcard-stack' : ''} ${isUniversity ? 'is-heritage' : ''} ${previewMode ? 'preview-mode' : ''}`}
             style={{ 
-                backgroundImage: (isUniversity || isExamTrigger || isFlashcardTrigger) ? 'none' : (hasCover ? `url("${item.cover_url}")` : getBookColor(item.title || item.name || '')),
+                backgroundImage: shouldShowCover 
+                    ? `url("${item.cover_url}")` 
+                    : (isUniversity || isExamTrigger || isFlashcardTrigger ? 'none' : getBookColor(item.title || item.name || '')),
             }}
             onClick={onClick}
         >
             {isExamTrigger ? (
-                <div className="exam-stack-content">
-                    <div className="emblem"><i className="fas fa-university"></i></div>
-                    <div className="stack-title">EXAMS</div>
-                </div>
+                !hasCover ? (
+                    <div className="exam-stack-content">
+                        <div className="emblem"><i className="fas fa-university"></i></div>
+                        <div className="stack-title">EXAMS</div>
+                    </div>
+                ) : null
             ) : isFlashcardTrigger ? (
-                <div className="flashcard-stack-content">
-                    <div className="emblem"><i className="fas fa-bolt"></i></div>
-                    <div className="stack-title">CARDS</div>
-                </div>
+                !hasCover ? (
+                    <div className="flashcard-stack-content">
+                        <div className="emblem"><i className="fas fa-bolt"></i></div>
+                        <div className="stack-title">CARDS</div>
+                    </div>
+                ) : null
             ) : isUniversity ? (
                 <>
                     <div className="tilet-border-sm"></div>
