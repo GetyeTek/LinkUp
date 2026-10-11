@@ -304,6 +304,34 @@ export default {
                     normalizedPhone = '+' + normalizedPhone;
                 }
 
+                // Security: Prevent linking if destination account is already bound to a different verified Telegram user
+                try {
+                    const targetCheckRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${pendingGoogleId}&select=registered_with_telegram,telegram_id`, {
+                        headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                    });
+                    if (targetCheckRes.ok) {
+                        const targetProfiles = await targetCheckRes.json();
+                        if (targetProfiles.length > 0) {
+                            const tp = targetProfiles[0];
+                            if (tp.registered_with_telegram && tp.telegram_id && tp.telegram_id !== msg.from.id) {
+                                await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        chat_id: msg.chat.id,
+                                        text: `❌ *Account Link Aborted*\n\nThis web account is already linked to another verified Telegram profile. To protect account integrity, multiple Telegram accounts cannot be bound to the same profile.`,
+                                        parse_mode: "Markdown",
+                                        reply_markup: { remove_keyboard: true }
+                                    })
+                                });
+                                return new Response("OK");
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Target profile verification check failed", e);
+                }
+
                 // Evict unverified claims holding this phone to prevent collision
                 await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?phone=eq.${encodeURIComponent(normalizedPhone)}&telegram_id=is.null`, {
                     method: 'PATCH',
@@ -311,8 +339,7 @@ export default {
                     body: JSON.stringify({ phone: null })
                 });
 
-                // Delete old placeholder Telegram profile (if exists) so we don't violate unique constraints
-                // Safely inspect old profile if it exists (protect against deleting active email/Google accounts!)
+                // Safe Migration: Transfer old profile records before deleting the placeholder account
                 try {
                     const oldProfileRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?telegram_id=eq.${msg.from.id}&id=neq.${pendingGoogleId}&select=id`, {
                         headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
@@ -330,7 +357,21 @@ export default {
                                 const oldEmail = oldUserData.email || '';
                                 
                                 if (oldEmail.endsWith('@linkup.invalid')) {
-                                    // It is a transient Telegram-only placeholder. Safe to delete!
+                                    // 1. Atomically transfer all learning history, notes, attempts, and credits to the Google account
+                                    await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/merge_transient_account`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+                                            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                            p_old_user_id: oldP.id,
+                                            p_new_user_id: pendingGoogleId
+                                        })
+                                    });
+
+                                    // 2. Delete the emptied placeholder auth user
                                     await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${oldP.id}`, {
                                         method: 'DELETE',
                                         headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
