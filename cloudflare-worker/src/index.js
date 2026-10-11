@@ -58,6 +58,30 @@ export default {
           console.error("[Gateway] ❌ FATAL: GEMINI_WORKER service binding missing!");
           return new Response(JSON.stringify({error: "Gemini Live Worker unlinked"}), {status: 500, headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}});
       }
+
+      // Security: Validate origin and token before allowing WebSocket handshake
+      if (request.headers.get("Upgrade") === "websocket") {
+        const incomingOrigin = request.headers.get('Origin');
+        if (incomingOrigin && !ALLOWED_ORIGINS.includes(incomingOrigin)) {
+          console.error(`[Gateway] ⛔ Blocked unauthorized WebSocket origin: ${incomingOrigin}`);
+          return new Response(JSON.stringify({ error: "Unauthorized Origin" }), { status: 403 });
+        }
+
+        const token = url.searchParams.get("token");
+        if (!token) {
+          console.error(`[Gateway] ⛔ Blocked WebSocket upgrade missing auth token`);
+          return new Response(JSON.stringify({ error: "Missing Authentication Token" }), { status: 401 });
+        }
+
+        const authCheckRes = await fetch(`${REAL_SUPABASE_URL}/auth/v1/user`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'apikey': REAL_ANON_KEY }
+        });
+        if (!authCheckRes.ok) {
+          console.error(`[Gateway] ⛔ Invalid auth token on WebSocket upgrade`);
+          return new Response(JSON.stringify({ error: "Invalid Authentication Token" }), { status: 401 });
+        }
+      }
+
       return env.GEMINI_WORKER.fetch(request);
     }
 
