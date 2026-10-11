@@ -46,7 +46,7 @@ const ChipDropdown = ({ label, value, options, fieldKey, singleCol, expandedFiel
     );
 };
 
-const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpdated }) => {
+const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpdated, highlightTarget }) => {
     const [universities, setUniversities] = useState([]);
     const [saving, setSaving] = useState(false);
     const [alertNotice, setAlertNotice] = useState(null);
@@ -70,6 +70,21 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
         supabase.from('universities').select('id, name').order('name')
             .then(({ data }) => { if (data) setUniversities(data); });
     }, [isOpen]);
+
+    // Auto-scroll and spotlight the missing field
+    useEffect(() => {
+        if (isOpen && highlightTarget) {
+            const timer = setTimeout(() => {
+                const targetEl = document.getElementById(`pe-field-${highlightTarget}`);
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    targetEl.classList.add('pe-target-spotlight');
+                    setTimeout(() => targetEl.classList.remove('pe-target-spotlight'), 3200);
+                }
+            }, 250);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen, highlightTarget]);
 
     useEffect(() => {
         if (userProfile && isOpen) {
@@ -236,13 +251,15 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                 </header>
                 
                 <div className="pe-body">
-                    <ProfileAvatarPicker 
-                        displayAvatar={displayAvatar}
-                        displayFullName={`${editForm.sureName} ${editForm.fatherName}`.trim()}
-                        username={editForm.username}
-                        onFileSelect={setSelectedFile}
-                        disabled={saving}
-                    />
+                    <div id="pe-field-avatar">
+                        <ProfileAvatarPicker 
+                            displayAvatar={displayAvatar}
+                            displayFullName={`${editForm.sureName} ${editForm.fatherName}`.trim()}
+                            username={editForm.username}
+                            onFileSelect={setSelectedFile}
+                            disabled={saving}
+                        />
+                    </div>
                     
                     <div className="onboarding-form" style={{ marginTop: '2rem' }}>
                         <h3 className="section-title">Identity & Bio</h3>
@@ -264,7 +281,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                             disabled={saving}
                         />
 
-                        <div className="input-group-sm" style={{ marginTop: '0.5rem' }}>
+                        <div className="input-group-sm" id="pe-field-sex" style={{ marginTop: '0.5rem' }}>
                             <label>Gender / ጾታ</label>
                             <div className="sex-selector-row">
                                 <button
@@ -294,7 +311,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                             </div>
                         </div>
                         
-                        <div className="input-group-sm" style={{ marginTop: '0.5rem' }}>
+                        <div className="input-group-sm" id="pe-field-bio" style={{ marginTop: '0.5rem' }}>
                             <label>About Me</label>
                             <textarea 
                                 className="ui-textarea" 
@@ -351,7 +368,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                         </div>
 
                         <h3 className="section-title" style={{marginTop: '1.5rem'}}>Academic Information</h3>
-                        <div className="input-group-sm">
+                        <div className="input-group-sm" id="pe-field-university">
                             <label>University</label>
                             <select className="wizard-select" style={{ marginTop: '0.5rem' }} value={editForm.university_id} onChange={e => setEditForm({...editForm, university_id: e.target.value})}>
                                 <option value="" disabled>Select your university...</option>
@@ -359,17 +376,24 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                             </select>
                         </div>
 
-                        <ChipDropdown label="Program Type" value={editForm.program} options={PROGRAMS} fieldKey="program" singleCol={true} expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
-                        <ChipDropdown label="Department" value={editForm.department} options={DEPARTMENTS} fieldKey="department" expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                        <div id="pe-field-program">
+                            <ChipDropdown label="Program Type" value={editForm.program} options={PROGRAMS} fieldKey="program" singleCol={true} expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                        </div>
+                        
+                        <div id="pe-field-department">
+                            <ChipDropdown label="Department" value={editForm.department} options={DEPARTMENTS} fieldKey="department" expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                        </div>
 
-                        {editForm.department === 'Freshman' ? (
-                            <>
-                                <ChipDropdown label="Freshman Stream" value={editForm.freshman_stream} options={STREAMS} fieldKey="freshman_stream" singleCol={true} expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
-                                <ChipDropdown label="Target Department" value={editForm.target_department} options={DEPARTMENTS.filter(d => d !== 'Freshman')} fieldKey="target_department" expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
-                            </>
-                        ) : (
-                            <ChipDropdown label="Year of Study" value={editForm.year} options={YEARS} fieldKey="year" expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
-                        )}
+                        <div id="pe-field-academic_sub">
+                            {editForm.department === 'Freshman' ? (
+                                <>
+                                    <ChipDropdown label="Freshman Stream" value={editForm.freshman_stream} options={STREAMS} fieldKey="freshman_stream" singleCol={true} expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                                    <ChipDropdown label="Target Department" value={editForm.target_department} options={DEPARTMENTS.filter(d => d !== 'Freshman')} fieldKey="target_department" expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                                </>
+                            ) : (
+                                <ChipDropdown label="Year of Study" value={editForm.year} options={YEARS} fieldKey="year" expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                            )}
+                        </div>
                     </div>
                 </div>
                 
