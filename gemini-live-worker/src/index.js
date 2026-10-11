@@ -331,7 +331,14 @@ export class GeminiLiveAgent {
       this.initSharedGemini();
     }
 
-    return new Response(null, { status: 101, webSocket: client });
+    const wsProtocols = request.headers.get("Sec-WebSocket-Protocol");
+    const headers = {};
+    if (wsProtocols) {
+        // Return the first requested subprotocol to satisfy the strict browser handshake validation
+        headers['Sec-WebSocket-Protocol'] = wsProtocols.split(',')[0].trim();
+    }
+
+    return new Response(null, { status: 101, webSocket: client, headers });
   }
 
   async webSocketMessage(ws, message) {
