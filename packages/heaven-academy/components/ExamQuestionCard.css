@@ -82,6 +82,16 @@
     margin-right: 6px;
 }
 
+.snapshot-mini-cover {
+    width: 18px;
+    height: 24px;
+    border-radius: 3px;
+    object-fit: cover;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
 .snapshot-content {
     padding: 15px 18px;
     font-family: 'Times New Roman', Times, 'Nyala', 'Abyssinica SIL', serif;
