@@ -43,9 +43,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         let isMounted = true;
         let reconnectTimer = null;
 
-        const connectWS = () => {
+        const connectWS = async () => {
             if (!isMounted) return;
-            ws = new WebSocket(url);
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token || '';
+            ws = new WebSocket(`${url}&token=${encodeURIComponent(token)}`);
             wsRef.current = ws;
 
             ws.onopen = () => {
