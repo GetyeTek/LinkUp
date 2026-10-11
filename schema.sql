@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-10-11T12:48:01.187Z
+-- Date: 2026-10-11T20:10:35.362Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -309,94 +309,6 @@ BEGIN
 END;
 
 
--- Function: merge_transient_account
-
-BEGIN
-    IF p_old_user_id IS NULL OR p_new_user_id IS NULL OR p_old_user_id = p_new_user_id THEN
-        RETURN;
-    END IF;
-
-    -- Transfer Question Attempts
-    UPDATE public.user_question_attempts 
-    SET user_id = p_new_user_id 
-    WHERE user_id = p_old_user_id;
-
-    -- Transfer Course Progress (handle conflicts gracefully)
-    INSERT INTO public.user_course_progress (
-        user_id, book_id, course_code, current_page, furthest_page,
-        chapter_title, section_title, reading_seconds, completion_pct,
-        last_read_at, updated_at
-    )
-    SELECT 
-        p_new_user_id, book_id, course_code, current_page, furthest_page,
-        chapter_title, section_title, reading_seconds, completion_pct,
-        last_read_at, updated_at
-    FROM public.user_course_progress
-    WHERE user_id = p_old_user_id
-    ON CONFLICT (user_id, book_id) DO UPDATE SET
-        reading_seconds = user_course_progress.reading_seconds + EXCLUDED.reading_seconds,
-        furthest_page = GREATEST(user_course_progress.furthest_page, EXCLUDED.furthest_page),
-        completion_pct = GREATEST(user_course_progress.completion_pct, EXCLUDED.completion_pct);
-
-    DELETE FROM public.user_course_progress WHERE user_id = p_old_user_id;
-
-    -- Transfer Daily Telemetry
-    INSERT INTO public.user_daily_telemetry (
-        user_id, date, total_active_seconds, time_home_seconds,
-        time_discover_seconds, time_books_seconds, time_connect_seconds,
-        time_exam_seconds, time_miron_seconds, total_interactions, updated_at
-    )
-    SELECT 
-        p_new_user_id, date, total_active_seconds, time_home_seconds,
-        time_discover_seconds, time_books_seconds, time_connect_seconds,
-        time_exam_seconds, time_miron_seconds, total_interactions, updated_at
-    FROM public.user_daily_telemetry
-    WHERE user_id = p_old_user_id
-    ON CONFLICT (user_id, date) DO UPDATE SET
-        total_active_seconds = user_daily_telemetry.total_active_seconds + EXCLUDED.total_active_seconds,
-        total_interactions = user_daily_telemetry.total_interactions + EXCLUDED.total_interactions;
-
-    DELETE FROM public.user_daily_telemetry WHERE user_id = p_old_user_id;
-
-    -- Transfer Flashcards and SRS state
-    UPDATE public.user_custom_flashcards SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
-    UPDATE public.user_mistake_flashcards SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
-    
-    INSERT INTO public.user_flashcard_srs (
-        user_id, card_id, card_type, interval_days, ease_factor,
-        repetitions, lapses, state, last_reviewed_at, next_review_at
-    )
-    SELECT 
-        p_new_user_id, card_id, card_type, interval_days, ease_factor,
-        repetitions, lapses, state, last_reviewed_at, next_review_at
-    FROM public.user_flashcard_srs
-    WHERE user_id = p_old_user_id
-    ON CONFLICT (user_id, card_id) DO NOTHING;
-
-    DELETE FROM public.user_flashcard_srs WHERE user_id = p_old_user_id;
-
-    -- Transfer Miron Threads and Messages
-    UPDATE public.miron_threads SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
-    UPDATE public.miron_messages SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
-
-    -- Transfer Conversation Memberships
-    INSERT INTO public.conversation_members (conversation_id, user_id, role, last_read_at, muted_until)
-    SELECT conversation_id, p_new_user_id, role, last_read_at, muted_until
-    FROM public.conversation_members
-    WHERE user_id = p_old_user_id
-    ON CONFLICT (conversation_id, user_id) DO NOTHING;
-
-    DELETE FROM public.conversation_members WHERE user_id = p_old_user_id;
-
-    -- Consolidate Credits
-    UPDATE public.profiles
-    SET linkoin_balance = COALESCE(linkoin_balance, 0) + (
-        SELECT COALESCE(linkoin_balance, 0) FROM public.profiles WHERE id = p_old_user_id
-    )
-    WHERE id = p_new_user_id;
-END;
-
-
 -- Function: get_pending_mistake_batch
 
 BEGIN
@@ -488,19 +400,6 @@ BEGIN
             END IF;
         END LOOP;
     END LOOP;
-END;
-
-
--- Function: complete_flashcard_job
-
-BEGIN
-    UPDATE public.book_flashcard_progress
-    SET status = p_status,
-        cards_generated = p_cards_count,
-        error_message = p_error,
-        locked_until = NULL,
-        updated_at = now()
-    WHERE id = p_job_id;
 END;
 
 
@@ -602,6 +501,42 @@ BEGIN
 END;
 
 
+-- Function: admin_reset_semester_streaks
+
+DECLARE
+    v_old_semester int;
+BEGIN
+    -- Strict security barrier: Only backend service_role can trigger whole-campus streak resets
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
+        RAISE EXCEPTION 'Access Denied: Administrative service role authorization required.';
+    END IF;
+
+    SELECT COALESCE((value->>'semester')::int, 1) INTO v_old_semester 
+    FROM public.system_config 
+    WHERE key = 'academic_calendar';
+    
+    UPDATE public.system_config 
+    SET value = jsonb_build_object('semester', v_old_semester + 1) 
+    WHERE key = 'academic_calendar';
+
+    UPDATE public.profiles 
+    SET current_streak = 0, last_streak_update = NULL;
+END;
+
+
+-- Function: complete_flashcard_job
+
+BEGIN
+    UPDATE public.book_flashcard_progress
+    SET status = p_status,
+        cards_generated = p_cards_count,
+        error_message = p_error,
+        locked_until = NULL,
+        updated_at = now()
+    WHERE id = p_job_id;
+END;
+
+
 -- Function: acquire_next_flashcard_job
 
 #variable_conflict use_column
@@ -649,6 +584,255 @@ BEGIN
             50 AS target_cards
         FROM public.book_flashcard_progress p
         WHERE p.id = v_job_id;
+    END IF;
+END;
+
+
+-- Function: acquire_embedding_jobs
+
+DECLARE
+    v_now timestamp with time zone := now();
+BEGIN
+    -- Safeguard: Ensure there is at least one active key not in cooldown
+    IF NOT EXISTS (
+        SELECT 1 FROM public.api_keys 
+        WHERE service = 'gemini' AND is_active = true 
+          AND (cooldown_until IS NULL OR cooldown_until::timestamp with time zone < v_now)
+    ) THEN
+        RAISE EXCEPTION 'No active, non-cooled-down Gemini API keys available in key pool.';
+    END IF;
+
+    RETURN QUERY
+    WITH 
+    -- 1. Sort active keys by least recently used
+    active_keys AS (
+        SELECT 
+            id, 
+            ak.api_key,
+            row_number() OVER (ORDER BY last_used_at ASC NULLS FIRST) - 1 as seq_id,
+            count(*) OVER () as total_keys
+        FROM public.api_keys ak
+        WHERE service = 'gemini' 
+          AND is_active = true 
+          AND (cooldown_until IS NULL OR cooldown_until::timestamp with time zone < v_now)
+    ),
+    -- 2. STAGE 1: Lock a batch of blocks using SKIP LOCKED (No window functions here)
+    raw_jobs AS (
+        SELECT 
+            ep.id,
+            ep.page_number,
+            ep.block_index
+        FROM public.embedding_progress ep
+        WHERE ep.book_id = p_book_id
+          AND (ep.status = 'pending' OR ep.status = 'failed' OR (ep.status = 'processing' AND ep.locked_until < v_now))
+        ORDER BY ep.page_number, ep.block_index
+        LIMIT p_batch_size
+        FOR UPDATE SKIP LOCKED
+    ),
+    -- 3. STAGE 2: Safely apply window indexing over the locked rows
+    locked_jobs AS (
+        SELECT 
+            rj.id,
+            rj.page_number,
+            rj.block_index,
+            row_number() OVER (ORDER BY rj.page_number, rj.block_index) - 1 as seq_id
+        FROM raw_jobs rj
+    ),
+    -- 4. Mark the locked blocks as processing in the DB for 5 minutes
+    update_jobs AS (
+        UPDATE public.embedding_progress ep
+        SET status = 'processing',
+            locked_until = v_now + interval '5 minutes',
+            updated_at = v_now
+        FROM raw_jobs rj
+        WHERE ep.id = rj.id
+    ),
+    -- 5. Join jobs and keys using modulo mapping
+    mapped_assignments AS (
+        SELECT 
+            lj.id as job_id,
+            lj.page_number,
+            lj.block_index,
+            ak.api_key,
+            ak.id as api_key_id
+        FROM locked_jobs lj
+        JOIN active_keys ak ON (lj.seq_id % ak.total_keys) = ak.seq_id
+    ),
+    -- 6. Update last_used_at on the keys to rotate them instantly
+    update_keys AS (
+        UPDATE public.api_keys ak
+        SET last_used_at = v_now
+        FROM (SELECT DISTINCT ma.api_key_id FROM mapped_assignments ma) u
+        WHERE ak.id = u.api_key_id
+    )
+    SELECT 
+        ma.job_id,
+        ma.page_number,
+        ma.block_index,
+        ma.api_key,
+        ma.api_key_id
+    FROM mapped_assignments ma;
+END;
+
+
+-- Function: complete_embedding_job
+
+BEGIN
+    UPDATE public.embedding_progress
+    SET status = 'completed',
+        locked_until = NULL,
+        error_message = NULL,
+        updated_at = now()
+    WHERE id = p_job_id;
+END;
+
+
+-- Function: merge_transient_account
+
+BEGIN
+    -- Strict security barrier: Only service_role can trigger account merging
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
+        RAISE EXCEPTION 'Access Denied: Service role authorization required.';
+    END IF;
+
+    IF p_old_user_id IS NULL OR p_new_user_id IS NULL OR p_old_user_id = p_new_user_id THEN
+        RETURN;
+    END IF;
+
+    -- 1. Transfer Question Attempts
+    UPDATE public.user_question_attempts 
+    SET user_id = p_new_user_id 
+    WHERE user_id = p_old_user_id;
+
+    -- 2. Transfer Course Progress (Handle primary conflicts gracefully)
+    INSERT INTO public.user_course_progress (
+        user_id, book_id, course_code, current_page, furthest_page,
+        chapter_title, section_title, reading_seconds, completion_pct,
+        last_read_at, updated_at
+    )
+    SELECT 
+        p_new_user_id, book_id, course_code, current_page, furthest_page,
+        chapter_title, section_title, reading_seconds, completion_pct,
+        last_read_at, updated_at
+    FROM public.user_course_progress
+    WHERE user_id = p_old_user_id
+    ON CONFLICT (user_id, book_id) DO UPDATE SET
+        reading_seconds = user_course_progress.reading_seconds + EXCLUDED.reading_seconds,
+        furthest_page = GREATEST(user_course_progress.furthest_page, EXCLUDED.furthest_page),
+        completion_pct = GREATEST(user_course_progress.completion_pct, EXCLUDED.completion_pct);
+
+    DELETE FROM public.user_course_progress WHERE user_id = p_old_user_id;
+
+    -- 3. Transfer Daily Telemetry
+    INSERT INTO public.user_daily_telemetry (
+        user_id, date, total_active_seconds, time_home_seconds,
+        time_discover_seconds, time_books_seconds, time_connect_seconds,
+        time_exam_seconds, time_miron_seconds, total_interactions, updated_at
+    )
+    SELECT 
+        p_new_user_id, date, total_active_seconds, time_home_seconds,
+        time_discover_seconds, time_books_seconds, time_connect_seconds,
+        time_exam_seconds, time_miron_seconds, total_interactions, updated_at
+    FROM public.user_daily_telemetry
+    WHERE user_id = p_old_user_id
+    ON CONFLICT (user_id, date) DO UPDATE SET
+        total_active_seconds = user_daily_telemetry.total_active_seconds + EXCLUDED.total_active_seconds,
+        total_interactions = user_daily_telemetry.total_interactions + EXCLUDED.total_interactions;
+
+    DELETE FROM public.user_daily_telemetry WHERE user_id = p_old_user_id;
+
+    -- 4. Transfer Custom and Mistake Flashcards + SRS Memory Records
+    UPDATE public.user_custom_flashcards SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+    UPDATE public.user_mistake_flashcards SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+    
+    INSERT INTO public.user_flashcard_srs (
+        user_id, card_id, card_type, interval_days, ease_factor,
+        repetitions, lapses, state, last_reviewed_at, next_review_at
+    )
+    SELECT 
+        p_new_user_id, card_id, card_type, interval_days, ease_factor,
+        repetitions, lapses, state, last_reviewed_at, next_review_at
+    FROM public.user_flashcard_srs
+    WHERE user_id = p_old_user_id
+    ON CONFLICT (user_id, card_id) DO NOTHING;
+
+    DELETE FROM public.user_flashcard_srs WHERE user_id = p_old_user_id;
+
+    -- 5. Transfer Miron AI Threads and Messages
+    UPDATE public.miron_threads SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+    UPDATE public.miron_messages SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+
+    -- 6. Transfer Conversation Memberships
+    INSERT INTO public.conversation_members (conversation_id, user_id, role, last_read_at, muted_until)
+    SELECT conversation_id, p_new_user_id, role, last_read_at, muted_until
+    FROM public.conversation_members
+    WHERE user_id = p_old_user_id
+    ON CONFLICT (conversation_id, user_id) DO NOTHING;
+
+    DELETE FROM public.conversation_members WHERE user_id = p_old_user_id;
+
+    -- 7. Transfer Poll Votes (Avoid duplicate vote constraint collisions)
+    UPDATE public.poll_votes 
+    SET user_id = p_new_user_id 
+    WHERE user_id = p_old_user_id
+      AND NOT EXISTS (
+          SELECT 1 FROM public.poll_votes pv2 
+          WHERE pv2.message_id = poll_votes.message_id AND pv2.user_id = p_new_user_id
+      );
+    DELETE FROM public.poll_votes WHERE user_id = p_old_user_id;
+
+    -- 8. Transfer Community Peer Questions
+    UPDATE public.peer_questions SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+
+    -- 9. Transfer Payment Proof Submissions
+    UPDATE public.payment_submissions SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+
+    -- 10. Transfer Notifications
+    UPDATE public.notifications SET user_id = p_new_user_id WHERE user_id = p_old_user_id;
+
+    -- 11. Purge transient device seats so they don't lock or desync the permanent account
+    DELETE FROM public.user_device_seats WHERE user_id = p_old_user_id;
+
+    -- 12. Consolidate LinkUp Credits Balance
+    UPDATE public.profiles
+    SET linkoin_balance = COALESCE(linkoin_balance, 0) + (
+        SELECT COALESCE(linkoin_balance, 0) FROM public.profiles WHERE id = p_old_user_id
+    )
+    WHERE id = p_new_user_id;
+END;
+
+
+-- Function: register_referral
+
+DECLARE
+    v_referrer_id UUID;
+    v_is_verified BOOLEAN;
+    v_key TEXT;
+BEGIN
+    SELECT id INTO v_referrer_id FROM public.profiles WHERE username = referrer_username LIMIT 1;
+    
+    IF v_referrer_id IS NOT NULL AND v_referrer_id != auth.uid() THEN
+        -- Check if the newly joined student is ALREADY verified via Telegram
+        SELECT COALESCE(registered_with_telegram, false) INTO v_is_verified
+        FROM public.profiles
+        WHERE id = auth.uid();
+
+        IF v_is_verified THEN
+            -- Directly complete the referral and award the +30 credits immediately!
+            INSERT INTO public.referrals (referrer_id, referee_id, status)
+            VALUES (v_referrer_id, auth.uid(), 'completed')
+            ON CONFLICT (referee_id) DO NOTHING;
+
+            v_key := 'ref_bonus_referrer_' || auth.uid()::text;
+            INSERT INTO public.linkoin_transactions (user_id, amount, transaction_type, description, idempotency_key)
+            VALUES (v_referrer_id, 30, 'reward', 'Squad Network Invite Bonus', v_key)
+            ON CONFLICT (idempotency_key) DO NOTHING;
+        ELSE
+            -- Normal flow: wait for them to verify Telegram later
+            INSERT INTO public.referrals (referrer_id, referee_id, status)
+            VALUES (v_referrer_id, auth.uid(), 'pending')
+            ON CONFLICT (referee_id) DO NOTHING;
+        END IF;
     END IF;
 END;
 
@@ -1150,27 +1334,6 @@ BEGIN
 END;
 
 
--- Function: get_pending_questions_for_mapping
-
-BEGIN
-    RETURN QUERY
-    SELECT q.id, q.text, q.question_type, q.options, q.matching_data
-    FROM questions q
-    JOIN sections s ON q.section_id = s.id
-    JOIN exams e ON s.exam_id = e.id
-    WHERE e.course_id = p_course_id
-      AND NOT EXISTS (
-          SELECT 1 
-          FROM question_book_mappings qbm 
-          WHERE qbm.question_id = q.id 
-            AND qbm.book_id = p_book_id 
-            AND qbm.status IN ('completed', 'processing')
-      )
-    ORDER BY q.created_at ASC
-    LIMIT p_limit;
-END;
-
-
 -- Function: lease_gemini_api_key
 
 DECLARE
@@ -1198,15 +1361,24 @@ BEGIN
 END;
 
 
--- Function: complete_embedding_job
+-- Function: get_pending_questions_for_mapping
 
 BEGIN
-    UPDATE public.embedding_progress
-    SET status = 'completed',
-        locked_until = NULL,
-        error_message = NULL,
-        updated_at = now()
-    WHERE id = p_job_id;
+    RETURN QUERY
+    SELECT q.id, q.text, q.question_type, q.options, q.matching_data
+    FROM questions q
+    JOIN sections s ON q.section_id = s.id
+    JOIN exams e ON s.exam_id = e.id
+    WHERE e.course_id = p_course_id
+      AND NOT EXISTS (
+          SELECT 1 
+          FROM question_book_mappings qbm 
+          WHERE qbm.question_id = q.id 
+            AND qbm.book_id = p_book_id 
+            AND qbm.status IN ('completed', 'processing')
+      )
+    ORDER BY q.created_at ASC
+    LIMIT p_limit;
 END;
 
 
@@ -1298,93 +1470,6 @@ BEGIN
     UPDATE public.api_keys
     SET cooldown_until = (now() + interval '5 minutes')
     WHERE id = p_key_id;
-END;
-
-
--- Function: acquire_embedding_jobs
-
-DECLARE
-    v_now timestamp with time zone := now();
-BEGIN
-    -- Safeguard: Ensure there is at least one active key not in cooldown
-    IF NOT EXISTS (
-        SELECT 1 FROM public.api_keys 
-        WHERE service = 'gemini' AND is_active = true 
-          AND (cooldown_until IS NULL OR cooldown_until::timestamp with time zone < v_now)
-    ) THEN
-        RAISE EXCEPTION 'No active, non-cooled-down Gemini API keys available in key pool.';
-    END IF;
-
-    RETURN QUERY
-    WITH 
-    -- 1. Sort active keys by least recently used
-    active_keys AS (
-        SELECT 
-            id, 
-            ak.api_key,
-            row_number() OVER (ORDER BY last_used_at ASC NULLS FIRST) - 1 as seq_id,
-            count(*) OVER () as total_keys
-        FROM public.api_keys ak
-        WHERE service = 'gemini' 
-          AND is_active = true 
-          AND (cooldown_until IS NULL OR cooldown_until::timestamp with time zone < v_now)
-    ),
-    -- 2. STAGE 1: Lock a batch of blocks using SKIP LOCKED (No window functions here)
-    raw_jobs AS (
-        SELECT 
-            ep.id,
-            ep.page_number,
-            ep.block_index
-        FROM public.embedding_progress ep
-        WHERE ep.book_id = p_book_id
-          AND (ep.status = 'pending' OR ep.status = 'failed' OR (ep.status = 'processing' AND ep.locked_until < v_now))
-        ORDER BY ep.page_number, ep.block_index
-        LIMIT p_batch_size
-        FOR UPDATE SKIP LOCKED
-    ),
-    -- 3. STAGE 2: Safely apply window indexing over the locked rows
-    locked_jobs AS (
-        SELECT 
-            rj.id,
-            rj.page_number,
-            rj.block_index,
-            row_number() OVER (ORDER BY rj.page_number, rj.block_index) - 1 as seq_id
-        FROM raw_jobs rj
-    ),
-    -- 4. Mark the locked blocks as processing in the DB for 5 minutes
-    update_jobs AS (
-        UPDATE public.embedding_progress ep
-        SET status = 'processing',
-            locked_until = v_now + interval '5 minutes',
-            updated_at = v_now
-        FROM raw_jobs rj
-        WHERE ep.id = rj.id
-    ),
-    -- 5. Join jobs and keys using modulo mapping
-    mapped_assignments AS (
-        SELECT 
-            lj.id as job_id,
-            lj.page_number,
-            lj.block_index,
-            ak.api_key,
-            ak.id as api_key_id
-        FROM locked_jobs lj
-        JOIN active_keys ak ON (lj.seq_id % ak.total_keys) = ak.seq_id
-    ),
-    -- 6. Update last_used_at on the keys to rotate them instantly
-    update_keys AS (
-        UPDATE public.api_keys ak
-        SET last_used_at = v_now
-        FROM (SELECT DISTINCT ma.api_key_id FROM mapped_assignments ma) u
-        WHERE ak.id = u.api_key_id
-    )
-    SELECT 
-        ma.job_id,
-        ma.page_number,
-        ma.block_index,
-        ma.api_key,
-        ma.api_key_id
-    FROM mapped_assignments ma;
 END;
 
 
@@ -2250,23 +2335,6 @@ BEGIN
 END;
 
 
--- Function: register_referral
-
-DECLARE
-    v_referrer_id UUID;
-BEGIN
-    -- Resolve the username to an ID
-    SELECT id INTO v_referrer_id FROM public.profiles WHERE username = referrer_username LIMIT 1;
-    
-    IF v_referrer_id IS NOT NULL AND v_referrer_id != auth.uid() THEN
-        -- Safely insert the pending referral (ignores if referee already has an inviter)
-        INSERT INTO public.referrals (referrer_id, referee_id, status)
-        VALUES (v_referrer_id, auth.uid(), 'pending')
-        ON CONFLICT (referee_id) DO NOTHING;
-    END IF;
-END;
-
-
 -- Function: update_user_streak
 
 DECLARE
@@ -2395,18 +2463,6 @@ BEGIN
     VALUES (auth.uid(), v_reward, 'reward', p_target::text || ' Day Streak Bonus', v_key);
     
     RETURN jsonb_build_object('success', true);
-END;
-
-
--- Function: admin_reset_semester_streaks
-
-DECLARE
-    v_old_semester int;
-BEGIN
-    SELECT COALESCE((value->>'semester')::int, 1) INTO v_old_semester FROM public.system_config WHERE key = 'academic_calendar';
-    
-    UPDATE public.system_config SET value = jsonb_build_object('semester', v_old_semester + 1) WHERE key = 'academic_calendar';
-    UPDATE public.profiles SET current_streak = 0, last_streak_update = NULL;
 END;
 
 
