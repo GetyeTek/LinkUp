@@ -13,7 +13,8 @@ const renderMiniMarkdown = (txt) => {
         .replace(/\[BOARD_[a-zA-Z0-9_\-]+\]/gi, '')
         .replace(/\[FLASHCARD_\d+\]/gi, '');
     return DOMPurify.sanitize(marked.parse(clean), {
-        USE_PROFILES: { html: true, mathMl: true, svg: true }
+        USE_PROFILES: { html: true, mathMl: true, svg: true },
+        ADD_ATTR: ['style', 'class', 'aria-hidden']
     });
 };
 
