@@ -54,14 +54,15 @@ export class AuthSessionManager extends DurableObject {
     const url = new URL(request.url);
     if (url.pathname === '/schedule-expiry') {
       const { chatId, messageId, tgUserId, delayMs } = await request.json();
+      const expiresAt = Date.now() + (delayMs || 300000);
       
-      // Store reference coordinates and user identity in DO persistence
       let activeSessions = await this.ctx.storage.get('active_sessions') || [];
-      activeSessions.push({ chatId, messageId, tgUserId });
+      activeSessions.push({ chatId, messageId, tgUserId, expiresAt });
       await this.ctx.storage.put('active_sessions', activeSessions);
       
-      // Set Alarm to trigger visual recess in 5 minutes (will overwrite existing alarm, which is fine, pushing it back slightly)
-      await this.ctx.storage.setAlarm(Date.now() + delayMs);
+      // Earliest-Deadline-First Alarm Scheduling (prevents message drift)
+      const earliestAlarm = Math.min(...activeSessions.map(s => s.expiresAt));
+      await this.ctx.storage.setAlarm(earliestAlarm);
       
       return new Response("Scheduled", { status: 200 });
     }
@@ -69,39 +70,40 @@ export class AuthSessionManager extends DurableObject {
   }
 
   async alarm() {
-    const sessions = await this.ctx.storage.get('active_sessions');
-    if (!sessions || sessions.length === 0) return;
+    const sessions = await this.ctx.storage.get('active_sessions') || [];
+    if (sessions.length === 0) return;
 
-    const tgUserId = sessions[0].tgUserId;
-    
-    // Dynamic Self-Healing: Check profile status to render the correct dashboard
-    let hasProfile = false;
-    try {
-      if (tgUserId && this.env.SUPABASE_URL) {
-          const checkRes = await fetch(`${this.env.SUPABASE_URL}/rest/v1/profiles?telegram_id=eq.${tgUserId}&select=id`, {
-            headers: {
-              'apikey': this.env.SUPABASE_SERVICE_ROLE_KEY,
-              'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
+    const now = Date.now();
+    const expiredSessions = sessions.filter(s => s.expiresAt <= now + 1000);
+    const remainingSessions = sessions.filter(s => s.expiresAt > now + 1000);
+
+    for (const sess of expiredSessions) {
+      let hasProfile = false;
+      try {
+        if (sess.tgUserId && this.env.SUPABASE_URL) {
+            const checkRes = await fetch(`${this.env.SUPABASE_URL}/rest/v1/profiles?telegram_id=eq.${sess.tgUserId}&select=id`, {
+              headers: {
+                'apikey': this.env.SUPABASE_SERVICE_ROLE_KEY,
+                'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
+              }
+            });
+            if (checkRes.ok) {
+              const rows = await checkRes.json();
+              hasProfile = rows && rows.length > 0;
             }
-          });
-          if (checkRes.ok) {
-            const rows = await checkRes.json();
-            hasProfile = rows && rows.length > 0;
-          }
+        }
+      } catch (e) {
+        console.error("[SessionManager] Profile check failed:", e.message);
       }
-    } catch (e) {
-      console.error("[SessionManager] Profile check failed:", e.message);
-    }
 
-    const actionText = hasProfile 
-      ? `🏛️ *Welcome back to LinkUp*\n\nSelect 'Access Dashboard' below to log in.`
-      : `🏛️ *Welcome to LinkUp*\n\nSelect 'Create Account' below to set up your academic profile.`;
+      const actionText = hasProfile 
+        ? `🏛️ *Welcome back to LinkUp*\n\nSelect 'Access Dashboard' below to log in.`
+        : `🏛️ *Welcome to LinkUp*\n\nSelect 'Create Account' below to set up your academic profile.`;
 
-    const primaryBtn = hasProfile 
-      ? { text: "🔓 Access Dashboard", callback_data: "initiate_auth" }
-      : { text: "✨ Create Account", callback_data: "request_contact" };
+      const primaryBtn = hasProfile 
+        ? { text: "🔓 Access Dashboard", callback_data: "initiate_auth" }
+        : { text: "✨ Create Account", callback_data: "request_contact" };
 
-    for (const sess of sessions) {
       try {
         await fetch(`https://api.telegram.org/bot${this.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
           method: 'POST',
@@ -119,13 +121,19 @@ export class AuthSessionManager extends DurableObject {
             }
           })
         });
-        console.log(`[SessionManager] Self-healed expired magic link message ID: ${sess.messageId} back to dashboard.`);
+        console.log(`[SessionManager] Reverted message ID: ${sess.messageId} to dashboard.`);
       } catch (e) {
         console.error("[SessionManager] Failed to revert expired message:", e.message);
       }
     }
     
-    await this.ctx.storage.delete('active_sessions');
+    if (remainingSessions.length > 0) {
+      await this.ctx.storage.put('active_sessions', remainingSessions);
+      const nextAlarm = Math.min(...remainingSessions.map(s => s.expiresAt));
+      await this.ctx.storage.setAlarm(nextAlarm);
+    } else {
+      await this.ctx.storage.delete('active_sessions');
+    }
   }
 }
 
@@ -136,7 +144,11 @@ export default {
     }
 
     const secretHeader = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
-    if (!env.TELEGRAM_WEBHOOK_SECRET || secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
+    if (!env.TELEGRAM_WEBHOOK_SECRET) {
+      console.error("[AuthBot] ⚠️ CRITICAL: TELEGRAM_WEBHOOK_SECRET is unconfigured in worker environment.");
+      return new Response("Webhook Secret Missing", { status: 500 });
+    }
+    if (secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
       return new Response("Unauthorized", { status: 403 });
     }
 
@@ -303,6 +315,31 @@ export default {
                     normalizedPhone = '+' + normalizedPhone;
                 }
 
+                // Pre-flight Conflict Check: Verify phone is not bound to a different verified account
+                try {
+                    const phoneCollisionRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?phone=eq.${encodeURIComponent(normalizedPhone)}&id=neq.${pendingGoogleId}&telegram_id=not.is.null&select=id`, {
+                        headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                    });
+                    if (phoneCollisionRes.ok) {
+                        const existingPhoneOwners = await phoneCollisionRes.json();
+                        if (existingPhoneOwners && existingPhoneOwners.length > 0) {
+                            await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    chat_id: msg.chat.id,
+                                    text: `❌ *Phone Number Collision*\n\nThis phone number is already verified on another active account. An existing phone number cannot be linked to multiple accounts.`,
+                                    parse_mode: "Markdown",
+                                    reply_markup: { remove_keyboard: true }
+                                })
+                            });
+                            return new Response("OK");
+                        }
+                    }
+                } catch (e) {
+                    console.error("Phone collision check error:", e);
+                }
+
                 // Security: Prevent linking if destination account is already bound to a different verified Telegram user
                 try {
                     const targetCheckRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${pendingGoogleId}&select=registered_with_telegram,telegram_id`, {
@@ -453,12 +490,27 @@ export default {
                     console.error("Profile evaluation failed", e); 
                 }
 
-                // Inject enriched identity into the active Google profile
-                await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${pendingGoogleId}`, {
+                // Inject enriched identity into the active profile with strict status assertion
+                const patchRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${pendingGoogleId}`, {
                     method: 'PATCH',
                     headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(patchPayload)
                 });
+
+                if (!patchRes.ok) {
+                    console.error("Profile patch error:", await patchRes.text());
+                    await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: msg.chat.id,
+                            text: `❌ *Account Link Failed*\n\nWe could not update your account records. Please return to your browser and try again.`,
+                            parse_mode: "Markdown",
+                            reply_markup: { remove_keyboard: true }
+                        })
+                    });
+                    return new Response("OK");
+                }
 
                 await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
@@ -474,8 +526,37 @@ export default {
             }
 
             // 2. Standard Login Path
-            const avatarUrl = await fetchTelegramAvatar(msg.from.id, env);
+            let standardPhone = phoneNumber.replace(/\s+/g, '');
+            if (!standardPhone.startsWith('+')) {
+                standardPhone = '+' + standardPhone;
+            }
 
+            // Pre-flight Check: Ensure phone is not already verified on another account
+            try {
+                const phoneCheckRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?phone=eq.${encodeURIComponent(standardPhone)}&telegram_id=neq.${msg.from.id}&telegram_id=not.is.null&select=id`, {
+                    headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                });
+                if (phoneCheckRes.ok) {
+                    const existingOwners = await phoneCheckRes.json();
+                    if (existingOwners && existingOwners.length > 0) {
+                        await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                chat_id: msg.chat.id,
+                                text: `❌ *Phone Number Collision*\n\nThis phone number is already verified on another account. Please sign into that account directly using your email and password.`,
+                                parse_mode: "Markdown",
+                                reply_markup: { remove_keyboard: true }
+                            })
+                        });
+                        return new Response("OK");
+                    }
+                }
+            } catch (e) {
+                console.error("Standard login phone check error:", e);
+            }
+
+            const avatarUrl = await fetchTelegramAvatar(msg.from.id, env);
             const token = crypto.randomUUID();
             const expiresAt = new Date(Date.now() + 5 * 60000).toISOString();
 
