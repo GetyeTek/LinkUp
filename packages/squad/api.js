@@ -2,7 +2,7 @@ import { supabase } from '@linkup-platform/sdk-core';
 
 // High-concurrency Social Gateway
 const SQUAD_GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
-const DUMMY_KEY = 'sq_pub_2d66a1b8c9e08d9e0a2f8d73b';
+const API_KEY = 'sb_publishable_B9mxFwLJl8WWw_Y9C28LtA_AfKYATEc';
 
 export const invokeLiveToken = async (payload) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -10,8 +10,7 @@ export const invokeLiveToken = async (payload) => {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY,
-            'x-linkup-client': 'linkup-secure-client-2026',
+            'apikey': API_KEY,
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload)
@@ -22,7 +21,6 @@ export const invokeLiveToken = async (payload) => {
 export const uploadChatMedia = async (file, filePath, onProgress) => {
     const { data: { session } } = await supabase.auth.getSession();
     const GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
-    const DUMMY_KEY = 'sq_pub_2d66a1b8c9e08d9e0a2f8d73b';
 
     for (let retry = 0; retry < 3; retry++) {
         try {
@@ -38,9 +36,8 @@ export const uploadChatMedia = async (file, filePath, onProgress) => {
                 xhr.addEventListener('error', () => reject(new Error("Network Error")));
                 xhr.addEventListener('abort', () => reject(new Error("Aborted")));
                 xhr.open('POST', `${GATEWAY}/storage/v1/object/chat_media/${filePath}`);
-                xhr.setRequestHeader('apikey', DUMMY_KEY);
+                xhr.setRequestHeader('apikey', API_KEY);
                 if (session) xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
-                xhr.setRequestHeader('x-linkup-client', 'linkup-secure-client-2026');
                 xhr.setRequestHeader('Content-Type', file.type);
                 xhr.send(file);
             });
@@ -59,8 +56,7 @@ export const generateMironLecture = async (payload) => {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY,
-            'x-linkup-client': 'linkup-secure-client-2026',
+            'apikey': API_KEY,
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload)
@@ -74,8 +70,7 @@ export const invokeSocial = async (payload) => {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY,
-            'x-linkup-client': 'linkup-secure-client-2026',
+            'apikey': API_KEY,
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload)
