@@ -554,9 +554,12 @@ const InteractiveBoard = ({ payload, spokenText = "", activeBoardBlocks = [], on
                                         {el.svgCode && (
                                             <div 
                                                 className="shape-svg-wrapper"
-                                                dangerouslySetInnerHTML={{ 
-                                                    __html: DOMPurify.sanitize(el.svgCode, { USE_PROFILES: { svg: true, svgFilters: true } }) 
-                                                }}
+                                                                                            dangerouslySetInnerHTML={{ 
+                                                __html: DOMPurify.sanitize(el.svgCode, { 
+                                                    USE_PROFILES: { svg: true, svgFilters: true },
+                                                    ADD_ATTR: ['style', 'class', 'aria-hidden', 'viewBox', 'fill', 'stroke', 'stroke-width', 'cx', 'cy', 'r', 'd', 'transform']
+                                                }) 
+                                            }}
                                             />
                                         )}
 
