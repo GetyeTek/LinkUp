@@ -185,19 +185,21 @@ const Study = () => {
 
                         {/* Current Study Desk Anchor */}
                         {lastRead && (
-                            <div className="resume-study-card" onClick={handleResumeReading}>
-                                {(() => {
+                            <div 
+                                className="resume-study-card" 
+                                onClick={handleResumeReading}
+                                style={(() => {
                                     const resumeCover = lastRead.cover_url || getCachedBookCover(lastRead.id) || getCachedBookCover(lastRead.course_code);
-                                    return (
-                                        <div className={`resume-book-icon ${resumeCover ? 'has-cover' : ''}`}>
-                                            {resumeCover ? (
-                                                <img src={resumeCover} alt="" className="resume-cover-img" />
-                                            ) : (
-                                                <i className="fas fa-book-open"></i>
-                                            )}
-                                        </div>
-                                    );
+                                    return resumeCover ? {
+                                        backgroundImage: `linear-gradient(135deg, rgba(14, 14, 18, 0.70) 0%, rgba(10, 10, 14, 0.85) 100%), url("${resumeCover}")`,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center'
+                                    } : {};
                                 })()}
+                            >
+                                <div className="resume-book-icon">
+                                    <i className="fas fa-book-open"></i>
+                                </div>
                                 <div className="resume-info">
                                     <div className="resume-tag">
                                         <span>{lastRead.course_code ? `${lastRead.course_code} • Page ${lastRead.page || 1}` : t('curriculum_textbook', 'Curriculum Textbook')}</span>
