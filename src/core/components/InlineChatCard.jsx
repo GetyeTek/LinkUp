@@ -42,7 +42,8 @@ const renderFormattedText = (content) => {
     });
 
     return DOMPurify.sanitize(html, {
-        USE_PROFILES: { html: true, mathMl: true, svg: true }
+        USE_PROFILES: { html: true, mathMl: true, svg: true },
+        ADD_ATTR: ['style', 'class', 'aria-hidden']
     });
 };
 
