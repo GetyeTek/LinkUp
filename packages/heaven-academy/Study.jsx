@@ -62,13 +62,13 @@ const Study = () => {
                         id: "exam-trigger-001",
                         title: "Exams", 
                         isExamTrigger: true, 
-                        cover_url: null 
+                        cover_url: "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/book-assets/covers/Exams.jpg" 
                     };
                     const flashcardBook = {
                         id: "flashcard-trigger-001",
                         title: "Flashcards",
                         isFlashcardTrigger: true,
-                        cover_url: null
+                        cover_url: "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/book-assets/covers/Flashcards.jpg"
                     };
                     setBooks([examBook, flashcardBook, ...data.books]);
                 }
