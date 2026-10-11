@@ -374,6 +374,11 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const shouldCompressStage = !!pinnedQ || liveQuestions.length > 0;
     const isConnected = isAiHosting ? aiConnected : !isHostPaused;
 
+    const cleanWord = (word) => {
+        if (!word) return "";
+        return word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?።፡]/g, "").trim();
+    };
+
     const renderBoardBlocks = () => {
         const spokenWords = spokenText.split(/\s+/).map(cleanWord).filter(Boolean);
         
