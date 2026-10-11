@@ -108,14 +108,18 @@ export default {
     // B. Clean Reverse Proxy to Supabase
     const incomingOrigin = request.headers.get('Origin');
     const requestedHeaders = request.headers.get('Access-Control-Request-Headers');
-    const isAllowed = !incomingOrigin || ALLOWED_ORIGINS.includes(incomingOrigin);
-    const corsOrigin = isAllowed ? (incomingOrigin || '*') : 'https://unauthorized-origin-blocked';
+    const isExplicitOrigin = Boolean(incomingOrigin);
+    const isOriginAllowed = isExplicitOrigin ? ALLOWED_ORIGINS.includes(incomingOrigin) : false;
+    const resolvedCorsOrigin = isOriginAllowed ? incomingOrigin : ALLOWED_ORIGINS[0];
 
     if (request.method === 'OPTIONS') {
-      console.log(`[Gateway] 🛡️ Preflight: ${incomingOrigin} (Allowed: ${isAllowed})`);
+      if (!isExplicitOrigin || !isOriginAllowed) {
+        console.warn(`[Gateway] ⛔ Rejected Preflight from unapproved origin: ${incomingOrigin}`);
+        return new Response(null, { status: 403 });
+      }
       return new Response(null, {
         headers: {
-          'Access-Control-Allow-Origin': corsOrigin,
+          'Access-Control-Allow-Origin': incomingOrigin,
           'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
           'Access-Control-Allow-Headers': requestedHeaders || 'authorization, x-client-info, apikey, content-type, prefer, range, x-supabase-api-version',
           'Access-Control-Allow-Credentials': 'true',
@@ -124,11 +128,11 @@ export default {
       });
     }
 
-    if (incomingOrigin && !isAllowed) {
+    if (isExplicitOrigin && !isOriginAllowed) {
       console.error(`[Gateway] ⛔ Blocked unauthorized request from: ${incomingOrigin}`);
       return new Response(JSON.stringify({ error: "Unauthorized environment" }), { 
         status: 403, 
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': corsOrigin } 
+        headers: { 'Content-Type': 'application/json' } 
       });
     }
 
@@ -162,8 +166,10 @@ export default {
       if (response.status === 101) return response;
 
       const responseHeaders = new Headers(response.headers);
-      responseHeaders.set('Access-Control-Allow-Origin', corsOrigin);
-      responseHeaders.set('Access-Control-Allow-Credentials', 'true');
+      if (isExplicitOrigin && isOriginAllowed) {
+        responseHeaders.set('Access-Control-Allow-Origin', incomingOrigin);
+        responseHeaders.set('Access-Control-Allow-Credentials', 'true');
+      }
       responseHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range, content-length, x-supabase-api-version');
 
       // High-Performance Immutable Caching with Instant Purge Trigger for Book Assets
