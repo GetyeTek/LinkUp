@@ -152,7 +152,7 @@ const LiveStageSetupModal = ({
     useEffect(() => {
         if (show) {
             if (mode === 'miron') {
-                supabase.from('books').select('id, title, course_code, toc').order('title').then(({ data }) => {
+                supabase.from('books').select('id, title, course_code, toc, cover_url').order('title').then(({ data }) => {
                     if (data) setBooks(data);
                 });
             }
@@ -274,7 +274,13 @@ const LiveStageSetupModal = ({
                                 <div className="books-grid">
                                     {books.map(b => (
                                         <div key={b.id} className="book-selector-card" onClick={() => setSelectedBook(b)}>
-                                            <div className="book-icon-thumb"><i className="fas fa-book"></i></div>
+                                            <div className="book-icon-thumb">
+                                                {b.cover_url ? (
+                                                    <img src={b.cover_url} alt="" className="book-thumb-cover-img" />
+                                                ) : (
+                                                    <i className="fas fa-book"></i>
+                                                )}
+                                            </div>
                                             <div className="book-meta-info">
                                                 <h4>{b.title}</h4>
                                                 <p>{b.course_code || 'General'}</p>
