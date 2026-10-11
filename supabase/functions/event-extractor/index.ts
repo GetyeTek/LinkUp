@@ -109,22 +109,55 @@ serve(async (req) => {
                 // Format chat log for AI
                 const chatLog = messages.map(m => `[ID: ${m.telegram_id}] [${m.telegram_timestamp}] ${m.sender_name || 'User'}: ${m.full_text}`).join('\n');
                 
-                const prompt = `You are a university AI data extractor. Analyze the following Telegram group chat logs and extract ONLY critical information: Deadlines, Announcements, and specific Events.
-IGNORE standard conversational chatter, greetings, questions without conclusions, and spam.
+                const prompt = `You are a university AI data extractor specializing in Ethiopian university campus chat logs.
+Analyze the following Telegram group messages and extract ONLY critical academic deadlines, exam schedules, and submission events.
+IGNORE casual chatter, greetings, social banter, questions without answers, and spam.
 
-CRITICAL TIME AWARENESS:
-The current time is: ${extractionTime}
-If a message says "tomorrow at 5PM", "this Friday", or gives a relative date, calculate the exact ISO-8601 timestamp based on the provided current time and the timestamp attached to the message.
+ETHIOPIAN LINGUISTIC & SLANG PARSING:
+Messages are written in Amharic (Ge'ez Fidel), English, or Latin-transliterated Amharic (Fidelfont) with student abbreviations and typos.
+Recognize these day-of-week terms:
+- Monday: Senyo, Segno, ሰኞ
+- Tuesday: Maksegno, Makesegno, Makse, ማክሰኞ
+- Wednesday: Erob, Rob, እሮብ, ረቡዕ
+- Thursday: Hamus, ሐሙስ, ሀሙስ
+- Friday: Arb, አርብ, ዓርብ
+- Saturday: Kidame, ቅዳሜ
+- Sunday: Ehud, እሁድ, እሑድ
+Recognize these academic terms:
+- "fetena" / ፈተና = exam / quiz
+- "mid" / "mid fetena" = midterm exam
+- "final" / "final fetena" = final exam
+- "assignment" / "asaynment" / "asgebu" = assignment submission
 
-OUTPUT INSTRUCTIONS:
-Return strictly a JSON array of objects matching this exact schema:
+CRITICAL HABESHA 12-HOUR TIME SYSTEM (THE 6-HOUR SHIFT):
+Ethiopian university students almost universally use the Habesha 12-hour clock (anchored at sunrise, 6:00 AM Western):
+- "Tewat X:00" (ጠዋት) = Western (X + 6) AM EAT.
+  * e.g., "Tewat 2:00" = 8:00 AM (08:00).
+- "Kese'at X:00" (ከሰዓት) = Western (X + 6 - 12) PM EAT.
+  * e.g., "Kese'at 8:00" = 2:00 PM Western (14:00).
+  * e.g., "Kese'at 7:00" = 1:00 PM Western (13:00).
+  * e.g., "Kese'at 9:00" = 3:00 PM Western (15:00).
+  * e.g., "Kese'at 10:00" = 4:00 PM Western (16:00).
+- "Mata X:00" (ማታ) = Western (X + 6) PM EAT.
+  * e.g., "Mata 2:00" = 8:00 PM Western (20:00).
+- If a message specifies explicit Western time like "2:00 PM" or "14:00", respect it directly. But if it says "kese'at X:00", apply the Habesha 6-hour shift!
+
+CALENDAR & TIMEZONE RULES:
+- Current server time: ${extractionTime}
+- All events occur in Ethiopia (East Africa Time, EAT, UTC+3).
+- Derive today's day of week from the current time in EAT (+03:00).
+  * If today is Monday (e.g. Oct 12) and a message says "Maksegno", that means tomorrow (Tuesday, Oct 13).
+  * Calculate the target date and output the event_date strictly in ISO-8601 format with the +03:00 offset: YYYY-MM-DDTHH:mm:ss+03:00.
+
+OUTPUT FORMAT:
+Return strictly a valid JSON array of objects (no markdown wrappers around the JSON):
 [
   {
-    "title": "A short, punchy title",
-    "description": "Detailed explanation of the event/deadline",
+    "title": "Short title in English (e.g. Economics Midterm Exam)",
+    "description": "Clear explanation of what is due or scheduled",
     "event_type": "deadline" | "announcement" | "event",
-    "event_date": "YYYY-MM-DDTHH:mm:ssZ" | null,
-    "source_ids": [1234, 1235] // Array of integers representing the Telegram message IDs that provided this info
+    "event_date": "YYYY-MM-DDTHH:mm:ss+03:00" | null,
+    "source_ids": [1234]
   }
 ]
 If nothing critical is found, return an empty array [].
