@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './PrivacySecurityOverlay.css';
 
-const PrivacySecurityOverlay = ({ isActive, onClose, initialPasswordOpen = false }) => {
+const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => {
     const { sessionUser, user: userProfile } = usePlatform();
+    const isInitialPassword = initialTarget === 'password';
     
     // Check Telegram Identity Status
     const isTelegramLinked = !!(userProfile?.registered_with_telegram && userProfile?.telegram_id);
@@ -30,13 +31,25 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialPasswordOpen = false
     }, [isActive, sessionUser?.id, isSyntheticEmail]);
 
     // Password Modal States
-    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(initialPasswordOpen || false);
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(isInitialPassword);
 
     useEffect(() => {
-        if (isActive && initialPasswordOpen) {
-            handleOpenPasswordModal();
+        if (isActive) {
+            if (initialTarget === 'password') {
+                handleOpenPasswordModal();
+            } else if (initialTarget === 'telegram') {
+                const timer = setTimeout(() => {
+                    const tgEl = document.getElementById('pso-telegram-card');
+                    if (tgEl) {
+                        tgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        tgEl.classList.add('pso-card-spotlight');
+                        setTimeout(() => tgEl.classList.remove('pso-card-spotlight'), 3200);
+                    }
+                }, 200);
+                return () => clearTimeout(timer);
+            }
         }
-    }, [isActive, initialPasswordOpen]);
+    }, [isActive, initialTarget]);
     const [realEmail, setRealEmail] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -225,7 +238,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialPasswordOpen = false
                     <div className="pso-section">
                         <span className="pso-section-title">Identity & Verification</span>
                         
-                        <div className="pso-card">
+                        <div className="pso-card" id="pso-telegram-card">
                             <div className="pso-card-info">
                                 <div className="pso-icon-box" style={{ background: 'rgba(41, 169, 234, 0.12)', color: '#29A9EA' }}>
                                     <i className="fab fa-telegram-plane"></i>
