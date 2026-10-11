@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getCachedBookCover } from '@linkup-platform/sdk-core';
 
 const timeAgo = (isoString) => {
     const diff = Math.floor((new Date() - new Date(isoString)) / 60000);
@@ -17,9 +17,18 @@ const Home = () => {
     const [greeting, setGreeting] = useState('Hello');
     const [punctuation, setPunctuation] = useState('.');
     const [mironQuery, setMironQuery] = useState('');
+    const [lastRead, setLastRead] = useState(null);
     const firstName = userProfile?.full_name?.split(' ')[0] || 'Scholar';
     const avatarUrl = userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.full_name || 'Scholar')}&background=1e1e1e&color=42d7b8`;
     const streak = userProfile?.streak ?? userProfile?.current_streak ?? 0;
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('linkup_last_book');
+            if (saved) setLastRead(JSON.parse(saved));
+        } catch (e) {}
+    }, []);
+
     // Dynamic Live Stages Data
     const [whatsNextData, setWhatsNextData] = useState({
         live: [],
@@ -236,6 +245,51 @@ const Home = () => {
                             </button>
                         </div>
                     </section>
+
+                    {lastRead && (
+                        <section className="resume-study-section">
+                            <div 
+                                className="resume-study-card" 
+                                onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { 
+                                    detail: { 
+                                        tab: 'study', 
+                                        payload: { 
+                                            action: 'resume_book', 
+                                            book_id: lastRead.id, 
+                                            title: lastRead.title, 
+                                            course_code: lastRead.course_code, 
+                                            page: lastRead.page 
+                                        } 
+                                    } 
+                                }))}
+                            >
+                                {(() => {
+                                    const resumeCover = lastRead.cover_url || getCachedBookCover(lastRead.id) || getCachedBookCover(lastRead.course_code);
+                                    return (
+                                        <div className={`resume-book-icon ${resumeCover ? 'has-cover' : ''}`}>
+                                            {resumeCover ? (
+                                                <img src={resumeCover} alt="" className="resume-cover-img" />
+                                            ) : (
+                                                <i className="fas fa-book-open"></i>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+                                <div className="resume-info">
+                                    <div className="resume-tag">
+                                        <span>{lastRead.course_code ? `${lastRead.course_code} • Page ${lastRead.page || 1}` : t('curriculum_textbook', 'Curriculum Textbook')}</span>
+                                    </div>
+                                    <h3 className="resume-title">{lastRead.title}</h3>
+                                    <p className="resume-subtitle">
+                                        {t('resume_study_desc', `Pick up right where you left off on Page ${lastRead.page || 1}`).replace('{page}', lastRead.page || 1)}
+                                    </p>
+                                </div>
+                                <div className="resume-arrow-box">
+                                    <i className="fas fa-arrow-right"></i>
+                                </div>
+                            </div>
+                        </section>
+                    )}
 
                     <section className="priority-section">
                         <h2 className="section-label">{t('coming_up', 'Coming Up')}</h2>
