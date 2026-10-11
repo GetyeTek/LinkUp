@@ -2,7 +2,7 @@ import React from 'react';
 
 const GATEWAY_BASE = 'https://linkup-gateway.getyeteklu2.workers.dev';
 
-// One-Tap Cache Purger for Eruda / Dev Console
+// One-Tap Cache Purger for Eruda / Dev Console (Admin Only)
 if (typeof window !== 'undefined') {
     window.purgeBookCache = async () => {
         if ('caches' in window) {
@@ -11,11 +11,15 @@ if (typeof window !== 'undefined') {
                 await Promise.all(keys.map(k => window.caches.delete(k)));
             } catch (e) {}
         }
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'FORCE_PURGE_ASSETS' });
+        }
         const newEpoch = Date.now().toString();
         localStorage.setItem('linkup_asset_epoch', newEpoch);
         console.log(`%c[LinkUp:Cache] 🧹 All book asset caches purged! Asset epoch set to: ${newEpoch}. Reloading...`, 'color: #42d7b8; font-weight: bold;');
         window.location.reload();
     };
+    window.purgeLinkUpCache = window.purgeBookCache;
 }
 
 export const resolveAssetUrl = (url, bookTitle = '') => {
