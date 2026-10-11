@@ -113,16 +113,25 @@ serve(async (req: Request) => {
     // PIPELINE 1: BATCH MISTAKE VAULT SYNTHESIZER
     // =========================================================================
     if (action === "batch_mistakes") {
-      const userId = body.user_id;
-      const batchLimit = body.limit || 8;
-
-      if (!userId) {
-        log("BatchMistakes:Error", "Rejected: Missing user_id parameter in payload.");
-        return new Response(JSON.stringify({ error: "Missing user_id parameter", audit_logs: auditLogs }), {
-          status: 400,
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: "Missing Authorization header", audit_logs: auditLogs }), {
+          status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
+      const token = authHeader.replace("Bearer ", "").trim();
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+      if (authErr || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized", audit_logs: auditLogs }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // Security: Strictly enforce user identity from authenticated token
+      const userId = user.id;
+      const batchLimit = Math.min(25, Math.max(1, body.limit || 8));
 
       log("BatchMistakes:Query", `Fetching un-synthesized mistake questions for user ${userId} (limit: ${batchLimit})...`);
       const { data: rawBatch, error: batchErr } = await supabase.rpc("get_pending_mistake_batch", {
@@ -251,6 +260,20 @@ ${JSON.stringify(rawBatch, null, 2)}`;
     // =========================================================================
     // PIPELINE 2: CHAPTER-LEVEL FLASHCARD INGESTION (50 CARDS PER CHAPTER)
     // =========================================================================
+    const authHeader = req.headers.get("Authorization");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const reqToken = (authHeader || "").replace("Bearer ", "").trim();
+    const isAuthorizedTrigger = (serviceKey && reqToken === serviceKey) || (cronSecret && reqToken === cronSecret);
+    
+    if (!isAuthorizedTrigger) {
+      log("JobAcquisition:Unauthorized", "Unauthorized pipeline trigger attempted.");
+      return new Response(JSON.stringify({ error: "Unauthorized pipeline trigger.", audit_logs: auditLogs }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     let activeJobId: string | null = null;
     let targetBookId = body.book_id;
     let targetCourseCode = body.course_code;
