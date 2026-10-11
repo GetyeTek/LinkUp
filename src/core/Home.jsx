@@ -65,29 +65,44 @@ const Home = () => {
         let minutes = '00';
 
         try {
+            // Gregorian without year
             datePart = date.toLocaleDateString('en-GB', { 
                 timeZone: 'Africa/Addis_Ababa',
                 weekday: 'short',
                 day: 'numeric', 
-                month: 'short', 
-                year: 'numeric' 
+                month: 'short' 
             });
 
-            // Native Ethiopian Calendar Resolution
+            // Native Ethiopian Calendar Resolution using exact parts for strict ordering
             try {
-                const ethioFmt = new Intl.DateTimeFormat('am-ET-u-ca-ethiopic', {
+                const ethioParts = new Intl.DateTimeFormat('am-ET-u-ca-ethiopic', {
                     timeZone: 'Africa/Addis_Ababa',
-                    year: 'numeric',
+                    weekday: 'long',
                     month: 'long',
                     day: 'numeric'
-                }).format(date);
-                // Strip redundant browser-injected era tags (ERA1, ዓ.ም.) to keep it clean, then re-append neatly
-                ethioDateStr = ethioFmt.replace(/(ERA1|ዓ\/?\.?ም\.?|AD|CE)/gi, '').trim() + ' ዓ.ም';
+                }).formatToParts(date);
+                
+                let eWeekday = '', eMonth = '', eDay = '';
+                for (const p of ethioParts) {
+                    if (p.type === 'weekday') eWeekday = p.value;
+                    if (p.type === 'month') eMonth = p.value;
+                    if (p.type === 'day') eDay = p.value;
+                }
+                
+                if (eWeekday && eMonth && eDay) {
+                    ethioDateStr = `${eWeekday}፣ ${eMonth} ${eDay}`;
+                } else {
+                    // Failsafe string formatting
+                    const ethioFmt = new Intl.DateTimeFormat('am-ET-u-ca-ethiopic', {
+                        timeZone: 'Africa/Addis_Ababa', month: 'long', day: 'numeric'
+                    }).format(date);
+                    ethioDateStr = ethioFmt.replace(/(ERA1|ዓ\/?\.?ም\.?|AD|CE)/gi, '').trim();
+                }
             } catch (e) {
                 ethioDateStr = '';
             }
 
-            westernTime = date.toLocaleTimeString([], { 
+            westernTime = date.toLocaleTimeString('en-US', { 
                 timeZone: 'Africa/Addis_Ababa',
                 hour: 'numeric', 
                 minute: '2-digit', 
