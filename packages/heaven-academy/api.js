@@ -2,7 +2,7 @@ import { supabase } from '@linkup-platform/sdk-core';
 
 // Dedicated endpoint for Education/RAG Services
 const ACADEMY_GATEWAY = 'https://linkup-gateway.getyeteklu2.workers.dev';
-const DUMMY_KEY = 'ha_pub_4b91e8c7d6f58d9e0a2f8d73b';
+const API_KEY = 'sb_publishable_B9mxFwLJl8WWw_Y9C28LtA_AfKYATEc';
 
 export const invokeBookReader = async (payload, signal = null) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -10,8 +10,7 @@ export const invokeBookReader = async (payload, signal = null) => {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY,
-            'x-linkup-client': 'linkup-secure-client-2026',
+            'apikey': API_KEY,
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload),
@@ -27,8 +26,7 @@ export const invokeMiron = async (payload) => {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY,
-            'x-linkup-client': 'linkup-secure-client-2026',
+            'apikey': API_KEY,
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload)
@@ -45,8 +43,7 @@ export const invokePlanMyDay = async (payload = {}) => {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            'apikey': DUMMY_KEY,
-            'x-linkup-client': 'linkup-secure-client-2026',
+            'apikey': API_KEY,
             ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify(payload)
