@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -14,13 +14,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>
-      if (window.location.search.includes('debug=true')) {
-        const s = document.createElement('script');
-        s.src = "https://cdn.jsdelivr.net/npm/eruda";
-        s.onload = () => window.eruda?.init();
-        document.head.appendChild(s);
-      }
+      eruda.init();
+      console.log("[Platform:Boot] Diagnostics mode enabled.");
     </script>
   </head>
   <body>
