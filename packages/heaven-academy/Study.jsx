@@ -7,7 +7,7 @@ import ExamPavilion from './ExamPavilion.jsx';
 import ExamSession from './ExamSession.jsx';
 import PlanMyDayModal from './components/PlanMyDayModal.jsx';
 import FlashcardPavilion from './components/FlashcardPavilion.jsx';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getCachedBookCover } from '@linkup-platform/sdk-core';
 import './Study.css';
 
 const Study = () => {
@@ -58,6 +58,9 @@ const Study = () => {
         invokeBookReader({ action: 'list_books' })
             .then(data => {
                 if (data.books) {
+                    try {
+                        localStorage.setItem('linkup_books_catalog', JSON.stringify(data.books));
+                    } catch (e) {}
                     const examBook = { 
                         id: "exam-trigger-001",
                         title: "Exams", 
@@ -183,9 +186,18 @@ const Study = () => {
                         {/* Current Study Desk Anchor */}
                         {lastRead && (
                             <div className="resume-study-card" onClick={handleResumeReading}>
-                                <div className="resume-book-icon">
-                                    <i className="fas fa-book-open"></i>
-                                </div>
+                                {(() => {
+                                    const resumeCover = lastRead.cover_url || getCachedBookCover(lastRead.id) || getCachedBookCover(lastRead.course_code);
+                                    return (
+                                        <div className={`resume-book-icon ${resumeCover ? 'has-cover' : ''}`}>
+                                            {resumeCover ? (
+                                                <img src={resumeCover} alt="" className="resume-cover-img" />
+                                            ) : (
+                                                <i className="fas fa-book-open"></i>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                                 <div className="resume-info">
                                     <div className="resume-tag">
                                         <span>{lastRead.course_code ? `${lastRead.course_code} • Page ${lastRead.page || 1}` : t('curriculum_textbook', 'Curriculum Textbook')}</span>
