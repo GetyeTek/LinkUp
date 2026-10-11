@@ -54,8 +54,7 @@ const Auth = () => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json', 
-                    'apikey': 'plt_pub_1a99f3c4d5e68d9e0a2f8d73b', 
-                    'x-linkup-client': 'linkup-secure-client-2026' 
+                    'apikey': 'sb_publishable_B9mxFwLJl8WWw_Y9C28LtA_AfKYATEc'
                 },
                 body: JSON.stringify({ auth_token: token })
             })
