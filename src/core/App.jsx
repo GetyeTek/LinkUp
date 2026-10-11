@@ -187,6 +187,7 @@ const App = () => {
   useEffect(() => {
     // 0. Conduit OAuth Popup Interceptor
     const handleMessage = (e) => {
+      if (e.origin !== window.location.origin) return;
       if (e.data?.type === 'CONDUIT_OAUTH_TOKEN' && e.data.hash) {
         const hashParams = new URLSearchParams(e.data.hash.substring(1));
         const accessToken = hashParams.get('access_token');
