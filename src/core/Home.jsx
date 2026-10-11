@@ -45,6 +45,64 @@ const Home = () => {
         return { num: diffMins, unit: diffMins === 1 ? 'min left' : 'mins left', isUrgent: true };
     };
 
+    const formatChannelTitle = (name) => {
+        if (!name) return 'Class Notice';
+        return name
+            .replace(/^@/, '')
+            .replace(/[_-]+/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase())
+            .trim();
+    };
+
+    const formatEventDisplayDate = (isoString) => {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        
+        let datePart = '';
+        let westernTime = '';
+        let westernHour = 0;
+        let minutes = '00';
+
+        try {
+            datePart = date.toLocaleDateString('en-GB', { 
+                timeZone: 'Africa/Addis_Ababa',
+                weekday: 'short',
+                day: 'numeric', 
+                month: 'short', 
+                year: 'numeric' 
+            });
+            westernTime = date.toLocaleTimeString([], { 
+                timeZone: 'Africa/Addis_Ababa',
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true 
+            });
+            const parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Africa/Addis_Ababa',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: false
+            }).formatToParts(date);
+            westernHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+            minutes = parts.find(p => p.type === 'minute')?.value || '00';
+        } catch (e) {
+            return date.toLocaleString();
+        }
+
+        // Habesha 12-hour cycle (sunrise 6:00 AM Western = 12:00 Habesha)
+        let habeshaHour = (westernHour - 6 + 24) % 12;
+        if (habeshaHour === 0) habeshaHour = 12;
+
+        let habeshaPeriod = '';
+        if (westernHour >= 6 && westernHour < 12) habeshaPeriod = 'ጠዋት';
+        else if (westernHour >= 12 && westernHour < 13) habeshaPeriod = 'ቀትር';
+        else if (westernHour >= 13 && westernHour < 18) habeshaPeriod = 'ከሰዓት';
+        else if (westernHour >= 18 && westernHour < 23) habeshaPeriod = 'ማታ';
+        else habeshaPeriod = 'ሌሊት';
+
+        return `${datePart} • ${habeshaPeriod} ${habeshaHour}:${minutes} (${westernTime})`;
+    };
+
     useEffect(() => {
         if (!userProfile?.id) return;
         let isMounted = true;
@@ -289,7 +347,7 @@ const Home = () => {
                                             >
                                                 <div className="card-header">
                                                     <i className={`fas ${item.event_type === 'deadline' ? 'fa-hourglass-half' : 'fa-calendar-day'} icon`}></i>
-                                                    <span className="category">{item.channel_name || item.event_type?.toUpperCase()}</span>
+                                                    <span className="category">{formatChannelTitle(item.channel_name || item.event_type)}</span>
                                                 </div>
                                                 <h3 className="title">{item.title}</h3>
                                                 <div className={`countdown ${countdown.isUrgent ? 'is-urgent-text' : ''}`}>
@@ -452,7 +510,7 @@ const Home = () => {
                     <div style={{ background: 'var(--surface-dark)', border: '1px solid var(--border-color)', borderRadius: '24px', width: '100%', maxWidth: '400px', padding: '1.75rem', boxShadow: '0 25px 60px rgba(0,0,0,0.6)', animation: 'popModal 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                             <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, color: 'var(--accent-teal)', background: 'rgba(66, 215, 184, 0.12)', padding: '3px 8px', borderRadius: '6px' }}>
-                                {selectedDeadline.channel_name || selectedDeadline.event_type}
+                                {formatChannelTitle(selectedDeadline.channel_name || selectedDeadline.event_type)}
                             </span>
                             <button className="icon-button" style={{ width: '30px', height: '30px', color: '#888' }} onClick={() => setSelectedDeadline(null)}>
                                 <i className="fas fa-times"></i>
@@ -464,8 +522,8 @@ const Home = () => {
                         </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '1.5rem' }}>
                             <i className="far fa-clock" style={{ color: 'var(--accent-teal)' }}></i>
-                            <span style={{ fontSize: '0.82rem', color: '#aaa', fontFamily: 'Roboto Mono, monospace' }}>
-                                {new Date(selectedDeadline.event_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                            <span style={{ fontSize: '0.82rem', color: '#eee', fontFamily: 'Roboto Mono, monospace', fontWeight: 600 }}>
+                                {formatEventDisplayDate(selectedDeadline.event_date)}
                             </span>
                         </div>
                         <button 
