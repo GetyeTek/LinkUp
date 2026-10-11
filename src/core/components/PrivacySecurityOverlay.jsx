@@ -189,91 +189,94 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
 
                 <div className="pso-body">
                     {/* 1. Academic Privacy Section */}
-                <div className="pso-section">
-                    <span className="pso-section-title">Academic Privacy</span>
-                    
-                    <div className="pso-card" onClick={handleToggleLeaderboard} style={{ cursor: isUpdatingPrivacy ? 'wait' : 'pointer' }}>
-                        <div className="pso-card-info">
-                            <div className="pso-icon-box" style={{ background: 'rgba(241, 196, 15, 0.1)', color: 'var(--linkoin-gold, #f1c40f)' }}>
-                                <i className="fas fa-trophy"></i>
+                    <div className="pso-section">
+                        <span className="pso-section-title">Academic Privacy</span>
+                        
+                        <div className="pso-card" onClick={handleToggleLeaderboard} style={{ cursor: isUpdatingPrivacy ? 'wait' : 'pointer' }}>
+                            <div className="pso-card-info">
+                                <div className="pso-icon-box" style={{ background: 'rgba(241, 196, 15, 0.1)', color: 'var(--linkoin-gold, #f1c40f)' }}>
+                                    <i className="fas fa-trophy"></i>
+                                </div>
+                                <div className="pso-text-group">
+                                    <h4>Campus Leaderboard</h4>
+                                    <span className="pso-inline-meta">
+                                        {showOnLeaderboard ? 'Listed on Ladder' : 'Hidden from Rankings'}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="pso-text-group">
-                                <h4>Campus Leaderboard Visibility</h4>
-                                <p>
-                                    {showOnLeaderboard 
-                                        ? 'Your rank and Mastery Rating appear on the Observatory ladder'
-                                        : 'Hidden from the campus ladder and peer rankings'}
-                                </p>
-                            </div>
+                            <div 
+                                className={`toggle-switch ${showOnLeaderboard ? 'on' : 'off'}`}
+                                role="switch"
+                                aria-checked={showOnLeaderboard}
+                            ></div>
                         </div>
-                        <div 
-                            className={`toggle-switch ${showOnLeaderboard ? 'on' : 'off'}`}
-                            role="switch"
-                            aria-checked={showOnLeaderboard}
-                        ></div>
+                        <p className="pso-section-hint">
+                            Controls whether your study streak and score are displayed on the Observatory campus leaderboard.
+                        </p>
                     </div>
-                </div>
 
-                {/* 2. Identity & Verification Section */}
-                <div className="pso-section">
-                    <span className="pso-section-title">Identity & Verification</span>
-                    
-                    <div className="pso-card">
-                        <div className="pso-card-info">
-                            <div className="pso-icon-box" style={{ background: 'rgba(41, 169, 234, 0.12)', color: '#29A9EA' }}>
-                                <i className="fab fa-telegram-plane"></i>
+                    {/* 2. Identity & Verification Section */}
+                    <div className="pso-section">
+                        <span className="pso-section-title">Identity & Verification</span>
+                        
+                        <div className="pso-card">
+                            <div className="pso-card-info">
+                                <div className="pso-icon-box" style={{ background: 'rgba(41, 169, 234, 0.12)', color: '#29A9EA' }}>
+                                    <i className="fab fa-telegram-plane"></i>
+                                </div>
+                                <div className="pso-text-group">
+                                    <h4>Telegram Identity</h4>
+                                    <span className="pso-inline-meta">
+                                        {isTelegramLinked 
+                                            ? `${telegramHandle || 'Scholar'}${linkedPhone ? ` (${linkedPhone})` : ''}` 
+                                            : 'Not Linked'}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="pso-text-group">
-                                <h4>Telegram Identity</h4>
-                                <p>
-                                    {isTelegramLinked 
-                                        ? `Verified as ${telegramHandle || 'Scholar'}${linkedPhone ? ` (${linkedPhone})` : ''}`
-                                        : 'Not linked. Verify phone to enable 1-tap login & claim +50 Credits'}
-                                </p>
-                            </div>
+                            {isTelegramLinked ? (
+                                <div className="pso-badge-verified">
+                                    <i className="fas fa-check-circle"></i> Linked
+                                </div>
+                            ) : (
+                                <a 
+                                    href={`https://t.me/linkupregistrationbot?start=verify_${sessionUser?.id}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="pso-action-btn telegram-btn"
+                                >
+                                    Verify <i className="fas fa-arrow-up-right-from-square" style={{ fontSize: '0.72rem', marginLeft: '4px' }}></i>
+                                </a>
+                            )}
                         </div>
-                        {isTelegramLinked ? (
-                            <div className="pso-badge-verified">
-                                <i className="fas fa-check-circle"></i> Verified
-                            </div>
-                        ) : (
-                            <a 
-                                href={`https://t.me/linkupregistrationbot?start=verify_${sessionUser?.id}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="pso-action-btn telegram-btn"
-                            >
-                                Verify <i className="fas fa-arrow-up-right-from-square" style={{ fontSize: '0.75rem', marginLeft: '4px' }}></i>
-                            </a>
-                        )}
+                        <p className="pso-section-hint">
+                            Used for instant 1-tap browser authentication and account recovery protection.
+                        </p>
                     </div>
-                </div>
 
-                {/* 3. Account Security Section */}
-                <div className="pso-section">
-                    <span className="pso-section-title">Account Security</span>
-                    
-                    <div className="pso-card">
-                        <div className="pso-card-info">
-                            <div className="pso-icon-box">
-                                <i className="fas fa-key"></i>
+                    {/* 3. Account Security Section */}
+                    <div className="pso-section">
+                        <span className="pso-section-title">Account Security</span>
+                        
+                        <div className="pso-card">
+                            <div className="pso-card-info">
+                                <div className="pso-icon-box">
+                                    <i className="fas fa-key"></i>
+                                </div>
+                                <div className="pso-text-group">
+                                    <h4>Account Password</h4>
+                                    <span className="pso-inline-meta">
+                                        {hasPassword ? 'Protected' : (isSyntheticEmail ? 'No Email Linked' : 'Not Configured')}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="pso-text-group">
-                                <h4>{hasPassword ? 'Account Password' : (isSyntheticEmail ? 'Set Email & Password' : 'Set Account Password')}</h4>
-                                <p>
-                                    {hasPassword 
-                                        ? 'Update your password for email sign-in'
-                                        : (isSyntheticEmail 
-                                            ? 'Link a personal email and password to sign in anywhere' 
-                                            : 'Enable email sign-in alongside Google/Telegram')}
-                                </p>
-                            </div>
+                            <button className="pso-action-btn" onClick={handleOpenPasswordModal}>
+                                {hasPassword ? 'Change' : 'Set Up'}
+                            </button>
                         </div>
-                        <button className="pso-action-btn" onClick={handleOpenPasswordModal}>
-                            {hasPassword ? 'Change' : 'Set Up'}
-                        </button>
+                        <p className="pso-section-hint">
+                            Configure standard email and password credentials to sign in directly without third-party popups.
+                        </p>
                     </div>
-                </div>
                 </div>
             </div>
 
