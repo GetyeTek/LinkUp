@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './PrivacySecurityOverlay.css';
 
-const PrivacySecurityOverlay = ({ isActive, onClose }) => {
+const PrivacySecurityOverlay = ({ isActive, onClose, initialPasswordOpen = false }) => {
     const { sessionUser, user: userProfile } = usePlatform();
     
     // Check Telegram Identity Status
@@ -30,7 +30,13 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     }, [isActive, sessionUser?.id, isSyntheticEmail]);
 
     // Password Modal States
-    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(initialPasswordOpen || false);
+
+    useEffect(() => {
+        if (isActive && initialPasswordOpen) {
+            handleOpenPasswordModal();
+        }
+    }, [isActive, initialPasswordOpen]);
     const [realEmail, setRealEmail] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -304,9 +310,14 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                         {!hasPassword && (
                             <div className="pso-badge-oauth">
                                 <i className={`fas ${isSyntheticEmail ? 'fa-paper-plane' : 'fa-link'}`}></i>
-                                <span>{isSyntheticEmail ? 'Telegram Session • No Email Linked' : `Linked to ${sessionUser?.email || 'OAuth'}`}</span>
+                                <span>{isSyntheticEmail ? 'Telegram Session • No Email Linked' : `Linked to ${sessionUser?.email || 'Account'}`}</span>
                             </div>
                         )}
+
+                        <div className="pso-alert-box info" style={{ background: 'rgba(66, 215, 184, 0.08)', border: '1px solid rgba(66, 215, 184, 0.25)', color: 'var(--accent-teal)', marginBottom: '4px' }}>
+                            <i className="fas fa-lightbulb" style={{ marginRight: '6px' }}></i>
+                            Choose a secure password and be sure to remember it!
+                        </div>
 
                         {statusMsg && (
                             <div className={`pso-alert-box ${statusMsg.type}`}>
