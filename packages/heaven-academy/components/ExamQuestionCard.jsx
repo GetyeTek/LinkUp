@@ -296,12 +296,12 @@ const ExamQuestionCard = ({
                                             </span>
                                             <span>Page {hints[q.id].data.page_number}</span>
                                         </div>
+                                        <div className="snapshot-content">
+                                            {hints[q.id].data.block ? renderBookBlock(hints[q.id].data.block, 0, {}) : <p>{hints[q.id].data.snippet}</p>}
+                                        </div>
+                                    </div>
                                 );
                             })()}
-                                <div className="snapshot-content">
-                                    {hints[q.id].data.block ? renderBookBlock(hints[q.id].data.block, 0, {}) : <p>{hints[q.id].data.snippet}</p>}
-                                </div>
-                            </div>
                             <div className="insight-actions">
                                 <button className="btn-insight-close" onClick={() => toggleHint(q.id)}>Close</button>
                                 <button className="btn-insight-book" onClick={() => setActiveReferenceBook(hints[q.id].data)}>
