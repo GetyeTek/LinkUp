@@ -216,7 +216,8 @@ const VisualNotebookViewer = ({
               className="v-notebook-content-body"
               dangerouslySetInnerHTML={{ 
                 __html: DOMPurify.sanitize(sheet.html_body || '', { 
-                  USE_PROFILES: { html: true, svg: true, mathMl: true } 
+                  USE_PROFILES: { html: true, svg: true, mathMl: true },
+                  ADD_ATTR: ['style', 'class', 'aria-hidden', 'target'] 
                 }) 
               }}
             />
