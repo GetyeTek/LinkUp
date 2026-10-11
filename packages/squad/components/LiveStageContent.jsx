@@ -104,7 +104,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                 if (!isMounted) return;
                 const { data: { session } } = await supabase.auth.getSession();
                 const token = session?.access_token || '';
-                ws = new WebSocket(`${gatewayUrl}&token=${encodeURIComponent(token)}`);
+                ws = new WebSocket(gatewayUrl, ["access_token", token]);
                 aiSocketRef.current = ws;
 
                 ws.onopen = () => {
