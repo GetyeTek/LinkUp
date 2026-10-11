@@ -162,7 +162,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                 text: hasPassword 
                     ? 'Password successfully updated!' 
                     : isSyntheticEmail
-                    ? 'Credentials set! Check your inbox to verify your email, then you can log in with your email and password.'
+                    ? 'Verification link sent! Please check your email inbox and tap the confirmation link to activate your new email. Once verified, you can sign in directly using this email and password.'
                     : 'Password set! You can now sign in using your email and this password.' 
             });
 
