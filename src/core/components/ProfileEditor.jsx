@@ -4,6 +4,7 @@ import AvatarCropperModal from './AvatarCropperModal.jsx';
 import ProfileAvatarPicker from './ProfileAvatarPicker.jsx';
 import UsernameField from './UsernameField.jsx';
 import { useUsernameCheck } from '../hooks/useUsernameCheck.js';
+import { usePhoneCheck } from '../hooks/usePhoneCheck.js';
 import './ProfileEditor.css';
 
 const DEPARTMENTS = ['Freshman', 'Computer Science', 'Software Engineering', 'Management', 'Economics', 'Electrical Engineering', 'Mechanical Engineering', 'Health', 'Other'];
@@ -45,7 +46,7 @@ const ChipDropdown = ({ label, value, options, fieldKey, singleCol, expandedFiel
     );
 };
 
-const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
+const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpdated }) => {
     const [universities, setUniversities] = useState([]);
     const [saving, setSaving] = useState(false);
     const [alertNotice, setAlertNotice] = useState(null);
@@ -62,6 +63,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
     });
     
     const usernameStatus = useUsernameCheck(editForm.username, userProfile?.username);
+    const { status: phoneStatus } = usePhoneCheck(editForm.phone, userProfile?.phone);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -144,6 +146,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
         }
 
         const isFreshman = editForm.department === 'Freshman';
+        const isPhoneChanged = normalizedPhone !== (userProfile?.phone || '');
         
         const profileData = {
             full_name: finalFullName,
@@ -160,17 +163,35 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
             year: !isFreshman ? (editForm.year || null) : null
         };
 
-        const { error } = await supabase.from('profiles').update(profileData).eq('id', userProfile.id);
+        if (isPhoneChanged && userProfile?.registered_with_telegram) {
+            profileData.registered_with_telegram = false;
+            profileData.telegram_id = null;
+            profileData.telegram_username = null;
+        }
+
+        const { data: updatedProfile, error } = await supabase
+            .from('profiles')
+            .update(profileData)
+            .eq('id', sessionUser.id)
+            .select()
+            .single();
         
         setSaving(false);
-        if (!error) {
-            setAlertNotice({ title: "Success", msg: "Your profile has been securely updated.", success: true });
+        if (!error && updatedProfile) {
+            onProfileUpdated?.(updatedProfile);
+            setAlertNotice({ 
+                title: "Success", 
+                msg: isPhoneChanged && userProfile?.registered_with_telegram 
+                    ? "Phone number updated. Your Telegram verification has been reset—please re-verify your new number in Privacy & Security."
+                    : "Your profile has been securely updated.", 
+                success: true 
+            });
             setTimeout(() => {
                 setAlertNotice(null);
                 onClose();
-            }, 1500);
+            }, 1800);
         } else {
-            setAlertNotice({ title: "Update Failed", msg: error.message });
+            setAlertNotice({ title: "Update Failed", msg: error?.message || "Failed to save profile." });
         }
     };
 
@@ -296,7 +317,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                             <div className="input-group-sm">
                                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span>Phone Number</span>
-                                    {userProfile?.registered_with_telegram && (
+                                    {userProfile?.registered_with_telegram && editForm.phone.replace(/\s+/g, '') === (userProfile?.phone || '').replace(/\s+/g, '') && (
                                         <span style={{ fontSize: '0.65rem', color: 'var(--accent-teal)', fontWeight: 700, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <i className="fas fa-shield-check"></i> Telegram Verified
                                         </span>
@@ -306,9 +327,26 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
                                     type="tel" 
                                     value={editForm.phone} 
                                     onChange={e => setEditForm({...editForm, phone: e.target.value})} 
-                                    disabled={saving || userProfile?.registered_with_telegram} 
-                                    style={userProfile?.registered_with_telegram ? { opacity: 0.8, borderColor: 'rgba(66, 215, 184, 0.3)' } : {}}
+                                    disabled={saving}
+                                    placeholder="09... or +251..."
+                                    style={phoneStatus === 'taken' || phoneStatus === 'invalid' ? { borderColor: '#ff5f5f' } : {}}
                                 />
+                                {editForm.phone && phoneStatus !== 'idle' && (
+                                    <div style={{ marginTop: '4px', fontSize: '0.75rem', fontWeight: 500, color: phoneStatus === 'taken' || phoneStatus === 'invalid' ? '#ff5f5f' : 'var(--accent-teal)' }}>
+                                        {phoneStatus === 'checking' && <><i className="fas fa-circle-notch fa-spin"></i> Checking availability...</>}
+                                        {phoneStatus === 'taken' && <><i className="fas fa-times-circle"></i> This phone number is already registered to another account.</>}
+                                        {phoneStatus === 'invalid' && <><i className="fas fa-exclamation-circle"></i> Enter a valid phone number (e.g. 09... or +251...).</>}
+                                        {phoneStatus === 'available' && <><i className="fas fa-check-circle"></i> Phone number available.</>}
+                                    </div>
+                                )}
+                                {userProfile?.registered_with_telegram && editForm.phone.replace(/\s+/g, '') !== (userProfile?.phone || '').replace(/\s+/g, '') && (
+                                    <div className="commitment-note" style={{ background: 'rgba(255, 171, 64, 0.08)', borderColor: 'rgba(255, 171, 64, 0.3)', marginTop: '8px', marginBottom: '0' }}>
+                                        <i className="fas fa-triangle-exclamation" style={{ color: '#ffab40', marginTop: '2px' }}></i>
+                                        <p style={{ color: '#e0e0e0', fontSize: '0.75rem', lineHeight: '1.4' }}>
+                                            <strong style={{ color: '#ffab40' }}>Notice:</strong> Changing your number will revoke your Telegram verification. You will need to verify the new number.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -351,7 +389,17 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser }) => {
 
                 <footer className="pe-footer">
                     <button className="pe-btn cancel" onClick={handleCloseEditor} disabled={saving}>Cancel</button>
-                    <button className="pe-btn save" onClick={handleSaveProfile} disabled={saving || usernameStatus === 'taken' || usernameStatus === 'invalid'}>
+                    <button 
+                        className="pe-btn save" 
+                        onClick={handleSaveProfile} 
+                        disabled={
+                            saving || 
+                            usernameStatus === 'taken' || 
+                            usernameStatus === 'invalid' || 
+                            usernameStatus === 'checking' ||
+                            (Boolean(editForm.phone.trim()) && (phoneStatus === 'taken' || phoneStatus === 'invalid' || phoneStatus === 'checking'))
+                        }
+                    >
                         {saving ? <i className="fas fa-circle-notch fa-spin"></i> : "Save Changes"}
                     </button>
                 </footer>
