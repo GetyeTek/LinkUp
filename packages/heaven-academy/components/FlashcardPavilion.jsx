@@ -144,12 +144,15 @@ const FlashcardPavilion = ({ onClose }) => {
                                 key={d.course_code} 
                                 className={`fcp-deck-card ${openingDeckId === d.course_code ? 'is-opening' : ''}`} 
                                 onClick={() => handleStartCourse(d.course_code, d.title)}
+                                style={deckCover ? {
+                                    backgroundImage: `linear-gradient(135deg, rgba(14, 14, 18, 0.70) 0%, rgba(10, 10, 14, 0.84) 100%), url("${deckCover}")`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center'
+                                } : {}}
                             >
-                                <div className="fcp-cdc-icon" style={deckCover && openingDeckId !== d.course_code ? { background: 'transparent', padding: 0 } : {}}>
+                                <div className="fcp-cdc-icon">
                                     {openingDeckId === d.course_code ? (
                                         <i className="fas fa-circle-notch fa-spin"></i>
-                                    ) : deckCover ? (
-                                        <img src={deckCover} alt="" className="fcp-cdc-cover-img" />
                                     ) : (
                                         <i className="fas fa-bolt"></i>
                                     )}
