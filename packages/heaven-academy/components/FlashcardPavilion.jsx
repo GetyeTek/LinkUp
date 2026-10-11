@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, getCachedBookCover } from '@linkup-platform/sdk-core';
 import FlashcardArena from './FlashcardArena.jsx';
 import './FlashcardPavilion.css';
 
@@ -137,25 +137,34 @@ const FlashcardPavilion = ({ onClose }) => {
                         <p>No course flashcard decks available yet.<br />Decks will appear here as textbook sections are processed.</p>
                     </div>
                 ) : (
-                    stats.course_decks.map((d) => (
-                        <div 
-                            key={d.course_code} 
-                            className={`fcp-deck-card ${openingDeckId === d.course_code ? 'is-opening' : ''}`} 
-                            onClick={() => handleStartCourse(d.course_code, d.title)}
-                        >
-                            <div className="fcp-cdc-icon">
-                                {openingDeckId === d.course_code ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-bolt"></i>}
+                    stats.course_decks.map((d) => {
+                        const deckCover = getCachedBookCover(d.course_code) || getCachedBookCover(d.title);
+                        return (
+                            <div 
+                                key={d.course_code} 
+                                className={`fcp-deck-card ${openingDeckId === d.course_code ? 'is-opening' : ''}`} 
+                                onClick={() => handleStartCourse(d.course_code, d.title)}
+                            >
+                                <div className="fcp-cdc-icon" style={deckCover && openingDeckId !== d.course_code ? { background: 'transparent', padding: 0 } : {}}>
+                                    {openingDeckId === d.course_code ? (
+                                        <i className="fas fa-circle-notch fa-spin"></i>
+                                    ) : deckCover ? (
+                                        <img src={deckCover} alt="" className="fcp-cdc-cover-img" />
+                                    ) : (
+                                        <i className="fas fa-bolt"></i>
+                                    )}
+                                </div>
+                                <div className="fcp-cdc-info">
+                                    <div className="fcp-cdc-code">{d.course_code}</div>
+                                    <div className="fcp-cdc-title">{d.title}</div>
+                                    <div className="fcp-cdc-desc">{d.total_cards} Total Cards</div>
+                                </div>
+                                <div className="fcp-badge-teal">
+                                    {d.due_cards || 0} Due
+                                </div>
                             </div>
-                            <div className="fcp-cdc-info">
-                                <div className="fcp-cdc-code">{d.course_code}</div>
-                                <div className="fcp-cdc-title">{d.title}</div>
-                                <div className="fcp-cdc-desc">{d.total_cards} Total Cards</div>
-                            </div>
-                            <div className="fcp-badge-teal">
-                                {d.due_cards || 0} Due
-                            </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </main>
 
