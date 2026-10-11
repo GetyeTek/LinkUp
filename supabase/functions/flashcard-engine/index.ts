@@ -214,14 +214,23 @@ ${JSON.stringify(rawBatch, null, 2)}`;
       log("BatchMistakes:CardsParsed", `Received ${cards.length} synthesized cards from LLM.`);
 
       if (Array.isArray(cards) && cards.length > 0) {
-        const rowsToInsert = cards.map(c => ({
-          user_id: userId,
-          source_question_id: c.source_question_id || null,
-          course_code: c.course_code || "General",
-          front: c.front,
-          back: c.back,
-          reference_info: c.reference_info || "Mistake Vault"
-        }));
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        
+        const rowsToInsert = cards.map(c => {
+          // Safeguard: If AI hallucinated a fake UUID, drop it to prevent DB rejection
+          const safeSourceId = c.source_question_id && uuidRegex.test(c.source_question_id) 
+            ? c.source_question_id 
+            : null;
+            
+          return {
+            user_id: userId,
+            source_question_id: safeSourceId,
+            course_code: c.course_code || "General",
+            front: c.front,
+            back: c.back,
+            reference_info: c.reference_info || "Mistake Vault"
+          };
+        });
 
         const { error: insertErr } = await supabase
           .from("user_mistake_flashcards")
