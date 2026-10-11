@@ -134,6 +134,9 @@
 }
 
 .pso-action-btn {
+    width: auto !important;
+    max-width: fit-content;
+    margin: 0 !important;
     padding: 6px 14px;
     border-radius: 8px;
     border: 1px solid var(--accent-teal);
@@ -146,6 +149,11 @@
     white-space: nowrap;
     transition: all 0.2s ease;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
 }
 
 .pso-action-btn:hover {
@@ -167,18 +175,24 @@
     border: 1px solid rgba(66, 215, 184, 0.25);
     white-space: nowrap;
     flex-shrink: 0;
-}</find>
+}
 
-.pso-action-btn.telegram-btn {
+.pso-action-btn.pso-tg-btn {
+    width: auto !important;
+    max-width: fit-content;
+    margin: 0 !important;
     background: rgba(41, 169, 234, 0.12);
     border-color: rgba(41, 169, 234, 0.35);
     color: #29A9EA;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
-.pso-action-btn.telegram-btn:hover {
+.pso-action-btn.pso-tg-btn:hover {
     background: #29A9EA;
     color: #0c0c0c;
 }
