@@ -36,6 +36,13 @@ const Auth = () => {
         // Handle Telegram Token
         const token = params.get('auth_token');
         if (token) {
+            // Guard: Never consume single-use token inside Telegram In-App WebView.
+            // If consumed inside the WebView, opening in Chrome/Safari will fail because the token is already deleted!
+            const isTelegramWebView = navigator.userAgent.includes('Telegram');
+            if (isTelegramWebView) {
+                return;
+            }
+
             setVerifyingToken(true);
             
             // Clean URL visually so they can safely bookmark/share it later
