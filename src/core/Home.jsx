@@ -59,6 +59,7 @@ const Home = () => {
         const date = new Date(isoString);
         
         let datePart = '';
+        let ethioDateStr = '';
         let westernTime = '';
         let westernHour = 0;
         let minutes = '00';
@@ -71,6 +72,21 @@ const Home = () => {
                 month: 'short', 
                 year: 'numeric' 
             });
+
+            // Native Ethiopian Calendar Resolution
+            try {
+                const ethioFmt = new Intl.DateTimeFormat('am-ET-u-ca-ethiopic', {
+                    timeZone: 'Africa/Addis_Ababa',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }).format(date);
+                // Strip redundant browser-injected era tags (ERA1, ዓ.ም.) to keep it clean, then re-append neatly
+                ethioDateStr = ethioFmt.replace(/(ERA1|ዓ\/?\.?ም\.?|AD|CE)/gi, '').trim() + ' ዓ.ም';
+            } catch (e) {
+                ethioDateStr = '';
+            }
+
             westernTime = date.toLocaleTimeString([], { 
                 timeZone: 'Africa/Addis_Ababa',
                 hour: 'numeric', 
@@ -100,7 +116,8 @@ const Home = () => {
         else if (westernHour >= 18 && westernHour < 23) habeshaPeriod = 'ማታ';
         else habeshaPeriod = 'ሌሊት';
 
-        return `${datePart} • ${habeshaPeriod} ${habeshaHour}:${minutes} (${westernTime})`;
+        const displayDate = ethioDateStr ? `${ethioDateStr} (${datePart})` : datePart;
+        return `${displayDate} • ${habeshaPeriod} ${habeshaHour}:${minutes} (${westernTime})`;
     };
 
     useEffect(() => {
