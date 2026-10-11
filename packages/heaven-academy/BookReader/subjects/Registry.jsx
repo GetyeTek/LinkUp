@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { resolveStyles, formatText, renderAIExtension, resolveAssetUrl } from './utils.jsx';
 
 const bulletCharMap = {
@@ -16,7 +17,8 @@ const DynamicImage = ({ src, alt, className, style, bookTitle, svgCode }) => {
     const [hasError, setHasError] = useState(false);
 
     if (svgCode) {
-        return <div className={className} dangerouslySetInnerHTML={{ __html: svgCode }} />;
+        const safeSvg = DOMPurify.sanitize(svgCode, { USE_PROFILES: { svg: true, svgFilters: true } });
+        return <div className={className} dangerouslySetInnerHTML={{ __html: safeSvg }} />;
     }
 
     if (!src || hasError) return null;
