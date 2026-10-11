@@ -1,7 +1,7 @@
 .fca-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 3500;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 12000 !important;
     background: var(--bg-dark, #09090b);
     display: flex;
     flex-direction: column;
@@ -11,7 +11,7 @@
 }
 
 @media (min-width: 900px) {
-    .fca-overlay { position: absolute; }
+    .fca-overlay { position: absolute !important; z-index: 12000 !important; }
 }
 
 .fca-topbar {
