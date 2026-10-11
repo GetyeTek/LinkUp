@@ -17,3 +17,21 @@ export const getAvatarFallback = (name) => {
     }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e1e1e&color=42d7b8`;
 };
+
+export const getCachedBookCover = (query) => {
+    if (!query) return null;
+    try {
+        const raw = localStorage.getItem('linkup_books_catalog');
+        if (!raw) return null;
+        const list = JSON.parse(raw);
+        const q = String(query).trim().toLowerCase();
+        const found = list.find(b => 
+            (b.id && b.id.toLowerCase() === q) || 
+            (b.course_code && b.course_code.toLowerCase() === q) ||
+            (b.title && b.title.toLowerCase() === q)
+        );
+        return found?.cover_url || null;
+    } catch (e) {
+        return null;
+    }
+};
