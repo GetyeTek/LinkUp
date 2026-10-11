@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-10-11T11:27:26.903Z
+-- Date: 2026-10-11T12:48:01.187Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -2573,28 +2573,6 @@ BEGIN
 END;
 
 
--- Function: create_private_invite_link
-
-DECLARE
-    v_role text;
-    new_token text;
-    current_meta jsonb;
-BEGIN
-    SELECT role INTO v_role FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = auth.uid();
-    IF v_role != 'owner' THEN
-        RAISE EXCEPTION 'Access Denied: Only the owner can generate an invite link.';
-    END IF;
-
-    new_token := substring(md5(random()::text), 1, 16);
-    
-    SELECT metadata INTO current_meta FROM public.conversations WHERE id = req_conv_id;
-    current_meta := jsonb_set(COALESCE(current_meta, '{}'::jsonb), '{private_invite_token}', to_jsonb(new_token));
-
-    UPDATE public.conversations SET metadata = current_meta WHERE id = req_conv_id;
-    RETURN new_token;
-END;
-
-
 -- Function: revoke_private_invite_link
 
 DECLARE
@@ -2643,6 +2621,29 @@ BEGIN
         'member_count', member_count,
         'is_member', user_is_member
     );
+END;
+
+
+-- Function: create_private_invite_link
+
+DECLARE
+    v_role text;
+    new_token text;
+    current_meta jsonb;
+BEGIN
+    SELECT role INTO v_role FROM public.conversation_members WHERE conversation_id = req_conv_id AND user_id = auth.uid();
+    IF v_role != 'owner' THEN
+        RAISE EXCEPTION 'Access Denied: Only the owner can generate an invite link.';
+    END IF;
+
+    -- Cryptographically secure generation replacing the old md5(random())
+    new_token := encode(gen_random_bytes(16), 'hex');
+    
+    SELECT metadata INTO current_meta FROM public.conversations WHERE id = req_conv_id;
+    current_meta := jsonb_set(COALESCE(current_meta, '{}'::jsonb), '{private_invite_token}', to_jsonb(new_token));
+
+    UPDATE public.conversations SET metadata = current_meta WHERE id = req_conv_id;
+    RETURN new_token;
 END;
 
 
