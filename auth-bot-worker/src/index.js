@@ -151,13 +151,18 @@ export default {
           if (msg.text && msg.text.startsWith('/start link_')) {
             const linkToken = msg.text.split('link_')[1];
 
-            // 1. Verify and consume the secure token
+            // 1. Atomically consume and fetch metadata in a single query (Zero TOCTOU window)
             const intentRes = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?token_hash=eq.${linkToken}&telegram_id=eq.0&expires_at=gt.${new Date().toISOString()}&select=metadata`, {
-                headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+                method: 'DELETE',
+                headers: { 
+                    'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 
+                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+                    'Prefer': 'return=representation'
+                }
             });
             const intentRows = await intentRes.json();
             
-            if (!intentRows || intentRows.length === 0) {
+            if (!intentRows || intentRows.length === 0 || !intentRows[0]?.metadata?.user_id) {
                 await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -171,12 +176,6 @@ export default {
             }
             
             const realUserId = intentRows[0].metadata.user_id;
-
-            // 2. Consume the token so it cannot be reused
-            await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?token_hash=eq.${linkToken}`, {
-                method: 'DELETE',
-                headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
-            });
             
             // Clean up any old pending tokens for this Telegram user
             await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?telegram_id=eq.${msg.from.id}`, {
