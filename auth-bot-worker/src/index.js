@@ -136,7 +136,7 @@ export default {
     }
 
     const secretHeader = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
-    if (env.TELEGRAM_WEBHOOK_SECRET && secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
+    if (!env.TELEGRAM_WEBHOOK_SECRET || secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
       return new Response("Unauthorized", { status: 403 });
     }
 
@@ -152,7 +152,7 @@ export default {
             const linkToken = msg.text.split('link_')[1];
 
             // 1. Verify and consume the secure token
-            const intentRes = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?token_hash=eq.${linkToken}&telegram_id=eq.0&select=metadata`, {
+            const intentRes = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?token_hash=eq.${linkToken}&telegram_id=eq.0&expires_at=gt.${new Date().toISOString()}&select=metadata`, {
                 headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
             });
             const intentRows = await intentRes.json();
