@@ -242,7 +242,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                                     href={`https://t.me/linkupregistrationbot?start=verify_${sessionUser?.id}`} 
                                     target="_blank" 
                                     rel="noopener noreferrer" 
-                                    className="pso-action-btn telegram-btn"
+                                    className="pso-action-btn pso-tg-btn"
                                 >
                                     Verify <i className="fas fa-arrow-up-right-from-square" style={{ fontSize: '0.72rem', marginLeft: '4px' }}></i>
                                 </a>
