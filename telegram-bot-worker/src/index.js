@@ -20,21 +20,22 @@ export default {
         console.log(`[ShadowScraper] Incoming from Chat ${msg.chat.id}: ${msg.text.substring(0, 50)}...`);
 
         const payload = {
-          message_id: msg.message_id,
-          chat_id: msg.chat.id,
-          chat_title: msg.chat.title || "Private",
+          telegram_id: msg.message_id,
+          channel_handle: msg.chat.username || msg.chat.title || "Private",
           sender_id: msg.from.id,
-          sender_name: msg.from.username || msg.from.first_name || "Unknown",
-          raw_text: msg.text,
-          msg_metadata: {
-            reply_to: msg.reply_to_message?.message_id || null,
-            date: msg.date,
-            is_edited: !!update.edited_message
+          sender_name: msg.from.first_name ? `${msg.from.first_name} ${msg.from.last_name || ''}`.trim() : "Unknown",
+          sender_username: msg.from.username || null,
+          full_text: msg.text,
+          telegram_timestamp: new Date(msg.date * 1000).toISOString(),
+          metadata: {
+            source: "realtime_webhook",
+            is_edited: !!update.edited_message,
+            reply_to: msg.reply_to_message?.message_id || null
           }
         };
 
         // Fire to Supabase REST API
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_logs`, {
+        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/campus_feed`, {
           method: "POST",
           headers: {
             "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
