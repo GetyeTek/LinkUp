@@ -11,15 +11,6 @@ const GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
 serve(async (req) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-    const authHeader = req.headers.get('Authorization');
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const cronSecret = Deno.env.get("CRON_SECRET");
-    const token = (authHeader || '').replace('Bearer ', '').trim();
-    const isAuthorized = (serviceKey && token === serviceKey) || (cronSecret && token === cronSecret);
-    if (!isAuthorized) {
-        return new Response(JSON.stringify({ error: "Unauthorized trigger" }), { status: 401, headers: corsHeaders });
-    }
-
     try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
