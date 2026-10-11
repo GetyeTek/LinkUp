@@ -156,6 +156,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 id: book.id,
                 title: book.title || 'Course Textbook',
                 course_code: book.course_code || '',
+                cover_url: book.cover_url || null,
                 page: currentDisplayPage || 1
             }));
         } catch (e) {}
@@ -519,6 +520,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                     book_id: book?.id,
                     book_title: book?.title || 'Textbook',
                     course_code: book?.course_code || '',
+                    cover_url: book?.cover_url || null,
                     page_number: currentDisplayPage || 1,
                     text: selectedText
                 }
