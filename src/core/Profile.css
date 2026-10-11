@@ -3,8 +3,131 @@
 .profile-banner { position: absolute; top: 0; left: 0; right: 0; height: 120px; background-image: url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=800&q=80'); background-size: cover; background-position: center; }
 .profile-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, var(--bg-dark) 0%, rgba(12, 12, 12, 0) 100%); }
 .hero-content { position: relative; z-index: 2; display: flex; align-items: flex-end; padding: 0 1.5rem; margin-bottom: 1.5rem; }
-.profile-avatar-wrapper { position: relative; width: 100px; height: 100px; margin-right: 1rem; flex-shrink: 0; }
-.profile-avatar-large { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-teal); box-shadow: 0 0 20px rgba(66, 215, 184, 0.4); }
+.profile-avatar-wrapper { 
+    position: relative; 
+    width: 104px; 
+    height: 104px; 
+    margin-right: 1rem; 
+    flex-shrink: 0; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.profile-avatar-large { 
+    position: absolute; 
+    inset: 7px; 
+    width: calc(100% - 14px); 
+    height: calc(100% - 14px); 
+    border-radius: 50%; 
+    object-fit: cover; 
+    border: 3px solid var(--bg-dark); 
+    z-index: 2;
+}
+
+/* SVG Profile Completion Ring */
+.profile-completion-ring-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    z-index: 1;
+    pointer-events: none;
+}
+.profile-ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 5;
+}
+.profile-ring-fill {
+    fill: none;
+    stroke: url(#profile-ring-grad);
+    stroke-width: 5;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    filter: drop-shadow(0 0 6px rgba(66, 215, 184, 0.5));
+}
+.profile-completion-badge {
+    position: absolute;
+    bottom: -4px;
+    background: #111216;
+    border: 1.5px solid var(--accent-teal);
+    color: var(--accent-teal);
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 99px;
+    z-index: 3;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    line-height: 1.3;
+}
+.profile-completion-badge.complete {
+    background: var(--accent-teal);
+    color: #0c0c0c;
+    border-color: var(--accent-teal);
+}
+
+.profile-hero-badges-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.profile-next-action-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(66, 215, 184, 0.12);
+    border: 1px solid rgba(66, 215, 184, 0.35);
+    color: #fff;
+    padding: 0.3rem 0.85rem;
+    border-radius: 99px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(66, 215, 184, 0.15);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.profile-next-action-pill:hover {
+    background: var(--accent-teal);
+    color: #0c0c0c;
+    border-color: var(--accent-teal);
+    transform: translateY(-1px);
+}
+.profile-next-action-pill:active {
+    transform: scale(0.97);
+}
+.profile-next-action-pill i {
+    color: var(--accent-teal);
+}
+.profile-next-action-pill:hover i {
+    color: #0c0c0c;
+}
+.profile-next-action-pill .pna-badge {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--accent-teal);
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-weight: 800;
+}
+.profile-next-action-pill:hover .pna-badge {
+    background: rgba(0, 0, 0, 0.2);
+    color: #0c0c0c;
+}
+
+.profile-next-action-pill.verified-complete {
+    background: rgba(66, 215, 184, 0.15);
+    border-color: var(--accent-teal);
+    color: var(--accent-teal);
+    cursor: default;
+    box-shadow: none;
+}
 .user-info { flex-grow: 1; }
 .profile-name { font-size: 1.5rem; font-weight: 700; }
 .profile-division-pill {
