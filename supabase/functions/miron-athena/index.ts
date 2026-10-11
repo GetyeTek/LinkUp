@@ -386,7 +386,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { history, prompt, context } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401, headers: corsHeaders });
+    }
+    const token = authHeader.replace('Bearer ', '');
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -394,6 +398,13 @@ serve(async (req) => {
     const PINECONE_HOST = Deno.env.get('PINECONE_INDEX_HOST');
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    }
+
+    const { history, prompt, context } = await req.json();
 
     // 1. API Key Round-Robin Engine
     async function getGeminiKey() {
