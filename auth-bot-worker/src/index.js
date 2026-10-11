@@ -148,16 +148,43 @@ export default {
         const msg = update.message;
         if (msg.chat.type === 'private') {
           
-          if (msg.text && msg.text.startsWith('/start verify_')) {
-            const googleUserId = msg.text.split('verify_')[1];
+          if (msg.text && msg.text.startsWith('/start link_')) {
+            const linkToken = msg.text.split('link_')[1];
+
+            // 1. Verify and consume the secure token
+            const intentRes = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?token_hash=eq.${linkToken}&telegram_id=eq.0&select=metadata`, {
+                headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+            });
+            const intentRows = await intentRes.json();
             
-            // Clean up any old pending tokens for this user
+            if (!intentRows || intentRows.length === 0) {
+                await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: msg.chat.id,
+                        text: `❌ *Invalid or Expired Link*\n\nThis verification link has expired or is invalid. Please return to the LinkUp web app and tap the verify button again.`,
+                        parse_mode: "Markdown"
+                    })
+                });
+                return new Response("OK");
+            }
+            
+            const realUserId = intentRows[0].metadata.user_id;
+
+            // 2. Consume the token so it cannot be reused
+            await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?token_hash=eq.${linkToken}`, {
+                method: 'DELETE',
+                headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
+            });
+            
+            // Clean up any old pending tokens for this Telegram user
             await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens?telegram_id=eq.${msg.from.id}`, {
                 method: 'DELETE',
                 headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
             });
 
-            // Register the pending merge intent
+            // Register the secure pending merge intent
             await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_login_tokens`, {
                 method: 'POST',
                 headers: {
@@ -169,7 +196,7 @@ export default {
                     token_hash: `verify_${msg.from.id}_${Date.now()}`,
                     telegram_id: msg.from.id,
                     expires_at: new Date(Date.now() + 15 * 60000).toISOString(),
-                    metadata: { pending_google_id: googleUserId }
+                    metadata: { pending_google_id: realUserId }
                 })
             });
 
