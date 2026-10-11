@@ -25,6 +25,7 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
     const [syncedAvatar, setSyncedAvatar] = useState(null);
 
     const [localTelegramVerified, setLocalTelegramVerified] = useState(false);
+    const [isLinking, setIsLinking] = useState(false);
 
     useEffect(() => {
         setLocalTelegramVerified(!!((userProfile?.registered_with_telegram || sessionUser?.user_metadata?.registered_with_telegram) && (userProfile?.phone || sessionUser?.user_metadata?.phone)));
@@ -375,14 +376,25 @@ const OnboardingGate = ({ userProfile, sessionUser, onComplete }) => {
                                           >
                                               Sign Out
                                           </button>
-                                          <a 
-                                              href={`https://t.me/linkupregistrationbot?start=verify_${userProfile?.id || sessionUser?.id}`}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(41, 169, 234, 0.1)', color: '#29A9EA', border: '1px solid rgba(41, 169, 234, 0.3)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flex: '2 1 auto' }}
+                                          <button 
+                                              onClick={async (e) => {
+                                                  e.preventDefault();
+                                                  setIsLinking(true);
+                                                  try {
+                                                      const { data, error } = await supabase.rpc('generate_telegram_link_token');
+                                                      if (error || !data) throw new Error("Could not generate secure link.");
+                                                      window.open(`https://t.me/linkupregistrationbot?start=link_${data}`, '_blank', 'noopener,noreferrer');
+                                                  } catch (err) {
+                                                      setClaimError(err.message);
+                                                  } finally {
+                                                      setIsLinking(false);
+                                                  }
+                                              }}
+                                              disabled={isLinking}
+                                              style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(41, 169, 234, 0.1)', color: '#29A9EA', border: '1px solid rgba(41, 169, 234, 0.3)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flex: '2 1 auto' }}
                                           >
-                                              <i className="fab fa-telegram"></i> Verify via Telegram
-                                          </a>
+                                              {isLinking ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fab fa-telegram"></i> Verify via Telegram</>}
+                                          </button>
                                       </div>
                                   </>
                               ) : (
