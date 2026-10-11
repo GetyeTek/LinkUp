@@ -25,6 +25,25 @@ const Home = () => {
         live: [],
         loading: true
     });
+    const [deadlines, setDeadlines] = useState([]);
+    const [selectedDeadline, setSelectedDeadline] = useState(null);
+
+    const formatDeadlineCountdown = (dateString) => {
+        if (!dateString) return { num: 0, unit: 'hours left', isUrgent: false };
+        const diffMs = new Date(dateString) - new Date();
+        const diffHours = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
+        const isUrgent = diffHours <= 24;
+
+        if (diffHours >= 48) {
+            const days = Math.ceil(diffHours / 24);
+            return { num: days, unit: days === 1 ? 'day left' : 'days left', isUrgent: false };
+        }
+        if (diffHours > 0) {
+            return { num: diffHours, unit: diffHours === 1 ? 'hour left' : 'hours left', isUrgent };
+        }
+        const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+        return { num: diffMins, unit: diffMins === 1 ? 'min left' : 'mins left', isUrgent: true };
+    };
 
     useEffect(() => {
         if (!userProfile?.id) return;
@@ -63,6 +82,17 @@ const Home = () => {
             supabase.removeChannel(channel);
         };
     }, [userProfile?.id]);
+
+    useEffect(() => {
+        if (!userProfile?.id) return;
+        supabase.rpc('get_student_upcoming_deadlines')
+            .then(({ data, error }) => {
+                if (!error && Array.isArray(data)) {
+                    setDeadlines(data);
+                }
+            })
+            .catch(() => {});
+    }, [userProfile?.id, userProfile?.class_id, userProfile?.registered_with_telegram]);
 
     useEffect(() => {
         // Dynamic Time-Slipped Gender-Aware Greeting Logic
@@ -238,74 +268,124 @@ const Home = () => {
                     </section>
 
                     <section className="priority-section">
-                        <h2 className="section-label">{t('coming_up', 'Coming Up')}</h2>
+                        <div className="section-label-row" style={{ padding: 0, marginBottom: '0.75rem' }}>
+                            <h2 className="section-label" style={{ margin: 0 }}>{t('coming_up', 'Coming Up')}</h2>
+                            {deadlines.length > 0 && (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--accent-teal)', fontFamily: 'Roboto Mono, monospace', fontWeight: 600 }}>
+                                    {deadlines.length} {deadlines.length === 1 ? 'Deadline Due' : 'Deadlines Due'}
+                                </span>
+                            )}
+                        </div>
                         <div className="priority-scroll-wrapper">
                             <div className="priority-track">
-                                <div className="promo-card video-tour" onClick={() => window.dispatchEvent(new CustomEvent('tour:play-video'))}>
-                                    <div className="promo-icon-wrap"><i className="fas fa-play"></i></div>
-                                    <div>
-                                        <h3 className="promo-title">{t('learn_linkup', 'Learn LinkUp')}</h3>
-                                        <div className="promo-desc">{t('learn_linkup_desc', "Watch a quick guided tour of the platform's features.")}</div>
-                                    </div>
-                                </div>
-                                <div
-                                    className="promo-card credits-mission"
-                                    onClick={() => {
-                                      window.dispatchEvent(
-                                        new CustomEvent('navigate-tab', {
-                                          detail: { tab: 'profile' }
-                                        })
-                                      );
-                                      setTimeout(
-                                        () =>
-                                          window.dispatchEvent(
-                                            new CustomEvent('open-mission-control')
-                                          ),
-                                        100
-                                      );
-                                    }}
-                                  >
-                                    <div className="promo-icon-wrap">
-                                      <i className="fas fa-coins"></i>
-                                    </div>
-                                    <div>
-                                      <h3 className="promo-title">{t('earn_credits', 'Earn Credits')}</h3>
-                                      <div className="promo-desc">
-                                        {t('earn_credits_desc', 'Complete daily missions to collect Credits and unlock perks.')}
-                                      </div>
-                                    </div>
-                                  </div>
+                                {deadlines.length > 0 ? (
+                                    deadlines.map(item => {
+                                        const countdown = formatDeadlineCountdown(item.event_date);
+                                        return (
+                                            <div 
+                                                key={item.id} 
+                                                className={`priority-card card-base ${countdown.isUrgent ? 'is-urgent' : ''}`}
+                                                onClick={() => setSelectedDeadline(item)}
+                                            >
+                                                <div className="card-header">
+                                                    <i className={`fas ${item.event_type === 'deadline' ? 'fa-hourglass-half' : 'fa-calendar-day'} icon`}></i>
+                                                    <span className="category">{item.channel_name || item.event_type?.toUpperCase()}</span>
+                                                </div>
+                                                <h3 className="title">{item.title}</h3>
+                                                <div className={`countdown ${countdown.isUrgent ? 'is-urgent-text' : ''}`}>
+                                                    {countdown.num}
+                                                    <span className="label">{countdown.unit}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <>
+                                        {!userProfile?.class_id && (
+                                            <div 
+                                                className="promo-card link-class" 
+                                                onClick={() => {
+                                                    window.dispatchEvent(new CustomEvent('navigate-tab', { 
+                                                        detail: { tab: 'connect', payload: { action: 'open_classes_tab' } } 
+                                                    }));
+                                                }}
+                                            >
+                                                <div className="promo-icon-wrap" style={{ background: 'rgba(66, 215, 184, 0.15)', color: 'var(--accent-teal)' }}>
+                                                    <i className="fas fa-users-rectangle"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 className="promo-title">{t('link_class_title', 'Link Your Class')}</h3>
+                                                    <div className="promo-desc">{t('link_class_desc', 'Connect your section to receive automated assignment deadlines and exam countdowns.')}</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="promo-card video-tour" onClick={() => window.dispatchEvent(new CustomEvent('tour:play-video'))}>
+                                            <div className="promo-icon-wrap"><i className="fas fa-play"></i></div>
+                                            <div>
+                                                <h3 className="promo-title">{t('learn_linkup', 'Learn LinkUp')}</h3>
+                                                <div className="promo-desc">{t('learn_linkup_desc', "Watch a quick guided tour of the platform's features.")}</div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            className="promo-card credits-mission"
+                                            onClick={() => {
+                                              window.dispatchEvent(
+                                                new CustomEvent('navigate-tab', {
+                                                  detail: { tab: 'profile' }
+                                                })
+                                              );
+                                              setTimeout(
+                                                () =>
+                                                  window.dispatchEvent(
+                                                    new CustomEvent('open-mission-control')
+                                                  ),
+                                                100
+                                              );
+                                            }}
+                                          >
+                                            <div className="promo-icon-wrap">
+                                              <i className="fas fa-coins"></i>
+                                            </div>
+                                            <div>
+                                              <h3 className="promo-title">{t('earn_credits', 'Earn Credits')}</h3>
+                                              <div className="promo-desc">
+                                                {t('earn_credits_desc', 'Complete daily missions to collect Credits and unlock perks.')}
+                                              </div>
+                                            </div>
+                                          </div>
 
-                                  <div
-                                    className="promo-card buy-premium"
-                                    onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
-                                  >
-                                    <span className="premium-badge">PRO</span>
-                                    <div className="promo-icon-wrap">
-                                      <i className="fas fa-crown"></i>
-                                    </div>
-                                    <div>
-                                      <h3 className="promo-title">{t('linkup_premium', 'LinkUp Premium')}</h3>
-                                      <div className="promo-desc">
-                                        {t('linkup_premium_desc', 'Unlock unlimited Miron AI, complete Exam Archives, & priority Audio Stages.')}
-                                      </div>
-                                    </div>
-                                  </div>
+                                          <div
+                                            className="promo-card buy-premium"
+                                            onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
+                                          >
+                                            <span className="premium-badge">PRO</span>
+                                            <div className="promo-icon-wrap">
+                                              <i className="fas fa-crown"></i>
+                                            </div>
+                                            <div>
+                                              <h3 className="promo-title">{t('linkup_premium', 'LinkUp Premium')}</h3>
+                                              <div className="promo-desc">
+                                                {t('linkup_premium_desc', 'Unlock unlimited Miron AI, complete Exam Archives, & priority Audio Stages.')}
+                                              </div>
+                                            </div>
+                                          </div>
 
-                                  <div
-                                    className="promo-card about-us"
-                                    onClick={() => window.dispatchEvent(new CustomEvent('open-support-modal'))}
-                                  >
-                                    <div className="promo-icon-wrap">
-                                      <i className="fas fa-shield-heart"></i>
-                                    </div>
-                                    <div>
-                                      <h3 className="promo-title">{t('about_us', 'Learn About Us')}</h3>
-                                      <div className="promo-desc">
-                                        {t('about_us_desc', 'Built by students, for students. Discover the team & mission behind LinkUp.')}
-                                      </div>
-                                    </div>
-                                  </div>
+                                          <div
+                                            className="promo-card about-us"
+                                            onClick={() => window.dispatchEvent(new CustomEvent('open-support-modal'))}
+                                          >
+                                            <div className="promo-icon-wrap">
+                                              <i className="fas fa-shield-heart"></i>
+                                            </div>
+                                            <div>
+                                              <h3 className="promo-title">{t('about_us', 'Learn About Us')}</h3>
+                                              <div className="promo-desc">
+                                                {t('about_us_desc', 'Built by students, for students. Discover the team & mission behind LinkUp.')}
+                                              </div>
+                                            </div>
+                                          </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </section>
@@ -367,6 +447,36 @@ const Home = () => {
 
 
 
+            {selectedDeadline && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }} onClick={() => setSelectedDeadline(null)}>
+                    <div style={{ background: 'var(--surface-dark)', border: '1px solid var(--border-color)', borderRadius: '24px', width: '100%', maxWidth: '400px', padding: '1.75rem', boxShadow: '0 25px 60px rgba(0,0,0,0.6)', animation: 'popModal 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                            <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, color: 'var(--accent-teal)', background: 'rgba(66, 215, 184, 0.12)', padding: '3px 8px', borderRadius: '6px' }}>
+                                {selectedDeadline.channel_name || selectedDeadline.event_type}
+                            </span>
+                            <button className="icon-button" style={{ width: '30px', height: '30px', color: '#888' }} onClick={() => setSelectedDeadline(null)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', margin: '0 0 10px 0', lineHeight: 1.3 }}>{selectedDeadline.title}</h3>
+                        <p style={{ fontSize: '0.88rem', color: '#ccc', lineHeight: 1.6, margin: '0 0 1.5rem 0', whiteSpace: 'pre-wrap' }}>
+                            {selectedDeadline.description || 'No additional details provided.'}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '1.5rem' }}>
+                            <i className="far fa-clock" style={{ color: 'var(--accent-teal)' }}></i>
+                            <span style={{ fontSize: '0.82rem', color: '#aaa', fontFamily: 'Roboto Mono, monospace' }}>
+                                {new Date(selectedDeadline.event_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                            </span>
+                        </div>
+                        <button 
+                            style={{ width: '100%', background: 'var(--accent-teal)', color: '#0c0c0c', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: 700, fontSize: '0.92rem', cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}
+                            onClick={() => setSelectedDeadline(null)}
+                        >
+                            Got It
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
