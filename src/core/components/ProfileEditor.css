@@ -97,6 +97,20 @@
 .pe-btn.save { width: 100%; background: var(--accent-teal); color: #000; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1rem; margin-top: 1rem; box-shadow: 0 4px 15px rgba(66, 215, 184, 0.2); }
 .pe-btn.save:disabled { background: rgba(255,255,255,0.1); color: #666; cursor: not-allowed; box-shadow: none; }
 
+/* Visual Spotlight Animation for Missing Profile Fields */
+@keyframes peTargetPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 rgba(66, 215, 184, 0); }
+    20% { transform: scale(1.02); box-shadow: 0 0 25px rgba(66, 215, 184, 0.6); }
+    40% { transform: scale(1); box-shadow: 0 0 15px rgba(66, 215, 184, 0.4); }
+    60% { transform: scale(1.015); box-shadow: 0 0 25px rgba(66, 215, 184, 0.6); }
+    100% { transform: scale(1); box-shadow: 0 0 0 rgba(66, 215, 184, 0); }
+}
+
+.pe-target-spotlight {
+    animation: peTargetPulse 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    border-radius: 16px;
+}
+
 @media (min-width: 900px) {
     .profile-edit-overlay {
         background: rgba(0, 0, 0, 0.78) !important;
