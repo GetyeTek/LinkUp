@@ -107,8 +107,17 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
 
     const handleTgMissionClick = async () => {
         if (tgMissionState === 'unverified') {
-            // Send them to the bot
-            window.open(`https://t.me/linkupregistrationbot?start=verify_${sessionUser.id}`, '_blank', 'noopener,noreferrer');
+            // Secure Handshake (Prevents ATO)
+            setIsClaiming(true);
+            try {
+                const { data, error } = await supabase.rpc('generate_telegram_link_token');
+                if (error || !data) throw new Error("Could not generate secure link.");
+                window.open(`https://t.me/linkupregistrationbot?start=link_${data}`, '_blank', 'noopener,noreferrer');
+            } catch (err) {
+                alert(err.message || "Failed to initiate verification.");
+            } finally {
+                setIsClaiming(false);
+            }
         } else if (tgMissionState === 'unclaimed') {
             // Claim the reward securely!
             setIsClaiming(true);
