@@ -76,7 +76,18 @@ export default {
           return new Response(JSON.stringify({ error: "Unauthorized Origin" }), { status: 403 });
         }
 
-        const token = url.searchParams.get("token");
+        let token = url.searchParams.get("token");
+        const protocols = request.headers.get("Sec-WebSocket-Protocol");
+        
+        // Intercept token from WebSocket subprotocol array if not in URL
+        if (!token && protocols && protocols.includes("access_token")) {
+            const parts = protocols.split(',').map(p => p.trim());
+            const idx = parts.indexOf("access_token");
+            if (idx !== -1 && parts.length > idx + 1) {
+                token = parts[idx + 1];
+            }
+        }
+
         if (!token) {
           console.error(`[Gateway] ⛔ Blocked WebSocket upgrade missing auth token`);
           return new Response(JSON.stringify({ error: "Missing Authentication Token" }), { status: 401 });
