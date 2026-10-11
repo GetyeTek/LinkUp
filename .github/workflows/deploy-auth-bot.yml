@@ -29,7 +29,9 @@ jobs:
           wranglerVersion: '3.107.0'
           secrets: |
             TELEGRAM_BOT_TOKEN
+            TELEGRAM_WEBHOOK_SECRET
             SUPABASE_SERVICE_ROLE_KEY
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
