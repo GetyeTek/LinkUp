@@ -6,7 +6,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
     const { sessionUser, user: userProfile } = usePlatform();
     
     // Check Telegram Identity Status
-    const isTelegramLinked = !!(userProfile?.registered_with_telegram || userProfile?.telegram_id);
+    const isTelegramLinked = !!(userProfile?.registered_with_telegram && userProfile?.telegram_id);
     const telegramHandle = userProfile?.telegram_username ? `@${userProfile.telegram_username}` : null;
     const linkedPhone = userProfile?.phone || null;
     
@@ -229,7 +229,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose }) => {
                                     <span className="pso-inline-meta">
                                         {isTelegramLinked 
                                             ? `${telegramHandle || 'Scholar'}${linkedPhone ? ` (${linkedPhone})` : ''}` 
-                                            : 'Not Linked'}
+                                            : (linkedPhone ? `Unverified (${linkedPhone})` : 'Not Linked')}
                                     </span>
                                 </div>
                             </div>
