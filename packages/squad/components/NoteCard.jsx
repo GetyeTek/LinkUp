@@ -1,4 +1,5 @@
 import React from 'react';
+import { getCachedBookCover } from '@linkup-platform/sdk-core';
 import './NoteCard.css';
 
 const NoteCard = ({ m, activeMenu, setActiveMenu, handleDownload, formatTime }) => {
@@ -38,15 +39,22 @@ const NoteCard = ({ m, activeMenu, setActiveMenu, handleDownload, formatTime }) 
     
             {m.attachments?.map((att, i) => (
                 <div key={i} className="note-attachment" style={{ width: '100%' }}>
-                    {att.type === 'book_quote' ? (
-                        <div className="chat-book-quote-card" style={{ marginTop: '6px' }}>
-                            <div className="cbq-topbar">
-                                <div className="cbq-book-info">
-                                    <span className="cbq-type-badge"><i className="fas fa-bookmark"></i> TEXTBOOK EXCERPT</span>
-                                    <span className="cbq-title">{att.book_title || att.course_code || 'Textbook'}</span>
+                    {att.type === 'book_quote' ? (() => {
+                        const quoteCover = att.cover_url || getCachedBookCover(att.book_id) || getCachedBookCover(att.course_code);
+                        return (
+                            <div className="chat-book-quote-card" style={{ marginTop: '6px' }}>
+                                <div className="cbq-topbar">
+                                    <div className="cbq-book-info">
+                                        {quoteCover && (
+                                            <img src={quoteCover} alt="" className="cbq-mini-cover" />
+                                        )}
+                                        <span className="cbq-type-badge"><i className="fas fa-bookmark"></i> TEXTBOOK EXCERPT</span>
+                                        <span className="cbq-title">{att.book_title || att.course_code || 'Textbook'}</span>
+                                    </div>
+                                    <span className="cbq-page-pill">Page {att.page_number}</span>
                                 </div>
-                                <span className="cbq-page-pill">Page {att.page_number}</span>
-                            </div>
+                        );
+                    })()
                             <div className="cbq-body">
                                 <p className="cbq-text">{att.text}</p>
                             </div>
