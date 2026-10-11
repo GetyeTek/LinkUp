@@ -1,5 +1,5 @@
 import React from 'react';
-import { getAvatarFallback, GoldBadge, getCachedBookCover } from '@linkup-platform/sdk-core';
+import { getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
 import ChatMediaGallery from './ChatMediaGallery.jsx';
 import InteractivePoll from './InteractivePoll.jsx';
 
@@ -110,7 +110,6 @@ const ChatBubble = ({
         }
 
         if (bookQuoteAttachment) {
-            const quoteCover = bookQuoteAttachment.cover_url || getCachedBookCover(bookQuoteAttachment.book_id) || getCachedBookCover(bookQuoteAttachment.course_code);
             return (
                 <div className={baseClass} style={{ padding: 0, overflow: 'hidden', background: 'transparent', border: 'none', boxShadow: 'none', width: '100%' }}>
                     {renderForward()}
@@ -118,9 +117,6 @@ const ChatBubble = ({
                     <div className="chat-book-quote-card">
                         <div className="cbq-topbar">
                             <div className="cbq-book-info">
-                                {quoteCover && (
-                                    <img src={quoteCover} alt="" className="cbq-mini-cover" />
-                                )}
                                 <span className="cbq-type-badge"><i className="fas fa-bookmark"></i> TEXTBOOK EXCERPT</span>
                                 <span className="cbq-title">{bookQuoteAttachment.book_title || bookQuoteAttachment.course_code || 'Textbook'}</span>
                             </div>
