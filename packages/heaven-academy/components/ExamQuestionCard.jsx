@@ -268,7 +268,7 @@ const ExamQuestionCard = ({
                     {isExplanationOpen && (
                         <div className="ai-explanation-box" style={{ marginTop: '10px', animation: 'expandPad 0.3s ease-out' }}>
                             <div className="ai-exp-header"><i className="fas fa-sparkles"></i> Miron Synthesis</div>
-                            <div className="ai-exp-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(q.explanation)) }} />
+                            <div className="ai-exp-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(q.explanation), { ADD_ATTR: ['style', 'class', 'aria-hidden'] }) }} />
                         </div>
                     )}
                 </div>
