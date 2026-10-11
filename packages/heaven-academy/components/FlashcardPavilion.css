@@ -152,6 +152,16 @@
     justify-content: center;
     font-size: 1.2rem;
     flex-shrink: 0;
+    overflow: hidden;
+}
+
+.fcp-cdc-cover-img {
+    width: 32px;
+    height: 42px;
+    border-radius: 5px;
+    object-fit: cover;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), 0 0 8px rgba(66, 215, 184, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .fcp-cdc-info { flex: 1; min-width: 0; }
