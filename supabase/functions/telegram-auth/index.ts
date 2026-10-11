@@ -35,6 +35,13 @@ serve(async (req) => {
 
     const tgId = tokenData.telegram_id;
     const meta = tokenData.metadata || {};
+
+    // Security Guard: Reject web-link intent tokens from authenticating directly
+    if (!tgId || tgId <= 0 || meta.type === 'link_intent') {
+        console.error("Invalid token intent rejected for login:", tokenData);
+        throw new Error("Invalid token type. This link cannot be used for authentication.");
+    }
+
     let targetEmail = "";
 
     // 2. Resolve User Identity
