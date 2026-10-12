@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { getAvatarFallback, usePlatform } from '@linkup-platform/sdk-core';
+import MironVanillaTest from './MironVanillaTest.jsx';
 
 const MessagesFeed = ({
     activeView,
@@ -18,6 +19,8 @@ const MessagesFeed = ({
     isNotesOpen
 }) => {
     const { t } = usePlatform();
+    const [showVanillaTest, setShowVanillaTest] = useState(false);
+
     return (
         <div id="messages-view" className={`hub-view ${activeView === 'messages' ? 'active' : ''}`} onScroll={handleScroll} style={{ overflowY: 'auto', height: '100%' }}>
             <div className="messages-list">
@@ -37,6 +40,18 @@ const MessagesFeed = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Developer UI Toggle for Streaming Diagnostics */}
+                <div style={{ padding: '0 0.5rem', textAlign: 'center', marginBottom: '4px' }}>
+                    <button onClick={() => setShowVanillaTest(!showVanillaTest)} style={{ background: showVanillaTest ? 'rgba(255, 95, 95, 0.1)' : 'rgba(66, 215, 184, 0.1)', color: showVanillaTest ? '#ff5f5f' : 'var(--accent-teal)', border: `1px solid ${showVanillaTest ? 'rgba(255, 95, 95, 0.3)' : 'rgba(66, 215, 184, 0.3)'}`, padding: '8px 16px', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, width: '100%', transition: 'all 0.2s' }}>
+                        <i className={`fas ${showVanillaTest ? 'fa-times' : 'fa-flask'}`}></i> {showVanillaTest ? 'Close Diagnostics' : 'Run Vanilla Stream Test'}
+                    </button>
+                </div>
+                {showVanillaTest && (
+                    <div style={{ marginBottom: '12px' }}>
+                        <MironVanillaTest />
+                    </div>
+                )}
 
                 {/* My Notes Entry */}
                 <div 
