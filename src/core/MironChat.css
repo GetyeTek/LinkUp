@@ -119,8 +119,16 @@
 }
 
 .chat-node.miron .athena-bubble-actions {
-    padding: 0 1.2rem;
+    padding: 0 1rem;
     justify-content: flex-start;
+}
+
+@media (min-width: 900px) {
+    .chat-node.miron .athena-bubble-actions {
+        padding: 0;
+        max-width: 860px;
+        margin: 0 auto;
+    }
 }
 
 .chat-node.user .athena-bubble-actions {
@@ -390,13 +398,11 @@
 }
 
 .chat-node.miron .athena-bubble {
-    background: var(--surface-dark);
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    border-left: none;
-    border-right: none;
-    border-radius: 0; /* Square edges for the console feel */
-    padding: 1.5rem 1.2rem;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0.5rem 1rem;
     color: var(--text-primary-dark);
     width: 100%;
 }
@@ -529,15 +535,15 @@
     }
 
     .chat-node.miron .athena-bubble {
-        border-radius: 20px !important;
-        border: 1px solid var(--border-color) !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
         max-width: 860px;
         margin: 0 auto;
-        padding: 1.75rem 2rem !important;
-        background: rgba(22, 22, 26, 0.75) !important;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        padding: 1rem 0 !important;
     }
 
     .chat-node.user {
@@ -587,14 +593,20 @@
     gap: 8px;
     font-size: 0.82rem;
     color: var(--accent-teal, #42d7b8);
-    font-style: italic;
-    padding: 6px 14px;
+    font-style: normal;
+    font-weight: 500;
+    padding: 5px 14px;
     background: rgba(66, 215, 184, 0.08);
     border-radius: 99px;
     border: 1px solid rgba(66, 215, 184, 0.25);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     width: fit-content;
     animation: statusPulse 1.8s infinite ease-in-out;
+}
+
+.miron-streaming-status i {
+    font-size: 0.75rem;
+    color: var(--accent-teal, #42d7b8);
 }
 
 @keyframes statusPulse {
