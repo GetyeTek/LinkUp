@@ -54,7 +54,7 @@ Students do not know the technical names of your tools, so you proactively lever
 
 1. "search_textbook_material" & "read_book_section":
    - Use these to pull exact definitions, theorems, formulas, and syllabus explanations.
-   - When calling "read_book_section", you receive the entire section and sub-sections in one shot. Never step down sequentially.
+   - When calling "read_book_section", you receive the entire section and sub-sections in one shot. You do NOT need to call "get_book_toc" first; the engine automatically fuzzy-matches any section or chapter title directly.
    - Tool budget: Keep textbook gathering to a single round of calls so the student gets quick, responsive answers.
 
 2. "render_flashcards" (Spaced Repetition SRS):
@@ -886,202 +886,193 @@ serve(async (req) => {
       return toolResult;
     }
 
-    // 4. Execution Engine: Gemini Primary with Groq Fallback
-    try {
-      console.log(`[MIRON] Initiating query with primary model: Gemini (${GEMINI_MODEL})`);
+    // 4. Execution Engine: Full-Duplex SSE Stream
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        const sendEvent = (type: string, data: any = {}) => {
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, ...data })}\n\n`));
+          } catch (e) {
+            console.warn("[Miron SSE] Controller write error:", e);
+          }
+        };
 
-      let geminiMessages: any[] = [];
-      if (context) {
-        geminiMessages.push({ role: "user", parts: [{ text: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.` }]});
-        geminiMessages.push({ role: "model", parts: [{ text: "Acknowledged. I have the context mapped." }]});
-      }
-
-      // Sliding window: keep last 6 messages (3 turns) to keep context fresh without unbounded bloat
-      const trimmedHistory = history.slice(-6);
-      trimmedHistory.forEach((msg: any) => {
-        geminiMessages.push({
-          role: msg.side === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.text }]
-        });
-      });
-
-      geminiMessages.push({ role: "user", parts: [{ text: prompt }] });
-
-      let geminiLoop = 0;
-      let isGeminiToolCall = true;
-
-      while (isGeminiToolCall && geminiLoop < 4) {
-        console.log(`🔄 [GEMINI LOOP ${geminiLoop} START] Invoking Gemini at +${elapsed()}`);
-        const geminiResponse = await callGemini(geminiMessages, [toolsDefinition], MIRON_SYSTEM_PROMPT);
-        const candidate = geminiResponse.candidates?.[0];
-        const functionCallParts = candidate?.content?.parts?.filter((p: any) => p.functionCall) || [];
-
-        if (functionCallParts.length > 0) {
-          const toolNames = functionCallParts.map((p: any) => p.functionCall.name).join(', ');
-          console.log(`🛠️ [GEMINI LOOP ${geminiLoop} TOOLS] Model requested ${functionCallParts.length} tool(s): [${toolNames}] at +${elapsed()}`);
-          
-          const toolExecutionPromises = functionCallParts.map(async (part: any) => {
-            const { name, args } = part.functionCall;
-            const toolResult = await executeTool(name, args);
-            return { name, content: toolResult };
-          });
-
-          const toolResponses = await Promise.all(toolExecutionPromises);
-
-          geminiMessages.push(candidate.content);
-          geminiMessages.push({
-            role: "user",
-            parts: toolResponses.map(res => ({
-              functionResponse: {
-                name: res.name,
-                response: { name: res.name, content: res.content }
-              }
-            }))
-          });
-
-          geminiLoop++;
-        } else {
-          isGeminiToolCall = false;
-          finalText = candidate?.content?.parts?.[0]?.text || "My cognitive link was interrupted. Please try again.";
-        }
-      }
-
-      if (isGeminiToolCall && !finalText) {
-        console.log(`[MIRON GEMINI SAFETY NET] Compelling forced synthesis...`);
-        geminiMessages.push({
-          role: "user",
-          parts: [{ text: "Tool budget completed. Synthesize and write your complete, final explanation to the student now using all the textbook context gathered above." }]
-        });
         try {
-          const forcedResponse = await callGemini(geminiMessages, [], MIRON_SYSTEM_PROMPT);
-          finalText = forcedResponse.candidates?.[0]?.content?.parts?.[0]?.text || "Here is the summary based on the textbook material analyzed above.";
-        } catch (e: any) {
-          finalText = "Here is the explanation based on the textbook material reviewed above.";
-        }
-      }
+          console.log(`[MIRON STREAM] Initiating turn with primary model: Gemini (${GEMINI_MODEL})`);
 
-    } catch (geminiErr: any) {
-      console.warn(`[MIRON GEMINI FAILED] ${geminiErr.message}. Initiating seamless fallback to Groq (${GROQ_MODEL})...`);
-      
-      // Clean reset of widget collectors
-      inlineSnapshots = [];
-      inlineQuizzes = [];
-      inlineFlashcards = [];
-      uiCommand = null;
-      extractedThoughts = [];
-
-      const groqMessages: any[] = [
-        { role: "system", content: MIRON_SYSTEM_PROMPT }
-      ];
-
-      if (context) {
-        groqMessages.push({
-          role: "system",
-          content: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.`
-        });
-      }
-
-      const trimmedHistory = history.slice(-6);
-      trimmedHistory.forEach((msg: any) => {
-        groqMessages.push({
-          role: msg.side === 'user' ? 'user' : 'assistant',
-          content: msg.text
-        });
-      });
-
-      groqMessages.push({ role: "user", content: prompt });
-
-      let groqLoop = 0;
-      let isGroqToolCall = true;
-
-      while (isGroqToolCall && groqLoop < 4) {
-        console.log(`🔄 [GROQ FALLBACK LOOP ${groqLoop} START] Invoking Groq at +${elapsed()}`);
-        const groqRes = await callGroq(groqMessages, groqTools);
-        const choice = groqRes.choices?.[0];
-        const message = choice?.message;
-
-        if (message?.tool_calls && message.tool_calls.length > 0) {
-          const toolNames = message.tool_calls.map((t: any) => t.function.name).join(', ');
-          console.log(`🛠️ [GROQ FALLBACK LOOP ${groqLoop} TOOLS] Model requested ${message.tool_calls.length} tool(s): [${toolNames}] at +${elapsed()}`);
-          groqMessages.push(message);
-
-          const toolExecutionPromises = message.tool_calls.map(async (tc: any) => {
-            const name = tc.function.name;
-            let args = {};
-            try {
-              args = typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : (tc.function.arguments || {});
-            } catch (e: any) {
-              console.error(`Failed to parse tool arguments for ${name}:`, tc.function.arguments);
-            }
-
-            const toolResult = await executeTool(name, args);
-            return {
-              tool_call_id: tc.id,
-              name,
-              result: toolResult
-            };
-          });
-
-          const toolResponses = await Promise.all(toolExecutionPromises);
-
-          for (const tr of toolResponses) {
-            groqMessages.push({
-              role: "tool",
-              tool_call_id: tr.tool_call_id,
-              content: JSON.stringify(tr.result)
-            });
+          let geminiMessages: any[] = [];
+          if (context) {
+            geminiMessages.push({ role: "user", parts: [{ text: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.` }]});
+            geminiMessages.push({ role: "model", parts: [{ text: "Acknowledged. I have the context mapped." }]});
           }
 
-          groqLoop++;
-        } else {
-          isGroqToolCall = false;
-          finalText = message?.content || "";
+          const trimmedHistory = history.slice(-6);
+          trimmedHistory.forEach((msg: any) => {
+            geminiMessages.push({
+              role: msg.side === 'user' ? 'user' : 'model',
+              parts: [{ text: msg.text }]
+            });
+          });
+
+          geminiMessages.push({ role: "user", parts: [{ text: prompt }] });
+
+          let geminiLoop = 0;
+          let isGeminiToolCall = true;
+          let preliminaryText = "";
+
+          while (isGeminiToolCall && geminiLoop < 3) {
+            console.log(`🔄 [GEMINI LOOP ${geminiLoop} START] Invoking Gemini at +${elapsed()}`);
+            const geminiResponse = await callGemini(geminiMessages, [toolsDefinition], MIRON_SYSTEM_PROMPT);
+            const candidate = geminiResponse.candidates?.[0];
+            const functionCallParts = candidate?.content?.parts?.filter((p: any) => p.functionCall) || [];
+
+            if (functionCallParts.length > 0) {
+              const toolNames = functionCallParts.map((p: any) => p.functionCall.name).join(', ');
+              console.log(`🛠️ [GEMINI LOOP ${geminiLoop} TOOLS] Model requested ${functionCallParts.length} tool(s): [${toolNames}] at +${elapsed()}`);
+
+              // Emit visual status indicator for user
+              for (const part of functionCallParts) {
+                const { name, args } = part.functionCall;
+                if (name === 'read_book_section') {
+                  sendEvent('status', { message: `Reading ${args.section_title || 'textbook section'}...` });
+                } else if (name === 'search_textbook_material') {
+                  sendEvent('status', { message: `Searching textbook for "${args.optimized_query}"...` });
+                } else if (name === 'render_flashcards') {
+                  sendEvent('status', { message: `Preparing interactive study cards for ${args.topic || 'topic'}...` });
+                } else if (name === 'render_quiz') {
+                  sendEvent('status', { message: `Preparing knowledge check...` });
+                } else {
+                  sendEvent('status', { message: `Consulting course materials...` });
+                }
+              }
+
+              const toolExecutionPromises = functionCallParts.map(async (part: any) => {
+                const { name, args } = part.functionCall;
+                const toolResult = await executeTool(name, args);
+                return { name, content: toolResult };
+              });
+
+              const toolResponses = await Promise.all(toolExecutionPromises);
+
+              geminiMessages.push(candidate.content);
+              geminiMessages.push({
+                role: "user",
+                parts: toolResponses.map(res => ({
+                  functionResponse: {
+                    name: res.name,
+                    response: { name: res.name, content: res.content }
+                  }
+                }))
+              });
+
+              geminiLoop++;
+            } else {
+              isGeminiToolCall = false;
+              preliminaryText = candidate?.content?.parts?.[0]?.text || "";
+            }
+          }
+
+          // If tools were called, stream final synthesis. If Turn 0 had no tools, stream the preliminary text.
+          if (geminiLoop > 0) {
+            sendEvent('status', { message: 'Synthesizing response...' });
+            const keyRecord = await getApiKey('gemini');
+            const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${keyRecord.api_key}`;
+
+            const streamRes = await fetch(streamUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: geminiMessages,
+                systemInstruction: { parts: [{ text: MIRON_SYSTEM_PROMPT }] }
+              })
+            });
+
+            if (streamRes.ok && streamRes.body) {
+              const reader = streamRes.body.getReader();
+              const decoder = new TextDecoder();
+              let sseBuffer = '';
+
+              while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                sseBuffer += decoder.decode(value, { stream: true });
+                const lines = sseBuffer.split('\n');
+                sseBuffer = lines.pop() || '';
+
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed.startsWith('data:')) continue;
+                  const jsonStr = trimmed.slice(5).trim();
+                  if (!jsonStr) continue;
+                  try {
+                    const parsed = JSON.parse(jsonStr);
+                    const chunkText = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    if (chunkText) {
+                      finalText += chunkText;
+                      sendEvent('chunk', { delta: chunkText });
+                    }
+                  } catch (_) {}
+                }
+              }
+            } else {
+              // Direct fallback if stream initiation failed
+              const forced = await callGemini(geminiMessages, [], MIRON_SYSTEM_PROMPT);
+              finalText = forced.candidates?.[0]?.content?.parts?.[0]?.text || "Material synthesized.";
+              sendEvent('chunk', { delta: finalText });
+            }
+          } else {
+            // No tools were needed (e.g. conversational greeting) - stream directly
+            finalText = preliminaryText || "Hello! What course or topic are we exploring today?";
+            sendEvent('chunk', { delta: finalText });
+          }
+
+        } catch (geminiErr: any) {
+          console.warn(`[MIRON GEMINI STREAM FAILED] ${geminiErr.message}. Executing Groq fallback...`, geminiErr);
+          try {
+            sendEvent('status', { message: 'Switching cognitive engine...' });
+            const groqMessages: any[] = [
+              { role: "system", content: MIRON_SYSTEM_PROMPT }
+            ];
+            const trimmed = history.slice(-6);
+            trimmed.forEach((m: any) => groqMessages.push({ role: m.side === 'user' ? 'user' : 'assistant', content: m.text }));
+            groqMessages.push({ role: "user", content: prompt });
+
+            const groqRes = await callGroq(groqMessages, []);
+            finalText = groqRes.choices?.[0]?.message?.content || "Here is the response.";
+            sendEvent('chunk', { delta: finalText });
+          } catch (err: any) {
+            sendEvent('error', { message: err.message });
+          }
+        } finally {
+          // Clean orphan tags from completed text
+          if (inlineQuizzes.length === 0) finalText = finalText.replace(/\[QUIZ_\d+\]/g, '').trim();
+          if (inlineSnapshots.length === 0) finalText = finalText.replace(/\[SNAPSHOT_\d+\]/g, '').trim();
+          if (inlineFlashcards.length === 0) finalText = finalText.replace(/\[FLASHCARD_\d+\]/g, '').trim();
+
+          console.log(`🏁 [MIRON COMPLETED] Total request runtime: ${elapsed()} | Final text: ${finalText.length} chars | Flashcards: ${inlineFlashcards.length}`);
+
+          sendEvent('done', {
+            snapshots: inlineSnapshots,
+            quizzes: inlineQuizzes,
+            flashcards: inlineFlashcards,
+            ui_command: uiCommand,
+            thoughts: extractedThoughts
+          });
+
+          controller.close();
         }
       }
+    });
 
-      if (isGroqToolCall && !finalText) {
-        console.log(`[MIRON GROQ SAFETY NET] Compelling forced synthesis...`);
-        groqMessages.push({
-          role: "user",
-          content: "Tool budget completed. Synthesize and write your complete, final explanation to the student now using all the textbook context gathered above."
-        });
-        const forcedRes = await callGroq(groqMessages, []);
-        finalText = forcedRes.choices?.[0]?.message?.content || "Here is the summary based on the textbook material analyzed above.";
+    return new Response(stream, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive"
       }
-    }
-
-    // Extract thoughts and clean tags
-    if (finalText) {
-      const thinkMatches = finalText.match(/<think>([\s\S]*?)<\/think>/gi);
-      if (thinkMatches) {
-        thinkMatches.forEach((m: string) => {
-          const clean = m.replace(/<\/?think>/gi, '').trim();
-          if (clean) extractedThoughts.push(clean);
-        });
-        finalText = finalText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-      }
-    }
-
-    if (inlineQuizzes.length === 0) {
-      finalText = finalText.replace(/\[QUIZ_\d+\]/g, '').trim();
-    }
-    if (inlineSnapshots.length === 0) {
-      finalText = finalText.replace(/\[SNAPSHOT_\d+\]/g, '').trim();
-    }
-    if (inlineFlashcards.length === 0) {
-      finalText = finalText.replace(/\[FLASHCARD_\d+\]/g, '').trim();
-    }
-
-    console.log(`🏁 [MIRON COMPLETED] Total request runtime: ${elapsed()} | Final text: ${finalText.length} chars | Thoughts: ${extractedThoughts.length} | Snapshots: ${inlineSnapshots.length} | Quizzes: ${inlineQuizzes.length} | Flashcards: ${inlineFlashcards.length}`);
-
-    return new Response(JSON.stringify({ 
-      response: finalText,
-      thoughts: extractedThoughts,
-      ui_command: uiCommand,
-      snapshots: inlineSnapshots,
-      quizzes: inlineQuizzes,
-      flashcards: inlineFlashcards
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    });
 
   } catch (error) {
     console.error(`[MIRON FATAL] ${error.message}`);
