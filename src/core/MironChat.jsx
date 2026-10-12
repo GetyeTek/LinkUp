@@ -57,6 +57,107 @@ import InlineChatCard from './components/InlineChatCard.jsx';
 import MironThreadSidebar from './components/MironThreadSidebar.jsx';
 import './MironChat.css';
 
+const MironMessageNode = React.memo(({ m, copiedId, handleCopyMessage, handleInlineCardRate, sendMessage, setActiveBoardPayload }) => {
+    let flashcardDeckRendered = false;
+    const parts = (m.text || '').split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\]|\[FLASHCARD_\d+\])/g);
+
+    const renderedElements = parts.map((part, idx) => {
+        const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
+        if (boardMatch) {
+            return <InlineBoardTrigger key={idx} boardId={boardMatch[1]} onOpen={setActiveBoardPayload} />;
+        }
+
+        const quizMatch = part.match(/\[QUIZ_(\d+)\]/);
+        if (quizMatch) {
+            const quizId = parseInt(quizMatch[1], 10);
+            const quiz = m.quizzes?.find(q => q.id === quizId);
+            if (!quiz) return null;
+            return <InlineChatQuiz key={idx} quiz={quiz} onSubmit={sendMessage} />;
+        }
+
+        const cardMatch = part.match(/\[FLASHCARD_\d+\]/);
+        if (cardMatch) {
+            if (!flashcardDeckRendered && m.flashcards && m.flashcards.length > 0) {
+                flashcardDeckRendered = true;
+                return <InlineChatCard key={idx} cards={m.flashcards} onRate={handleInlineCardRate} />;
+            }
+            return null;
+        }
+
+        const snapMatch = part.match(/\[SNAPSHOT_(\d+)\]/);
+        if (snapMatch) {
+            const snapId = parseInt(snapMatch[1], 10);
+            const snap = m.snapshots?.find(s => s.id === snapId);
+            if (!snap) return null;
+            
+            return (
+                <div key={idx} className="inline-chat-snapshot">
+                    <div className="snapshot-topbar">
+                        <span><i className="fas fa-file-pdf"></i> {snap.book_title || snap.course_code}</span>
+                        <span>Page {snap.page_number}</span>
+                    </div>
+                    <div className="snapshot-content">
+                        {snap.blocks.map((b, i) => {
+                            const Renderer = getComponent('book-block-renderer');
+                            if (Renderer) return Renderer(b, i, { bookTitle: snap.book_title || snap.course_code });
+                            return <div key={i} style={{color: 'red'}}>[Rendering Engine Disconnected]</div>;
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        if (!part.trim()) return null;
+        return (
+            <div 
+                key={idx} 
+                className="miron-markdown-chunk"
+                dangerouslySetInnerHTML={{ __html: renderMironMarkdown(part) }} 
+            />
+        );
+    });
+
+    return (
+        <div className={`chat-node ${m.side}`}>
+            <div className="athena-bubble">
+                {m.status && (
+                    <div className="miron-streaming-status">
+                        <i className="fa-solid fa-sparkles fa-spin"></i>
+                        <span>{m.status}</span>
+                    </div>
+                )}
+                {renderedElements}
+                {m.isStreaming && m.text && (
+                    <span className="streaming-cursor"></span>
+                )}
+                {!flashcardDeckRendered && m.flashcards && m.flashcards.length > 0 && (
+                    <InlineChatCard cards={m.flashcards} onRate={handleInlineCardRate} />
+                )}
+            </div>
+            <div className="athena-bubble-actions">
+                <button 
+                    className={`athena-copy-btn ${copiedId === m.id ? 'copied' : ''}`}
+                    onClick={() => handleCopyMessage(m.id, m.text)}
+                    title="Copy message"
+                >
+                    <i className={`fa-${copiedId === m.id ? 'solid fa-check' : 'regular fa-copy'}`}></i>
+                    <span>{copiedId === m.id ? 'Copied' : 'Copy'}</span>
+                </button>
+            </div>
+        </div>
+    );
+}, (prevProps, nextProps) => {
+    const wasCopied = prevProps.copiedId === prevProps.m.id;
+    const isCopied = nextProps.copiedId === nextProps.m.id;
+    return (
+        prevProps.m.id === nextProps.m.id &&
+        prevProps.m.text === nextProps.m.text &&
+        prevProps.m.status === nextProps.m.status &&
+        prevProps.m.isStreaming === nextProps.m.isStreaming &&
+        wasCopied === isCopied
+    );
+});
+
 const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const autoSentRef = useRef(false);
     const { sessionUser } = usePlatform();
@@ -273,7 +374,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
         if (flowRef.current) {
             flowRef.current.scrollTo({
                 top: flowRef.current.scrollHeight,
-                behavior: 'smooth'
+                behavior: isTyping ? 'auto' : 'smooth'
             });
         }
     }, [messages, isTyping]);
@@ -604,98 +705,15 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                     </div>
                 ) : (
                     messages.filter(m => !m.text?.startsWith('[Quiz Submission:')).map(m => (
-                                                <div key={m.id} className={`chat-node ${m.side}`}>
-                            <div className="athena-bubble">
-                                {(() => {
-                                    let flashcardDeckRendered = false;
-                                    const parts = m.text.split(/(\[SNAPSHOT_\d+\]|\[QUIZ_\d+\]|\[BOARD_[a-zA-Z0-9_\-]+\]|\[FLASHCARD_\d+\])/g);
-
-                                    const renderedElements = parts.map((part, idx) => {
-                                        const boardMatch = part.match(/\[BOARD_([a-zA-Z0-9_\-]+)\]/);
-                                        if (boardMatch) {
-                                            return <InlineBoardTrigger key={idx} boardId={boardMatch[1]} onOpen={setActiveBoardPayload} />;
-                                        }
-
-                                        const quizMatch = part.match(/\[QUIZ_(\d+)\]/);
-                                        if (quizMatch) {
-                                            const quizId = parseInt(quizMatch[1], 10);
-                                            const quiz = m.quizzes?.find(q => q.id === quizId);
-                                            if (!quiz) return null;
-                                            return <InlineChatQuiz key={idx} quiz={quiz} onSubmit={sendMessage} />;
-                                        }
-
-                                        const cardMatch = part.match(/\[FLASHCARD_\d+\]/);
-                                        if (cardMatch) {
-                                            if (!flashcardDeckRendered && m.flashcards && m.flashcards.length > 0) {
-                                                flashcardDeckRendered = true;
-                                                return <InlineChatCard key={idx} cards={m.flashcards} onRate={handleInlineCardRate} />;
-                                            }
-                                            return null;
-                                        }
-
-                                        const snapMatch = part.match(/\[SNAPSHOT_(\d+)\]/);
-                                        if (snapMatch) {
-                                            const snapId = parseInt(snapMatch[1], 10);
-                                            const snap = m.snapshots?.find(s => s.id === snapId);
-                                            if (!snap) return null;
-                                            
-                                            return (
-                                                <div key={idx} className="inline-chat-snapshot">
-                                                    <div className="snapshot-topbar">
-                                                        <span><i className="fas fa-file-pdf"></i> {snap.book_title || snap.course_code}</span>
-                                                        <span>Page {snap.page_number}</span>
-                                                    </div>
-                                                    <div className="snapshot-content">
-                                                        {snap.blocks.map((b, i) => {
-                                                            const Renderer = getComponent('book-block-renderer');
-                                                            if (Renderer) return Renderer(b, i, { bookTitle: snap.book_title || snap.course_code });
-                                                            return <div key={i} style={{color: 'red'}}>[Rendering Engine Disconnected]</div>;
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            );
-                                        }
-
-                                        if (!part.trim()) return null;
-                                        return (
-                                            <div 
-                                                key={idx} 
-                                                className="miron-markdown-chunk"
-                                                dangerouslySetInnerHTML={{ __html: renderMironMarkdown(part) }} 
-                                            />
-                                        );
-                                    });
-
-                                    return (
-                                        <>
-                                            {m.status && (
-                                                <div className="miron-streaming-status">
-                                                    <i className="fa-solid fa-sparkles fa-spin"></i>
-                                                    <span>{m.status}</span>
-                                                </div>
-                                            )}
-                                            {renderedElements}
-                                            {m.isStreaming && m.text && (
-                                                <span className="streaming-cursor"></span>
-                                            )}
-                                            {!flashcardDeckRendered && m.flashcards && m.flashcards.length > 0 && (
-                                                <InlineChatCard cards={m.flashcards} onRate={handleInlineCardRate} />
-                                            )}
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                            <div className="athena-bubble-actions">
-                                <button 
-                                    className={`athena-copy-btn ${copiedId === m.id ? 'copied' : ''}`}
-                                    onClick={() => handleCopyMessage(m.id, m.text)}
-                                    title="Copy message"
-                                >
-                                    <i className={`fa-${copiedId === m.id ? 'solid fa-check' : 'regular fa-copy'}`}></i>
-                                    <span>{copiedId === m.id ? 'Copied' : 'Copy'}</span>
-                                </button>
-                            </div>
-                        </div>
+                        <MironMessageNode 
+                            key={m.id}
+                            m={m}
+                            copiedId={copiedId}
+                            handleCopyMessage={handleCopyMessage}
+                            handleInlineCardRate={handleInlineCardRate}
+                            sendMessage={sendMessage}
+                            setActiveBoardPayload={setActiveBoardPayload}
+                        />
                     ))
                 )}
                 
