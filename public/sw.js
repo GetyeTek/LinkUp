@@ -35,6 +35,16 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // 0. Stream & Function Bypass: Never intercept SSE streams, functions, or non-GET calls
+  if (
+    event.request.method !== 'GET' ||
+    event.request.headers.get('accept')?.includes('text/event-stream') ||
+    event.request.url.includes('/functions/v1/') ||
+    event.request.url.includes('realtime')
+  ) {
+    return;
+  }
+
   const url = new URL(event.request.url);
 
   // Strictly target book covers, diagrams, SVG graphics, and internal textbook assets
@@ -43,7 +53,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.includes('/covers/') ||
     url.href.includes('book-assets');
 
-  if (!isTargetAsset || event.request.method !== 'GET') {
+  if (!isTargetAsset) {
     return;
   }
 
