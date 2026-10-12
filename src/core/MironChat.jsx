@@ -122,28 +122,30 @@ const MironMessageNode = React.memo(({ m, copiedId, handleCopyMessage, handleInl
             <div className="athena-bubble">
                 {m.status && (
                     <div className="miron-streaming-status">
-                        <i className="fa-solid fa-sparkles fa-spin"></i>
+                        <i className="fa-solid fa-gear fa-spin"></i>
                         <span>{m.status}</span>
                     </div>
                 )}
                 {renderedElements}
-                {m.isStreaming && m.text && (
+                {m.isStreaming && (
                     <span className="streaming-cursor"></span>
                 )}
                 {!flashcardDeckRendered && m.flashcards && m.flashcards.length > 0 && (
                     <InlineChatCard cards={m.flashcards} onRate={handleInlineCardRate} />
                 )}
             </div>
-            <div className="athena-bubble-actions">
-                <button 
-                    className={`athena-copy-btn ${copiedId === m.id ? 'copied' : ''}`}
-                    onClick={() => handleCopyMessage(m.id, m.text)}
-                    title="Copy message"
-                >
-                    <i className={`fa-${copiedId === m.id ? 'solid fa-check' : 'regular fa-copy'}`}></i>
-                    <span>{copiedId === m.id ? 'Copied' : 'Copy'}</span>
-                </button>
-            </div>
+            {!m.isStreaming && m.text && (
+                <div className="athena-bubble-actions">
+                    <button 
+                        className={`athena-copy-btn ${copiedId === m.id ? 'copied' : ''}`}
+                        onClick={() => handleCopyMessage(m.id, m.text)}
+                        title="Copy message"
+                    >
+                        <i className={`fa-${copiedId === m.id ? 'solid fa-check' : 'regular fa-copy'}`}></i>
+                        <span>{copiedId === m.id ? 'Copied' : 'Copy'}</span>
+                    </button>
+                </div>
+            )}
         </div>
     );
 }, (prevProps, nextProps) => {
@@ -392,7 +394,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
             id: mironTempId,
             side: 'miron',
             text: '',
-            status: 'Connecting...',
+            status: null,
             isStreaming: true
         };
 
@@ -467,8 +469,103 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
             }
         }
 
-        // 2. Stream Miron Edge Function Response
-        let accumulatedText = '';
+        // 2. Stream Miron Edge Function Response with Elastic Typewriter Queue
+        let targetFullText = '';
+        let displayedText = '';
+        let isNetworkDone = false;
+        let finalStreamPayload = null;
+
+        // Pacing Engine: Smooths out bursts and delivers a calm ChatGPT typing rhythm
+        const pacingInterval = setInterval(() => {
+            if (displayedText.length < targetFullText.length) {
+                const backlog = targetFullText.length - displayedText.length;
+                // Elastic Cadence: Accelerates dynamically if queue swells (e.g. IDE proxy burst)
+                const step = backlog > 180 ? 10 : backlog > 60 ? 5 : backlog > 20 ? 2 : 1;
+                displayedText = targetFullText.slice(0, displayedText.length + step);
+
+                setMessages(prev => prev.map(m => m.id === mironTempId ? {
+                    ...m,
+                    text: displayedText,
+                    isStreaming: true
+                } : m));
+            } else if (isNetworkDone) {
+                clearInterval(pacingInterval);
+                finalizeTurn(finalStreamPayload, displayedText);
+            }
+        }, 18);
+
+        const finalizeTurn = async (data, completeText) => {
+            let persistedCards = data?.flashcards || null;
+            if (data?.flashcards && Array.isArray(data.flashcards) && data.flashcards.length > 0) {
+                try {
+                    const { data: savedCards } = await supabase.rpc('save_miron_flashcards', {
+                        p_cards: data.flashcards
+                    });
+                    if (savedCards && savedCards.length > 0) {
+                        persistedCards = savedCards;
+                    }
+                } catch (saveErr) {
+                    console.warn('[MironChat] Failed to auto-persist custom cards:', saveErr);
+                }
+            }
+
+            let savedAiMsg = null;
+            if (currentThreadId) {
+                const mironMsgPayload = {
+                    thread_id: currentThreadId,
+                    user_id: sessionUser.id,
+                    role: 'miron',
+                    text: completeText,
+                    thought_process: null,
+                    snapshots: data?.snapshots || null,
+                    quizzes: data?.quizzes || null,
+                    flashcards: persistedCards,
+                    ui_command: data?.ui_command || null
+                };
+
+                const { data: aiMsgData, error: insertErr } = await supabase
+                    .from('miron_messages')
+                    .insert(mironMsgPayload)
+                    .select()
+                    .single();
+
+                if (insertErr && (insertErr.code === 'PGRST204' || insertErr.message?.includes('flashcards'))) {
+                    delete mironMsgPayload.flashcards;
+                    const { data: retryData } = await supabase
+                        .from('miron_messages')
+                        .insert(mironMsgPayload)
+                        .select()
+                        .single();
+                    savedAiMsg = retryData;
+                } else {
+                    savedAiMsg = aiMsgData;
+                }
+            }
+
+            setMessages(prev => prev.map(m => {
+                if (m.id === tempId) return { ...m, id: dbUserMsgId };
+                if (m.id === mironTempId) {
+                    return {
+                        id: savedAiMsg?.id || Date.now() + 1,
+                        side: 'miron',
+                        text: completeText,
+                        snapshots: data?.snapshots,
+                        quizzes: data?.quizzes,
+                        flashcards: persistedCards,
+                        ui_command: data?.ui_command,
+                        isStreaming: false,
+                        status: null
+                    };
+                }
+                return m;
+            }));
+
+            if (data?.ui_command && (data.ui_command.action === 'draw_flow' || data.ui_command.action === 'draw')) {
+                setActiveBoardPayload(data.ui_command);
+            }
+            setIsTyping(false);
+        };
+
         try {
             await invokeMironStream({
                 prompt: textToSend,
@@ -479,90 +576,26 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                     setMessages(prev => prev.map(m => m.id === mironTempId ? { ...m, status: statusMessage } : m));
                 },
                 onChunk: (delta) => {
-                    accumulatedText += delta;
-                    setMessages(prev => prev.map(m => m.id === mironTempId ? { 
-                        ...m, 
-                        text: accumulatedText,
-                        status: null 
-                    } : m));
+                    targetFullText += delta;
+                    // Clear tool status immediately when word generation begins
+                    setMessages(prev => prev.map(m => m.id === mironTempId && m.status ? { ...m, status: null } : m));
                 },
                 onDone: async (data) => {
-                    let persistedCards = data.flashcards || null;
-                    if (data.flashcards && Array.isArray(data.flashcards) && data.flashcards.length > 0) {
-                        try {
-                            const { data: savedCards } = await supabase.rpc('save_miron_flashcards', {
-                                p_cards: data.flashcards
-                            });
-                            if (savedCards && savedCards.length > 0) {
-                                persistedCards = savedCards;
-                            }
-                        } catch (saveErr) {
-                            console.warn('[MironChat] Failed to auto-persist custom cards:', saveErr);
-                        }
+                    finalStreamPayload = data;
+                    isNetworkDone = true;
+                    if (displayedText.length >= targetFullText.length) {
+                        clearInterval(pacingInterval);
+                        await finalizeTurn(data, targetFullText);
                     }
-
-                    let savedAiMsg = null;
-                    if (currentThreadId) {
-                        const mironMsgPayload = {
-                            thread_id: currentThreadId,
-                            user_id: sessionUser.id,
-                            role: 'miron',
-                            text: accumulatedText,
-                            thought_process: null,
-                            snapshots: data.snapshots || null,
-                            quizzes: data.quizzes || null,
-                            flashcards: persistedCards,
-                            ui_command: data.ui_command || null
-                        };
-
-                        const { data: aiMsgData, error: insertErr } = await supabase
-                            .from('miron_messages')
-                            .insert(mironMsgPayload)
-                            .select()
-                            .single();
-
-                        if (insertErr && (insertErr.code === 'PGRST204' || insertErr.message?.includes('flashcards'))) {
-                            delete mironMsgPayload.flashcards;
-                            const { data: retryData } = await supabase
-                                .from('miron_messages')
-                                .insert(mironMsgPayload)
-                                .select()
-                                .single();
-                            savedAiMsg = retryData;
-                        } else {
-                            savedAiMsg = aiMsgData;
-                        }
-                    }
-
-                    setMessages(prev => prev.map(m => {
-                        if (m.id === tempId) return { ...m, id: dbUserMsgId };
-                        if (m.id === mironTempId) {
-                            return {
-                                id: savedAiMsg?.id || Date.now() + 1,
-                                side: 'miron',
-                                text: accumulatedText,
-                                snapshots: data.snapshots,
-                                quizzes: data.quizzes,
-                                flashcards: persistedCards,
-                                ui_command: data.ui_command,
-                                isStreaming: false,
-                                status: null
-                            };
-                        }
-                        return m;
-                    }));
-
-                    if (data.ui_command && (data.ui_command.action === 'draw_flow' || data.ui_command.action === 'draw')) {
-                        setActiveBoardPayload(data.ui_command);
-                    }
-                    setIsTyping(false);
                 },
                 onError: (err) => {
+                    clearInterval(pacingInterval);
                     throw new Error(err);
                 }
             });
 
         } catch (error) {
+            clearInterval(pacingInterval);
             console.error("Miron Communication Error:", error);
             setMessages(prev => prev.map(m => {
                 if (m.id === tempId) return { ...m, id: dbUserMsgId };
