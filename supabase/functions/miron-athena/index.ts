@@ -418,6 +418,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const reqStart = performance.now();
+    const elapsed = () => `${(performance.now() - reqStart).toFixed(0)}ms`;
+    console.log(`⏱️ [REQ START] Incoming request received`);
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401, headers: corsHeaders });
@@ -467,6 +471,7 @@ serve(async (req) => {
     async function callGroq(messages: any[], tools: any[] = []) {
       let attempts = 0;
       while (attempts < 3) {
+        const groqStart = performance.now();
         const keyRecord = await getApiKey('groq');
         const payload: any = {
           model: GROQ_MODEL,
@@ -498,7 +503,12 @@ serve(async (req) => {
           throw new Error(`Groq API Error: ${res.status} ${errText}`);
         }
 
-        return await res.json();
+        const data = await res.json();
+        const dur = (performance.now() - groqStart).toFixed(0);
+        const u = data.usage;
+        const usageLog = u ? `[tokens: prompt=${u.prompt_tokens}, comp=${u.completion_tokens}, time=${u.total_time ? u.total_time.toFixed(2) + 's' : 'N/A'}]` : '';
+        console.log(`⚡ [GROQ CALL] took ${dur}ms ${usageLog}`);
+        return data;
       }
       throw new Error("Failed to contact Groq after multiple round-robin attempts.");
     }
@@ -531,6 +541,7 @@ serve(async (req) => {
     }
 
     async function generateEmbedding(text: string) {
+      const embStart = performance.now();
       let attempts = 0;
       while (attempts < 3) {
         const keyRecord = await getApiKey('gemini');
@@ -553,6 +564,8 @@ serve(async (req) => {
 
         if (!res.ok) throw new Error(`Gemini Embedding Error: ${res.status} ${await res.text()}`);
         const data = await res.json();
+        const dur = (performance.now() - embStart).toFixed(0);
+        console.log(`🧠 [GEMINI EMBEDDING] took ${dur}ms (text length: ${text.length})`);
         return data.embedding?.values;
       }
       throw new Error("Failed to generate embedding.");
@@ -566,12 +579,15 @@ serve(async (req) => {
     let inlineFlashcards: any[] = [];
 
     // Unified Tool Execution Engine
+    // Unified Tool Execution Engine
     async function executeTool(name: string, args: any) {
-      console.log(`  -> Running Tool: ${name}`, args);
+      const toolStart = performance.now();
+      console.log(`🔧 [TOOL START] ${name} at +${elapsed()}`, JSON.stringify(args));
       let toolResult: any = {};
 
       try {
         if (name === "search_textbook_material") {
+          const pineconeStart = performance.now();
           if (!PINECONE_API_KEY || !PINECONE_HOST) throw new Error("Pinecone secrets missing.");
           
           const queryVector = await generateEmbedding(args.optimized_query);
@@ -584,8 +600,9 @@ serve(async (req) => {
           }
 
           if (targetNamespaces.length === 0) {
+            // Safeguard: Limit to 10 most recent books to prevent Pinecone rate limits on global queries
             const { data } = await supabase.from('books').select('id').order('created_at', { ascending: false }).limit(10);
-            if (data) targetNamespaces = data.map(b => b.id);
+            if (data) targetNamespaces = data.map((b: any) => b.id);
           }
 
           const searchPromises = targetNamespaces.map(async (namespace) => {
@@ -604,19 +621,26 @@ serve(async (req) => {
           allMatches.sort((a: any, b: any) => b.score - a.score);
           const topFive = allMatches.slice(0, 5);
 
+          const pineconeDur = (performance.now() - pineconeStart).toFixed(0);
+          console.log(`🌲 [PINECONE] took ${pineconeDur}ms across ${targetNamespaces.length} namespace(s) | matches: ${allMatches.length}`);
+
           toolResult = { 
             status: "success", 
-            matches: topFive.map(m => m.metadata),
+            matches: topFive.map((m: any) => m.metadata),
             directive: "Relevant textbook snippets retrieved. Synthesize your final answer to the student now."
           };
         }
         else if (name === "get_book_toc") {
+          const tocStart = performance.now();
           const code = (args.course_code || args.query || "").toUpperCase().trim();
           
           const { data } = await supabase.from('books')
             .select('id, title, toc, page_offset')
             .eq('course_code', code)
             .single();
+
+          const tocDur = (performance.now() - tocStart).toFixed(0);
+          console.log(`📑 [GET TOC] took ${tocDur}ms for course: ${code}`);
 
           if (data) {
             toolResult = { 
@@ -633,6 +657,7 @@ serve(async (req) => {
           }
         } 
         else if (name === "read_book_section") {
+          const sectionStart = performance.now();
           const code = (args.course_code || "").toUpperCase().trim();
           
           let query = supabase.from('books').select('id, title, toc, page_offset');
@@ -674,8 +699,12 @@ serve(async (req) => {
 
               let sectionText = "";
               if (pages) {
-                sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
+                sectionText = pages.map((p: any) => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
               }
+
+              const sectionDur = (performance.now() - sectionStart).toFixed(0);
+              console.log(`📖 [READ SECTION DB] took ${sectionDur}ms for "${matchedItem.title}" (${pages?.length || 0} pages loaded)`);
+
               toolResult = { 
                 status: "success", 
                 matched_section: matchedItem.title, 
@@ -882,12 +911,14 @@ serve(async (req) => {
       let isGroqToolCall = true;
 
       while (isGroqToolCall && groqLoop < 4) {
+        console.log(`🔄 [GROQ LOOP ${groqLoop} START] Invoking Groq at +${elapsed()}`);
         const groqRes = await callGroq(groqMessages, groqTools);
         const choice = groqRes.choices?.[0];
         const message = choice?.message;
 
         if (message?.tool_calls && message.tool_calls.length > 0) {
-          console.log(`[MIRON GROQ LOOP ${groqLoop}] Executing ${message.tool_calls.length} tool(s) in parallel.`);
+          const toolNames = message.tool_calls.map((t: any) => t.function.name).join(', ');
+          console.log(`🛠️ [GROQ LOOP ${groqLoop} TOOLS] Model requested ${message.tool_calls.length} tool(s): [${toolNames}] at +${elapsed()}`);
           groqMessages.push(message);
 
           const toolExecutionPromises = message.tool_calls.map(async (tc: any) => {
@@ -1032,6 +1063,8 @@ serve(async (req) => {
     if (inlineFlashcards.length === 0) {
       finalText = finalText.replace(/\[FLASHCARD_\d+\]/g, '').trim();
     }
+
+    console.log(`🏁 [MIRON COMPLETED] Total request runtime: ${elapsed()} | Final text: ${finalText.length} chars | Thoughts: ${extractedThoughts.length} | Snapshots: ${inlineSnapshots.length} | Quizzes: ${inlineQuizzes.length} | Flashcards: ${inlineFlashcards.length}`);
 
     return new Response(JSON.stringify({ 
       response: finalText,
