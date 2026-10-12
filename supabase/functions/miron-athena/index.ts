@@ -422,23 +422,12 @@ serve(async (req) => {
     const elapsed = () => `${(performance.now() - reqStart).toFixed(0)}ms`;
     console.log(`⏱️ [REQ START] Incoming request received`);
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401, headers: corsHeaders });
-    }
-    const token = authHeader.replace('Bearer ', '');
-
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const PINECONE_API_KEY = Deno.env.get('PINECONE_API_KEY');
     const PINECONE_HOST = Deno.env.get('PINECONE_INDEX_HOST');
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-    }
 
     const { history, prompt, context } = await req.json();
 
