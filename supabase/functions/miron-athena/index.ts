@@ -6,6 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, accept-encoding",
 };
 
+const GROQ_MODEL = "qwen/qwen3.8-27b";
 const GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
 const GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
 const EMBEDDING_DIMENSIONS = 768;
@@ -218,6 +219,29 @@ const toolsDefinition = {
   ]
 };
 
+function convertToOpenAISchema(schema: any): any {
+  if (!schema || typeof schema !== 'object') return schema;
+  if (Array.isArray(schema)) return schema.map(convertToOpenAISchema);
+  const result: any = {};
+  for (const [k, v] of Object.entries(schema)) {
+    if (k === 'type' && typeof v === 'string') {
+      result[k] = v.toLowerCase();
+    } else {
+      result[k] = convertToOpenAISchema(v);
+    }
+  }
+  return result;
+}
+
+const groqTools = toolsDefinition.functionDeclarations.map(fn => ({
+  type: "function",
+  function: {
+    name: fn.name,
+    description: fn.description,
+    parameters: convertToOpenAISchema(fn.parameters)
+  }
+}));
+
 const GENERIC_STOP_WORDS = new Set([
   'chapter', 'section', 'unit', 'module', 'part', 'topic', 'lesson',
   'overview', 'introduction', 'summary', 'review', 'exercises', 'questions',
@@ -414,20 +438,20 @@ serve(async (req) => {
 
     const { history, prompt, context } = await req.json();
 
-    // 1. API Key Round-Robin Engine
-    async function getGeminiKey() {
+    // 1. API Key Round-Robin Engine (Groq & Gemini)
+    async function getApiKey(service: 'groq' | 'gemini') {
       const now = new Date();
       const { data: keys, error } = await supabase
         .from('api_keys')
         .select('*')
-        .eq('service', 'gemini')
+        .eq('service', service)
         .eq('is_active', true)
         .order('last_used_at', { ascending: true, nullsFirst: true });
 
       if (error) throw error;
 
-      const availableKeys = keys.filter(k => !k.cooldown_until || new Date(k.cooldown_until) < now);
-      if (availableKeys.length === 0) throw new Error("No active Gemini API keys available. All are in cooldown.");
+      const availableKeys = (keys || []).filter((k: any) => !k.cooldown_until || new Date(k.cooldown_until) < now);
+      if (availableKeys.length === 0) throw new Error(`No active ${service} API keys available. All are in cooldown.`);
 
       const selected = availableKeys[0];
       await supabase.from('api_keys').update({ last_used_at: now.toISOString() }).eq('id', selected.id);
@@ -439,11 +463,51 @@ serve(async (req) => {
       await supabase.from('api_keys').update({ cooldown_until: cooldownTime }).eq('id', keyId);
     }
 
-    // 2. Gemini Communication Wrapper (Generation & Embedding)
+    // 2. Groq Primary Communication Wrapper
+    async function callGroq(messages: any[], tools: any[] = []) {
+      let attempts = 0;
+      while (attempts < 3) {
+        const keyRecord = await getApiKey('groq');
+        const payload: any = {
+          model: GROQ_MODEL,
+          messages,
+          temperature: 0.6
+        };
+        if (tools.length > 0) {
+          payload.tools = tools;
+          payload.tool_choice = "auto";
+        }
+
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${keyRecord.api_key}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 429) {
+          await flagKeyCooldown(keyRecord.id);
+          attempts++;
+          continue;
+        }
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Groq API Error: ${res.status} ${errText}`);
+        }
+
+        return await res.json();
+      }
+      throw new Error("Failed to contact Groq after multiple round-robin attempts.");
+    }
+
+    // 3. Gemini Fallback & Embedding Wrappers
     async function callGemini(contents: any[], tools: any[] = [], systemInstruction?: string) {
       let attempts = 0;
       while (attempts < 3) {
-        const keyRecord = await getGeminiKey();
+        const keyRecord = await getApiKey('gemini');
         const payload: any = { contents };
         if (tools.length > 0) payload.tools = tools;
         if (systemInstruction) payload.systemInstruction = { parts: [{ text: systemInstruction }] };
@@ -469,7 +533,7 @@ serve(async (req) => {
     async function generateEmbedding(text: string) {
       let attempts = 0;
       while (attempts < 3) {
-        const keyRecord = await getGeminiKey();
+        const keyRecord = await getApiKey('gemini');
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBEDDING_MODEL}:embedContent?key=${keyRecord.api_key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -494,128 +558,223 @@ serve(async (req) => {
       throw new Error("Failed to generate embedding.");
     }
 
-    // 3. Prepare Conversation State
-    let messages = [];
-    if (context) {
-      messages.push({ role: "user", parts: [{ text: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.` }]});
-      messages.push({ role: "model", parts: [{ text: "Acknowledged. I have the context mapped." }]});
-    }
-
-    history.forEach((msg: any) => {
-      messages.push({
-        role: msg.side === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.text }]
-      });
-    });
-    
-    messages.push({ role: "user", parts: [{ text: prompt }] });
-
-    let uiCommand = null;
-    let isToolCall = true;
-    let loopCount = 0;
+    let uiCommand: any = null;
     let finalText = "";
+    let extractedThoughts: string[] = [];
     let inlineSnapshots: any[] = [];
     let inlineQuizzes: any[] = [];
     let inlineFlashcards: any[] = [];
 
-    // 4. The Agentic Loop with Parallel Execution & Safety Net
-    while (isToolCall && loopCount < 4) {
-      const geminiResponse = await callGemini(messages, [toolsDefinition], MIRON_SYSTEM_PROMPT);
-      const candidate = geminiResponse.candidates?.[0];
+    // Unified Tool Execution Engine
+    async function executeTool(name: string, args: any) {
+      console.log(`  -> Running Tool: ${name}`, args);
+      let toolResult: any = {};
 
-      const functionCallParts = candidate?.content?.parts?.filter((p: any) => p.functionCall) || [];
+      try {
+        if (name === "search_textbook_material") {
+          if (!PINECONE_API_KEY || !PINECONE_HOST) throw new Error("Pinecone secrets missing.");
+          
+          const queryVector = await generateEmbedding(args.optimized_query);
+          const cleanHost = PINECONE_HOST.replace(/\/$/, '').replace(/^https?:\/\//, '');
 
-      if (functionCallParts.length > 0) {
-        console.log(`[MIRON LOOP ${loopCount}] Executing ${functionCallParts.length} tool(s) in parallel.`);
-        
-        const toolExecutionPromises = functionCallParts.map(async (part: any) => {
-          const { name, args } = part.functionCall;
-          console.log(`  -> Running Tool: ${name}`, args);
-          let toolResult: any = {};
+          let targetNamespaces: string[] = [];
+          if (args.course_code) {
+            const { data } = await supabase.from('books').select('id').eq('course_code', args.course_code.toUpperCase().trim()).single();
+            if (data) targetNamespaces.push(data.id);
+          }
 
-          try {
-            if (name === "search_textbook_material") {
-              if (!PINECONE_API_KEY || !PINECONE_HOST) throw new Error("Pinecone secrets missing.");
+          if (targetNamespaces.length === 0) {
+            const { data } = await supabase.from('books').select('id').order('created_at', { ascending: false }).limit(10);
+            if (data) targetNamespaces = data.map(b => b.id);
+          }
+
+          const searchPromises = targetNamespaces.map(async (namespace) => {
+            const res = await fetch(`https://${cleanHost}/query`, {
+              method: 'POST',
+              headers: { 'Api-Key': PINECONE_API_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ namespace, vector: queryVector, topK: 3, includeMetadata: true })
+            });
+            if (!res.ok) return [];
+            const resData = await res.json();
+            return resData.matches || [];
+          });
+
+          const resultsArray = await Promise.all(searchPromises);
+          const allMatches = resultsArray.flat();
+          allMatches.sort((a: any, b: any) => b.score - a.score);
+          const topFive = allMatches.slice(0, 5);
+
+          toolResult = { 
+            status: "success", 
+            matches: topFive.map(m => m.metadata),
+            directive: "Relevant textbook snippets retrieved. Synthesize your final answer to the student now."
+          };
+        }
+        else if (name === "get_book_toc") {
+          const code = (args.course_code || args.query || "").toUpperCase().trim();
+          
+          const { data } = await supabase.from('books')
+            .select('id, title, toc, page_offset')
+            .eq('course_code', code)
+            .single();
+
+          if (data) {
+            toolResult = { 
+              status: "success", 
+              book_id: data.id, 
+              title: data.title, 
+              course_code: code, 
+              page_offset: data.page_offset || 0, 
+              toc: data.toc,
+              directive: "TOC structure retrieved. You can directly request any specific section or sub-section title in read_book_section without stepping down."
+            };
+          } else {
+            toolResult = { status: "error", message: `Book with course code ${code} not found.` };
+          }
+        } 
+        else if (name === "read_book_section") {
+          const code = (args.course_code || "").toUpperCase().trim();
+          
+          let query = supabase.from('books').select('id, title, toc, page_offset');
+          if (code) {
+            query = query.eq('course_code', code);
+          } else if (args.book_id) {
+            query = query.eq('id', args.book_id);
+          }
+          const { data: book } = await query.single();
+          
+          if (book && book.toc) {
+            const matchResult = findBestMatchingTocNode(book.toc, args.section_title, 0.80);
+            
+            if (matchResult) {
+              const { matchedItem, flatList } = matchResult;
+              const startPage = matchedItem.page;
+              const targetDepth = matchedItem.depth;
+              let endPage = 99999;
               
-              const queryVector = await generateEmbedding(args.optimized_query);
-              const cleanHost = PINECONE_HOST.replace(/\/$/, '').replace(/^https?:\/\//, '');
-
-              let targetNamespaces: string[] = [];
-              if (args.course_code) {
-                const { data } = await supabase.from('books').select('id').eq('course_code', args.course_code.toUpperCase().trim()).single();
-                if (data) targetNamespaces.push(data.id);
+              for (let i = matchedItem.originalIndex + 1; i < flatList.length; i++) {
+                const candidateNode = flatList[i];
+                if (candidateNode.depth <= targetDepth && candidateNode.page && candidateNode.page > startPage) {
+                  endPage = candidateNode.page;
+                  break;
+                }
               }
 
-              if (targetNamespaces.length === 0) {
-                // Safeguard: Limit to 10 most recent books to prevent Pinecone rate limits on global queries
-                const { data } = await supabase.from('books').select('id').order('created_at', { ascending: false }).limit(10);
-                if (data) targetNamespaces = data.map(b => b.id);
+              const offset = book.page_offset || 0;
+              const physicalStartPage = Math.max(1, startPage + offset);
+              const physicalEndPage = endPage === 99999 ? 99999 : Math.max(1, endPage + offset);
+
+              const { data: pages } = await supabase.from('book_pages')
+                .select('page_number, content_json')
+                .eq('book_id', book.id)
+                .gte('page_number', physicalStartPage)
+                .lt('page_number', physicalEndPage)
+                .order('page_number', { ascending: true })
+                .limit(20);
+
+              let sectionText = "";
+              if (pages) {
+                sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
               }
-
-              const searchPromises = targetNamespaces.map(async (namespace) => {
-                const res = await fetch(`https://${cleanHost}/query`, {
-                  method: 'POST',
-                  headers: { 'Api-Key': PINECONE_API_KEY, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ namespace, vector: queryVector, topK: 3, includeMetadata: true })
-                });
-                if (!res.ok) return [];
-                const resData = await res.json();
-                return resData.matches || [];
-              });
-
-              const resultsArray = await Promise.all(searchPromises);
-              const allMatches = resultsArray.flat();
-              allMatches.sort((a: any, b: any) => b.score - a.score);
-              const topFive = allMatches.slice(0, 5);
-
               toolResult = { 
                 status: "success", 
-                matches: topFive.map(m => m.metadata),
-                directive: "Relevant textbook snippets retrieved. Synthesize your final answer to the student now."
+                matched_section: matchedItem.title, 
+                breadcrumb: matchedItem.breadcrumb,
+                directive: "Section material loaded including all sub-sections. You have all context. Synthesize and write your comprehensive response to the student immediately.",
+                text: sectionText || "Section is empty." 
               };
+            } else {
+              toolResult = { status: "error", message: `Section "${args.section_title}" not found in TOC with sufficient confidence (>=80%).` };
             }
-            else if (name === "get_book_toc") {
-              const code = (args.course_code || args.query || "").toUpperCase().trim();
-              
-              const { data } = await supabase.from('books')
-                .select('id, title, toc, page_offset')
-                .eq('course_code', code)
-                .single();
+          } else {
+            toolResult = { status: "error", message: "Book not found." };
+          }
+        }
+        else if (name === "open_page") {
+          const code = (args.course_code || "").toUpperCase().trim();
+          let bookId = args.book_id;
+          let offset = 0;
+          if (code) {
+            const { data: b } = await supabase.from('books').select('id, page_offset').eq('course_code', code).single();
+            if (b) {
+              bookId = b.id;
+              offset = b.page_offset || 0;
+            }
+          }
+          const physicalPage = Math.max(1, args.page_number + offset);
+          uiCommand = { action: 'open_page', book_id: bookId, page_number: physicalPage };
+          toolResult = { status: "success", message: "User is being navigated to the page." };
+        }
+        else if (name === "render_book_snapshot") {
+          const code = args.course_code.toUpperCase().trim();
+          const { data: book } = await supabase.from('books').select('id, title, page_offset').eq('course_code', code).single();
+          
+          if (book) {
+            const offset = book.page_offset || 0;
+            const physicalPage = Math.max(1, args.page_number + offset);
 
-              if (data) {
-                toolResult = { 
-                  status: "success", 
-                  book_id: data.id, 
-                  title: data.title, 
-                  course_code: code, 
-                  page_offset: data.page_offset || 0, 
-                  toc: data.toc,
-                  directive: "TOC structure retrieved. You can directly request any specific section or sub-section title in read_book_section without stepping down."
-                };
-              } else {
-                toolResult = { status: "error", message: `Book with course code ${code} not found.` };
-              }
-            } 
-            else if (name === "read_book_section") {
-              const code = (args.course_code || "").toUpperCase().trim();
+            const { data: page } = await supabase.from('book_pages')
+              .select('content_json')
+              .eq('book_id', book.id)
+              .eq('page_number', physicalPage)
+              .single();
               
-              let query = supabase.from('books').select('id, title, toc, page_offset');
-              if (code) {
-                query = query.eq('course_code', code);
-              } else if (args.book_id) {
-                query = query.eq('id', args.book_id);
+            if (page && page.content_json) {
+              let blocksToRender = page.content_json;
+              if (args.block_index !== undefined && args.block_index !== null) {
+                blocksToRender = [page.content_json[args.block_index]].filter(Boolean);
               }
-              const { data: book } = await query.single();
               
-              if (book && book.toc) {
+              const snapId = inlineSnapshots.length;
+              inlineSnapshots.push({
+                id: snapId,
+                course_code: args.course_code,
+                book_title: book.title,
+                page_number: physicalPage,
+                blocks: blocksToRender
+              });
+              
+              toolResult = { status: "success", instruction: `Snapshot ready. Insert [SNAPSHOT_${snapId}] to render.` };
+            } else {
+              toolResult = { status: "error", message: `Page ${physicalPage} content not found.` };
+            }
+          } else {
+            toolResult = { status: "error", message: "Course code not found." };
+          }
+        }
+        else if (name === "fetch_available_boards") {
+          const { data: book } = await supabase.from('books').select('id').eq('course_code', args.course_code.toUpperCase().trim()).single();
+          if (book) {
+            const { data: boards } = await supabase.from('board_drawings').select('id, toc_node_title, description').eq('book_id', book.id);
+            if (boards && boards.length > 0) {
+              toolResult = { 
+                status: "success", 
+                boards: boards.map(b => ({ id: b.id, topic: b.toc_node_title, description: b.description })),
+                instruction: "You can render these instantly by inserting the tag [BOARD_asset_id] directly in your response text."
+              };
+            } else {
+              toolResult = { status: "success", message: "No pre-built boards found for this course." };
+            }
+          } else {
+            toolResult = { status: "error", message: "Course not found." };
+          }
+        }
+        else if (name === "render_quiz") {
+          let qList = [];
+          let quizTitle = args.section_title ? `Knowledge Check: ${args.section_title}` : "Interactive Knowledge Check";
+
+          if (args.mode === 'database') {
+            const code = (args.course_code || "").toUpperCase().trim();
+            const { data: book } = await supabase.from('books').select('id, toc, page_offset').eq('course_code', code).single();
+            if (book && book.toc) {
+              let startPage = 0;
+              let endPage = 99999;
+              if (args.section_title) {
                 const matchResult = findBestMatchingTocNode(book.toc, args.section_title, 0.80);
-                
                 if (matchResult) {
                   const { matchedItem, flatList } = matchResult;
-                  const startPage = matchedItem.page;
+                  startPage = matchedItem.page;
                   const targetDepth = matchedItem.depth;
-                  let endPage = 99999;
-                  
                   for (let i = matchedItem.originalIndex + 1; i < flatList.length; i++) {
                     const candidateNode = flatList[i];
                     if (candidateNode.depth <= targetDepth && candidateNode.page && candidateNode.page > startPage) {
@@ -623,237 +782,247 @@ serve(async (req) => {
                       break;
                     }
                   }
-
-                  const offset = book.page_offset || 0;
-                  const physicalStartPage = Math.max(1, startPage + offset);
-                  const physicalEndPage = endPage === 99999 ? 99999 : Math.max(1, endPage + offset);
-
-                  const { data: pages } = await supabase.from('book_pages')
-                    .select('page_number, content_json')
-                    .eq('book_id', book.id)
-                    .gte('page_number', physicalStartPage)
-                    .lt('page_number', physicalEndPage)
-                    .order('page_number', { ascending: true })
-                    .limit(20);
-
-                  let sectionText = "";
-                  if (pages) {
-                    sectionText = pages.map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
-                  }
-                  toolResult = { 
-                    status: "success", 
-                    matched_section: matchedItem.title, 
-                    breadcrumb: matchedItem.breadcrumb,
-                    directive: "Section material loaded including all sub-sections. You have all context. Synthesize and write your comprehensive response to the student immediately.",
-                    text: sectionText || "Section is empty." 
-                  };
-                } else {
-                  toolResult = { status: "error", message: `Section "${args.section_title}" not found in TOC with sufficient confidence (>=80%).` };
-                }
-              } else {
-                toolResult = { status: "error", message: "Book not found." };
-              }
-            }
-            else if (name === "open_page") {
-              const code = (args.course_code || "").toUpperCase().trim();
-              let bookId = args.book_id;
-              let offset = 0;
-              if (code) {
-                const { data: b } = await supabase.from('books').select('id, page_offset').eq('course_code', code).single();
-                if (b) {
-                  bookId = b.id;
-                  offset = b.page_offset || 0;
                 }
               }
-              const physicalPage = Math.max(1, args.page_number + offset);
-              uiCommand = { action: 'open_page', book_id: bookId, page_number: physicalPage };
-              toolResult = { status: "success", message: "User is being navigated to the page." };
-            }
-            else if (name === "render_book_snapshot") {
-              const code = args.course_code.toUpperCase().trim();
-              const { data: book } = await supabase.from('books').select('id, title, page_offset').eq('course_code', code).single();
-              
-              if (book) {
-                const offset = book.page_offset || 0;
-                const physicalPage = Math.max(1, args.page_number + offset);
 
-                const { data: page } = await supabase.from('book_pages')
-                  .select('content_json')
-                  .eq('book_id', book.id)
-                  .eq('page_number', physicalPage)
-                  .single();
-                  
-                if (page && page.content_json) {
-                  let blocksToRender = page.content_json;
-                  if (args.block_index !== undefined && args.block_index !== null) {
-                    blocksToRender = [page.content_json[args.block_index]].filter(Boolean);
-                  }
-                  
-                  const snapId = inlineSnapshots.length;
-                  inlineSnapshots.push({
-                    id: snapId,
-                    course_code: args.course_code,
-                    book_title: book.title,
-                    page_number: physicalPage,
-                    blocks: blocksToRender
-                  });
-                  
-                  toolResult = { status: "success", instruction: `Snapshot ready. Insert [SNAPSHOT_${snapId}] to render.` };
-                } else {
-                  toolResult = { status: "error", message: `Page ${physicalPage} content not found.` };
-                }
-              } else {
-                toolResult = { status: "error", message: "Course code not found." };
+              const offset = book.page_offset || 0;
+              const physicalStartPage = Math.max(1, startPage + offset);
+              const physicalEndPage = endPage === 99999 ? 99999 : Math.max(1, endPage + offset);
+
+              const { data: mappings } = await supabase.from('question_book_mappings')
+                .select('question_id, page_key')
+                .eq('book_id', book.id)
+                .eq('is_valid', true);
+
+              const validQIds = (mappings || [])
+                .filter(m => {
+                  const p = parseInt(m.page_key.replace('page-', ''), 10);
+                  return p >= physicalStartPage && p < physicalEndPage;
+                })
+                .map(m => m.question_id);
+
+              if (validQIds.length > 0) {
+                const { data: dbQs } = await supabase.from('questions').select('id, text, question_type, options, correct_answer').in('id', validQIds).limit(args.limit || 3);
+                qList = dbQs || [];
               }
             }
-            else if (name === "fetch_available_boards") {
-              const { data: book } = await supabase.from('books').select('id').eq('course_code', args.course_code.toUpperCase().trim()).single();
-              if (book) {
-                const { data: boards } = await supabase.from('board_drawings').select('id, toc_node_title, description').eq('book_id', book.id);
-                if (boards && boards.length > 0) {
-                  toolResult = { 
-                    status: "success", 
-                    boards: boards.map(b => ({ id: b.id, topic: b.toc_node_title, description: b.description })),
-                    instruction: "You can render these instantly by inserting the tag [BOARD_asset_id] directly in your response text."
-                  };
-                } else {
-                  toolResult = { status: "success", message: "No pre-built boards found for this course." };
-                }
-              } else {
-                toolResult = { status: "error", message: "Course not found." };
-              }
-            }
-            else if (name === "render_quiz") {
-              let qList = [];
-              let quizTitle = args.section_title ? `Knowledge Check: ${args.section_title}` : "Interactive Knowledge Check";
-
-              if (args.mode === 'database') {
-                const code = (args.course_code || "").toUpperCase().trim();
-                const { data: book } = await supabase.from('books').select('id, toc, page_offset').eq('course_code', code).single();
-                if (book && book.toc) {
-                  let startPage = 0;
-                  let endPage = 99999;
-                  if (args.section_title) {
-                    const matchResult = findBestMatchingTocNode(book.toc, args.section_title, 0.80);
-                    if (matchResult) {
-                      const { matchedItem, flatList } = matchResult;
-                      startPage = matchedItem.page;
-                      const targetDepth = matchedItem.depth;
-                      for (let i = matchedItem.originalIndex + 1; i < flatList.length; i++) {
-                        const candidateNode = flatList[i];
-                        if (candidateNode.depth <= targetDepth && candidateNode.page && candidateNode.page > startPage) {
-                          endPage = candidateNode.page;
-                          break;
-                        }
-                      }
-                    }
-                  }
-
-                  const offset = book.page_offset || 0;
-                  const physicalStartPage = Math.max(1, startPage + offset);
-                  const physicalEndPage = endPage === 99999 ? 99999 : Math.max(1, endPage + offset);
-
-                  const { data: mappings } = await supabase.from('question_book_mappings')
-                    .select('question_id, page_key')
-                    .eq('book_id', book.id)
-                    .eq('is_valid', true);
-
-                  const validQIds = (mappings || [])
-                    .filter(m => {
-                      const p = parseInt(m.page_key.replace('page-', ''), 10);
-                      return p >= physicalStartPage && p < physicalEndPage;
-                    })
-                    .map(m => m.question_id);
-
-                  if (validQIds.length > 0) {
-                    const { data: dbQs } = await supabase.from('questions').select('id, text, question_type, options, correct_answer').in('id', validQIds).limit(args.limit || 3);
-                    qList = dbQs || [];
-                  }
-                }
-              } else {
-                qList = args.custom_questions || [];
-              }
-
-              if (qList.length > 0) {
-                const quizId = inlineQuizzes.length;
-                inlineQuizzes.push({ id: quizId, title: quizTitle, questions: qList });
-                toolResult = { status: "success", instruction: `Quiz generated. You MUST insert [QUIZ_${quizId}] in your response to render it.` };
-              } else {
-                toolResult = { status: "error", message: "No questions found matching criteria." };
-              }
-            }
-            else if (name === "render_flashcards") {
-              const course = (args.course_code || "GENERAL").toUpperCase().trim();
-              const topic = args.topic || "Miron Synthesis";
-              const cards = args.flashcards || [];
-
-              if (cards.length > 0) {
-                const tags: string[] = [];
-                cards.forEach((card: any) => {
-                  const cardNum = inlineFlashcards.length + 1;
-                  inlineFlashcards.push({
-                    id: cardNum,
-                    course_code: course,
-                    topic: topic,
-                    front: card.front,
-                    back: card.back,
-                    ref: card.ref || `Miron AI • ${topic}`,
-                    is_mistake: card.is_mistake || false
-                  });
-                  tags.push(`[FLASHCARD_${cardNum}]`);
-                });
-
-                toolResult = {
-                  status: "success",
-                  instruction: `Flashcards registered. Insert [FLASHCARD_1] on its own line exactly where you want the student to interact with the deck. All cards in this set will advance in-place right at that position.`
-                };
-              } else {
-                toolResult = { status: "error", message: "No flashcards provided in payload." };
-              }
-            }
-          } catch (e) {
-            toolResult = { status: "error", message: e.message };
+          } else {
+            qList = args.custom_questions || [];
           }
 
-          return { name, content: toolResult };
-        });
+          if (qList.length > 0) {
+            const quizId = inlineQuizzes.length;
+            inlineQuizzes.push({ id: quizId, title: quizTitle, questions: qList });
+            toolResult = { status: "success", instruction: `Quiz generated. You MUST insert [QUIZ_${quizId}] in your response to render it.` };
+          } else {
+            toolResult = { status: "error", message: "No questions found matching criteria." };
+          }
+        }
+        else if (name === "render_flashcards") {
+          const course = (args.course_code || "GENERAL").toUpperCase().trim();
+          const topic = args.topic || "Miron Synthesis";
+          const cards = args.flashcards || [];
 
-        const toolResponses = await Promise.all(toolExecutionPromises);
+          if (cards.length > 0) {
+            const tags: string[] = [];
+            cards.forEach((card: any) => {
+              const cardNum = inlineFlashcards.length + 1;
+              inlineFlashcards.push({
+                id: cardNum,
+                course_code: course,
+                topic: topic,
+                front: card.front,
+                back: card.back,
+                ref: card.ref || `Miron AI • ${topic}`,
+                is_mistake: card.is_mistake || false
+              });
+              tags.push(`[FLASHCARD_${cardNum}]`);
+            });
 
-        messages.push(candidate.content);
-        messages.push({
-          role: "user",
-          parts: toolResponses.map(res => ({
-            functionResponse: {
-              name: res.name,
-              response: { name: res.name, content: res.content }
-            }
-          }))
-        });
-
-        loopCount++;
-      } else {
-        isToolCall = false;
-        finalText = candidate?.content?.parts?.[0]?.text || "My cognitive link was interrupted. Please try again.";
+            toolResult = {
+              status: "success",
+              instruction: `Flashcards registered. Insert [FLASHCARD_1] on its own line exactly where you want the student to interact with the deck. All cards in this set will advance in-place right at that position.`
+            };
+          } else {
+            toolResult = { status: "error", message: "No flashcards provided in payload." };
+          }
+        }
+      } catch (e: any) {
+        toolResult = { status: "error", message: e.message };
       }
+
+      return toolResult;
     }
 
-    // Safety Net: If loop ended while still seeking tools, force final answer with tools disabled
-    if (isToolCall && !finalText) {
-      console.log(`[MIRON SAFETY NET] Tool iterations reached (${loopCount}). Compelling forced synthesis...`);
-      messages.push({
-        role: "user",
-        parts: [{ text: "Tool budget completed. Synthesize and write your complete, final explanation to the student now using all the textbook context gathered above." }]
+    // 4. Execution Engine: Groq Primary with Gemini Fallback
+    try {
+      console.log(`[MIRON] Initiating query with primary model: Groq (${GROQ_MODEL})`);
+
+      const groqMessages: any[] = [
+        { role: "system", content: MIRON_SYSTEM_PROMPT }
+      ];
+
+      if (context) {
+        groqMessages.push({
+          role: "system",
+          content: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.`
+        });
+      }
+
+      history.forEach((msg: any) => {
+        groqMessages.push({
+          role: msg.side === 'user' ? 'user' : 'assistant',
+          content: msg.text
+        });
       });
-      try {
-        const forcedResponse = await callGemini(messages, [], MIRON_SYSTEM_PROMPT);
-        finalText = forcedResponse.candidates?.[0]?.content?.parts?.[0]?.text || "Here is the summary based on the textbook material analyzed above.";
-      } catch (e) {
-        finalText = "Here is the explanation based on the textbook material reviewed above.";
+
+      groqMessages.push({ role: "user", content: prompt });
+
+      let groqLoop = 0;
+      let isGroqToolCall = true;
+
+      while (isGroqToolCall && groqLoop < 4) {
+        const groqRes = await callGroq(groqMessages, groqTools);
+        const choice = groqRes.choices?.[0];
+        const message = choice?.message;
+
+        if (message?.tool_calls && message.tool_calls.length > 0) {
+          console.log(`[MIRON GROQ LOOP ${groqLoop}] Executing ${message.tool_calls.length} tool(s) in parallel.`);
+          groqMessages.push(message);
+
+          const toolExecutionPromises = message.tool_calls.map(async (tc: any) => {
+            const name = tc.function.name;
+            let args = {};
+            try {
+              args = typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : (tc.function.arguments || {});
+            } catch (e: any) {
+              console.error(`Failed to parse tool arguments for ${name}:`, tc.function.arguments);
+            }
+
+            const toolResult = await executeTool(name, args);
+            return {
+              tool_call_id: tc.id,
+              name,
+              result: toolResult
+            };
+          });
+
+          const toolResponses = await Promise.all(toolExecutionPromises);
+
+          for (const tr of toolResponses) {
+            groqMessages.push({
+              role: "tool",
+              tool_call_id: tr.tool_call_id,
+              content: JSON.stringify(tr.result)
+            });
+          }
+
+          groqLoop++;
+        } else {
+          isGroqToolCall = false;
+          finalText = message?.content || "";
+        }
+      }
+
+      if (isGroqToolCall && !finalText) {
+        console.log(`[MIRON GROQ SAFETY NET] Compelling forced synthesis...`);
+        groqMessages.push({
+          role: "user",
+          content: "Tool budget completed. Synthesize and write your complete, final explanation to the student now using all the textbook context gathered above."
+        });
+        const forcedRes = await callGroq(groqMessages, []);
+        finalText = forcedRes.choices?.[0]?.message?.content || "Here is the summary based on the textbook material analyzed above.";
+      }
+
+    } catch (groqErr: any) {
+      console.warn(`[MIRON GROQ FAILED] ${groqErr.message}. Initiating seamless fallback to Gemini (${GEMINI_MODEL})...`);
+      
+      // Clean reset of widget collectors
+      inlineSnapshots = [];
+      inlineQuizzes = [];
+      inlineFlashcards = [];
+      uiCommand = null;
+      extractedThoughts = [];
+
+      let geminiMessages: any[] = [];
+      if (context) {
+        geminiMessages.push({ role: "user", parts: [{ text: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.` }]});
+        geminiMessages.push({ role: "model", parts: [{ text: "Acknowledged. I have the context mapped." }]});
+      }
+
+      history.forEach((msg: any) => {
+        geminiMessages.push({
+          role: msg.side === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.text }]
+        });
+      });
+
+      geminiMessages.push({ role: "user", parts: [{ text: prompt }] });
+
+      let geminiLoop = 0;
+      let isGeminiToolCall = true;
+
+      while (isGeminiToolCall && geminiLoop < 4) {
+        const geminiResponse = await callGemini(geminiMessages, [toolsDefinition], MIRON_SYSTEM_PROMPT);
+        const candidate = geminiResponse.candidates?.[0];
+        const functionCallParts = candidate?.content?.parts?.filter((p: any) => p.functionCall) || [];
+
+        if (functionCallParts.length > 0) {
+          console.log(`[MIRON GEMINI LOOP ${geminiLoop}] Executing ${functionCallParts.length} tool(s) in parallel.`);
+          
+          const toolExecutionPromises = functionCallParts.map(async (part: any) => {
+            const { name, args } = part.functionCall;
+            const toolResult = await executeTool(name, args);
+            return { name, content: toolResult };
+          });
+
+          const toolResponses = await Promise.all(toolExecutionPromises);
+
+          geminiMessages.push(candidate.content);
+          geminiMessages.push({
+            role: "user",
+            parts: toolResponses.map(res => ({
+              functionResponse: {
+                name: res.name,
+                response: { name: res.name, content: res.content }
+              }
+            }))
+          });
+
+          geminiLoop++;
+        } else {
+          isGeminiToolCall = false;
+          finalText = candidate?.content?.parts?.[0]?.text || "My cognitive link was interrupted. Please try again.";
+        }
+      }
+
+      if (isGeminiToolCall && !finalText) {
+        console.log(`[MIRON GEMINI SAFETY NET] Compelling forced synthesis...`);
+        geminiMessages.push({
+          role: "user",
+          parts: [{ text: "Tool budget completed. Synthesize and write your complete, final explanation to the student now using all the textbook context gathered above." }]
+        });
+        try {
+          const forcedResponse = await callGemini(geminiMessages, [], MIRON_SYSTEM_PROMPT);
+          finalText = forcedResponse.candidates?.[0]?.content?.parts?.[0]?.text || "Here is the summary based on the textbook material analyzed above.";
+        } catch (e: any) {
+          finalText = "Here is the explanation based on the textbook material reviewed above.";
+        }
       }
     }
 
-    // Clean up hallucinated orphan tags if tools were not executed
+    // Extract thoughts and clean tags
+    if (finalText) {
+      const thinkMatches = finalText.match(/<think>([\s\S]*?)<\/think>/gi);
+      if (thinkMatches) {
+        thinkMatches.forEach((m: string) => {
+          const clean = m.replace(/<\/?think>/gi, '').trim();
+          if (clean) extractedThoughts.push(clean);
+        });
+        finalText = finalText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+      }
+    }
+
     if (inlineQuizzes.length === 0) {
       finalText = finalText.replace(/\[QUIZ_\d+\]/g, '').trim();
     }
@@ -866,7 +1035,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       response: finalText,
-      thoughts: [],
+      thoughts: extractedThoughts,
       ui_command: uiCommand,
       snapshots: inlineSnapshots,
       quizzes: inlineQuizzes,
