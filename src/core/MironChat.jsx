@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import katex from 'https://esm.sh/katex@0.16.11';
-import { invokeMiron } from '../config/api.js';
+import { invokeMiron, invokeMironStream } from '../config/api.js';
 import { supabase, getComponent, usePlatform, telemetry } from '@linkup-platform/sdk-core';
 import DOMPurify from 'dompurify';
 
@@ -285,8 +285,17 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
         const tempId = `temp-${Date.now()}`;
         const userMsg = { id: tempId, side: 'user', text: textToSend };
         
-        // Optimistic UI Append
-        setMessages(prev => [...prev, userMsg]);
+        // Optimistic UI Append with streaming placeholder
+        const mironTempId = `miron-stream-${Date.now()}`;
+        const placeholderMironMsg = {
+            id: mironTempId,
+            side: 'miron',
+            text: '',
+            status: 'Connecting...',
+            isStreaming: true
+        };
+
+        setMessages(prev => [...prev, userMsg, placeholderMironMsg]);
         setIsTyping(true);
 
         // Lazy Thread Creation on first message send
@@ -357,91 +366,116 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
             }
         }
 
-        // 2. Call Miron Edge Function
+        // 2. Stream Miron Edge Function Response
+        let accumulatedText = '';
         try {
-            const data = await invokeMiron({
+            await invokeMironStream({
                 prompt: textToSend,
                 history: messages.slice(-10),
                 context: currentThread?.context_passage || initialContext
-            });
-
-            // 2b. Automatically persist dynamic flashcards into user's private collection
-            let persistedCards = data.flashcards || null;
-            if (data.flashcards && Array.isArray(data.flashcards) && data.flashcards.length > 0) {
-                try {
-                    const { data: savedCards } = await supabase.rpc('save_miron_flashcards', {
-                        p_cards: data.flashcards
-                    });
-                    if (savedCards && savedCards.length > 0) {
-                        persistedCards = savedCards;
+            }, {
+                onStatus: (statusMessage) => {
+                    setMessages(prev => prev.map(m => m.id === mironTempId ? { ...m, status: statusMessage } : m));
+                },
+                onChunk: (delta) => {
+                    accumulatedText += delta;
+                    setMessages(prev => prev.map(m => m.id === mironTempId ? { 
+                        ...m, 
+                        text: accumulatedText,
+                        status: null 
+                    } : m));
+                },
+                onDone: async (data) => {
+                    let persistedCards = data.flashcards || null;
+                    if (data.flashcards && Array.isArray(data.flashcards) && data.flashcards.length > 0) {
+                        try {
+                            const { data: savedCards } = await supabase.rpc('save_miron_flashcards', {
+                                p_cards: data.flashcards
+                            });
+                            if (savedCards && savedCards.length > 0) {
+                                persistedCards = savedCards;
+                            }
+                        } catch (saveErr) {
+                            console.warn('[MironChat] Failed to auto-persist custom cards:', saveErr);
+                        }
                     }
-                } catch (saveErr) {
-                    console.warn('[MironChat] Failed to auto-persist custom cards:', saveErr);
+
+                    let savedAiMsg = null;
+                    if (currentThreadId) {
+                        const mironMsgPayload = {
+                            thread_id: currentThreadId,
+                            user_id: sessionUser.id,
+                            role: 'miron',
+                            text: accumulatedText,
+                            thought_process: null,
+                            snapshots: data.snapshots || null,
+                            quizzes: data.quizzes || null,
+                            flashcards: persistedCards,
+                            ui_command: data.ui_command || null
+                        };
+
+                        const { data: aiMsgData, error: insertErr } = await supabase
+                            .from('miron_messages')
+                            .insert(mironMsgPayload)
+                            .select()
+                            .single();
+
+                        if (insertErr && (insertErr.code === 'PGRST204' || insertErr.message?.includes('flashcards'))) {
+                            delete mironMsgPayload.flashcards;
+                            const { data: retryData } = await supabase
+                                .from('miron_messages')
+                                .insert(mironMsgPayload)
+                                .select()
+                                .single();
+                            savedAiMsg = retryData;
+                        } else {
+                            savedAiMsg = aiMsgData;
+                        }
+                    }
+
+                    setMessages(prev => prev.map(m => {
+                        if (m.id === tempId) return { ...m, id: dbUserMsgId };
+                        if (m.id === mironTempId) {
+                            return {
+                                id: savedAiMsg?.id || Date.now() + 1,
+                                side: 'miron',
+                                text: accumulatedText,
+                                snapshots: data.snapshots,
+                                quizzes: data.quizzes,
+                                flashcards: persistedCards,
+                                ui_command: data.ui_command,
+                                isStreaming: false,
+                                status: null
+                            };
+                        }
+                        return m;
+                    }));
+
+                    if (data.ui_command && (data.ui_command.action === 'draw_flow' || data.ui_command.action === 'draw')) {
+                        setActiveBoardPayload(data.ui_command);
+                    }
+                    setIsTyping(false);
+                },
+                onError: (err) => {
+                    throw new Error(err);
                 }
-            }
-
-            let savedAiMsg = null;
-            if (currentThreadId) {
-                const mironMsgPayload = {
-                    thread_id: currentThreadId,
-                    user_id: sessionUser.id,
-                    role: 'miron',
-                    text: data.response,
-                    thought_process: null,
-                    snapshots: data.snapshots || null,
-                    quizzes: data.quizzes || null,
-                    flashcards: persistedCards,
-                    ui_command: data.ui_command || null
-                };
-
-                const { data: aiMsgData, error: insertErr } = await supabase
-                    .from('miron_messages')
-                    .insert(mironMsgPayload)
-                    .select()
-                    .single();
-
-                if (insertErr && (insertErr.code === 'PGRST204' || insertErr.message?.includes('flashcards'))) {
-                    // Self-healing fallback if database column is pending migration
-                    delete mironMsgPayload.flashcards;
-                    const { data: retryData } = await supabase
-                        .from('miron_messages')
-                        .insert(mironMsgPayload)
-                        .select()
-                        .single();
-                    savedAiMsg = retryData;
-                } else {
-                    savedAiMsg = aiMsgData;
-                }
-            }
-
-            setMessages(prev => [
-                ...prev.map(m => m.id === tempId ? { ...m, id: dbUserMsgId } : m),
-                {
-                    id: savedAiMsg?.id || Date.now() + 1,
-                    side: 'miron',
-                    text: data.response,
-                    snapshots: data.snapshots,
-                    quizzes: data.quizzes,
-                    flashcards: persistedCards,
-                    ui_command: data.ui_command
-                }
-            ]);
-
-            if (data.ui_command && (data.ui_command.action === 'draw_flow' || data.ui_command.action === 'draw')) {
-                setActiveBoardPayload(data.ui_command);
-            }
+            });
 
         } catch (error) {
             console.error("Miron Communication Error:", error);
-            setMessages(prev => [
-                ...prev.map(m => m.id === tempId ? { ...m, id: dbUserMsgId } : m),
-                {
-                    id: Date.now() + 1,
-                    side: 'miron',
-                    text: "I apologize, but I am currently having trouble processing your request. Please try asking again in a moment."
+            setMessages(prev => prev.map(m => {
+                if (m.id === tempId) return { ...m, id: dbUserMsgId };
+                if (m.id === mironTempId) {
+                    return {
+                        id: Date.now() + 1,
+                        side: 'miron',
+                        text: "I apologize, but I am currently having trouble processing your request. Please try asking again in a moment.",
+                        isStreaming: false,
+                        status: null
+                    };
                 }
-            ]);
-        } finally {
+                return m;
+            }));
             setIsTyping(false);
         }
     };
@@ -634,7 +668,16 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
 
                                     return (
                                         <>
+                                            {m.status && (
+                                                <div className="miron-streaming-status">
+                                                    <i className="fa-solid fa-sparkles fa-spin"></i>
+                                                    <span>{m.status}</span>
+                                                </div>
+                                            )}
                                             {renderedElements}
+                                            {m.isStreaming && m.text && (
+                                                <span className="streaming-cursor"></span>
+                                            )}
                                             {!flashcardDeckRendered && m.flashcards && m.flashcards.length > 0 && (
                                                 <InlineChatCard cards={m.flashcards} onRate={handleInlineCardRate} />
                                             )}
@@ -656,7 +699,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                     ))
                 )}
                 
-                {isTyping && (
+                {isTyping && !messages.some(m => m.isStreaming) && (
                     <div className="chat-node miron">
                         <div className="athena-typing">
                             <div className="dot"></div>
