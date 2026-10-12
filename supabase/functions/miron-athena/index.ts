@@ -886,7 +886,83 @@ serve(async (req) => {
       return toolResult;
     }
 
-    // 4. Execution Engine: Full-Duplex SSE Stream
+    // 4. Helper: Native SSE Stream Reader for Gemini
+    async function streamGeminiTurn(
+      contents: any[],
+      tools: any[] | null,
+      systemInstruction: string,
+      onTextChunk: (text: string) => void
+    ) {
+      let attempts = 0;
+      while (attempts < 3) {
+        const keyRecord = await getApiKey('gemini');
+        const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${keyRecord.api_key}`;
+
+        const payload: any = { contents };
+        if (tools && tools.length > 0) payload.tools = tools;
+        if (systemInstruction) payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+
+        const res = await fetch(streamUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 429) {
+          await flagKeyCooldown(keyRecord.id);
+          attempts++;
+          continue;
+        }
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Gemini Stream Error: ${res.status} ${errText}`);
+        }
+
+        if (!res.body) throw new Error("Gemini stream body missing.");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = '';
+        let fullText = '';
+        const functionCalls: any[] = [];
+        const modelParts: any[] = [];
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const jsonStr = trimmed.slice(5).trim();
+            if (!jsonStr) continue;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const parts = parsed.candidates?.[0]?.content?.parts || [];
+              for (const part of parts) {
+                modelParts.push(part);
+                if (part.functionCall) {
+                  functionCalls.push(part.functionCall);
+                } else if (part.text) {
+                  fullText += part.text;
+                  onTextChunk(part.text);
+                }
+              }
+            } catch (_) {}
+          }
+        }
+
+        return { fullText, functionCalls, modelParts };
+      }
+      throw new Error("Failed to stream Gemini after multiple attempts.");
+    }
+
+    // 5. Execution Engine: Full-Duplex SSE Stream
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
@@ -899,7 +975,7 @@ serve(async (req) => {
         };
 
         try {
-          console.log(`[MIRON STREAM] Initiating turn with primary model: Gemini (${GEMINI_MODEL})`);
+          console.log(`[MIRON STREAM] Initiating real-time turn with primary model: Gemini (${GEMINI_MODEL})`);
 
           let geminiMessages: any[] = [];
           if (context) {
@@ -918,22 +994,27 @@ serve(async (req) => {
           geminiMessages.push({ role: "user", parts: [{ text: prompt }] });
 
           let geminiLoop = 0;
-          let isGeminiToolCall = true;
-          let preliminaryText = "";
+          let shouldLoopTools = true;
 
-          while (isGeminiToolCall && geminiLoop < 3) {
-            console.log(`🔄 [GEMINI LOOP ${geminiLoop} START] Invoking Gemini at +${elapsed()}`);
-            const geminiResponse = await callGemini(geminiMessages, [toolsDefinition], MIRON_SYSTEM_PROMPT);
-            const candidate = geminiResponse.candidates?.[0];
-            const functionCallParts = candidate?.content?.parts?.filter((p: any) => p.functionCall) || [];
+          while (shouldLoopTools && geminiLoop < 3) {
+            console.log(`🔄 [GEMINI STREAM TURN ${geminiLoop}] at +${elapsed()}`);
 
-            if (functionCallParts.length > 0) {
-              const toolNames = functionCallParts.map((p: any) => p.functionCall.name).join(', ');
-              console.log(`🛠️ [GEMINI LOOP ${geminiLoop} TOOLS] Model requested ${functionCallParts.length} tool(s): [${toolNames}] at +${elapsed()}`);
+            const turnResult = await streamGeminiTurn(
+              geminiMessages,
+              geminiLoop === 0 ? [toolsDefinition] : null,
+              MIRON_SYSTEM_PROMPT,
+              (chunkText) => {
+                finalText += chunkText;
+                sendEvent('chunk', { delta: chunkText });
+              }
+            );
 
-              // Emit visual status indicator for user
-              for (const part of functionCallParts) {
-                const { name, args } = part.functionCall;
+            if (turnResult.functionCalls.length > 0) {
+              const toolNames = turnResult.functionCalls.map((fc: any) => fc.name).join(', ');
+              console.log(`🛠️ [TOOLS DETECTED] [${toolNames}] at +${elapsed()}`);
+
+              for (const fc of turnResult.functionCalls) {
+                const { name, args } = fc;
                 if (name === 'read_book_section') {
                   sendEvent('status', { message: `Reading ${args.section_title || 'textbook section'}...` });
                 } else if (name === 'search_textbook_material') {
@@ -947,15 +1028,17 @@ serve(async (req) => {
                 }
               }
 
-              const toolExecutionPromises = functionCallParts.map(async (part: any) => {
-                const { name, args } = part.functionCall;
-                const toolResult = await executeTool(name, args);
-                return { name, content: toolResult };
+              const toolExecutionPromises = turnResult.functionCalls.map(async (fc: any) => {
+                const toolResult = await executeTool(fc.name, fc.args);
+                return { name: fc.name, content: toolResult };
               });
 
               const toolResponses = await Promise.all(toolExecutionPromises);
 
-              geminiMessages.push(candidate.content);
+              geminiMessages.push({
+                role: "model",
+                parts: turnResult.modelParts
+              });
               geminiMessages.push({
                 role: "user",
                 parts: toolResponses.map(res => ({
@@ -966,69 +1049,15 @@ serve(async (req) => {
                 }))
               });
 
+              sendEvent('status', { message: 'Synthesizing response...' });
               geminiLoop++;
             } else {
-              isGeminiToolCall = false;
-              preliminaryText = candidate?.content?.parts?.[0]?.text || "";
+              shouldLoopTools = false;
             }
-          }
-
-          // If tools were called, stream final synthesis. If Turn 0 had no tools, stream the preliminary text.
-          if (geminiLoop > 0) {
-            sendEvent('status', { message: 'Synthesizing response...' });
-            const keyRecord = await getApiKey('gemini');
-            const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${keyRecord.api_key}`;
-
-            const streamRes = await fetch(streamUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: geminiMessages,
-                systemInstruction: { parts: [{ text: MIRON_SYSTEM_PROMPT }] }
-              })
-            });
-
-            if (streamRes.ok && streamRes.body) {
-              const reader = streamRes.body.getReader();
-              const decoder = new TextDecoder();
-              let sseBuffer = '';
-
-              while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                sseBuffer += decoder.decode(value, { stream: true });
-                const lines = sseBuffer.split('\n');
-                sseBuffer = lines.pop() || '';
-
-                for (const line of lines) {
-                  const trimmed = line.trim();
-                  if (!trimmed.startsWith('data:')) continue;
-                  const jsonStr = trimmed.slice(5).trim();
-                  if (!jsonStr) continue;
-                  try {
-                    const parsed = JSON.parse(jsonStr);
-                    const chunkText = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                    if (chunkText) {
-                      finalText += chunkText;
-                      sendEvent('chunk', { delta: chunkText });
-                    }
-                  } catch (_) {}
-                }
-              }
-            } else {
-              // Direct fallback if stream initiation failed
-              const forced = await callGemini(geminiMessages, [], MIRON_SYSTEM_PROMPT);
-              finalText = forced.candidates?.[0]?.content?.parts?.[0]?.text || "Material synthesized.";
-              sendEvent('chunk', { delta: finalText });
-            }
-          } else {
-            // No tools were needed (e.g. conversational greeting) - stream directly
-            finalText = preliminaryText || "Hello! What course or topic are we exploring today?";
-            sendEvent('chunk', { delta: finalText });
           }
 
         } catch (geminiErr: any) {
-          console.warn(`[MIRON GEMINI STREAM FAILED] ${geminiErr.message}. Executing Groq fallback...`, geminiErr);
+          console.warn(`[MIRON GEMINI STREAM FAILED] ${geminiErr.message}. Executing Groq streaming fallback...`, geminiErr);
           try {
             sendEvent('status', { message: 'Switching cognitive engine...' });
             const groqMessages: any[] = [
@@ -1038,9 +1067,51 @@ serve(async (req) => {
             trimmed.forEach((m: any) => groqMessages.push({ role: m.side === 'user' ? 'user' : 'assistant', content: m.text }));
             groqMessages.push({ role: "user", content: prompt });
 
-            const groqRes = await callGroq(groqMessages, []);
-            finalText = groqRes.choices?.[0]?.message?.content || "Here is the response.";
-            sendEvent('chunk', { delta: finalText });
+            const keyRecord = await getApiKey('groq');
+            const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${keyRecord.api_key}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: GROQ_MODEL,
+                messages: groqMessages,
+                temperature: 0.6,
+                stream: true
+              })
+            });
+
+            if (groqRes.ok && groqRes.body) {
+              const reader = groqRes.body.getReader();
+              const decoder = new TextDecoder();
+              let sseBuf = '';
+              while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                sseBuf += decoder.decode(value, { stream: true });
+                const lines = sseBuf.split('\n');
+                sseBuf = lines.pop() || '';
+                for (const l of lines) {
+                  const tr = l.trim();
+                  if (!tr.startsWith('data:')) continue;
+                  const jsonStr = tr.slice(5).trim();
+                  if (jsonStr === '[DONE]') break;
+                  try {
+                    const parsed = JSON.parse(jsonStr);
+                    const deltaContent = parsed.choices?.[0]?.delta?.content || '';
+                    if (deltaContent) {
+                      finalText += deltaContent;
+                      sendEvent('chunk', { delta: deltaContent });
+                    }
+                  } catch (_) {}
+                }
+              }
+            } else {
+              const groqFallback = await callGroq(groqMessages, []);
+              finalText = groqFallback.choices?.[0]?.message?.content || "Here is the response.";
+              sendEvent('chunk', { delta: finalText });
+            }
           } catch (err: any) {
             sendEvent('error', { message: err.message });
           }
@@ -1068,9 +1139,10 @@ serve(async (req) => {
     return new Response(stream, {
       headers: {
         ...corsHeaders,
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive"
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no"
       }
     });
 
