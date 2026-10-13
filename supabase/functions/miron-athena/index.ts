@@ -729,7 +729,7 @@ serve(async (req) => {
         }
         else if (name === "render_quiz") {
           let qList = [];
-          let quizTitle = args.section_title ? `Knowledge Check: ${args.section_title}` : "Interactive Knowledge Check";
+          let quizTitle = args.section_title ? `⚡ Quick Quiz • ${args.section_title}` : "⚡ Quick Quiz";
 
           if (args.mode === 'database') {
             const code = (args.course_code || "").toUpperCase().trim();
@@ -771,8 +771,32 @@ serve(async (req) => {
 
               if (validQIds.length > 0) {
                 const queryLimit = Math.min(20, Math.max(1, args.limit || 5));
-                const { data: dbQs } = await supabase.from('questions').select('id, text, question_type, options, correct_answer').in('id', validQIds).limit(queryLimit);
+                const { data: dbQs } = await supabase.from('questions')
+                  .select(`id, text, question_type, options, correct_answer, sections(exams(universities(name)))`)
+                  .in('id', validQIds)
+                  .limit(queryLimit);
+                
                 qList = dbQs || [];
+
+                if (qList.length > 0) {
+                  const uniNames = new Set<string>();
+                  qList.forEach((q: any) => {
+                    const uName = q.sections?.exams?.universities?.name;
+                    if (uName) uniNames.add(uName);
+                    delete q.sections; // Strip relational data from final payload
+                  });
+                  
+                  const unis = Array.from(uniNames);
+                  if (unis.length === 1) {
+                    quizTitle = `🏛️ ${unis[0]} Exam`;
+                  } else if (unis.length === 2) {
+                    quizTitle = `🏛️ ${unis[0]} & ${unis[1]}`;
+                  } else if (unis.length > 2) {
+                    quizTitle = `🏛️ ${unis[0]}, ${unis[1]} & ${unis.length - 2} other campuses`;
+                  } else {
+                    quizTitle = `🏛️ Campus Exam Archive`;
+                  }
+                }
               }
             }
           } else {
