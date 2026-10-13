@@ -177,6 +177,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const [isLoadingMessages, setIsLoadingMessages] = useState(true);
     const [activeBoardPayload, setActiveBoardPayload] = useState(null);
     const flowRef = useRef(null);
+    const scrollAnchorRef = useRef(null);
 
     // Track Dwell Time in Telemetry
     useEffect(() => {
@@ -371,13 +372,12 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
         }
     };
 
-    // Auto-Scroll to Bottom
+    // Auto-Scroll to Bottom: Synchronous zero-lag follow during stream, smooth on idle
     useEffect(() => {
-        if (flowRef.current) {
-            flowRef.current.scrollTo({
-                top: flowRef.current.scrollHeight,
-                behavior: isTyping ? 'auto' : 'smooth'
-            });
+        if (isTyping && flowRef.current) {
+            flowRef.current.scrollTop = flowRef.current.scrollHeight;
+        } else if (!isTyping && scrollAnchorRef.current) {
+            scrollAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
     }, [messages, isTyping]);
 
@@ -475,12 +475,12 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
         let isNetworkDone = false;
         let finalStreamPayload = null;
 
-        // Pacing Engine: Smooths out bursts and delivers a calm ChatGPT typing rhythm
+        // Pacing Engine: Silky micro-cadence (14ms frame sync with gentle 1-3 char smoothing)
         const pacingInterval = setInterval(() => {
             if (displayedText.length < targetFullText.length) {
                 const backlog = targetFullText.length - displayedText.length;
-                // Elastic Cadence: Accelerates dynamically if queue swells (e.g. IDE proxy burst)
-                const step = backlog > 180 ? 10 : backlog > 60 ? 5 : backlog > 20 ? 2 : 1;
+                // Fluid Cadence: Tightly capped to prevent violent 10-char line jumping
+                const step = backlog > 200 ? 5 : backlog > 80 ? 3 : backlog > 25 ? 2 : 1;
                 displayedText = targetFullText.slice(0, displayedText.length + step);
 
                 setMessages(prev => prev.map(m => m.id === mironTempId ? {
@@ -492,7 +492,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                 clearInterval(pacingInterval);
                 finalizeTurn(finalStreamPayload, displayedText);
             }
-        }, 18);
+        }, 14);
 
         const finalizeTurn = async (data, completeText) => {
             let persistedCards = data?.flashcards || null;
@@ -759,6 +759,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                         </div>
                     </div>
                 )}
+                <div ref={scrollAnchorRef} style={{ height: '1px', minHeight: '1px', flexShrink: 0 }}></div>
             </main>
 
             <footer className="athena-input-area">
