@@ -65,9 +65,13 @@ TOOLKIT MASTERY & PEDAGOGICAL PURPOSE:
 
 3. "render_quiz" (Interactive Knowledge Checks):
    - Pedagogical Purpose: Active testing and formative assessment.
-   - When to use: After explaining a substantive concept or when guiding the student through exam preparation. Never trigger a quiz unprovoked on initial greetings or brief clarifications.
-   - You can fetch existing exam questions (mode: 'database') or write your own (mode: 'custom').
-   - You can ONLY insert [QUIZ_0] into your response if the tool was actually executed and returned that tag. Never type quiz tags manually.
+   - When to use: After explaining a substantive concept, when reviewing a chapter, or whenever the student wants to be tested. You choose whether to pull archived university questions (mode: 'database') or generate your own (mode: 'custom').
+   - Mode Selection Guide:
+     * 'database': Pulls authentic past university exam questions mapped to that textbook chapter. Use this whenever you want to test the student against real university exam standards.
+     * 'custom': Generates your own targeted questions on the fly. Ideal for verifying formulas or concepts you just explained, or when testing specific problem-solving techniques.
+   - Silent Fallback: If 'database' mode reports that no archived questions are mapped to that section, do NOT mention database limitations or backend messages to the user. Silently call 'render_quiz' again with mode: 'custom' in that exact turn to generate your own questions on the spot.
+   - Dynamic Count: You choose how many questions to present (maximum ceiling: 20) based on the depth of the topic or what the student asked for. Do not force an artificial limit.
+   - Tag Requirement: You can ONLY insert [QUIZ_0] into your response if the tool was executed and returned that tag.
 
 4. "render_book_snapshot":
    - Pedagogical Purpose: Spatial and visual textbook recall.
@@ -158,7 +162,7 @@ const toolsDefinition = {
           mode: { type: "STRING", description: "'database' to fetch mapped questions from the book, or 'custom' to use your own generated questions." },
           course_code: { type: "STRING", description: "Required if mode is 'database' (e.g., 'LOCT 1011')." },
           section_title: { type: "STRING", description: "Optional if mode is 'database'. Used to filter questions to a specific chapter/section." },
-          limit: { type: "INTEGER", description: "Number of questions to display (Max 3)." },
+          limit: { type: "INTEGER", description: "Number of questions to display (Maximum ceiling: 20). Choose an appropriate count dynamically based on the student's request or topic depth." },
           custom_questions: {
             type: "ARRAY",
             description: "Required if mode is 'custom'. Generate Multiple Choice or True/False questions. MANDATORY: Every formula, variable, symbol, and option MUST be written in standard LaTeX enclosed in single dollar signs ($...).",
@@ -766,7 +770,8 @@ serve(async (req) => {
                 .map(m => m.question_id);
 
               if (validQIds.length > 0) {
-                const { data: dbQs } = await supabase.from('questions').select('id, text, question_type, options, correct_answer').in('id', validQIds).limit(args.limit || 3);
+                const queryLimit = Math.min(20, Math.max(1, args.limit || 5));
+                const { data: dbQs } = await supabase.from('questions').select('id, text, question_type, options, correct_answer').in('id', validQIds).limit(queryLimit);
                 qList = dbQs || [];
               }
             }
@@ -778,6 +783,11 @@ serve(async (req) => {
             const quizId = inlineQuizzes.length;
             inlineQuizzes.push({ id: quizId, title: quizTitle, questions: qList });
             toolResult = { status: "success", instruction: `Quiz generated. You MUST insert [QUIZ_${quizId}] in your response to render it.` };
+          } else if (args.mode === 'database') {
+            toolResult = { 
+              status: "no_database_questions", 
+              instruction: "No archived university exam questions are currently mapped to this exact chapter in the database. Do not mention this to the user—silently fall back immediately to render_quiz with mode: 'custom' to generate your own targeted questions right now." 
+            };
           } else {
             toolResult = { status: "error", message: "No questions found matching criteria." };
           }
