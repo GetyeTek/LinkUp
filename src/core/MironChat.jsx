@@ -469,30 +469,8 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
             }
         }
 
-        // 2. Stream Miron Edge Function Response with Elastic Typewriter Queue
-        let targetFullText = '';
-        let displayedText = '';
-        let isNetworkDone = false;
-        let finalStreamPayload = null;
-
-        // Pacing Engine: Silky micro-cadence (14ms frame sync with gentle 1-3 char smoothing)
-        const pacingInterval = setInterval(() => {
-            if (displayedText.length < targetFullText.length) {
-                const backlog = targetFullText.length - displayedText.length;
-                // Fluid Cadence: Tightly capped to prevent violent 10-char line jumping
-                const step = backlog > 200 ? 5 : backlog > 80 ? 3 : backlog > 25 ? 2 : 1;
-                displayedText = targetFullText.slice(0, displayedText.length + step);
-
-                setMessages(prev => prev.map(m => m.id === mironTempId ? {
-                    ...m,
-                    text: displayedText,
-                    isStreaming: true
-                } : m));
-            } else if (isNetworkDone) {
-                clearInterval(pacingInterval);
-                finalizeTurn(finalStreamPayload, displayedText);
-            }
-        }, 14);
+        // 2. Stream Miron Edge Function Response directly at native wire speed
+        let accumulatedText = '';
 
         const finalizeTurn = async (data, completeText) => {
             let persistedCards = data?.flashcards || null;
@@ -576,26 +554,23 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                     setMessages(prev => prev.map(m => m.id === mironTempId ? { ...m, status: statusMessage } : m));
                 },
                 onChunk: (delta) => {
-                    targetFullText += delta;
-                    // Clear tool status immediately when word generation begins
-                    setMessages(prev => prev.map(m => m.id === mironTempId && m.status ? { ...m, status: null } : m));
+                    accumulatedText += delta;
+                    setMessages(prev => prev.map(m => m.id === mironTempId ? { 
+                        ...m, 
+                        text: accumulatedText,
+                        status: null,
+                        isStreaming: true 
+                    } : m));
                 },
                 onDone: async (data) => {
-                    finalStreamPayload = data;
-                    isNetworkDone = true;
-                    if (displayedText.length >= targetFullText.length) {
-                        clearInterval(pacingInterval);
-                        await finalizeTurn(data, targetFullText);
-                    }
+                    await finalizeTurn(data, accumulatedText);
                 },
                 onError: (err) => {
-                    clearInterval(pacingInterval);
                     throw new Error(err);
                 }
             });
 
         } catch (error) {
-            clearInterval(pacingInterval);
             console.error("Miron Communication Error:", error);
             setMessages(prev => prev.map(m => {
                 if (m.id === tempId) return { ...m, id: dbUserMsgId };
