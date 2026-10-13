@@ -110,6 +110,39 @@
     transform: scale(1.05);
 }
 
+.athena-dev-copy-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
+    color: var(--accent-teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    font-size: 0.95rem;
+}
+
+.athena-dev-copy-btn:hover:not(:disabled) {
+    background: rgba(66, 215, 184, 0.15);
+    transform: scale(1.05);
+    color: #fff;
+}
+
+.athena-dev-copy-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.athena-dev-copy-btn.copied {
+    background: rgba(66, 215, 184, 0.25);
+    border-color: var(--accent-teal);
+    color: var(--accent-teal);
+}
+
 /* Bubble Action Row & Copy Button */
 .athena-bubble-actions {
     display: flex;
