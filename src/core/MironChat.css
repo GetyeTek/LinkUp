@@ -175,7 +175,7 @@
     display: flex;
     flex-direction: column;
     gap: 2rem;
-    scroll-behavior: smooth;
+    overflow-anchor: none;
     
     /* The Fade Mask: Opacity reduction mapping precisely to avatar coordinates */
     mask-image: linear-gradient(to bottom, transparent 0px, rgba(0,0,0,0.1) 15px, rgba(0,0,0,0.6) 50px, black 90px, black 100%);
