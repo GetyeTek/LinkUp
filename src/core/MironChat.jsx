@@ -178,6 +178,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const [activeBoardPayload, setActiveBoardPayload] = useState(null);
     const flowRef = useRef(null);
     const scrollAnchorRef = useRef(null);
+    const isAutoScrollEnabled = useRef(true);
 
     // Track Dwell Time in Telemetry
     useEffect(() => {
@@ -372,17 +373,21 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
         }
     };
 
-    // Auto-Scroll to Bottom: Synchronous zero-lag follow during stream, smooth on idle
+    // Auto-Scroll to Bottom: Instant zero-lag lock during stream, smooth on idle
     useEffect(() => {
-        if (isTyping && flowRef.current) {
-            flowRef.current.scrollTop = flowRef.current.scrollHeight;
-        } else if (!isTyping && scrollAnchorRef.current) {
+        if (!flowRef.current) return;
+        if (isTyping) {
+            if (isAutoScrollEnabled.current) {
+                flowRef.current.scrollTop = flowRef.current.scrollHeight;
+            }
+        } else if (scrollAnchorRef.current && isAutoScrollEnabled.current) {
             scrollAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
     }, [messages, isTyping]);
 
     const sendMessage = async (textToSend) => {
         if (!textToSend.trim() || isTyping) return;
+        isAutoScrollEnabled.current = true;
 
         let currentThread = activeThread;
         const tempId = `temp-${Date.now()}`;
@@ -698,7 +703,14 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                 />
             )}
 
-            <main className="athena-flow" ref={flowRef}>
+            <main 
+                className="athena-flow" 
+                ref={flowRef}
+                onScroll={(e) => {
+                    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+                    isAutoScrollEnabled.current = scrollHeight - scrollTop - clientHeight < 160;
+                }}
+            >
                 {isLoadingMessages ? (
                     <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--accent-teal)' }}>
                         <i className="fas fa-circle-notch fa-spin fa-2x"></i>
