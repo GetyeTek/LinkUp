@@ -129,7 +129,11 @@ const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onRepor
     return (
         <div className="bpq-container">
             <div className="bpq-header">
-                <div className="bpq-title"><i className="fas fa-clipboard-check"></i> Knowledge Check</div>
+                <div className="bpq-title">
+                    {q.exam_meta?.university_name 
+                        ? `🏛️ ${q.exam_meta.university_name}${q.exam_meta.date ? ` • ${String(q.exam_meta.date).substring(0, 4)}` : ' Exam'}` 
+                        : '🏛️ University Exam Archive'}
+                </div>
                 <div className="bpq-counter">{qIndex + 1} of {questions.length}</div>
             </div>
             <div className="bpq-body">
