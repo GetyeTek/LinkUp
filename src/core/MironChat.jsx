@@ -188,6 +188,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     }, []);
 
     const [copiedId, setCopiedId] = useState(null);
+    const [isThreadCopied, setIsThreadCopied] = useState(false);
 
     // Auto-Send query from Home Dock
     useEffect(() => {
@@ -256,6 +257,30 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
         setCopiedId(msgId);
         if (navigator.vibrate) navigator.vibrate(20);
         setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    const handleCopyFullThread = () => {
+        if (!messages || messages.length === 0) return;
+        const title = activeThread?.title || "Miron Study Session";
+        const transcript = messages
+            .filter(m => m.text && !m.text.startsWith('[Quiz Submission:'))
+            .map(m => {
+                const sender = m.side === 'user' ? '👤 User' : '✨ Miron';
+                const cleanText = m.text
+                    .replace(/\[SNAPSHOT_\d+\]/gi, '[Textbook Snapshot]')
+                    .replace(/\[QUIZ_\d+\]/gi, '[Interactive Quiz]')
+                    .replace(/\[BOARD_[a-zA-Z0-9_\-]+\]/gi, '[Visual Board Diagram]')
+                    .replace(/\[FLASHCARD_\d+\]/gi, '[Flashcards]')
+                    .trim();
+                return `${sender}:\n${cleanText}`;
+            })
+            .join('\n\n---\n\n');
+
+        const fullExport = `=== Thread: ${title} ===\n\n${transcript}\n\n=== End of Thread ===`;
+        navigator.clipboard.writeText(fullExport);
+        setIsThreadCopied(true);
+        if (navigator.vibrate) navigator.vibrate(25);
+        setTimeout(() => setIsThreadCopied(false), 2000);
     };
 
     const handleInlineCardRate = async (difficulty, card) => {
@@ -680,57 +705,67 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                     </div>
                 </div>
                 
-                <button 
-                    className="athena-live-btn"
-                    onClick={() => {
-                        window.dispatchEvent(new CustomEvent('miron:open-live-session'));
-                    }}
-                    style={{ background: 'transparent', padding: 0, border: 'none', borderRadius: 0, width: '38px', height: '38px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style={{ width: '100%', height: '100%', display: 'block' }}>
-                      <defs>
-                        <linearGradient id="miron-live-pulse-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0b0f19" />
-                          <stop offset="100%" stopColor="#1e293b" />
-                        </linearGradient>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <button
+                        className={`athena-dev-copy-btn ${isThreadCopied ? 'copied' : ''}`}
+                        onClick={handleCopyFullThread}
+                        title={isThreadCopied ? "Thread Copied!" : "Copy Full Thread"}
+                        disabled={messages.length === 0}
+                    >
+                        <i className={`fa-${isThreadCopied ? 'solid fa-check' : 'regular fa-clipboard'}`}></i>
+                    </button>
+                    <button 
+                        className="athena-live-btn"
+                        onClick={() => {
+                            window.dispatchEvent(new CustomEvent('miron:open-live-session'));
+                        }}
+                        style={{ background: 'transparent', padding: 0, border: 'none', borderRadius: 0, width: '38px', height: '38px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style={{ width: '100%', height: '100%', display: 'block' }}>
+                          <defs>
+                            <linearGradient id="miron-live-pulse-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#0b0f19" />
+                              <stop offset="100%" stopColor="#1e293b" />
+                            </linearGradient>
 
-                        <linearGradient id="miron-neon-cyan-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#00f0ff" />
-                          <stop offset="100%" stopColor="#0066ff" />
-                        </linearGradient>
+                            <linearGradient id="miron-neon-cyan-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#00f0ff" />
+                              <stop offset="100%" stopColor="#0066ff" />
+                            </linearGradient>
 
-                        <filter id="miron-neon-glow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feGaussianBlur stdDeviation="2.5" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
+                            <filter id="miron-neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                              <feGaussianBlur stdDeviation="2.5" result="blur" />
+                              <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                              </feMerge>
+                            </filter>
 
-                        <filter id="miron-red-dot-glow" x="-30%" y="-30%" width="160%" height="160%">
-                          <feGaussianBlur stdDeviation="1.5" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
-                      </defs>
+                            <filter id="miron-red-dot-glow" x="-30%" y="-30%" width="160%" height="160%">
+                              <feGaussianBlur stdDeviation="1.5" result="blur" />
+                              <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                              </feMerge>
+                            </filter>
+                          </defs>
 
-                      <rect x="2" y="2" width="96" height="96" rx="26" fill="url(#miron-live-pulse-bg)" stroke="#1e293b" strokeWidth="2.5" />
+                          <rect x="2" y="2" width="96" height="96" rx="26" fill="url(#miron-live-pulse-bg)" stroke="#1e293b" strokeWidth="2.5" />
 
-                      <path d="M 22,50 C 22,34.5 34.5,22 50,22 C 65.5,22 78,34.5 78,50 C 78,65.5 65.5,78 50,78 C 45,78 40,76.5 36,74 L 18,78 L 22,64 C 20.7,60 22,55 22,50 Z" 
-                            fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                          <path d="M 22,50 C 22,34.5 34.5,22 50,22 C 65.5,22 78,34.5 78,50 C 78,65.5 65.5,78 50,78 C 45,78 40,76.5 36,74 L 18,78 L 22,64 C 20.7,60 22,55 22,50 Z" 
+                                fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
 
-                      <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
-                            fill="none" stroke="#00f0ff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" filter="url(#miron-neon-glow)" />
+                          <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
+                                fill="none" stroke="#00f0ff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" filter="url(#header-neon-glow)" />
 
-                      <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
-                            fill="none" stroke="url(#miron-neon-cyan-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
+                                fill="none" stroke="url(#miron-neon-cyan-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
 
-                      <circle cx="35" cy="37" r="3.5" fill="#ef4444" filter="url(#miron-red-dot-glow)" />
-                      <text x="57" y="41" fill="#ffffff" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="12" letterSpacing="1" textAnchor="middle">LIVE</text>
-                    </svg>
-                </button>
+                          <circle cx="35" cy="37" r="3.5" fill="#ef4444" filter="url(#header-red-dot-glow)" />
+                          <text x="57" y="41" fill="#ffffff" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="12" letterSpacing="1" textAnchor="middle">LIVE</text>
+                        </svg>
+                    </button>
+                </div>
             </header>
 
             {activeBoardPayload && (
