@@ -179,6 +179,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const flowRef = useRef(null);
     const scrollAnchorRef = useRef(null);
     const isAutoScrollEnabled = useRef(true);
+    const touchStartY = useRef(0);
 
     // Track Dwell Time in Telemetry
     useEffect(() => {
@@ -370,6 +371,42 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
             });
         } catch (err) {
             console.error("[MironChat] Delete thread error:", err);
+        }
+    };
+
+    const handleWheel = (e) => {
+        if (e.deltaY < 0) {
+            // User explicitly wheeled up: pause auto-scroll
+            isAutoScrollEnabled.current = false;
+        } else if (e.deltaY > 0 && flowRef.current) {
+            const { scrollHeight, scrollTop, clientHeight } = flowRef.current;
+            if (scrollHeight - scrollTop - clientHeight < 280) {
+                isAutoScrollEnabled.current = true;
+            }
+        }
+    };
+
+    const handleTouchStart = (e) => {
+        touchStartY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e) => {
+        const diff = e.touches[0].clientY - touchStartY.current;
+        if (diff > 12) {
+            // User pulled downward to read history: pause auto-scroll
+            isAutoScrollEnabled.current = false;
+        } else if (diff < -12 && flowRef.current) {
+            const { scrollHeight, scrollTop, clientHeight } = flowRef.current;
+            if (scrollHeight - scrollTop - clientHeight < 280) {
+                isAutoScrollEnabled.current = true;
+            }
+        }
+    };
+
+    const handleScroll = (e) => {
+        const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+        if (scrollHeight - scrollTop - clientHeight < 280) {
+            isAutoScrollEnabled.current = true;
         }
     };
 
@@ -706,10 +743,10 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
             <main 
                 className="athena-flow" 
                 ref={flowRef}
-                onScroll={(e) => {
-                    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
-                    isAutoScrollEnabled.current = scrollHeight - scrollTop - clientHeight < 160;
-                }}
+                onWheel={handleWheel}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onScroll={handleScroll}
             >
                 {isLoadingMessages ? (
                     <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--accent-teal)' }}>
