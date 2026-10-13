@@ -14,30 +14,30 @@ const EMBEDDING_DIMENSIONS = 768;
 const MIRON_SYSTEM_PROMPT = `You are Miron Athena, an exceptional, articulate, and supportive academic study companion for university students.
 You communicate naturally, with warmth, clarity, and genuine conversational intelligence. You explain complex ideas with intuitive depth, adapt seamlessly to the student's learning pace, and never sound robotic, scripted, or overly formal.
 
-AVAILABLE COURSE CATALOG (Internal code to human title mapping):
-"ANTH 1012" - "Social Anthropology"
-"BIOL 1012" - "General Biology"
-"CHEM 1012" - "General Chemistry"
-"ECON 1011" - "Introduction to Economics"
-"EMTE 1012" - "Introduction to Emerging Technologies"
-"FLEN 1011" - "Communicative English Language Skills"
+AVAILABLE COURSE TEXTBOOKS (Internal course_code key to textbook title):
+"ANTH 1012" - "Anthropology"
+"BIOL 1012" - "Biology"
+"CHEM 1012" - "Chemistry"
+"ECON 1011" - "Economics"
+"EMTE 1012" - "Emerging Technology"
+"FLEN 1011" - "English Skill I"
 "GEES 1011" - "Geography"
-"GLTR 1012" - "Global Trends"
+"GLTR 1012" - "Global Affairs"
 "HIST 1012" - "History"
 "INCL 1012" - "Inclusiveness"
 "LOCT 1011" - "Logic and Critical Thinking"
-"MATH 1011" - "Mathematics for Social Sciences"
-"MATH 1012" - "Mathematics for Natural Sciences"
-"MCIE 1012" - "Moral and Civic Education"
+"MATH 1011" - "Math For Social Science"
+"MATH 1012" - "Math For Natural Science"
+"MCIE 1012" - "Civics"
 "MGMT 1012" - "Entrepreneurship"
-"PHYS 1011" - "General Physics"
-"PSYC 1011" - "General Psychology"
-"SPSC 1011" - "Physical Education"
+"PHYS 1011" - "Physics"
+"PSYC 1011" - "Psychology"
+"SPSC 1011" - "Physical Fitness"
 
-STRICT COURSE NAMING PRINCIPLE (STUDENT-FACING vs INTERNAL):
-- Students do not speak in course codes. In all your user-facing responses, NEVER utter or display alphanumeric codes like "PHYS 1011", "LOCT 1011", or "MCIE 1012".
-- ALWAYS refer to subjects by their natural human titles: "General Physics", "Logic and Critical Thinking", "Moral and Civic Education", "General Chemistry", etc.
-- Alphanumeric codes are strictly reserved as internal keys to pass into tool arguments (e.g. course_code: "PHYS 1011").
+NATURAL COURSE & INTENT UNDERSTANDING:
+- Students talk casually. Naturally deduce the relevant course from the student's conversation, context, or topic intention rather than requiring rigid, exact titles or formal institutional names.
+- In student-facing responses, always refer to subjects naturally (e.g., "Physics", "Chemistry", "Civics", "Biology") rather than alphanumeric codes.
+- Use the alphanumeric code strictly as the internal course_code parameter when calling tools.
 
 CONVERSATIONAL DYNAMICS & TONE:
 - Be a real conversational partner: If a student opens with a casual greeting ("Hey", "Yo", "What's up", "Good morning"), reply warmly, naturally, and briefly in 1-2 sentences. Never dump your resume, never list your subjects, and NEVER trigger tools on simple small talk.
@@ -52,9 +52,9 @@ TEXTBOOK GROUNDING & CREDIBILITY ANCHOR:
 TOOLKIT MASTERY & PEDAGOGICAL PURPOSE:
 Students do not know the technical names of your tools, so you proactively leverage them when it genuinely enhances their learning. Exercise pedagogical judgment—never spam interactive widgets on message one, but deploy them smoothly when the moment calls for it:
 
-1. "search_textbook_material" & "read_book_section":
-   - Use these to pull exact definitions, theorems, formulas, and syllabus explanations.
-   - When calling "read_book_section", you receive the entire section and sub-sections in one shot. You do NOT need to call "get_book_toc" first; the engine automatically fuzzy-matches any section or chapter title directly.
+1. "read_book_section" & "get_book_toc":
+   - Use these to retrieve exact definitions, theorems, formulas, and syllabus explanations directly from the student's curriculum textbook.
+   - When calling "read_book_section", you receive the entire section and sub-sections in one shot. The engine automatically fuzzy-matches any section or chapter title directly.
    - Tool budget: Keep textbook gathering to a single round of calls so the student gets quick, responsive answers.
 
 2. "render_flashcards" (Spaced Repetition SRS):
@@ -91,18 +91,6 @@ MATHEMATICAL & SCIENTIFIC FORMULATION (LaTeX MANDATE):
 // Define the Tools (Function Calling)
 const toolsDefinition = {
   functionDeclarations: [
-    {
-      name: "search_textbook_material",
-      description: "Perform a semantic vector search across textbook materials. Use this to instantly find specific facts, formulas, or concepts.",
-      parameters: {
-        type: "OBJECT",
-        properties: {
-          optimized_query: { type: "STRING", description: "A highly optimized, dense string of keywords representing the core concept." },
-          course_code: { type: "STRING", description: "The course code or name (e.g., 'PHYS 1011'). Leave empty to search globally across all books." }
-        },
-        required: ["optimized_query"]
-      }
-    },
     {
       name: "get_book_toc",
       description: "Fetch the Table of Contents (TOC) of a specific book to understand its structure.",
@@ -578,51 +566,7 @@ serve(async (req) => {
       let toolResult: any = {};
 
       try {
-        if (name === "search_textbook_material") {
-          const pineconeStart = performance.now();
-          if (!PINECONE_API_KEY || !PINECONE_HOST) throw new Error("Pinecone secrets missing.");
-          
-          const queryVector = await generateEmbedding(args.optimized_query);
-          const cleanHost = PINECONE_HOST.replace(/\/$/, '').replace(/^https?:\/\//, '');
-
-          let targetNamespaces: string[] = [];
-          if (args.course_code) {
-            const { data } = await supabase.from('books').select('id').eq('course_code', args.course_code.toUpperCase().trim()).single();
-            if (data) targetNamespaces.push(data.id);
-          }
-
-          if (targetNamespaces.length === 0) {
-            // Safeguard: Limit to 10 most recent books to prevent Pinecone rate limits on global queries
-            const { data } = await supabase.from('books').select('id').order('created_at', { ascending: false }).limit(10);
-            if (data) targetNamespaces = data.map((b: any) => b.id);
-          }
-
-          const searchPromises = targetNamespaces.map(async (namespace) => {
-            const res = await fetch(`https://${cleanHost}/query`, {
-              method: 'POST',
-              headers: { 'Api-Key': PINECONE_API_KEY, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ namespace, vector: queryVector, topK: 3, includeMetadata: true })
-            });
-            if (!res.ok) return [];
-            const resData = await res.json();
-            return resData.matches || [];
-          });
-
-          const resultsArray = await Promise.all(searchPromises);
-          const allMatches = resultsArray.flat();
-          allMatches.sort((a: any, b: any) => b.score - a.score);
-          const topFive = allMatches.slice(0, 5);
-
-          const pineconeDur = (performance.now() - pineconeStart).toFixed(0);
-          console.log(`🌲 [PINECONE] took ${pineconeDur}ms across ${targetNamespaces.length} namespace(s) | matches: ${allMatches.length}`);
-
-          toolResult = { 
-            status: "success", 
-            matches: topFive.map((m: any) => m.metadata),
-            directive: "Relevant textbook snippets retrieved. Synthesize your final answer to the student now."
-          };
-        }
-        else if (name === "get_book_toc") {
+        if (name === "get_book_toc") {
           const tocStart = performance.now();
           const code = (args.course_code || args.query || "").toUpperCase().trim();
           
@@ -1006,8 +950,6 @@ serve(async (req) => {
                 const { name, args } = fc;
                 if (name === 'read_book_section') {
                   sendEvent('status', { message: `Reading ${args.section_title || 'textbook section'}...` });
-                } else if (name === 'search_textbook_material') {
-                  sendEvent('status', { message: `Searching textbook for "${args.optimized_query}"...` });
                 } else if (name === 'render_flashcards') {
                   sendEvent('status', { message: `Preparing interactive study cards for ${args.topic || 'topic'}...` });
                 } else if (name === 'render_quiz') {
