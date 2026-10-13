@@ -4,7 +4,7 @@ import { supabase } from '@linkup-platform/sdk-core';
 // Maintained strictly for Global Platform Services
 const GATEWAY_BASE = 'https://linkup-gateway.getyeteklu2.workers.dev';
 
-export const MIRON_ENDPOINT = 'https://ryaxynjczfwqyqvpmorl.supabase.co/functions/v1/miron-athena';
+export const MIRON_ENDPOINT = `${GATEWAY_BASE}/functions/v1/miron-athena`;
 
 const API_KEY = 'sb_publishable_B9mxFwLJl8WWw_Y9C28LtA_AfKYATEc';
 
