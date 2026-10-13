@@ -101,7 +101,7 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
 
     return (
         <div className="miron-quiz-card">
-            <div className="mq-header"><i className="fas fa-clipboard-list"></i> {quiz.title}</div>
+            <div className="mq-header">{quiz.title}</div>
             <div className="mq-body">
                 {quiz.questions.map((q, i) => (
                     <div key={q.id || i} className="mq-question">
