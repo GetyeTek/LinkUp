@@ -202,6 +202,15 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
             try {
                 setLoading(true);
                 const data = await invokeBookReader({ action: 'get_book_pages', book_id: book.id });
+
+                if (data?.error) {
+                    setPages([{ id: 'unpublished-1', page_key: 'page-1', content_json: [
+                        { type: 'title-page', main: book.title || "Course Material", sub: "Material Unpublished" },
+                        { type: 'spacer', height: '60px'},
+                        { type: 'paragraph', body: "This textbook is currently unpublished and unavailable for reading."}
+                    ]}]);
+                    return;
+                }
                 
                 if (data.custom_css) {
                     // Precision Theme Normalizer: Retain directional borders and contrasting accents while respecting theme
@@ -228,7 +237,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                         if (data.ai_explore_enabled !== undefined) {
                             setAiExploreEnabled(Boolean(data.ai_explore_enabled));
                         } else if (book?.id) {
-                            supabase.from('books').select('ai_explore_enabled').eq('id', book.id).maybeSingle()
+                            supabase.from('books').select('ai_explore_enabled').eq('id', book.id).eq('is_published', true).maybeSingle()
                                 .then(({ data: bData }) => {
                                     if (bData && bData.ai_explore_enabled !== undefined) {
                                         setAiExploreEnabled(Boolean(bData.ai_explore_enabled));
