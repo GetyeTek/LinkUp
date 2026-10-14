@@ -161,14 +161,20 @@ const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onRepor
 
                             return (
                                 <>
-                                    <label className={trueClass} style={{ pointerEvents: isGraded ? 'none' : 'auto', opacity: isGraded ? (isTrueSelected || correctBool === true ? 1 : 0.5) : 1 }}>
-                                        <input type="radio" hidden disabled={isGraded} onChange={() => handleLocalSelect('True')} />
+                                    <div 
+                                        className={trueClass} 
+                                        style={{ pointerEvents: isGraded ? 'none' : 'auto', opacity: isGraded ? (isTrueSelected || correctBool === true ? 1 : 0.5) : 1 }}
+                                        onClick={() => !isGraded && handleLocalSelect('True')}
+                                    >
                                         <i className="fa-solid fa-check"></i> TRUE
-                                    </label>
-                                    <label className={falseClass} style={{ pointerEvents: isGraded ? 'none' : 'auto', opacity: isGraded ? (isFalseSelected || correctBool === false ? 1 : 0.5) : 1 }}>
-                                        <input type="radio" hidden disabled={isGraded} onChange={() => handleLocalSelect('False')} />
+                                    </div>
+                                    <div 
+                                        className={falseClass} 
+                                        style={{ pointerEvents: isGraded ? 'none' : 'auto', opacity: isGraded ? (isFalseSelected || correctBool === false ? 1 : 0.5) : 1 }}
+                                        onClick={() => !isGraded && handleLocalSelect('False')}
+                                    >
                                         <i className="fa-solid fa-xmark"></i> FALSE
-                                    </label>
+                                    </div>
                                 </>
                             );
                         })()}
@@ -298,10 +304,14 @@ const PageQuestionsBlock = ({ questions, pageNumber, pageKey, onExplain, onRepor
                             else if (isSelected && !isGraded) optClass += " active";
 
                             return (
-                                <label key={i} className={optClass} style={{ pointerEvents: isGraded ? 'none' : 'auto', opacity: isGraded ? (isSelected || isThisOptionCorrect ? 1 : 0.5) : 1 }}>
-                                    <input type="radio" hidden disabled={isGraded} onChange={() => handleLocalSelect(opt)} />
+                                <div 
+                                    key={i} 
+                                    className={optClass} 
+                                    style={{ pointerEvents: isGraded ? 'none' : 'auto', opacity: isGraded ? (isSelected || isThisOptionCorrect ? 1 : 0.5) : 1 }}
+                                    onClick={() => !isGraded && handleLocalSelect(opt)}
+                                >
                                     <div className="bpq-mc-indicator"></div> <span>{optText}</span>
-                                </label>
+                                </div>
                             );
                         })}
                     </div>
