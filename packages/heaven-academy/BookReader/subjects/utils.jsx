@@ -151,7 +151,7 @@ export const formatText = (text) => {
 };
 
 export const renderAIExtension = (b, actions) => {
-    if (b.ai_ready) {
+    if (b.ai_ready && actions?.aiExploreEnabled) {
         return <button className="ai-btn-inline" onClick={actions?.onAIExplore}>✨ AI Explore</button>;
     }
     return null;
