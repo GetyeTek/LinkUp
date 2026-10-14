@@ -69,16 +69,18 @@
     align-items: center;
     justify-content: center;
     perspective: 1200px;
+    -webkit-perspective: 1200px;
 }
 
-/* 3D Flip Card */
+/* 3D Flip Card - Hardware Accelerated Pure GPU Matrix */
 .fca-flip-card {
     width: 100%;
     max-width: 480px;
     height: 390px;
     position: relative;
     transform-style: preserve-3d;
-    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    -webkit-transform-style: preserve-3d;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform;
     touch-action: manipulation;
     cursor: pointer;
@@ -88,36 +90,31 @@
     transform: rotateY(180deg);
 }
 
-.fca-flip-card.no-transition {
-    transition: none !important;
-}
-
 .fca-card-face {
     position: absolute;
     inset: 0;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    transform: translateZ(0);
-    border-radius: 28px;
+    border-radius: 24px;
     background: #16161a;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
-    padding: 30px 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    padding: 28px 22px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    contain: layout paint;
 }
 
 .fca-card-face.front {
+    transform: rotateY(0deg);
     border-color: rgba(255, 255, 255, 0.12);
 }
 
 .fca-card-face.back {
-    transform: rotateY(180deg) translateZ(0);
+    transform: rotateY(180deg);
     background: linear-gradient(160deg, #181920 0%, #101114 100%);
     border-color: rgba(66, 215, 184, 0.35);
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 15px rgba(66, 215, 184, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 15px rgba(66, 215, 184, 0.1);
 }
 
 .fca-topic-tag {
