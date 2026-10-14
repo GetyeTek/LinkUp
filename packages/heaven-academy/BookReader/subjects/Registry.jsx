@@ -395,9 +395,10 @@ export const renderBookBlock = (block, idx, actions) => {
     if (block.items && Array.isArray(block.items)) {
         const bChar = bulletCharMap[block.bullet] || bulletCharMap['default'];
         const explicitBulletImg = block.bulletImg || block.bulletUrl || null;
-        const isBox = bType.includes('box') || bType.includes('outcomes') || bType.includes('review') || bType.includes('callout') || bType.includes('prompt') || bType.includes('summary');
-        const boxClass = isBox ? (prefix ? `${prefix}-${bType} book-box-container` : 'book-box-container') : '';
-        const titleClass = isBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-${bType}-tag ${prefix}-${bType}-header ${prefix}-sub-header book-box-title` : 'book-box-title') : 'book-list-title';
+        const isBox = bType.includes('box') || bType.includes('outcomes') || bType.includes('objective') || bType.includes('review') || bType.includes('callout') || bType.includes('prompt') || bType.includes('summary') || bType.includes('reflection') || bType.includes('activity');
+        const baseBType = bType.replace(/-box$/, '');
+        const boxClass = isBox ? (prefix ? `${prefix}-${bType} ${prefix}-${baseBType}-box book-box-container` : 'book-box-container') : '';
+        const titleClass = isBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-${baseBType}-title ${prefix}-${baseBType}-tag ${prefix}-${baseBType}-header ${prefix}-sub-header book-box-title` : 'book-box-title') : 'book-list-title';
 
         return (
             <div key={idx} className={`book-list-container univ-list-block type-${bType} ${boxClass} ${customClass}`} style={style}>
@@ -498,8 +499,9 @@ export const renderBookBlock = (block, idx, actions) => {
     const isRefOrBib = bType === 'reference' || bType.includes('bib');
     const isFootnote = bType === 'footnote';
     const isTerm = bType.includes('term');
-    const isCalloutBox = bType.includes('callout') || bType.includes('box') || bType.includes('reflection') || bType.includes('reading');
+    const isCalloutBox = bType.includes('callout') || bType.includes('box') || bType.includes('reflection') || bType.includes('reading') || bType.includes('review') || bType.includes('outcomes') || bType.includes('objective') || bType.includes('activity');
     const isEquation = bType.includes('equation') || bType === 'formula';
+    const baseBType = bType.replace(/-box$/, '');
 
     const enhancedClass = [
         blockClass,
@@ -507,7 +509,7 @@ export const renderBookBlock = (block, idx, actions) => {
         isFootnote ? (prefix ? `${prefix}-footnote` : '') : '',
         isTerm ? (prefix ? `${prefix}-term` : '') : '',
         isEquation ? (prefix ? `${prefix}-equation-box ${prefix}-formula-box` : '') : '',
-        bType.includes('activity') ? (prefix ? `${prefix}-activity-box` : '') : '',
+        isCalloutBox ? (prefix ? `${prefix}-${baseBType}-box` : '') : '',
         bType.includes('brainstorm') ? (prefix ? `${prefix}-brainstorm-box` : '') : '',
         bType.includes('selftest') ? (prefix ? `${prefix}-selftest-box` : '') : '',
         bType.includes('prompt') ? (prefix ? `${prefix}-prompt-bar ${prefix}-prompt-box` : '') : '',
@@ -517,7 +519,7 @@ export const renderBookBlock = (block, idx, actions) => {
     const titleClass = [
         'book-block-title',
         isHeading ? (prefix ? `${prefix}-sub-header ${prefix}-unit-title` : '') : '',
-        isCalloutBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-callout-title ${prefix}-reflection-title ${prefix}-reading-title` : '') : '',
+        isCalloutBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-${baseBType}-title ${prefix}-${baseBType}-header ${prefix}-callout-title ${prefix}-reflection-title ${prefix}-reading-title` : '') : '',
         bType.includes('activity') ? (prefix ? `${prefix}-activity-tag` : '') : '',
         bType.includes('brainstorm') ? (prefix ? `${prefix}-brainstorm-title` : '') : '',
         bType.includes('selftest') ? (prefix ? `${prefix}-selftest-title` : '') : '',
