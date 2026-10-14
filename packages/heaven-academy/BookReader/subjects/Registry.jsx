@@ -86,6 +86,7 @@ export const renderBookBlock = (block, idx, actions) => {
     const bookTitle = actions?.bookTitle || block.bookTitle || '';
     const courseCode = actions?.courseCode || block.course_code || '';
     const prefix = resolveBookPrefix(courseCode, bookTitle);
+    const effectiveBookTitle = bookTitle || (prefix === 'anthro' ? 'Anthropology' : '');
     const customClass = block.className || '';
 
     // Dynamic Class Synthesis: Base + Universal + Subject-Specific
@@ -396,6 +397,15 @@ export const renderBookBlock = (block, idx, actions) => {
         const bChar = bulletCharMap[block.bullet] || bulletCharMap['default'];
         const explicitBulletImg = block.bulletImg || block.bulletUrl || null;
         const explicitIcon = block.iconUrl || block.icon || null;
+        
+        const anthroBulletMap = {
+            'arrow': 'bullet-swirl.png',
+            'diamond': 'bullet-spark.png',
+            'check': 'bullet-check.png'
+        };
+        const bulletKey = block.bullet || (prefix === 'anthro' && bType === 'unit-outcomes' ? 'arrow' : null);
+        const resolvedBulletImg = explicitBulletImg || (prefix === 'anthro' && bulletKey ? anthroBulletMap[bulletKey] : null);
+
         const isBox = bType.includes('box') || bType.includes('outcomes') || bType.includes('objective') || bType.includes('review') || bType.includes('callout') || bType.includes('prompt') || bType.includes('summary') || bType.includes('reflection') || bType.includes('activity');
         const baseBType = bType.replace(/-box$/, '');
         const coreBType = baseBType.replace(/^unit-/, '').replace(/^chapter-/, '');
@@ -406,7 +416,7 @@ export const renderBookBlock = (block, idx, actions) => {
             <div key={idx} className={`book-list-container univ-list-block type-${bType} ${boxClass} ${customClass}`} style={style}>
                 {explicitIcon && (
                     <div className={`book-block-icon ${prefix ? `${prefix}-callout-icon` : ''}`}>
-                        <DynamicImage src={explicitIcon} alt="" bookTitle={bookTitle} />
+                        <DynamicImage src={explicitIcon} alt="" bookTitle={effectiveBookTitle} />
                     </div>
                 )}
                 <div className={`book-block-content ${explicitIcon || isBox ? (prefix ? `${prefix}-${baseBType}-content ${prefix}-${coreBType}-content ${prefix}-callout-content` : 'book-block-content') : ''}`}>
@@ -416,8 +426,8 @@ export const renderBookBlock = (block, idx, actions) => {
                         const itemContent = typeof item === 'object' && item !== null ? item.text : item;
                         return (
                             <div key={bIdx} className={`book-list-item ${prefix ? `${prefix}-list-item ${prefix}-bullet-item ${prefix}-arrow-list` : ''}`}>
-                                {explicitBulletImg ? (
-                                    <DynamicImage src={explicitBulletImg} alt="•" className={`book-bullet-img ${prefix ? `${prefix}-bullet-img` : ''}`} bookTitle={bookTitle} />
+                                {resolvedBulletImg ? (
+                                    <DynamicImage src={resolvedBulletImg} alt="•" className={`book-bullet-img ${prefix ? `${prefix}-bullet-img` : ''}`} bookTitle={effectiveBookTitle} />
                                 ) : isBox && !block.bullet ? null : (
                                     <div className={`book-bullet-char ${prefix ? `${prefix}-bullet-char` : ''}`}>{bChar}</div>
                                 )}
@@ -539,7 +549,7 @@ export const renderBookBlock = (block, idx, actions) => {
         <div key={idx} className={enhancedClass} style={style}>
             {explicitIcon && (
                 <div className={`book-block-icon ${prefix ? `${prefix}-callout-icon` : ''}`}>
-                    <DynamicImage src={explicitIcon} alt="" bookTitle={bookTitle} />
+                    <DynamicImage src={explicitIcon} alt="" bookTitle={effectiveBookTitle} />
                 </div>
             )}
             <div className={`book-block-content ${explicitIcon || isCalloutBox ? (prefix ? `${prefix}-${bType}-content ${prefix}-callout-content` : 'book-block-content') : ''}`}>
