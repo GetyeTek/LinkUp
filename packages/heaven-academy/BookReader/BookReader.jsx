@@ -6,7 +6,7 @@ import DOMPurify from 'dompurify';
 import { useTextSelectionMenu } from './hooks/useTextSelectionMenu.js';
 import { useDraggable } from './hooks/useDraggable.js';
 import './BookReader.css';
-import { renderBookBlock } from './subjects/Registry.jsx';
+import { renderBookBlock, resolveBookPrefix } from './subjects/Registry.jsx';
 import { compileAIContext, extractTextFromBlock } from './subjects/utils.jsx';
 import BookLoader from '../components/BookLoader.jsx';
 import ReportModal from '../components/ReportModal.jsx';
@@ -204,11 +204,10 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 const data = await invokeBookReader({ action: 'get_book_pages', book_id: book.id });
                 
                 if (data.custom_css) {
-                    // Universal Theme Normalizer: Redirect hardcoded black/white rules to active theme variables
+                    // Precision Theme Normalizer: Retain directional borders and contrasting accents while respecting theme
                     const normalizedCss = data.custom_css
-                        .replace(/\bcolor\s*:\s*(#000000|#000|black|#1a1a1a|#111111|#222222|#333333|#333|#444444|#444|rgb\(\s*0\s*,\s*0\s*,\s*0\s*\))\s*;?/gi, 'color: var(--text-color);')
-                        .replace(/\bbackground(?:-color)?\s*:\s*(#ffffff|#fff|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))\s*;?/gi, 'background-color: var(--page-bg);')
-                        .replace(/\bborder(?:-[a-z]+)?\s*:\s*([^;}]*?)(#000000|#000|black)\b/gi, 'border: 1px solid var(--border);');
+                        .replace(/(border(?:-[a-z]+)?\s*:\s*[^;}]*?)(#000000|#000|black)\b/gi, '$1var(--border, #000)')
+                        .replace(/\b(background(?:-color)?\s*:\s*)(#ffffff|#fff|white)\s*;/gi, '$1var(--page-bg);');
 
                     const styleId = `dynamic-book-style-${book.id}`;
                     styleTag = document.getElementById(styleId);
@@ -572,6 +571,10 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
         }
     }, [loading, pages, targetPageNumber, targetBlockIndex]);
 
+    const bookPrefix = resolveBookPrefix(book?.course_code, book?.title);
+    const engineClass = bookPrefix ? `engine-${bookPrefix}` : '';
+    const watermarkClass = bookPrefix === 'history' ? 'history-watermark' : '';
+
     return (
         <div className={`reader-root theme-${currentTheme}`} style={zIndexOverride ? { zIndex: zIndexOverride } : {}}>
             {viewMode !== 'text' && (
@@ -610,16 +613,16 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 style={{ display: viewMode === 'text' ? 'block' : 'none' }}
             >
                 <div id="scroll-container" ref={scrollContainerRef} style={{ opacity: layoutReady ? 1 : 0, transition: 'opacity 0.3s ease' }}>
-                    <div id="book-layer" ref={layerRef}>
+                    <div id="book-layer" ref={layerRef} className={`${engineClass} ${watermarkClass}`.trim()}>
                         {pages.map((page, pageIdx) => {
                             // Virtualization: Only render +/- 2 pages from current focus
                             const isVisible = Math.abs(page.page_number - currentDisplayPage) <= 2;
                             if (!isVisible) {
-                                return <div key={page.id} className="page-wrapper" data-page-number={page.page_number} style={{ width: '794px', height: '1183px' }}></div>;
+                                return <div key={page.id} className={`page-wrapper ${engineClass}`} data-page-number={page.page_number} style={{ width: '794px', height: '1183px' }}></div>;
                             }
                             return (
-                            <div key={page.id} className="page-wrapper" data-page-number={page.page_number}>
-                                <div className="page-canvas">
+                            <div key={page.id} className={`page-wrapper ${engineClass}`} data-page-number={page.page_number}>
+                                <div className={`page-canvas ${engineClass} ${watermarkClass}`.trim()}>
                                     {page.manual_flag && <div className="manual-flag">{page.manual_flag}</div>}
                                     {(() => {
                                         const contentBlocks = page.content_json || [];
@@ -661,7 +664,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                                                 })}
                                                 {!hasFooterBlock && (
                                                     <div className="block-target-wrapper is-footer-wrapper fallback-footer-wrapper">
-                                                        <div className="book-footer univ-footer">
+                                                        <div className={`book-footer univ-footer ${bookPrefix ? `${bookPrefix}-footer` : ''}`}>
                                                             <span className="footer-page">{displayFallbackPage}</span>
                                                         </div>
                                                     </div>
