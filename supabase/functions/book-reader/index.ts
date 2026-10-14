@@ -26,6 +26,7 @@ serve(async (req) => {
       const { data: books, error } = await supabase
         .from('books')
         .select('*')
+        .eq('is_published', true)
         .order('title', { ascending: true });
         
       if (error) throw error;
