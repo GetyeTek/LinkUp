@@ -93,21 +93,44 @@ export const renderBookBlock = (block, idx, actions) => {
     const univClass = bType === 'paragraph' ? 'univ-p-block' : (bType === 'header' || bType.includes('head') ? 'univ-h-block' : '');
     const blockClass = `book-block type-${bType} ${univClass} ${subjectClass} ${customClass}`.trim();
 
-    // 0. Unit & Chapter Headers (e.g. Unit One, Chapter 1 with Title & Duration)
-    if (bType === 'unit-header' || bType === 'chapter-header' || bType === 'chapter-title' || (bType === 'title-page' && block.main)) {
-        const unitNumber = block.number ? (String(block.number).toLowerCase().startsWith('unit') || String(block.number).toLowerCase().startsWith('chapter') ? block.number : `Unit ${block.number}`) : '';
-        const labelText = block.label || unitNumber;
-        const mainTitle = block.title || block.main || '';
+    // 0. Universal Unit & Chapter Headers for All Subjects
+    const isUnitOrChapter = 
+        bType.includes('unit') || 
+        bType.includes('chapter') || 
+        bType === 'title-page' ||
+        (block.number && (block.title || bType === 'header' || bType.includes('head'))) ||
+        (typeof block.body === 'string' && /^(chapter|unit)\s+([0-9]+|[a-z]+)\b/i.test(block.body.trim()));
+
+    if (isUnitOrChapter) {
+        const rawNum = String(block.number || block.label || '').trim();
+        const isSubSection = /^\d+(\.\d+)+$/.test(rawNum);
+        
+        let formattedLabel = rawNum;
+        if (!isSubSection && rawNum) {
+            const hasPrefix = /^(unit|chapter|part|module)\b/i.test(rawNum);
+            if (!hasPrefix) {
+                // Deduce whether this subject is divided into Units or Chapters
+                const usesUnit = ['anthro', 'history', 'snie', 'mced'].includes(prefix) || bType.includes('unit');
+                const term = usesUnit ? 'Unit' : 'Chapter';
+                formattedLabel = `${term} ${rawNum}`;
+            }
+        }
+
+        const mainTitle = block.title || (isSubSection ? '' : block.body) || block.main || '';
 
         return (
-            <div key={idx} className={`book-block type-${bType} ${prefix ? `${prefix}-unit-header ${prefix}-chapter-title chapter-header` : ''} ${customClass}`} style={style}>
-                {labelText && (
-                    <div className={`book-block-label ${prefix ? `${prefix}-unit-label ${prefix}-chapter-num chapter-number` : ''}`}>
-                        {formatText(labelText)}
+            <div 
+                key={idx} 
+                className={`book-block type-unit-header type-chapter-header chapter-header ${prefix ? `${prefix}-unit-header ${prefix}-chapter-title ${prefix}-sub-header` : ''} ${customClass}`} 
+                style={style}
+            >
+                {formattedLabel && (
+                    <div className={`book-block-label chapter-number ${prefix ? `${prefix}-unit-label ${prefix}-chapter-num ${prefix}-sub-header-num` : ''}`}>
+                        {formatText(formattedLabel)}
                     </div>
                 )}
                 {mainTitle && (
-                    <h1 className={`book-block-title ${prefix ? `${prefix}-unit-title ${prefix}-chapter-title chapter-title` : ''}`}>
+                    <h1 className={`book-block-title chapter-title ${prefix ? `${prefix}-unit-title ${prefix}-chapter-title` : ''}`}>
                         {formatText(mainTitle)}
                     </h1>
                 )}
@@ -116,7 +139,11 @@ export const renderBookBlock = (block, idx, actions) => {
                         {formatText(block.hours)}
                     </div>
                 )}
-                {block.sub && <div className={`book-block-sub ${prefix ? `${prefix}-sub-header` : ''}`}>{formatText(block.sub)}</div>}
+                {block.sub && (
+                    <div className={`book-block-sub ${prefix ? `${prefix}-sub-header` : ''}`}>
+                        {formatText(block.sub)}
+                    </div>
+                )}
                 {renderAIExtension(block, actions)}
             </div>
         );
