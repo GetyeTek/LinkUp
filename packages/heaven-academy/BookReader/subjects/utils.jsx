@@ -39,16 +39,44 @@ export const resolveAssetUrl = (url, bookTitle = '') => {
         return clean.includes('?') ? `${clean}&v=${epoch}` : `${clean}?v=${epoch}`;
     }
 
-    // 3. Resolve generic pedagogical icons natively
+    const cleanBookTitle = (bookTitle || '').replace(/\.pdf$/i, '').trim();
+    const isAnthro = cleanBookTitle.toLowerCase().includes('anthro') || cleanBookTitle.toUpperCase().includes('ANTH');
+
+    // 3. Resolve Anthropology textbook assets with exact bucket filenames
+    if (isAnthro) {
+        const bare = clean.replace(/^(\.\/|\/)?assets\//i, '').replace(/^(\.\/|\/)/, '').toLowerCase();
+        const bareNoExt = bare.replace(/\.[^/.]+$/, '');
+        
+        const anthroFileMap = {
+            'question': 'icon-question-man.png',
+            'icon-question-man': 'icon-question-man.png',
+            'reading': 'icon-books.png',
+            'icon-books': 'icon-books.png',
+            'bullet-swirl': 'bullet-swirl.png',
+            'swirl': 'bullet-swirl.png',
+            'arrow': 'bullet-swirl.png',
+            'bullet-spark': 'bullet-spark.png',
+            'spark': 'bullet-spark.png',
+            'diamond': 'bullet-spark.png',
+            'bullet-check': 'bullet-check.png',
+            'check': 'bullet-check.png'
+        };
+
+        const resolvedFile = anthroFileMap[bareNoExt] || (bare.endsWith('.png') ? bare : null);
+        if (resolvedFile) {
+            return `${GATEWAY_BASE}/storage/v1/object/public/book-assets/Anthropology.pdf/${resolvedFile}?v=${epoch}`;
+        }
+    }
+
+    // 4. Resolve generic pedagogical icons natively for other books
     const genericIcons = ['question', 'reading', 'activity', 'idea', 'summary', 'note', 'objective', 'attention', 'warning', 'info', 'insight'];
     const bareName = clean.replace(/\.[^/.]+$/, "").toLowerCase();
     if (genericIcons.includes(bareName)) {
         return `${GATEWAY_BASE}/storage/v1/object/public/book-assets/icons/${bareName}.png?v=${epoch}`;
     }
 
-    // 4. Resolve relative paths using the current book's actual title folder
+    // 5. Resolve relative paths using the current book's actual title folder
     const filename = clean.replace(/^(\.\/|\/)?assets\//i, '').replace(/^(\.\/|\/)/, '');
-    const cleanBookTitle = (bookTitle || '').replace(/\.pdf$/i, '').trim();
     const folderPart = cleanBookTitle ? `${encodeURIComponent(cleanBookTitle)}.pdf/` : '';
     const base = `${GATEWAY_BASE}/storage/v1/object/public/book-assets/${folderPart}${filename}`;
     return `${base}?v=${epoch}`;
