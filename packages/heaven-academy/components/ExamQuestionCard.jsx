@@ -102,12 +102,20 @@ const ExamQuestionCard = ({
                         return (
                             <>
                                 <div className="tf-wrapper">
-                                    <input type="radio" name={`q-${q.id}`} id={`q-${q.id}-true`} hidden checked={isTrueSelected} onChange={() => handleLocalSelect('True')} disabled={isEvaluated}/>
-                                    <label htmlFor={`q-${q.id}-true`} className={trueClass}><i className="fa-solid fa-check"></i><span>TRUE</span></label>
+                                    <div 
+                                        className={`${trueClass} ${isTrueSelected ? 'active-true' : ''}`} 
+                                        onClick={() => !isEvaluated && handleLocalSelect('True')}
+                                    >
+                                        <i className="fa-solid fa-check"></i><span>TRUE</span>
+                                    </div>
                                 </div>
                                 <div className="tf-wrapper">
-                                    <input type="radio" name={`q-${q.id}`} id={`q-${q.id}-false`} hidden checked={isFalseSelected} onChange={() => handleLocalSelect('False')} disabled={isEvaluated}/>
-                                    <label htmlFor={`q-${q.id}-false`} className={falseClass}><i className="fa-solid fa-xmark"></i><span>FALSE</span></label>
+                                    <div 
+                                        className={`${falseClass} ${isFalseSelected ? 'active-false' : ''}`} 
+                                        onClick={() => !isEvaluated && handleLocalSelect('False')}
+                                    >
+                                        <i className="fa-solid fa-xmark"></i><span>FALSE</span>
+                                    </div>
                                 </div>
                             </>
                         );
@@ -233,17 +241,18 @@ const ExamQuestionCard = ({
                         let optClass = "opt-btn";
                         if (isThisOptionCorrect) optClass += " correct-highlight";
                         else if (isThisOptionWrong) optClass += " wrong-highlight";
+                        else if (isThisOptionSelected && !isEvaluated) optClass += " active";
 
                         return (
                             <div className="opt-wrapper" key={idx}>
-                                <input 
-                                    type="radio" name={`q-${q.id}`} id={`q-${q.id}-${idx}`} hidden 
-                                    checked={isThisOptionSelected} onChange={() => handleLocalSelect(opt)} disabled={isEvaluated}
-                                />
-                                <label htmlFor={`q-${q.id}-${idx}`} className={optClass}>
+                                <div 
+                                    className={optClass} 
+                                    style={{ pointerEvents: isEvaluated ? 'none' : 'auto', opacity: isEvaluated ? (isThisOptionSelected || isThisOptionCorrect ? 1 : 0.5) : 1 }}
+                                    onClick={() => !isEvaluated && handleLocalSelect(opt)}
+                                >
                                     <div className="opt-indicator"></div>
                                     <span>{opt.text || opt}</span>
-                                </label>
+                                </div>
                             </div>
                         );
                     })}
@@ -305,4 +314,19 @@ const ExamQuestionCard = ({
     );
 };
 
-export default ExamQuestionCard;
+export default React.memo(ExamQuestionCard, (prevProps, nextProps) => {
+    if (prevProps.q.id !== nextProps.q.id) return false;
+    if (prevProps.idx !== nextProps.idx) return false;
+    if (prevProps.gradingMode !== nextProps.gradingMode) return false;
+    if (prevProps.showResults !== nextProps.showResults) return false;
+    
+    const qId = prevProps.q.id;
+    return (
+        prevProps.answers[qId] === nextProps.answers[qId] &&
+        prevProps.evaluatedQs[qId] === nextProps.evaluatedQs[qId] &&
+        prevProps.flagged[qId] === nextProps.flagged[qId] &&
+        prevProps.hints[qId]?.open === nextProps.hints[qId]?.open &&
+        prevProps.hints[qId]?.loading === nextProps.hints[qId]?.loading &&
+        prevProps.activeMatch[qId] === nextProps.activeMatch[qId]
+    );
+});
