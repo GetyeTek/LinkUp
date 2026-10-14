@@ -119,11 +119,33 @@
 /* --- UNIVERSAL HEADLESS DOCUMENT PRIMITIVES --- */
 .book-block {
     width: 100%;
-    margin-bottom: 12px;
-    line-height: 1.5;
+    margin-bottom: 14px;
+    line-height: 1.55;
     text-align: justify;
     font-size: 15.5px;
     hyphens: auto;
+}
+
+/* Academic Paragraph First-Line Indentation */
+.book-block.type-paragraph .book-block-body {
+    text-indent: 1.6em;
+}
+
+/* Clear indent on very first paragraph of page or direct subsections */
+.book-block.type-paragraph:first-of-type .book-block-body,
+.block-target-wrapper:first-child .book-block.type-paragraph .book-block-body {
+    text-indent: 0;
+}
+
+.book-block.type-header .book-block-body,
+.book-block.type-sub-header .book-block-body,
+.book-block.type-term-header .book-block-body {
+    text-indent: 0 !important;
+    font-weight: 700;
+    font-size: 1.15rem;
+    margin: 18px 0 8px 0;
+    font-family: 'Poppins', sans-serif;
+    color: var(--text-color);
 }
 
 .book-block-title {
@@ -139,6 +161,76 @@
     margin-right: 8px;
     color: var(--accent);
     opacity: 0.9;
+}
+
+.book-block-number {
+    display: inline-block;
+    font-family: 'Roboto Mono', monospace, sans-serif;
+    font-weight: 700;
+    font-size: 0.95em;
+    color: var(--accent);
+    margin-right: 8px;
+    letter-spacing: 0.5px;
+}
+
+/* Unit & Chapter Header Baseline Fallback */
+.book-block.type-unit-header,
+.book-block.type-chapter-header,
+.book-block.type-chapter-title {
+    text-align: center;
+    margin: 28px 0 24px 0;
+    padding-bottom: 14px;
+    border-bottom: 1.5px solid var(--border);
+}
+
+.book-block.type-unit-header .book-block-label,
+.book-block.type-chapter-header .book-block-label {
+    display: block;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 6px;
+    text-align: center;
+}
+
+.book-block.type-unit-header .book-block-title,
+.book-block.type-chapter-header .book-block-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin: 4px 0 8px 0;
+    line-height: 1.25;
+    text-align: center;
+}
+
+.book-block-hours {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.7;
+    font-style: italic;
+    margin-top: 4px;
+    text-align: center;
+}
+
+/* Generic Callout & Box Fallback */
+.book-box-container {
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 20px 0;
+}
+
+.book-box-title {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 8px;
+    color: var(--accent);
+    font-family: 'Poppins', sans-serif;
 }
 
 .book-graphic-container {
