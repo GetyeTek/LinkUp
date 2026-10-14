@@ -842,7 +842,7 @@ STUDY COMPANION NATURAL WORKFLOW & TOOL USAGE:
                         try {
                             if (name === "get_book_toc") {
                                 const code = args.course_code.toUpperCase().trim();
-                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,title,toc,page_offset`, { headers: authHeaders });
+                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,title,toc,page_offset`, { headers: authHeaders });
                                 const json = await res.json();
                                 if (json && json.length > 0) {
                                     result = { status: "success", book_id: json[0].id, title: json[0].title, page_offset: json[0].page_offset || 0, toc: json[0].toc };
@@ -852,7 +852,7 @@ STUDY COMPANION NATURAL WORKFLOW & TOOL USAGE:
                             } 
                             else if (name === "read_book_section") {
                                 const code = args.course_code.toUpperCase().trim();
-                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,toc,page_offset`, { headers: authHeaders });
+                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,toc,page_offset`, { headers: authHeaders });
                                 const json = await res.json();
                                 
                                 if (json && json.length > 0 && json[0].toc) {
@@ -898,7 +898,7 @@ STUDY COMPANION NATURAL WORKFLOW & TOOL USAGE:
                                 const start = args.start_page;
                                 const end = args.end_page || (start + 1);
 
-                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&select=id,page_offset`, { headers: authHeaders });
+                                const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,page_offset`, { headers: authHeaders });
                                 const json = await res.json();
 
                                 if (json && json.length > 0) {
