@@ -138,6 +138,12 @@ export const formatText = (text) => {
         .replace(/\[arrow\]/g, '<span class="chem-arrow-symbol">⟶</span>')
         .replace(/\[rev-arrow:\s*([^\]]+)\s*\]/g, '<span class="chem-arrow-wrap"><span class="chem-arrow-cond">$1</span><span class="chem-arrow-symbol">⇌</span></span>')
         .replace(/\[rev-arrow\]/g, '<span class="chem-arrow-symbol">⇌</span>')
+        .replace(/\[eval-bracket:\s*([^|\]]+)\s*\|\s*([^|\]]+)\s*\|\s*([^\]]+)\s*\]/g, '<span class="math-eval-bracket"><span class="eval-body">$1</span><span class="eval-limits"><span class="eval-upper">$2</span><span class="eval-lower">$3</span></span></span>')
+        .replace(/\[eval-bar:\s*([^|\]]+)\s*\|\s*([^|\]]+)\s*\|\s*([^\]]+)\s*\]/g, '<span class="math-eval-bar"><span class="eval-body">$1</span><span class="eval-limits"><span class="eval-upper">$2</span><span class="eval-lower">$3</span></span></span>')
+        .replace(/\[cases:\s*([^\]]+)\s*\]/g, (match, casesStr) => {
+            const rows = casesStr.split('|').map(r => `<span>${r.trim()}</span>`).join('');
+            return `<span class="math-piecewise-cases"><span class="case-brace">{</span><span class="case-rows">${rows}</span></span>`;
+        })
         .replace(/\^\{(.*?)\}/g, '<sup>$1</sup>')
         .replace(/_\{(.*?)\}/g, '<sub>$1</sub>');
 
