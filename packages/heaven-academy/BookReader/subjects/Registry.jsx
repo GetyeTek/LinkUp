@@ -31,7 +31,7 @@ const COURSE_PREFIX_MAP = {
     'PSYC 1011': 'psych'
 };
 
-const resolveBookPrefix = (courseCode, bookTitle) => {
+export const resolveBookPrefix = (courseCode, bookTitle) => {
     if (courseCode && COURSE_PREFIX_MAP[courseCode.toUpperCase().trim()]) {
         return COURSE_PREFIX_MAP[courseCode.toUpperCase().trim()];
     }
@@ -117,15 +117,16 @@ export const renderBookBlock = (block, idx, actions) => {
         }
 
         const mainTitle = block.title || (isSubSection ? '' : block.body) || block.main || '';
+        const isChapter = bType.includes('chapter');
 
         return (
             <div 
                 key={idx} 
-                className={`book-block type-unit-header type-chapter-header chapter-header ${prefix ? `${prefix}-unit-header ${prefix}-chapter-title ${prefix}-sub-header` : ''} ${customClass}`} 
+                className={`book-block type-unit-header type-chapter-header chapter-header ${prefix ? (isChapter ? `${prefix}-chapter-header` : `${prefix}-unit-header`) : ''} ${customClass}`} 
                 style={style}
             >
                 {formattedLabel && (
-                    <div className={`book-block-label chapter-number ${prefix ? `${prefix}-unit-label ${prefix}-chapter-num ${prefix}-sub-header-num` : ''}`}>
+                    <div className={`book-block-label chapter-number ${prefix ? `${prefix}-unit-label ${prefix}-chapter-num` : ''}`}>
                         {formatText(formattedLabel)}
                     </div>
                 )}
@@ -140,7 +141,7 @@ export const renderBookBlock = (block, idx, actions) => {
                     </div>
                 )}
                 {block.sub && (
-                    <div className={`book-block-sub ${prefix ? `${prefix}-sub-header` : ''}`}>
+                    <div className={`book-block-sub ${prefix ? `${prefix}-unit-sub ${prefix}-sub-header` : ''}`}>
                         {formatText(block.sub)}
                     </div>
                 )}
@@ -161,17 +162,26 @@ export const renderBookBlock = (block, idx, actions) => {
     // 2. Media, Figures & Graphics (Zero phantom fetches - only runs on real URLs or SVGs)
     if (block.url || block.src || block.imageUrl || block.img || block.svgCode || bType === 'graphic' || bType === 'figure' || bType.includes('image')) {
         const imgUrl = block.url || block.src || block.imageUrl || block.img;
+        const captionText = block.caption || block.title || '';
         return (
-            <div key={idx} className={`book-graphic-container type-${bType} ${customClass}`} style={style}>
+            <div key={idx} className={`book-graphic-container univ-graphic-container type-${bType} ${prefix ? `${prefix}-figure ${prefix}-${bType}` : ''} ${customClass}`} style={style}>
                 <DynamicImage 
                     src={imgUrl} 
                     svgCode={block.svgCode} 
-                    alt={block.caption || block.title || ""} 
+                    alt={captionText || ""} 
                     className="book-graphic-img" 
                     bookTitle={bookTitle} 
                 />
-                {block.caption && <div className="book-graphic-caption">{formatText(block.caption)}</div>}
-                {block.title && !block.caption && <div className="book-graphic-caption">{formatText(block.title)}</div>}
+                {captionText && (
+                    <div className={`book-graphic-caption univ-graphic-caption ${prefix ? `${prefix}-figure-caption` : ''}`}>
+                        {formatText(captionText)}
+                    </div>
+                )}
+                {block.source && (
+                    <div className={`book-graphic-source ${prefix ? `${prefix}-source-line` : ''}`}>
+                        {formatText(block.source)}
+                    </div>
+                )}
                 {renderAIExtension(block, actions)}
             </div>
         );
@@ -181,8 +191,12 @@ export const renderBookBlock = (block, idx, actions) => {
     if (block.rows && Array.isArray(block.rows)) {
         return (
             <div key={idx} className={`book-table-wrapper type-${bType} ${customClass}`} style={style}>
-                {block.title && <div className="book-table-title">{formatText(block.title)}</div>}
-                <table className="book-table">
+                {block.title && (
+                    <div className={`book-table-title ${prefix ? `${prefix}-table-caption` : ''}`}>
+                        {formatText(block.title)}
+                    </div>
+                )}
+                <table className={`book-table univ-table ${prefix ? `${prefix}-table ${prefix}-${bType}` : ''} ${customClass}`}>
                     <tbody>
                         {block.rows.map((row, rIdx) => (
                             <tr key={rIdx}>
@@ -216,18 +230,18 @@ export const renderBookBlock = (block, idx, actions) => {
     if (block.items && Array.isArray(block.items)) {
         const bChar = bulletCharMap[block.bullet] || bulletCharMap['default'];
         const explicitBulletImg = block.bulletImg || block.bulletUrl || null;
-        const isBox = bType.includes('box') || bType.includes('outcomes') || bType.includes('review') || bType.includes('callout');
+        const isBox = bType.includes('box') || bType.includes('outcomes') || bType.includes('review') || bType.includes('callout') || bType.includes('prompt') || bType.includes('summary');
         const boxClass = isBox ? (prefix ? `${prefix}-${bType} book-box-container` : 'book-box-container') : '';
-        const titleClass = isBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-${bType}-tag book-box-title` : 'book-box-title') : 'book-list-title';
+        const titleClass = isBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-${bType}-tag ${prefix}-${bType}-header ${prefix}-sub-header book-box-title` : 'book-box-title') : 'book-list-title';
 
         return (
-            <div key={idx} className={`book-list-container type-${bType} ${boxClass} ${customClass}`} style={style}>
+            <div key={idx} className={`book-list-container univ-list-block type-${bType} ${boxClass} ${customClass}`} style={style}>
                 {block.title && <div className={titleClass}>{formatText(block.title)}</div>}
-                {block.subtitle && <div className="book-list-subtitle">{formatText(block.subtitle)}</div>}
+                {block.subtitle && <div className={`book-list-subtitle ${prefix ? `${prefix}-${bType}-subtitle ${prefix}-sub-header` : ''}`}>{formatText(block.subtitle)}</div>}
                 {block.items.map((item, bIdx) => {
                     const itemContent = typeof item === 'object' && item !== null ? item.text : item;
                     return (
-                        <div key={bIdx} className={`book-list-item ${prefix ? `${prefix}-list-item ${prefix}-bullet-item` : ''}`}>
+                        <div key={bIdx} className={`book-list-item ${prefix ? `${prefix}-list-item ${prefix}-bullet-item ${prefix}-arrow-list` : ''}`}>
                             {explicitBulletImg ? (
                                 <DynamicImage src={explicitBulletImg} alt="•" className={`book-bullet-img ${prefix ? `${prefix}-bullet-img` : ''}`} bookTitle={bookTitle} />
                             ) : isBox && !block.bullet ? null : (
@@ -243,19 +257,36 @@ export const renderBookBlock = (block, idx, actions) => {
     }
 
     // 5. Key-Value Rows & TOC Dictionaries
-    if (bType === 'kv-list' || (block.entries && Array.isArray(block.entries))) {
+    if (bType === 'kv-list' || bType.includes('toc') || (block.entries && Array.isArray(block.entries))) {
         const listItems = block.entries || block.items || [];
+        const isToc = bType.includes('toc');
+        const containerClass = isToc 
+            ? `book-toc-container ${prefix ? `${prefix}-toc-container toc-container` : 'toc-container'}`
+            : `book-kv-container ${prefix ? `${prefix}-kv-container` : ''}`;
+
         return (
-            <div key={idx} className={`book-kv-container type-${bType} ${customClass}`} style={style}>
-                {listItems.map((row, rIdx) => (
-                    <div key={rIdx} className="book-kv-row">
-                        {row.label && <div className="book-kv-label">{formatText(row.label)}</div>}
-                        {row.label && row.value && <div className="book-kv-separator">:</div>}
-                        {row.value && <div className="book-kv-value">{formatText(row.value)}</div>}
-                        {row.text && <div className="book-kv-text">{formatText(row.text)}</div>}
-                        {row.page !== undefined && <div className="book-kv-page">{row.page}</div>}
-                    </div>
-                ))}
+            <div key={idx} className={`${containerClass} type-${bType} ${customClass}`} style={style}>
+                {listItems.map((row, rIdx) => {
+                    if (isToc || row.page !== undefined) {
+                        const level = row.level || 0;
+                        const levelClass = prefix ? `${prefix}-toc-level-${level} level-${level}` : `level-${level}`;
+                        return (
+                            <div key={rIdx} className={`book-toc-item ${prefix ? `${prefix}-toc-item toc-entry` : 'toc-entry'} ${levelClass}`}>
+                                <span className={`book-toc-text ${prefix ? `${prefix}-toc-text toc-text` : 'toc-text'}`}>{formatText(row.text || row.label || row.title)}</span>
+                                <span className={`book-toc-dots ${prefix ? `${prefix}-toc-dots toc-dots` : 'toc-dots'}`}></span>
+                                <span className={`book-toc-page ${prefix ? `${prefix}-toc-page toc-page` : 'toc-page'}`}>{row.page}</span>
+                            </div>
+                        );
+                    }
+                    return (
+                        <div key={rIdx} className={`book-kv-row ${prefix ? `${prefix}-kv-row` : ''}`}>
+                            {row.label && <div className={`book-kv-label ${prefix ? `${prefix}-kv-label` : ''}`}>{formatText(row.label)}</div>}
+                            {row.label && row.value && <div className={`book-kv-separator ${prefix ? `${prefix}-kv-separator` : ''}`}>:</div>}
+                            {row.value && <div className={`book-kv-value ${prefix ? `${prefix}-kv-value` : ''}`}>{formatText(row.value)}</div>}
+                            {row.text && <div className="book-kv-text">{formatText(row.text)}</div>}
+                        </div>
+                    );
+                })}
                 {renderAIExtension(block, actions)}
             </div>
         );
@@ -278,7 +309,7 @@ export const renderBookBlock = (block, idx, actions) => {
     // 7. Footers
     if (bType.includes('footer')) {
         return (
-            <div key={idx} className={`book-footer type-${bType} ${customClass}`} style={style}>
+            <div key={idx} className={`book-footer univ-footer type-${bType} ${prefix ? `${prefix}-footer` : ''} ${customClass}`} style={style}>
                 {block.authors && <span className="footer-authors">{formatText(block.authors)}</span>}
                 {block.title && <span className="footer-title">{formatText(block.title)}</span>}
                 <span className="footer-page">{formatText(block.val || block.page || '')}</span>
@@ -290,33 +321,63 @@ export const renderBookBlock = (block, idx, actions) => {
     const mainText = block.body || block.text || block.main || block.question || null;
     const explicitIcon = block.iconUrl || block.icon || null;
     const isHeading = bType === 'header' || bType === 'sub-header' || bType === 'term-header' || bType.includes('head');
+    const isRefOrBib = bType === 'reference' || bType.includes('bib');
+    const isFootnote = bType === 'footnote';
+    const isTerm = bType.includes('term');
+    const isCalloutBox = bType.includes('callout') || bType.includes('box') || bType.includes('reflection') || bType.includes('reading');
+    const isEquation = bType.includes('equation') || bType === 'formula';
+
+    const enhancedClass = [
+        blockClass,
+        isRefOrBib ? (prefix ? `${prefix}-reference ${prefix}-bib-item reference-block` : 'reference-block') : '',
+        isFootnote ? (prefix ? `${prefix}-footnote` : '') : '',
+        isTerm ? (prefix ? `${prefix}-term` : '') : '',
+        isEquation ? (prefix ? `${prefix}-equation-box ${prefix}-formula-box` : '') : '',
+        bType.includes('activity') ? (prefix ? `${prefix}-activity-box` : '') : '',
+        bType.includes('brainstorm') ? (prefix ? `${prefix}-brainstorm-box` : '') : '',
+        bType.includes('selftest') ? (prefix ? `${prefix}-selftest-box` : '') : '',
+        bType.includes('prompt') ? (prefix ? `${prefix}-prompt-bar ${prefix}-prompt-box` : '') : '',
+        bType.includes('summary') ? (prefix ? `${prefix}-summary-box summary-block` : 'summary-block') : ''
+    ].filter(Boolean).join(' ');
+
+    const titleClass = [
+        'book-block-title',
+        isHeading ? (prefix ? `${prefix}-sub-header ${prefix}-unit-title` : '') : '',
+        isCalloutBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-callout-title ${prefix}-reflection-title ${prefix}-reading-title` : '') : '',
+        bType.includes('activity') ? (prefix ? `${prefix}-activity-tag` : '') : '',
+        bType.includes('brainstorm') ? (prefix ? `${prefix}-brainstorm-title` : '') : '',
+        bType.includes('selftest') ? (prefix ? `${prefix}-selftest-title` : '') : '',
+        bType.includes('summary') ? (prefix ? `${prefix}-summary-title ${prefix}-summary-header summary-label` : 'summary-label') : ''
+    ].filter(Boolean).join(' ');
 
     return (
-        <div key={idx} className={blockClass} style={style}>
+        <div key={idx} className={enhancedClass} style={style}>
             {explicitIcon && (
                 <div className={`book-block-icon ${prefix ? `${prefix}-callout-icon` : ''}`}>
                     <DynamicImage src={explicitIcon} alt="" bookTitle={bookTitle} />
                 </div>
             )}
-            {(block.number || block.label) && (
-                <span className={`book-block-number ${prefix ? `${prefix}-chapter-num ${prefix}-sub-header-num ${prefix}-unit-label` : ''}`}>
-                    {formatText(block.number || block.label)}
-                </span>
-            )}
-            {block.title && (
-                <h3 className={`book-block-title ${prefix ? `${prefix}-sub-header ${prefix}-unit-title` : ''}`}>
-                    {formatText(block.title)}
-                </h3>
-            )}
-            {block.sub && <div className="book-block-sub">{formatText(block.sub)}</div>}
-            {block.subtitle && <div className="book-block-subtitle">{formatText(block.subtitle)}</div>}
-            {mainText && (
-                <div className={`book-block-body ${isHeading ? (prefix ? `${prefix}-sub-header` : 'book-block-title') : 'univ-p-block'}`}>
-                    {formatText(mainText)}
-                </div>
-            )}
-            {block.contributors && <div className="book-block-contributors">{formatText(block.contributors)}</div>}
-            {renderAIExtension(block, actions)}
+            <div className={`book-block-content ${explicitIcon || isCalloutBox ? (prefix ? `${prefix}-${bType}-content ${prefix}-callout-content` : 'book-block-content') : ''}`}>
+                {(block.number || block.label) && (
+                    <span className={`book-block-number ${prefix ? `${prefix}-chapter-num ${prefix}-sub-header-num ${prefix}-unit-label` : ''}`}>
+                        {formatText(block.number || block.label)}
+                    </span>
+                )}
+                {block.title && (
+                    <h3 className={titleClass}>
+                        {formatText(block.title)}
+                    </h3>
+                )}
+                {block.sub && <div className={`book-block-sub ${prefix ? `${prefix}-sub-header` : ''}`}>{formatText(block.sub)}</div>}
+                {block.subtitle && <div className={`book-block-subtitle ${prefix ? `${prefix}-sub-header` : ''}`}>{formatText(block.subtitle)}</div>}
+                {mainText && (
+                    <div className={`book-block-body ${isHeading ? (prefix ? `${prefix}-sub-header` : 'book-block-title') : 'univ-p-block'}`}>
+                        {formatText(mainText)}
+                    </div>
+                )}
+                {block.contributors && <div className="book-block-contributors">{formatText(block.contributors)}</div>}
+                {renderAIExtension(block, actions)}
+            </div>
         </div>
     );
 };
