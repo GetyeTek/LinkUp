@@ -227,6 +227,34 @@
     margin: 20px 0;
 }
 
+.book-box-container:has(> .book-block-icon),
+.book-block:has(> .book-block-icon) {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.book-block-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.book-block-icon img {
+    width: 44px;
+    height: auto;
+    max-height: 56px;
+    object-fit: contain;
+}
+
+.book-block-content {
+    flex: 1;
+    min-width: 0;
+}
+
 .book-box-title {
     font-weight: 700;
     font-size: 1rem;
