@@ -207,7 +207,8 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                     // Precision Theme Normalizer: Retain directional borders and contrasting accents while respecting theme
                     const normalizedCss = data.custom_css
                         .replace(/(border(?:-[a-z]+)?\s*:\s*[^;}]*?)(#000000|#000|black)\b/gi, '$1var(--border, #000)')
-                        .replace(/\b(background(?:-color)?\s*:\s*)(#ffffff|#fff|white)\s*;/gi, '$1var(--page-bg);');
+                        .replace(/\b(background(?:-color)?\s*:\s*)(#ffffff|#fff|white)\s*;/gi, '$1var(--page-bg);')
+                        .replace(/\b(color\s*:\s*)(#000000|#000|#111111|#111|#222222|#222|black)\s*;/gi, '$1var(--text-color);');
 
                     const styleId = `dynamic-book-style-${book.id}`;
                     styleTag = document.getElementById(styleId);
