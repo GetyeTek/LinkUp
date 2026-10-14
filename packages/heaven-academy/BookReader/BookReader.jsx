@@ -27,6 +27,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const [activeExplanations, setActiveExplanations] = useState({});
     const [layoutReady, setLayoutReady] = useState(false);
     const [reportQuestionId, setReportQuestionId] = useState(null);
+    const [aiExploreEnabled, setAiExploreEnabled] = useState(book?.ai_explore_enabled ?? false);
 
     // Course Variant Modes: 'text' (standard PDF/JSON) | 'visual_en' | 'visual_am'
     const [viewMode, setViewMode] = useState('text');
@@ -219,10 +220,21 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                     styleTag.textContent = normalizedCss;
                 }
 
-                if (data.pages && data.pages.length > 0) {
-                    setPages(data.pages);
-                    if (data.toc) setTocData(data.toc);
-                    if (data.page_offset) setPageOffset(data.page_offset);
+                                    if (data.pages && data.pages.length > 0) {
+                        setPages(data.pages);
+                        if (data.toc) setTocData(data.toc);
+                        if (data.page_offset) setPageOffset(data.page_offset);
+
+                        if (data.ai_explore_enabled !== undefined) {
+                            setAiExploreEnabled(Boolean(data.ai_explore_enabled));
+                        } else if (book?.id) {
+                            supabase.from('books').select('ai_explore_enabled').eq('id', book.id).maybeSingle()
+                                .then(({ data: bData }) => {
+                                    if (bData && bData.ai_explore_enabled !== undefined) {
+                                        setAiExploreEnabled(Boolean(bData.ai_explore_enabled));
+                                    }
+                                });
+                        }
 
                     // --- ASSET DIAGNOSTIC AUDIT LOG ---
                     console.group(`%c[BookReader:Audit] 📚 Opened: ${book.title || data.title} (${data.course_code || 'No Code'})`, 'color: #42d7b8; font-size: 13px; font-weight: bold;');
@@ -620,6 +632,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                                                     const blockActions = {
                                                         bookTitle: book?.title || '',
                                                         courseCode: book?.course_code || '',
+                                                        aiExploreEnabled: aiExploreEnabled,
                                                         onAIExplore: () => handleAIExplore(pageIdx, idx)
                                                     };
                                                     const expKey = `${page.page_key}_${idx}`;
