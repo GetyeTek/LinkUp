@@ -612,6 +612,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                                     {(page.content_json || []).map((block, idx) => {
                                         const blockActions = {
                                             bookTitle: book?.title || '',
+                                            courseCode: book?.course_code || '',
                                             onAIExplore: () => handleAIExplore(pageIdx, idx)
                                         };
                                         const expKey = `${page.page_key}_${idx}`;
