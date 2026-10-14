@@ -13,6 +13,46 @@ const bulletCharMap = {
     'default': '•'
 };
 
+const COURSE_PREFIX_MAP = {
+    'ANTH 1012': 'anthro',
+    'BIOL 1012': 'biol',
+    'CHEM 1012': 'chem',
+    'ECON 1011': 'econ',
+    'EMTE 1012': 'emte',
+    'GEES 1011': 'geog',
+    'GLTR 1012': 'glaf',
+    'HIST 1012': 'history',
+    'INCL 1012': 'snie',
+    'MATH 1011': 'math',
+    'MATH 1012': 'math',
+    'MCIE 1012': 'mced',
+    'MGMT 1012': 'entre',
+    'PHYS 1011': 'phys',
+    'PSYC 1011': 'psych'
+};
+
+const resolveBookPrefix = (courseCode, bookTitle) => {
+    if (courseCode && COURSE_PREFIX_MAP[courseCode.toUpperCase().trim()]) {
+        return COURSE_PREFIX_MAP[courseCode.toUpperCase().trim()];
+    }
+    const title = (bookTitle || '').toLowerCase();
+    if (title.includes('anthro')) return 'anthro';
+    if (title.includes('biol')) return 'biol';
+    if (title.includes('chem')) return 'chem';
+    if (title.includes('econ')) return 'econ';
+    if (title.includes('emerging') || title.includes('emte')) return 'emte';
+    if (title.includes('geog')) return 'geog';
+    if (title.includes('global') || title.includes('glaf')) return 'glaf';
+    if (title.includes('hist')) return 'history';
+    if (title.includes('inclus') || title.includes('snie')) return 'snie';
+    if (title.includes('math')) return 'math';
+    if (title.includes('civic') || title.includes('moral') || title.includes('mced')) return 'mced';
+    if (title.includes('entre') || title.includes('mgmt')) return 'entre';
+    if (title.includes('phys')) return 'phys';
+    if (title.includes('psyc')) return 'psych';
+    return '';
+};
+
 const DynamicImage = ({ src, alt, className, style, bookTitle, svgCode }) => {
     const [hasError, setHasError] = useState(false);
 
@@ -44,8 +84,43 @@ export const renderBookBlock = (block, idx, actions) => {
     const style = resolveStyles(block);
     const bType = (typeof block.type === 'string' ? block.type : '') || 'paragraph';
     const bookTitle = actions?.bookTitle || block.bookTitle || '';
+    const courseCode = actions?.courseCode || block.course_code || '';
+    const prefix = resolveBookPrefix(courseCode, bookTitle);
     const customClass = block.className || '';
-    const blockClass = `book-block type-${bType} ${customClass}`.trim();
+
+    // Dynamic Class Synthesis: Base + Universal + Subject-Specific
+    const subjectClass = prefix ? `${prefix}-${bType}` : '';
+    const univClass = bType === 'paragraph' ? 'univ-p-block' : (bType === 'header' || bType.includes('head') ? 'univ-h-block' : '');
+    const blockClass = `book-block type-${bType} ${univClass} ${subjectClass} ${customClass}`.trim();
+
+    // 0. Unit & Chapter Headers (e.g. Unit One, Chapter 1 with Title & Duration)
+    if (bType === 'unit-header' || bType === 'chapter-header' || bType === 'chapter-title' || (bType === 'title-page' && block.main)) {
+        const unitNumber = block.number ? (String(block.number).toLowerCase().startsWith('unit') || String(block.number).toLowerCase().startsWith('chapter') ? block.number : `Unit ${block.number}`) : '';
+        const labelText = block.label || unitNumber;
+        const mainTitle = block.title || block.main || '';
+
+        return (
+            <div key={idx} className={`book-block type-${bType} ${prefix ? `${prefix}-unit-header ${prefix}-chapter-title chapter-header` : ''} ${customClass}`} style={style}>
+                {labelText && (
+                    <div className={`book-block-label ${prefix ? `${prefix}-unit-label ${prefix}-chapter-num chapter-number` : ''}`}>
+                        {formatText(labelText)}
+                    </div>
+                )}
+                {mainTitle && (
+                    <h1 className={`book-block-title ${prefix ? `${prefix}-unit-title ${prefix}-chapter-title chapter-title` : ''}`}>
+                        {formatText(mainTitle)}
+                    </h1>
+                )}
+                {block.hours && (
+                    <div className={`book-block-hours ${prefix ? `${prefix}-unit-hours` : ''}`}>
+                        {formatText(block.hours)}
+                    </div>
+                )}
+                {block.sub && <div className={`book-block-sub ${prefix ? `${prefix}-sub-header` : ''}`}>{formatText(block.sub)}</div>}
+                {renderAIExtension(block, actions)}
+            </div>
+        );
+    }
 
     // 1. Spacers & Dividers
     if (bType === 'spacer') {
@@ -110,23 +185,26 @@ export const renderBookBlock = (block, idx, actions) => {
         );
     }
 
-    // 4. Lists & Iterables (Strict text/Unicode bullets unless explicit image is defined)
+    // 4. Lists & Iterables (Strict text/Unicode bullets, Callout/Reflection/Outcomes boxes)
     if (block.items && Array.isArray(block.items)) {
         const bChar = bulletCharMap[block.bullet] || bulletCharMap['default'];
         const explicitBulletImg = block.bulletImg || block.bulletUrl || null;
+        const isBox = bType.includes('box') || bType.includes('outcomes') || bType.includes('review') || bType.includes('callout');
+        const boxClass = isBox ? (prefix ? `${prefix}-${bType} book-box-container` : 'book-box-container') : '';
+        const titleClass = isBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-${bType}-tag book-box-title` : 'book-box-title') : 'book-list-title';
 
         return (
-            <div key={idx} className={`book-list-container type-${bType} ${customClass}`} style={style}>
-                {block.title && <div className="book-list-title">{formatText(block.title)}</div>}
+            <div key={idx} className={`book-list-container type-${bType} ${boxClass} ${customClass}`} style={style}>
+                {block.title && <div className={titleClass}>{formatText(block.title)}</div>}
                 {block.subtitle && <div className="book-list-subtitle">{formatText(block.subtitle)}</div>}
                 {block.items.map((item, bIdx) => {
                     const itemContent = typeof item === 'object' && item !== null ? item.text : item;
                     return (
-                        <div key={bIdx} className="book-list-item">
+                        <div key={bIdx} className={`book-list-item ${prefix ? `${prefix}-list-item ${prefix}-bullet-item` : ''}`}>
                             {explicitBulletImg ? (
-                                <DynamicImage src={explicitBulletImg} alt="•" className="book-bullet-img" bookTitle={bookTitle} />
-                            ) : (
-                                <div className="book-bullet-char">{bChar}</div>
+                                <DynamicImage src={explicitBulletImg} alt="•" className={`book-bullet-img ${prefix ? `${prefix}-bullet-img` : ''}`} bookTitle={bookTitle} />
+                            ) : isBox && !block.bullet ? null : (
+                                <div className={`book-bullet-char ${prefix ? `${prefix}-bullet-char` : ''}`}>{bChar}</div>
                             )}
                             <div className="book-list-text">{formatText(itemContent)}</div>
                         </div>
@@ -181,23 +259,35 @@ export const renderBookBlock = (block, idx, actions) => {
         );
     }
 
-    // 8. Universal Polymorphic Element (Handles all headings, paragraphs, callout boxes, notes, quotes)
+    // 8. Universal Polymorphic Element (Handles headings, paragraphs, callouts, notes, quotes)
     const mainText = block.body || block.text || block.main || block.question || null;
     const explicitIcon = block.iconUrl || block.icon || null;
+    const isHeading = bType === 'header' || bType === 'sub-header' || bType === 'term-header' || bType.includes('head');
 
     return (
         <div key={idx} className={blockClass} style={style}>
             {explicitIcon && (
-                <div className="book-block-icon">
+                <div className={`book-block-icon ${prefix ? `${prefix}-callout-icon` : ''}`}>
                     <DynamicImage src={explicitIcon} alt="" bookTitle={bookTitle} />
                 </div>
             )}
-            {block.number && <span className="book-block-number">{block.number}</span>}
-            {block.label && <span className="book-block-label">{formatText(block.label)}</span>}
-            {block.title && <h3 className="book-block-title">{formatText(block.title)}</h3>}
+            {(block.number || block.label) && (
+                <span className={`book-block-number ${prefix ? `${prefix}-chapter-num ${prefix}-sub-header-num ${prefix}-unit-label` : ''}`}>
+                    {formatText(block.number || block.label)}
+                </span>
+            )}
+            {block.title && (
+                <h3 className={`book-block-title ${prefix ? `${prefix}-sub-header ${prefix}-unit-title` : ''}`}>
+                    {formatText(block.title)}
+                </h3>
+            )}
             {block.sub && <div className="book-block-sub">{formatText(block.sub)}</div>}
             {block.subtitle && <div className="book-block-subtitle">{formatText(block.subtitle)}</div>}
-            {mainText && <div className="book-block-body">{formatText(mainText)}</div>}
+            {mainText && (
+                <div className={`book-block-body ${isHeading ? (prefix ? `${prefix}-sub-header` : 'book-block-title') : 'univ-p-block'}`}>
+                    {formatText(mainText)}
+                </div>
+            )}
             {block.contributors && <div className="book-block-contributors">{formatText(block.contributors)}</div>}
             {renderAIExtension(block, actions)}
         </div>
