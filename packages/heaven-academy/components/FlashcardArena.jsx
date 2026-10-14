@@ -37,7 +37,6 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
-    const [isTransitioning, setIsTransitioning] = useState(false);
     const [stats, setStats] = useState({ hard: 0, good: 0, easy: 0 });
     const [isCompleted, setIsCompleted] = useState(false);
 
@@ -210,15 +209,15 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
     const progressPct = cards.length > 0 ? ((currentIndex + 1) / cards.length) * 100 : 0;
 
     const handleFlip = () => {
-        if (!currentCard || loadingCards || isTransitioning) return;
+        if (!currentCard || loadingCards) return;
         setIsFlipped(prev => !prev);
-        if (navigator.vibrate) navigator.vibrate(18);
+        try { navigator.vibrate?.(12); } catch (e) {}
     };
 
-    const handleRate = async (difficulty) => {
-        if (!currentCard || loadingCards || isTransitioning) return;
+    const handleRate = (difficulty) => {
+        if (!currentCard || loadingCards) return;
         setStats(prev => ({ ...prev, [difficulty]: prev[difficulty] + 1 }));
-        if (navigator.vibrate) navigator.vibrate([15, 30]);
+        try { navigator.vibrate?.(12); } catch (e) {}
 
         // 1. Buffer review in batch queue (0ms main-thread cost)
         if (currentCard?.id) {
@@ -229,7 +228,6 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                 reviewed_at: new Date().toISOString()
             });
 
-            // Trigger atomic background flush when threshold is reached
             if (batchQueueRef.current.length >= 8) {
                 flushBatchQueue();
             }
@@ -245,18 +243,11 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
             });
         }
 
-        // 3. Smooth instantaneous progression
+        // 3. Instant unflip and advance (fresh card instance mounts face-up without backward spin)
+        setIsFlipped(false);
         if (currentIndex + 1 < cards.length || difficulty === 'hard') {
-            setIsTransitioning(true);
-            setIsFlipped(false);
             setCurrentIndex(prev => prev + 1);
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    setIsTransitioning(false);
-                });
-            });
         } else {
-            setIsFlipped(false);
             setIsCompleted(true);
             flushBatchQueue();
         }
@@ -316,10 +307,11 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                                 <p>No flashcards were found for this section yet.</p>
                             </div>
                         ) : (
-                            <div 
-                                className={`fca-flip-card ${isFlipped ? 'is-flipped' : ''} ${isTransitioning ? 'no-transition' : ''}`}
-                                onClick={handleFlip}
-                            >
+                                                    <div 
+                            key={currentCard?.id ? `${currentCard.id}_${currentIndex}` : `card_${currentIndex}`}
+                            className={`fca-flip-card ${isFlipped ? 'is-flipped' : ''}`}
+                            onClick={handleFlip}
+                        >
                                 {/* FRONT FACE */}
                                 <div className="fca-card-face front">
                                     <span className="fca-topic-tag">
