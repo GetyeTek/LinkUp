@@ -152,7 +152,7 @@ const LiveStageSetupModal = ({
     useEffect(() => {
         if (show) {
             if (mode === 'miron') {
-                supabase.from('books').select('id, title, course_code, toc, cover_url').order('title').then(({ data }) => {
+                supabase.from('books').select('id, title, course_code, toc, cover_url').eq('is_published', true).order('title').then(({ data }) => {
                     if (data) setBooks(data);
                 });
             }
