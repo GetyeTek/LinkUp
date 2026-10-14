@@ -173,14 +173,16 @@
     letter-spacing: 0.5px;
 }
 
-/* Unit & Chapter Header Baseline Fallback */
+/* Unit & Chapter Header Baseline Fallback for All Textbooks */
 .book-block.type-unit-header,
 .book-block.type-chapter-header,
-.book-block.type-chapter-title {
+.book-block.type-chapter-title,
+.chapter-header {
     text-align: center;
-    margin: 28px 0 24px 0;
-    padding-bottom: 14px;
+    margin: 32px 0 24px 0;
+    padding-bottom: 16px;
     border-bottom: 1.5px solid var(--border);
+    width: 100%;
 }
 
 .book-block.type-unit-header .book-block-label,
