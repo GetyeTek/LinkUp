@@ -150,6 +150,171 @@ export const renderBookBlock = (block, idx, actions) => {
         );
     }
 
+    // 0b. Cover Pages & Sophisticated Title Layouts
+    if (bType === 'cover' || bType.includes('-cover')) {
+        let coverInner;
+
+        if (prefix === 'math') {
+            return (
+                <div key={idx} className={`book-cover-container ${prefix}-cover-container ${block.socialTheme ? 'social-theme' : ''} ${customClass}`} style={style}>
+                    {block.topTitle && <div className={`${prefix}-cover-top`}>{formatText(block.topTitle)}</div>}
+                    <div className={`${prefix}-cover-main`}>
+                        {block.title && <h1 className={`${prefix}-cover-title`}>{formatText(block.title)}</h1>}
+                        {block.prepared && <div className={`${prefix}-cover-prepared`}>{formatText(block.prepared)}</div>}
+                        {block.authors && <div className={`${prefix}-cover-authors`}>{formatText(block.authors)}</div>}
+                        {block.moshe && <div className={`${prefix}-cover-moshe`}>{formatText(block.moshe)}</div>}
+                    </div>
+                    <div className={`${prefix}-cover-grid`}>
+                        <div className={`${prefix}-cover-maroon`}></div>
+                        <div className={`${prefix}-cover-teal`}></div>
+                    </div>
+                    {block.bottomTitle && <div className={`${prefix}-cover-bottom`}>{formatText(block.bottomTitle)}</div>}
+                    {renderAIExtension(block, actions)}
+                </div>
+            );
+        }
+
+        coverInner = (
+            <>
+                {block.topTitle && <div className={`${prefix}-cover-top`}>{formatText(block.topTitle)}</div>}
+                {block.logos && (
+                    <div className={`${prefix}-cover-logos`}>
+                        {block.logos.map((l, i) => <DynamicImage key={i} src={l.src} alt="Logo" bookTitle={bookTitle} />)}
+                    </div>
+                )}
+                {block.title && <h1 className={`${prefix}-cover-title`}>{formatText(block.title)}</h1>}
+                {block.subtitle && <h2 className={`${prefix}-cover-subtitle`}>{formatText(block.subtitle)}</h2>}
+                {block.code && <div className={`${prefix}-cover-code`}>{formatText(block.code)}</div>}
+                {block.institution && <div className={`${prefix}-cover-institution`}>{formatText(block.institution)}</div>}
+
+                {prefix === 'mced' && block.authorGrid ? (
+                    <table className={`${prefix}-cover-author-grid`}>
+                        <tbody>
+                            {block.authorGrid.map((r, rI) => (
+                                <tr key={rI}>
+                                    <td className="author-name">{formatText(r.name)}</td>
+                                    <td className="author-title">{formatText(r.title)}</td>
+                                    <td className="author-inst">{formatText(r.inst)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : prefix === 'psych' && block.contributorsList ? (
+                    <div className={`${prefix}-cover-contributors`}>
+                        {block.contributorsList.map((c, cI) => (
+                            <div key={cI} className="contributor-item">
+                                <span className="contributor-name">{formatText(c.name)}</span>
+                                <span className="contributor-detail">{formatText(c.detail)}</span>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    block.authors && <div className={`${prefix}-cover-authors ${prefix}-cover-authors-box`}>
+                        {block.authorsTitle && <span className={`${prefix}-cover-authors-title`}>{formatText(block.authorsTitle)}</span>}
+                        {Array.isArray(block.authors) ? (
+                            <ul className={`${prefix}-cover-authors-list`}>
+                                {block.authors.map((a, i) => <li key={i}>{formatText(a)}</li>)}
+                            </ul>
+                        ) : (
+                            formatText(block.authors)
+                        )}
+                    </div>
+                )}
+
+                {block.overview && <div className={`${prefix}-cover-overview`}>{formatText(block.overview)}</div>}
+                {block.credits && <div className={`${prefix}-cover-credits`} dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(block.credits)}} />}
+                {block.location && <div className={`${prefix}-cover-location`}>{formatText(block.location)}</div>}
+                {block.date && <div className={`${prefix}-cover-date`}>{formatText(block.date)}</div>}
+                {renderAIExtension(block, actions)}
+            </>
+        );
+
+        return (
+            <div key={idx} className={`book-cover-container ${prefix}-cover-container ${customClass}`} style={style}>
+                {prefix === 'history' ? (
+                    <div className={`${prefix}-cover-frame`}>
+                        <div className={`${prefix}-bolt`} style={{top: -10, left: -10}}></div>
+                        <div className={`${prefix}-bolt`} style={{top: -10, right: -10}}></div>
+                        <div className={`${prefix}-bolt`} style={{bottom: -10, left: -10}}></div>
+                        <div className={`${prefix}-bolt`} style={{bottom: -10, right: -10}}></div>
+                        {coverInner}
+                    </div>
+                ) : coverInner}
+            </div>
+        );
+    }
+
+    // 0c. Bespoke STEM & Analytical Blocks
+    if (bType === 'equation-row' || block.equationRow) {
+        return (
+            <div key={idx} className={`book-equation-row ${prefix ? `${prefix}-equation-row` : ''} ${customClass}`} style={style}>
+                <div className={`book-eq-body ${prefix ? `${prefix}-eq-body` : ''}`}>{formatText(block.body || block.text)}</div>
+                {block.num && <div className={`book-eq-num ${prefix ? `${prefix}-eq-num` : ''}`}>({block.num})</div>}
+            </div>
+        );
+    }
+
+    if (bType === 'factor-chain' && prefix === 'chem') {
+        return (
+            <div key={idx} className="chem-factor-chain">
+                {block.chain.map((item, i) => (
+                    <span key={i} className={item.op ? 'chem-factor-op' : 'chem-factor-term'}>{formatText(item.text || item)}</span>
+                ))}
+            </div>
+        );
+    }
+
+    if (bType === 'orbital-diagram' && prefix === 'chem') {
+        return (
+            <div key={idx} className="chem-orbital-diagram">
+                {block.symbol && <div className="chem-orbital-symbol">{formatText(block.symbol)}</div>}
+                {block.groups?.map((g, i) => (
+                    <div key={i} className="chem-orbital-group">
+                        <div className="chem-orbital-boxes">
+                            {g.boxes?.map((b, bi) => <div key={bi} className="chem-orbital-box">{formatText(b)}</div>)}
+                        </div>
+                        {g.label && <div className="chem-orbital-label">{formatText(g.label)}</div>}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (bType === 'ansoff-matrix' && prefix === 'entre') {
+        return (
+            <div key={idx} className="entre-ansoff-matrix">
+                {block.quadrants?.map((q, i) => (
+                    <div key={i} className="entre-ansoff-quadrant">
+                        <div className="entre-label-axis">{formatText(q.label)}</div>
+                        <div>{formatText(q.text)}</div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (bType === 'form-row' && prefix === 'entre') {
+        return (
+            <div key={idx} className="entre-form-row">
+                <span className="entre-form-label">{formatText(block.label)}</span>
+                <span className="entre-form-line"></span>
+            </div>
+        );
+    }
+
+    if (bType === 'trio-portraits' && prefix === 'glaf') {
+        return (
+            <div key={idx} className="glaf-trio-portraits">
+                {block.images?.map((img, i) => (
+                    <div key={i} className="glaf-trio-item">
+                        <DynamicImage src={img.src} alt={img.caption} bookTitle={bookTitle} />
+                        {img.caption && <div>{formatText(img.caption)}</div>}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
     // 1. Spacers & Dividers
     if (bType === 'spacer') {
         return <div key={idx} className={blockClass} style={{ height: block.height || '20px', flexGrow: block.flex || 0, ...style }} />;
@@ -247,7 +412,16 @@ export const renderBookBlock = (block, idx, actions) => {
                             ) : isBox && !block.bullet ? null : (
                                 <div className={`book-bullet-char ${prefix ? `${prefix}-bullet-char` : ''}`}>{bChar}</div>
                             )}
-                            <div className="book-list-text">{formatText(itemContent)}</div>
+                            <div className="book-list-text">
+                                {formatText(itemContent)}
+                                {item.subquestions && Array.isArray(item.subquestions) && (
+                                    <ol className={`${prefix ? `${prefix}-review-subquestions` : 'review-subquestions'}`}>
+                                        {item.subquestions.map((sq, sqIdx) => (
+                                            <li key={sqIdx}>{formatText(typeof sq === 'object' && sq !== null ? sq.text : sq)}</li>
+                                        ))}
+                                    </ol>
+                                )}
+                            </div>
                         </div>
                     );
                 })}
