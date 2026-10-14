@@ -39,7 +39,14 @@ export const resolveAssetUrl = (url, bookTitle = '') => {
         return clean.includes('?') ? `${clean}&v=${epoch}` : `${clean}?v=${epoch}`;
     }
 
-    // 3. Resolve relative paths using the current book's actual title folder
+    // 3. Resolve generic pedagogical icons natively
+    const genericIcons = ['question', 'reading', 'activity', 'idea', 'summary', 'note', 'objective', 'attention', 'warning', 'info', 'insight'];
+    const bareName = clean.replace(/\.[^/.]+$/, "").toLowerCase();
+    if (genericIcons.includes(bareName)) {
+        return `${GATEWAY_BASE}/storage/v1/object/public/book-assets/icons/${bareName}.png?v=${epoch}`;
+    }
+
+    // 4. Resolve relative paths using the current book's actual title folder
     const filename = clean.replace(/^(\.\/|\/)?assets\//i, '').replace(/^(\.\/|\/)/, '');
     const cleanBookTitle = (bookTitle || '').replace(/\.pdf$/i, '').trim();
     const folderPart = cleanBookTitle ? `${encodeURIComponent(cleanBookTitle)}.pdf/` : '';
