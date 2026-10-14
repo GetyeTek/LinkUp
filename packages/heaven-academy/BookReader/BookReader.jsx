@@ -609,34 +609,53 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                             <div key={page.id} className="page-wrapper" data-page-number={page.page_number}>
                                 <div className="page-canvas">
                                     {page.manual_flag && <div className="manual-flag">{page.manual_flag}</div>}
-                                    {(page.content_json || []).map((block, idx) => {
-                                        const blockActions = {
-                                            bookTitle: book?.title || '',
-                                            courseCode: book?.course_code || '',
-                                            onAIExplore: () => handleAIExplore(pageIdx, idx)
-                                        };
-                                        const expKey = `${page.page_key}_${idx}`;
-                                        const isFooter = block.type === 'footer' || block.type === 'logic-footer';
+                                    {(() => {
+                                        const contentBlocks = page.content_json || [];
+                                        const hasFooterBlock = contentBlocks.some(b => Boolean(b.type?.includes('footer') || b.val !== undefined));
+                                        const displayFallbackPage = (pageOffset > 0 && page.page_number - pageOffset > 0) ? (page.page_number - pageOffset) : page.page_number;
+
                                         return (
-                                            <React.Fragment key={idx}>
-                                                <div id={`page-${page.page_number}-block-${idx}`} className={`block-target-wrapper ${isFooter ? 'is-footer-wrapper' : ''}`}>
-                                                    {renderBookBlock(block, idx, blockActions)}
-                                                </div>
-                                                {activeExplanations[expKey] && (
-                                                    <div className="inline-book-explanation">
-                                                        <div className="inline-exp-header">
-                                                            <span><i className="fas fa-sparkles"></i> Miron Synthesis</span>
-                                                            <button onClick={() => setActiveExplanations(p => ({...p, [expKey]: false}))}>
-                                                                <i className="fas fa-times"></i>
-                                                            </button>
-                                                        </div>
-                                                        <div className="inline-exp-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(activeExplanations[expKey] === true ? 'Processing...' : (activeExplanations[expKey] || ''))) }}>
+                                            <>
+                                                {contentBlocks.map((block, idx) => {
+                                                    const blockActions = {
+                                                        bookTitle: book?.title || '',
+                                                        courseCode: book?.course_code || '',
+                                                        onAIExplore: () => handleAIExplore(pageIdx, idx)
+                                                    };
+                                                    const expKey = `${page.page_key}_${idx}`;
+                                                    const isFooter = Boolean(block.type?.includes('footer') || block.val !== undefined || block.type === 'logic-footer');
+                                                    const isSpacer = block.type === 'spacer';
+
+                                                    return (
+                                                        <React.Fragment key={idx}>
+                                                            <div id={`page-${page.page_number}-block-${idx}`} className={`block-target-wrapper ${isFooter ? 'is-footer-wrapper' : ''} ${isSpacer ? 'is-spacer-wrapper' : ''}`}>
+                                                                {renderBookBlock(block, idx, blockActions)}
+                                                            </div>
+                                                            {activeExplanations[expKey] && (
+                                                                <div className="inline-book-explanation">
+                                                                    <div className="inline-exp-header">
+                                                                        <span><i className="fas fa-sparkles"></i> Miron Synthesis</span>
+                                                                        <button onClick={() => setActiveExplanations(p => ({...p, [expKey]: false}))}>
+                                                                            <i className="fas fa-times"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                    <div className="inline-exp-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(activeExplanations[expKey] === true ? 'Processing...' : (activeExplanations[expKey] || ''))) }}>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </React.Fragment>
+                                                    );
+                                                })}
+                                                {!hasFooterBlock && (
+                                                    <div className="block-target-wrapper is-footer-wrapper fallback-footer-wrapper">
+                                                        <div className="book-footer univ-footer">
+                                                            <span className="footer-page">{displayFallbackPage}</span>
                                                         </div>
                                                     </div>
                                                 )}
-                                            </React.Fragment>
+                                            </>
                                         );
-                                    })}
+                                    })()}
                                 </div>
                                 {mappedQuestions[page.page_key] && (
                                     <PageQuestionsBlock 
