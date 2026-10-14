@@ -95,8 +95,8 @@ export const renderBookBlock = (block, idx, actions) => {
 
     // 0. Universal Unit & Chapter Headers for All Subjects
     const isUnitOrChapter = 
-        bType.includes('unit') || 
-        bType.includes('chapter') || 
+        (bType.includes('unit') && !bType.includes('outcomes') && !bType.includes('summary')) || 
+        (bType.includes('chapter') && !bType.includes('outcomes') && !bType.includes('summary')) || 
         bType === 'title-page' ||
         (block.number && (block.title || bType === 'header' || bType.includes('head'))) ||
         (typeof block.body === 'string' && /^(chapter|unit)\s+([0-9]+|[a-z]+)\b/i.test(block.body.trim()));
@@ -395,37 +395,46 @@ export const renderBookBlock = (block, idx, actions) => {
     if (block.items && Array.isArray(block.items)) {
         const bChar = bulletCharMap[block.bullet] || bulletCharMap['default'];
         const explicitBulletImg = block.bulletImg || block.bulletUrl || null;
+        const explicitIcon = block.iconUrl || block.icon || null;
         const isBox = bType.includes('box') || bType.includes('outcomes') || bType.includes('objective') || bType.includes('review') || bType.includes('callout') || bType.includes('prompt') || bType.includes('summary') || bType.includes('reflection') || bType.includes('activity');
         const baseBType = bType.replace(/-box$/, '');
-        const boxClass = isBox ? (prefix ? `${prefix}-${bType} ${prefix}-${baseBType}-box book-box-container` : 'book-box-container') : '';
-        const titleClass = isBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-${baseBType}-title ${prefix}-${baseBType}-tag ${prefix}-${baseBType}-header ${prefix}-sub-header book-box-title` : 'book-box-title') : 'book-list-title';
+        const coreBType = baseBType.replace(/^unit-/, '').replace(/^chapter-/, '');
+        const boxClass = isBox ? (prefix ? `${prefix}-${bType} ${prefix}-${baseBType}-box ${prefix}-${coreBType}-box book-box-container` : 'book-box-container') : '';
+        const titleClass = isBox ? (prefix ? `${prefix}-${bType}-title ${prefix}-${baseBType}-title ${prefix}-${coreBType}-title ${prefix}-${baseBType}-tag ${prefix}-${baseBType}-header ${prefix}-sub-header book-box-title` : 'book-box-title') : 'book-list-title';
 
         return (
             <div key={idx} className={`book-list-container univ-list-block type-${bType} ${boxClass} ${customClass}`} style={style}>
-                {block.title && <div className={titleClass}>{formatText(block.title)}</div>}
-                {block.subtitle && <div className={`book-list-subtitle ${prefix ? `${prefix}-${bType}-subtitle ${prefix}-sub-header` : ''}`}>{formatText(block.subtitle)}</div>}
-                {block.items.map((item, bIdx) => {
-                    const itemContent = typeof item === 'object' && item !== null ? item.text : item;
-                    return (
-                        <div key={bIdx} className={`book-list-item ${prefix ? `${prefix}-list-item ${prefix}-bullet-item ${prefix}-arrow-list` : ''}`}>
-                            {explicitBulletImg ? (
-                                <DynamicImage src={explicitBulletImg} alt="•" className={`book-bullet-img ${prefix ? `${prefix}-bullet-img` : ''}`} bookTitle={bookTitle} />
-                            ) : isBox && !block.bullet ? null : (
-                                <div className={`book-bullet-char ${prefix ? `${prefix}-bullet-char` : ''}`}>{bChar}</div>
-                            )}
-                            <div className="book-list-text">
-                                {formatText(itemContent)}
-                                {item.subquestions && Array.isArray(item.subquestions) && (
-                                    <ol className={`${prefix ? `${prefix}-review-subquestions` : 'review-subquestions'}`}>
-                                        {item.subquestions.map((sq, sqIdx) => (
-                                            <li key={sqIdx}>{formatText(typeof sq === 'object' && sq !== null ? sq.text : sq)}</li>
-                                        ))}
-                                    </ol>
+                {explicitIcon && (
+                    <div className={`book-block-icon ${prefix ? `${prefix}-callout-icon` : ''}`}>
+                        <DynamicImage src={explicitIcon} alt="" bookTitle={bookTitle} />
+                    </div>
+                )}
+                <div className={`book-block-content ${explicitIcon || isBox ? (prefix ? `${prefix}-${baseBType}-content ${prefix}-${coreBType}-content ${prefix}-callout-content` : 'book-block-content') : ''}`}>
+                    {block.title && <div className={titleClass}>{formatText(block.title)}</div>}
+                    {block.subtitle && <div className={`book-list-subtitle ${prefix ? `${prefix}-${baseBType}-subtitle ${prefix}-sub-header` : ''}`}>{formatText(block.subtitle)}</div>}
+                    {block.items.map((item, bIdx) => {
+                        const itemContent = typeof item === 'object' && item !== null ? item.text : item;
+                        return (
+                            <div key={bIdx} className={`book-list-item ${prefix ? `${prefix}-list-item ${prefix}-bullet-item ${prefix}-arrow-list` : ''}`}>
+                                {explicitBulletImg ? (
+                                    <DynamicImage src={explicitBulletImg} alt="•" className={`book-bullet-img ${prefix ? `${prefix}-bullet-img` : ''}`} bookTitle={bookTitle} />
+                                ) : isBox && !block.bullet ? null : (
+                                    <div className={`book-bullet-char ${prefix ? `${prefix}-bullet-char` : ''}`}>{bChar}</div>
                                 )}
+                                <div className="book-list-text">
+                                    {formatText(itemContent)}
+                                    {item.subquestions && Array.isArray(item.subquestions) && (
+                                        <ol className={`${prefix ? `${prefix}-review-subquestions` : 'review-subquestions'}`}>
+                                            {item.subquestions.map((sq, sqIdx) => (
+                                                <li key={sqIdx}>{formatText(typeof sq === 'object' && sq !== null ? sq.text : sq)}</li>
+                                            ))}
+                                        </ol>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
                 {renderAIExtension(block, actions)}
             </div>
         );
