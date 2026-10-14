@@ -141,7 +141,7 @@ export const renderBookBlock = (block, idx, actions) => {
                     </div>
                 )}
                 {block.sub && (
-                    <div className={`book-block-sub ${prefix ? `${prefix}-unit-sub ${prefix}-sub-header` : ''}`}>
+                    <div className={`book-block-sub ${prefix ? `${prefix}-unit-sub ${prefix}-sub-header` : ''} ${block.level ? `level-${block.level}` : ''}`}>
                         {formatText(block.sub)}
                     </div>
                 )}
@@ -542,8 +542,8 @@ export const renderBookBlock = (block, idx, actions) => {
                         {formatText(block.title)}
                     </h3>
                 )}
-                {block.sub && <div className={`book-block-sub ${prefix ? `${prefix}-sub-header` : ''}`}>{formatText(block.sub)}</div>}
-                {block.subtitle && <div className={`book-block-subtitle ${prefix ? `${prefix}-sub-header` : ''}`}>{formatText(block.subtitle)}</div>}
+                {block.sub && <div className={`book-block-sub ${prefix ? `${prefix}-sub-header` : ''} ${block.level ? `level-${block.level}` : ''}`}>{formatText(block.sub)}</div>}
+                {block.subtitle && <div className={`book-block-subtitle ${prefix ? `${prefix}-sub-header` : ''} ${block.level ? `level-${block.level}` : ''}`}>{formatText(block.subtitle)}</div>}
                 {mainText && (
                     <div className={`book-block-body ${isHeading ? (prefix ? `${prefix}-sub-header` : 'book-block-title') : 'univ-p-block'}`}>
                         {formatText(mainText)}
