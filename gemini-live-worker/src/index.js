@@ -631,6 +631,7 @@ export class GeminiLiveAgent {
       const rpcUrl = `${supabaseUrl}/rest/v1/rpc/lease_gemini_api_key`;
       console.log(`[Agent|GEMINI|DB] Executing POST request to Supabase RPC: ${rpcUrl}`);
 
+      const sessionCost = this.isOneOnOne ? 2 : 20;
       const dbResponse = await fetch(rpcUrl, {
         method: "POST",
         headers: {
@@ -638,7 +639,7 @@ export class GeminiLiveAgent {
           "apikey": serviceRoleKey,
           "Authorization": `Bearer ${serviceRoleKey}`
         },
-        body: JSON.stringify({ p_user_id: billableUserId || null, p_cost: 2 })
+        body: JSON.stringify({ p_user_id: billableUserId || null, p_cost: sessionCost })
       });
 
       console.log(`[Agent|GEMINI|DB] Supabase response status: ${dbResponse.status} ${dbResponse.statusText}`);
