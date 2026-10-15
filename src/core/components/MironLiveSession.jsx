@@ -37,7 +37,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (!sessionUser?.id) return;
         const agentId = `miron-personal-${sessionUser.id}`;
         const studentName = sessionUser.user_metadata?.full_name?.split(' ')[0] || "Scholar";
-        const url = `wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${agentId}&name=${encodeURIComponent(studentName)}`;
+        const url = `wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${agentId}&name=${encodeURIComponent(studentName)}&uid=${sessionUser.id}`;
         
         let ws = null;
         let isMounted = true;
@@ -125,6 +125,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 // 5. Intercept consulting state from Durable Object
                 if (payload.type === "tool_call_state") {
                     setIsConsulting(payload.executing);
+                }
+
+                // 6. Billing Guard
+                if (payload.event === "billing_error") {
+                    setTranscripts(prev => [...prev, { id: Date.now(), role: 'miron', text: payload.error, isFinal: true, isBroke: true }]);
+                    setIsMironSpeaking(false);
+                    ws.close();
                 }
             } catch (err) {
                 console.error("WS Parse error", err);
