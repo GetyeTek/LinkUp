@@ -1077,6 +1077,18 @@ serve(async (req) => {
               sendEvent('chunk', { delta: finalText });
             }
           } catch (err: any) {
+            console.error(`[MIRON CATASTROPHIC FAILURE] Both engines failed. Issuing refund...`);
+            try {
+                await supabase.from('linkoin_transactions').insert({
+                    user_id: requesterId,
+                    amount: 2,
+                    transaction_type: 'refund',
+                    description: 'Miron Text Generation Failed',
+                    idempotency_key: `refund_text_${crypto.randomUUID()}`
+                });
+            } catch (refundErr) {
+                console.error("[Miron Athena] Refund failed to execute:", refundErr);
+            }
             sendEvent('error', { message: err.message });
           }
         } finally {
