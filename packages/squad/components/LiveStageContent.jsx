@@ -13,6 +13,8 @@ import { invokeSocial } from '../api.js';
 const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser, pendingChunks, setShowMironSetup, devBoardPayload, setDevBoardPayload }) => {
     const { user: userProfile } = usePlatform();
     const isProUser = Boolean(userProfile?.is_pro);
+    const hasEnoughCredits = (userProfile?.linkoin_balance || 0) >= 20;
+    const needsPremium = !isProUser && !hasEnoughCredits;
     const [qInput, setQInput] = useState('');
     const [liveQuestions, setLiveQuestions] = useState([]);
     const [aiConnected, setAiConnected] = useState(false);
@@ -507,13 +509,13 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                         <button 
                             className={`miron-header-toggle ${isAiHosting ? 'active' : ''}`} 
                             onClick={() => {
-                                if (!isAiHosting && !isProUser) {
+                                if (!isAiHosting && needsPremium) {
                                     window.dispatchEvent(new CustomEvent('open-premium-modal'));
                                     return;
                                 }
                                 toggleMironState(!isAiHosting);
                             }}
-                            title={!isProUser ? "Unlock Miron Co-Host (LinkUp Gold)" : (isAiHosting ? "Disconnect Miron" : "Let Miron Host")}
+                            title={needsPremium ? "Unlock Miron Co-Host (20 Credits or LinkUp Gold)" : (isAiHosting ? "Disconnect Miron" : "Let Miron Host")}
                             style={{ position: 'relative', width: '38px', height: '38px', borderRadius: '50%', padding: 0, overflow: 'visible', background: 'transparent', border: 'none' }}
                         >
                             {isAiHosting && <ConnectionRing isConnected={isConnected} />}
@@ -533,8 +535,8 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                     {isAiHosting ? <i className="fas fa-pause text-white"></i> : <i className="fas fa-sparkles text-zinc-300"></i>}
                                 </div>
                             </div>
-                            {!isProUser && (
-                                <span className="miron-toggle-pro-badge" title="LinkUp Gold Required">
+                            {needsPremium && (
+                                <span className="miron-toggle-pro-badge" title="20 Credits or LinkUp Gold Required">
                                     <i className="fas fa-crown"></i>
                                 </span>
                             )}
