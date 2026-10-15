@@ -667,7 +667,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                     throw new Error(err);
                 }
             });
-
+        } catch (error) {
             console.error("Miron Communication Error:", error);
             const errMsg = String(error?.message || '').toLowerCase();
             const isBroke = errMsg.includes('402') || errMsg.includes('insufficient_credits') || errMsg.includes('insufficient linkup credits') || errMsg.includes('out of linkup credits');
