@@ -330,7 +330,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
     const toggleMironState = async (turnOn) => {
         if (turnOn) {
-            if (!isProUser) {
+            if (needsPremium) {
                 window.dispatchEvent(new CustomEvent('open-premium-modal'));
                 return;
             }
