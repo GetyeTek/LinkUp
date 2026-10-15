@@ -862,7 +862,10 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                         setLocalChatInfo(prev => ({...prev, metadata: res.metadata || {...prev.metadata, ai_hosting: true}}));
                     } catch(e) {
                         console.error("Failed to toggle Miron:", e.message);
-                        setAlertNotice({ title: 'Miron failed to join', msg: e.message, success: false });
+                        const cleanMsg = String(e.message || '').toLowerCase().includes('api key') || String(e.message || '').toLowerCase().includes('gemini')
+                            ? "Miron is currently operating at maximum capacity across campus networks. Please try again shortly."
+                            : e.message;
+                        setAlertNotice({ title: 'Miron Notice', msg: cleanMsg, success: false });
                     }
                 }}
             />
