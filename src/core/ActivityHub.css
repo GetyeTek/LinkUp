@@ -93,6 +93,7 @@
 .type-study { --cat-color: #42d7b8; }
 .type-social { --cat-color: #9b59b6; }
 .type-reward { --cat-color: #ffcf7d; }
+.type-system { --cat-color: #ff5f5f; } /* High-priority red for admin broadcasts */
 
 @media (min-width: 900px) {
     .activity-overlay {
