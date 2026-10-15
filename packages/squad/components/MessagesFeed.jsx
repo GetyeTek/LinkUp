@@ -69,6 +69,7 @@ const MessagesFeed = ({
                     .sort((a, b) => new Date(b.last_message_at || b.created_at || 0) - new Date(a.last_message_at || a.created_at || 0))
                     .map(chat => {
                         const isDm = chat.type === 'dm';
+                        const isClass = !isDm && chat.metadata?.focus === 'Class';
                         const title = isDm ? chat.other_user_name : chat.title;
                         const avatar = isDm ? chat.other_user_avatar : chat.avatar_url;
                         const isActiveChat = activeChatId === chat.conversation_id;
@@ -79,10 +80,22 @@ const MessagesFeed = ({
                                         <img src={avatar || getAvatarFallback(title)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(title); }} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                                     ) : (
                                         <>
-                                            {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring"></div>}
-                                            <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', position: 'relative', zIndex: 2 }}>
-                                                {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-users"></i>}
+                                            {isSessionLive(chat.metadata) && (
+                                                <div className={`list-live-pulse-ring ${isClass ? 'square' : ''}`}></div>
+                                            )}
+                                            <div 
+                                                className={`group-avatar-shell ${isClass ? 'avatar-shape-squircle' : 'avatar-shape-circle'}`}
+                                                style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', overflow: 'hidden', position: 'relative', zIndex: 2 }}
+                                            >
+                                                {chat.avatar_url ? (
+                                                    <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" />
+                                                ) : (
+                                                    <i className={`fas ${isClass ? 'fa-chalkboard-user' : 'fa-layer-group'}`}></i>
+                                                )}
                                             </div>
+                                            <span className={`avatar-type-badge ${isClass ? 'class-badge' : 'squad-badge'}`} title={isClass ? 'Official Class Section' : 'Study Squad'}>
+                                                <i className={`fas ${isClass ? 'fa-graduation-cap' : 'fa-users'}`}></i>
+                                            </span>
                                         </>
                                     )}
                                     {isDm && onlineUsers.has(chat.other_user_id) && (
@@ -92,9 +105,10 @@ const MessagesFeed = ({
                                 <div className="message-info">
                                     <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         {title}
-                                        {!isDm && chat.metadata?.focus && (
-                                            <span style={{ fontSize: '0.6rem', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', padding: '1px 5px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                                                {chat.metadata.focus}
+                                        {!isDm && (
+                                            <span className={`squad-type-pill ${isClass ? 'class-pill' : 'squad-pill'}`}>
+                                                <i className={`fas ${isClass ? 'fa-graduation-cap' : 'fa-layer-group'}`}></i>
+                                                {isClass ? 'CLASS' : (chat.metadata?.focus || 'SQUAD')}
                                             </span>
                                         )}
                                     </div>
