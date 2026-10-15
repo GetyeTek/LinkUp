@@ -693,16 +693,16 @@ export class GeminiLiveAgent {
         }
         console.error(`[Agent|GEMINI|WS] ❌ Websocket missing from response! Body: ${errText}`);
         
-        // ROLLBACK / REFUND: The connection failed, refund the 2 credits
+        // ROLLBACK / REFUND: The connection failed, refund the exact session cost
         if (billableUserId) {
-            console.log(`[Agent|GEMINI|WS] Connection failed. Issuing 2-credit refund to ${billableUserId}...`);
+            console.log(`[Agent|GEMINI|WS] Connection failed. Issuing ${sessionCost}-credit refund to ${billableUserId}...`);
             try {
                 await fetch(`${supabaseUrl}/rest/v1/linkoin_transactions`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': serviceRoleKey, 'Authorization': `Bearer ${serviceRoleKey}` },
                     body: JSON.stringify({
                         user_id: billableUserId,
-                        amount: 2,
+                        amount: sessionCost,
                         transaction_type: 'refund',
                         description: 'Miron Live Connection Failed',
                         idempotency_key: `refund_live_${crypto.randomUUID()}`
