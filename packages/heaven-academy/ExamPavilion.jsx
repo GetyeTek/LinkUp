@@ -54,6 +54,7 @@ const ExamPavilion = ({
 
     // Master data states
     const [allExams, setAllExams] = useState([]);
+    const [isDirectFallback, setIsDirectFallback] = useState(false);
     const [loading, setLoading] = useState(true);
     const [subjectSearch, setSubjectSearch] = useState('');
 
@@ -79,6 +80,7 @@ const ExamPavilion = ({
 
                 // 2. Direct Supabase Fallback if empty
                 if (loaded.length === 0) {
+                    setIsDirectFallback(true);
                     const { data: directData } = await supabase
                         .from('exams')
                         .select('id, exam_type, date, time_allowed_minutes, total_marks, university_id, courses(code, name), universities(name)')
@@ -219,7 +221,7 @@ const ExamPavilion = ({
 
             // Immutable 25% Free / 75% Pro Gating rule applied at catalog root
             group.exams.forEach((exam, idx) => {
-                exam.is_pro_gated = (idx % 4 !== 0);
+                exam.is_pro_gated = (isDirectFallback && !isProUser) ? false : (idx % 4 !== 0);
             });
         });
 
