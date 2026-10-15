@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import { generateMironLecture } from '../api.js';
 import './LiveStageSetupModal.css';
 
@@ -47,6 +47,7 @@ const LiveStageSetupModal = ({
     isStartingLive,
     conversation_id
 }) => {
+    const { user: userProfile } = usePlatform();
     const [books, setBooks] = useState([]);
     const [selectedBook, setSelectedBook] = useState(null);
     const [selectedNode, setSelectedNode] = useState(null);
@@ -167,6 +168,11 @@ const LiveStageSetupModal = ({
     if (!show) return null;
 
     const handlePrepareLecture = async () => {
+        if (mode === 'miron' && !userProfile?.is_pro && (userProfile?.linkoin_balance || 0) < 2) {
+            setGenError("Insufficient Credits. Miron requires 2 LinkUp Credits per live session.");
+            return;
+        }
+
         if (isDevMode && onDevInject) {
             try {
                 const parsed = JSON.parse(devPayload);
