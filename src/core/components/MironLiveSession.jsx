@@ -6,6 +6,7 @@ import './MironLiveSession.css';
 
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const { sessionUser } = usePlatform();
+    const [sessionId] = useState(() => crypto.randomUUID());
     const [viewState, setViewState] = useState('full');
     const [isConnected, setIsConnected] = useState(false);
     const [micActive, setMicActive] = useState(false);
@@ -17,6 +18,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const recognitionRef = useRef(null);
     const speakingTimeout = useRef(null);
     const transcriptRef = useRef(null);
+    const isHangingUpRef = useRef(false);
 
     const { playAudioChunk } = useGeminiAudio(wsRef, micActive);
 
@@ -35,7 +37,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     // 1. Core WebSocket Connection to Gemini DO
     useEffect(() => {
         if (!sessionUser?.id) return;
-        const agentId = `miron-personal-${sessionUser.id}`;
+        const agentId = `miron-personal-${sessionUser.id}-${sessionId}`;
         const studentName = sessionUser.user_metadata?.full_name?.split(' ')[0] || "Scholar";
         const url = `wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${agentId}&name=${encodeURIComponent(studentName)}&uid=${sessionUser.id}`;
         
@@ -44,7 +46,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         let reconnectTimer = null;
 
         const connectWS = async () => {
-            if (!isMounted) return;
+            if (!isMounted || isHangingUpRef.current) return;
             const { data: { session } } = await supabase.auth.getSession();
             const token = session?.access_token || '';
             ws = new WebSocket(url, ["access_token", token]);
@@ -57,7 +59,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
             ws.onclose = () => {
                 setIsConnected(false);
-                if (isMounted) {
+                if (isMounted && !isHangingUpRef.current) {
                     console.log("[Miron Live] Connection lost. Reconnecting in 2 seconds...");
                     reconnectTimer = setTimeout(connectWS, 2000);
                 }
@@ -168,6 +170,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     };
 
+    const handleHangup = () => {
+        isHangingUpRef.current = true;
+        if (wsRef.current) {
+            try {
+                wsRef.current.close(1000, "User ended session");
+            } catch (e) {}
+        }
+        onClose();
+    };
+
     if (viewState === 'minimized') {
         return <FloatingMironOrb mironAvatarUrl={mironAvatarUrl} isConnected={isConnected} onClick={() => setViewState('full')} />;
     }
@@ -181,7 +193,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 <div className="ml-status">
                     <span className="live-dot"></span> Live Voice Session
                 </div>
-                <button className="athena-close" onClick={onClose} style={{color: '#ff5f5f'}}><i className="fas fa-phone-slash"></i></button>
+                <button className="athena-close" onClick={handleHangup} style={{color: '#ff5f5f'}}><i className="fas fa-phone-slash"></i></button>
             </header>
 
             <div className="ml-stage">
