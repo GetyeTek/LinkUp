@@ -848,12 +848,6 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 setLiveSetupData={setLiveSetupData} 
                 onStartLive={startLiveSession} 
                 isStartingLive={isStartingLive} 
-                onDevInject={(payload) => {
-                    setLiveCredentials({ token: 'local', url: 'local' });
-                    setDevBoardPayload(payload);
-                    setLiveState('full');
-                    setShowLiveSetup(false);
-                }}
             />
 
             <LiveStageSetupModal 
@@ -861,11 +855,6 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 show={showMironSetup}
                 conversation_id={chat.conversation_id}
                 onClose={() => setShowMironSetup(false)}
-                onDevInject={(payload) => {
-                    setDevBoardPayload(payload);
-                    setLiveState('full');
-                    setShowMironSetup(false);
-                }}
                 onInviteMiron={async (chunks, rawText) => {
                     const { error } = await supabase.from('live_study_sessions')
                         .update({ lecture_chunks: chunks, raw_source_text: rawText })
