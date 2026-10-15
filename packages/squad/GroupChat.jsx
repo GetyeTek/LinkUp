@@ -670,13 +670,31 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '1.2rem' }}>
                     <button className="icon-button back-btn" onClick={handleBack}><i className="fas fa-chevron-left"></i></button>
                     <div className="squad-contact-profile" onClick={() => setIsInfoOpen(true)} style={{cursor: 'pointer'}}>
-                        <div className="squad-avatar-ring">
-                            {localChatInfo.avatar_url && !avatarError ? (
-                                <img src={localChatInfo.avatar_url} alt="Squad Avatar" onError={() => setAvatarError(true)} />
-                            ) : (
-                                <div className="squad-default-avatar"><i className="fas fa-users"></i></div>
-                            )}
-                        </div>
+                        {(() => {
+                            const isClass = localChatInfo.metadata?.focus === 'Class';
+                            return (
+                                <div className="squad-avatar-ring">
+                                    {localChatInfo.avatar_url && !avatarError ? (
+                                        <img 
+                                            src={localChatInfo.avatar_url} 
+                                            alt="Squad Avatar" 
+                                            onError={() => setAvatarError(true)} 
+                                            style={{ borderRadius: isClass ? '12px' : '50%' }}
+                                        />
+                                    ) : (
+                                        <div className={`squad-default-avatar ${isClass ? 'avatar-shape-squircle' : 'avatar-shape-circle'}`} style={{ border: 'none' }}>
+                                            <i className={`fas ${isClass ? 'fa-chalkboard-user' : 'fa-layer-group'}`}></i>
+                                        </div>
+                                    )}
+                                    <span 
+                                        className={`avatar-type-badge ${isClass ? 'class-badge' : 'squad-badge'}`} 
+                                        style={{ width: '16px', height: '16px', fontSize: '0.5rem', bottom: '-2px', right: '-2px' }}
+                                    >
+                                        <i className={`fas ${isClass ? 'fa-graduation-cap' : 'fa-users'}`}></i>
+                                    </span>
+                                </div>
+                            );
+                        })()}
                         <div className="squad-header-info">
                             <h2>{localChatInfo.title}</h2>
                             {typingUsers.length > 0 ? (
