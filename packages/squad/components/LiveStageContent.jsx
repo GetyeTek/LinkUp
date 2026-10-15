@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, useGeminiAudio } from '@linkup-platform/sdk-core';
+import { supabase, useGeminiAudio, usePlatform } from '@linkup-platform/sdk-core';
 import DOMPurify from 'dompurify';
 import { useParticipants, useLocalParticipant } from '@livekit/components-react';
 import GenericConfirmModal from './GenericConfirmModal.jsx';
