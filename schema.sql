@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-10-15T12:38:55.843Z
+-- Date: 2026-10-15T17:38:23.619Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -186,6 +186,13 @@ null
 Table: messages | Policy: Users can update their own messages | Cmd: UPDATE | Using: (auth.uid() = sender_id)
 Table: messages | Policy: Users can delete their own messages | Cmd: DELETE | Using: (auth.uid() = sender_id)
 Table: user_question_attempts | Policy: Users can read their own attempts | Cmd: SELECT | Using: (auth.uid() = user_id)
+Table: exams | Policy: Auth read only | Cmd: SELECT | Using: ((EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.is_pro = true) AND ((p.pro_expires_at IS NULL) OR (p.pro_expires_at > now()))))) OR (NOT (EXISTS ( SELECT 1
+   FROM ( SELECT e.id,
+            (row_number() OVER (PARTITION BY e.university_id, e.course_id ORDER BY e.date DESC NULLS LAST, e.exam_type, e.id) - 1) AS rk
+           FROM exams e) ranked
+  WHERE ((ranked.id = exams.id) AND ((ranked.rk % (4)::bigint) <> 0))))))
 Table: news_feed | Policy: Allow public read access | Cmd: SELECT | Using: true
 Table: conversations | Policy: Owners can update their squads | Cmd: UPDATE | Using: (auth.uid() = owner_id)
 Table: conversations | Policy: Owners can delete their squads | Cmd: DELETE | Using: (auth.uid() = owner_id)
@@ -199,9 +206,6 @@ Table: conversations | Policy: Dynamic Read Access for Conversations | Cmd: SELE
   WHERE ((conversation_members.conversation_id = conversations.id) AND (conversation_members.user_id = auth.uid())))))
 Table: books | Policy: Auth read only | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
 Table: book_pages | Policy: Auth read only | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
-Table: exams | Policy: Auth read only | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
-Table: questions | Policy: Auth read only | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
-Table: sections | Policy: Auth read only | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
 Table: courses | Policy: Auth read only | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
 null
 null
@@ -245,7 +249,6 @@ Table: payment_submissions | Policy: Users can view their own payment submission
 null
 Table: payment_submissions | Policy: Users can update their pending payment submissions | Cmd: UPDATE | Using: ((auth.uid() = user_id) AND (status = 'pending'::text))
 Table: user_device_seats | Policy: Users can manage own device seats | Cmd: ALL | Using: (auth.uid() = user_id)
-Table: course_flashcards | Policy: Allow authenticated read for course_flashcards | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
 Table: user_mistake_flashcards | Policy: Users can manage their own mistake flashcards | Cmd: ALL | Using: (auth.uid() = user_id)
 Table: user_flashcard_reviews | Policy: Users can manage their own flashcard reviews | Cmd: ALL | Using: (auth.uid() = user_id)
 Table: book_flashcard_progress | Policy: Allow authenticated read for bfp | Cmd: SELECT | Using: (auth.role() = 'authenticated'::text)
@@ -254,6 +257,22 @@ Table: user_custom_flashcards | Policy: Users own their custom flashcards | Cmd:
 Table: course_visual_notebooks | Policy: Allow public read access to visual course notebooks | Cmd: SELECT | Using: true
 Table: telegram_login_tokens | Policy: Deny all public access to telegram_login_tokens | Cmd: ALL | Using: false
 null
+Table: course_flashcards | Policy: Allow authenticated read for course_flashcards | Cmd: SELECT | Using: ((EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.is_pro = true) AND ((p.pro_expires_at IS NULL) OR (p.pro_expires_at > now()))))) OR (NOT (EXISTS ( SELECT 1
+   FROM ( SELECT bfp.chapter_title AS ch_title,
+            (row_number() OVER (ORDER BY (min(bfp.start_page))) - 1) AS ch_idx,
+            count(*) OVER () AS total_ch
+           FROM book_flashcard_progress bfp
+          WHERE ((bfp.course_code = course_flashcards.course_code) AND (bfp.cards_generated > 0))
+          GROUP BY bfp.chapter_title) oc
+  WHERE ((oc.ch_title = course_flashcards.chapter_title) AND (oc.ch_idx >= (oc.total_ch - LEAST((oc.total_ch - 1), ((ceil(((oc.total_ch)::numeric * 0.5)))::integer)::bigint))))))))
+Table: sections | Policy: Auth read only | Cmd: SELECT | Using: (EXISTS ( SELECT 1
+   FROM exams e
+  WHERE (e.id = sections.exam_id)))
+Table: questions | Policy: Auth read only | Cmd: SELECT | Using: (EXISTS ( SELECT 1
+   FROM sections s
+  WHERE (s.id = questions.section_id)))
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -1528,20 +1547,6 @@ BEGIN
 END;
 
 
--- Function: get_next_api_key
-
-BEGIN
-  RETURN QUERY
-  SELECT ak.id, ak.api_key
-  FROM api_keys ak
-  WHERE ak.service = target_service
-    AND ak.is_active = true
-    AND (ak.cooldown_until IS NULL OR ak.cooldown_until <= NOW())
-  ORDER BY ak.last_used_at ASC NULLS FIRST
-  LIMIT 1;
-END;
-
-
 -- Function: mark_key_usage
 
 BEGIN
@@ -1796,6 +1801,23 @@ BEGIN
 
         v_expires_at := now() + v_duration;
 
+        -- If discount was applied, burn the credits from the user's ledger!
+        IF NEW.credits_applied > 0 THEN
+            INSERT INTO public.linkoin_transactions (
+                user_id,
+                amount,
+                transaction_type,
+                description,
+                idempotency_key
+            ) VALUES (
+                NEW.user_id,
+                -NEW.credits_applied,
+                'burn',
+                'Membership Discount (' || NEW.plan || ' plan)',
+                'prem_discount_burn_' || NEW.id::text
+            ) ON CONFLICT (idempotency_key) DO NOTHING;
+        END IF;
+
         -- Raise transaction-local bypass flag
         PERFORM set_config('linkup.bypass_protect', 'true', true);
 
@@ -1987,6 +2009,32 @@ BEGIN
 END;
 
 
+-- Function: cooldown_gemini_key
+
+BEGIN
+    -- Put the specific gemini key on cooldown for 5 minutes
+    UPDATE public.api_keys
+    SET cooldown_until = now() + INTERVAL '5 minutes'
+    WHERE api_key = expired_key
+      AND service = 'gemini';
+END;
+
+
+-- Function: force_live_question_defaults_fn
+
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        -- Strip any malicious auto-approval or pin attempts
+        NEW.status := 'pending';
+        NEW.is_pinned := false;
+        
+        -- Strictly force the real sender identity (No identity spoofing!)
+        NEW.sender_id := auth.uid();
+    END IF;
+    RETURN NEW;
+END;
+
+
 -- Function: get_and_rotate_gemini_key
 
 DECLARE
@@ -2017,32 +2065,6 @@ BEGIN
 END;
 
 
--- Function: cooldown_gemini_key
-
-BEGIN
-    -- Put the specific gemini key on cooldown for 5 minutes
-    UPDATE public.api_keys
-    SET cooldown_until = now() + INTERVAL '5 minutes'
-    WHERE api_key = expired_key
-      AND service = 'gemini';
-END;
-
-
--- Function: force_live_question_defaults_fn
-
-BEGIN
-    IF auth.role() = 'authenticated' THEN
-        -- Strip any malicious auto-approval or pin attempts
-        NEW.status := 'pending';
-        NEW.is_pinned := false;
-        
-        -- Strictly force the real sender identity (No identity spoofing!)
-        NEW.sender_id := auth.uid();
-    END IF;
-    RETURN NEW;
-END;
-
-
 -- Function: prevent_msg_tampering_fn
 
 BEGIN
@@ -2063,54 +2085,6 @@ BEGIN
         END IF;
     END IF;
     RETURN NEW;
-END;
-
-
--- Function: consume_miron_credits
-
-DECLARE
-    v_user_id uuid := COALESCE(p_user_id, auth.uid());
-    v_is_pro boolean;
-    v_pro_expires_at timestamptz;
-    v_balance integer;
-BEGIN
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Authentication required';
-    END IF;
-
-    -- 1. Lock the user's row to prevent concurrent spending exploits
-    SELECT is_pro, pro_expires_at, COALESCE(linkoin_balance, 0)
-    INTO v_is_pro, v_pro_expires_at, v_balance
-    FROM public.profiles
-    WHERE id = v_user_id
-    FOR UPDATE;
-
-    -- 2. Check Premium Status (Infinite Free Pass)
-    IF v_is_pro = true AND (v_pro_expires_at IS NULL OR v_pro_expires_at > now()) THEN
-        RETURN true;
-    END IF;
-
-    -- 3. Enforce Credit Balance
-    IF v_balance < p_cost THEN
-        RAISE EXCEPTION 'INSUFFICIENT_CREDITS';
-    END IF;
-
-    -- 4. Record the burn in the ledger (sync_linkoin_balance trigger will update profiles automatically)
-    INSERT INTO public.linkoin_transactions (
-        user_id, 
-        amount, 
-        transaction_type, 
-        description, 
-        idempotency_key
-    ) VALUES (
-        v_user_id, 
-        -p_cost, 
-        'burn', 
-        'Miron AI Usage', 
-        'miron_burn_' || extract(epoch from now())::text || '_' || gen_random_uuid()
-    );
-
-    RETURN true;
 END;
 
 
@@ -2998,40 +2972,6 @@ BEGIN
 END;
 
 
--- Function: lease_gemini_api_key
-
-DECLARE
-    selected_id bigint;
-    found_key text;
-BEGIN
-    -- Pre-flight billing check: Consume credits if billable
-    IF p_cost > 0 AND p_user_id IS NOT NULL THEN
-        PERFORM public.consume_miron_credits(p_cost, p_user_id);
-    END IF;
-
-    -- Pick the oldest used active key not currently in cooldown
-    SELECT k.id, k.api_key
-    INTO selected_id, found_key
-    FROM public.api_keys k
-    WHERE k.service = 'gemini'
-      AND k.is_active = true
-      AND (k.cooldown_until IS NULL OR k.cooldown_until <= NOW())
-    ORDER BY k.last_used_at ASC NULLS FIRST
-    LIMIT 1
-    FOR UPDATE SKIP LOCKED;
-
-    IF found_key IS NOT NULL THEN
-        UPDATE public.api_keys ak
-        SET last_used_at = NOW()
-        WHERE ak.id = selected_id;
-
-        RETURN QUERY SELECT selected_id, found_key;
-    ELSE
-        RAISE EXCEPTION 'NO_API_KEYS_AVAILABLE';
-    END IF;
-END;
-
-
 -- Function: global_network_search
 
 BEGIN
@@ -3389,6 +3329,158 @@ BEGIN
     FROM public.featured_events fe
     WHERE fe.is_active = true
     ORDER BY COALESCE(fe.weight, 10) DESC, fe.created_at DESC;
+END;
+
+
+-- Function: consume_miron_credits
+
+DECLARE
+    v_user_id uuid;
+    v_is_pro boolean;
+    v_pro_expires_at timestamptz;
+    v_balance integer;
+BEGIN
+    -- Strict Identity Boundary: If an authenticated client calls this, they CANNOT pass someone else's UUID!
+    IF auth.role() = 'authenticated' THEN
+        IF p_user_id IS NOT NULL AND p_user_id != auth.uid() THEN
+            RAISE EXCEPTION 'Access Denied: You cannot spend another student''s credits.';
+        END IF;
+        v_user_id := auth.uid();
+    ELSE
+        -- service_role / internal Edge Function execution
+        v_user_id := COALESCE(p_user_id, auth.uid());
+    END IF;
+
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Authentication required';
+    END IF;
+
+    -- Lock the user's row to prevent concurrent race conditions
+    SELECT is_pro, pro_expires_at, COALESCE(linkoin_balance, 0)
+    INTO v_is_pro, v_pro_expires_at, v_balance
+    FROM public.profiles
+    WHERE id = v_user_id
+    FOR UPDATE;
+
+    -- Premium Pass Holder (Unlimited Access)
+    IF v_is_pro = true AND (v_pro_expires_at IS NULL OR v_pro_expires_at > now()) THEN
+        RETURN true;
+    END IF;
+
+    -- Enforce Credit Balance
+    IF v_balance < p_cost THEN
+        RAISE EXCEPTION 'INSUFFICIENT_CREDITS';
+    END IF;
+
+    -- Record the burn in the ledger
+    INSERT INTO public.linkoin_transactions (
+        user_id, 
+        amount, 
+        transaction_type, 
+        description, 
+        idempotency_key
+    ) VALUES (
+        v_user_id, 
+        -p_cost, 
+        'burn', 
+        'Miron AI Usage', 
+        'miron_burn_' || extract(epoch from now())::text || '_' || gen_random_uuid()
+    );
+
+    RETURN true;
+END;
+
+
+-- Function: lease_gemini_api_key
+
+DECLARE
+    selected_id bigint;
+    found_key text;
+BEGIN
+    -- Pre-flight billing check: Consume credits if billable
+    IF p_cost > 0 AND p_user_id IS NOT NULL THEN
+        PERFORM public.consume_miron_credits(p_cost, p_user_id);
+    END IF;
+
+    -- Pick the oldest used active key not currently in cooldown
+    SELECT k.id, k.api_key
+    INTO selected_id, found_key
+    FROM public.api_keys k
+    WHERE k.service = 'gemini'
+      AND k.is_active = true
+      AND (k.cooldown_until IS NULL OR k.cooldown_until <= NOW())
+    ORDER BY k.last_used_at ASC NULLS FIRST
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED;
+
+    IF found_key IS NOT NULL THEN
+        UPDATE public.api_keys ak
+        SET last_used_at = NOW()
+        WHERE ak.id = selected_id;
+
+        RETURN QUERY SELECT selected_id, found_key;
+    ELSE
+        RAISE EXCEPTION 'NO_API_KEYS_AVAILABLE';
+    END IF;
+END;
+
+
+-- Function: get_next_api_key
+
+BEGIN
+  RETURN QUERY
+  SELECT ak.id, ak.api_key
+  FROM api_keys ak
+  WHERE ak.service = target_service
+    AND ak.is_active = true
+    AND (ak.cooldown_until IS NULL OR ak.cooldown_until <= NOW())
+  ORDER BY ak.last_used_at ASC NULLS FIRST
+  LIMIT 1;
+END;
+
+
+-- Function: validate_payment_submission_on_insert
+
+DECLARE
+    v_balance integer;
+    v_base_price numeric;
+    v_max_credits integer := 500;
+    v_eligible_credits integer := 0;
+    v_computed_discount numeric := 0;
+BEGIN
+    IF auth.role() = 'authenticated' THEN
+        -- Force identity alignment
+        NEW.user_id := auth.uid();
+        NEW.status := 'pending';
+
+        -- Validate plan
+        IF lower(NEW.plan) = 'annual' THEN
+            v_base_price := 299;
+            NEW.plan := 'annual';
+        ELSE
+            v_base_price := 199;
+            NEW.plan := 'semester';
+        END IF;
+
+        -- Fetch ground-truth balance
+        SELECT COALESCE(linkoin_balance, 0) INTO v_balance
+        FROM public.profiles
+        WHERE id = NEW.user_id;
+
+        IF NEW.credits_applied > 0 AND v_balance > 0 THEN
+            -- Enforce ceiling and real balance check
+            v_eligible_credits := LEAST(v_balance, v_max_credits, NEW.credits_applied);
+            v_computed_discount := FLOOR(v_eligible_credits * 0.10);
+            NEW.discount_applied := v_computed_discount;
+            NEW.credits_applied := (v_computed_discount * 10)::integer;
+            NEW.amount := v_base_price - v_computed_discount;
+        ELSE
+            NEW.credits_applied := 0;
+            NEW.discount_applied := 0;
+            NEW.amount := v_base_price;
+        END IF;
+    END IF;
+    RETURN NEW;
 END;
 
 
@@ -4012,6 +4104,13 @@ BEGIN
 END;
 
 
+-- Function: user_has_password
+
+  SELECT COALESCE((encrypted_password IS NOT NULL AND encrypted_password != ''), false)
+  FROM auth.users
+  WHERE id = auth.uid();
+
+
 -- Function: heartbeat_device_lease
 
 DECLARE
@@ -4023,13 +4122,13 @@ BEGIN
         RETURN jsonb_build_object('status', 'unauthenticated');
     END IF;
 
-    -- 1. Verify this device is still officially seated
+    -- 1. Verify this device is officially seated
     SELECT * INTO v_my_seat 
     FROM public.user_device_seats 
     WHERE user_id = v_user_id AND device_id = p_device_id;
 
     IF NOT FOUND THEN
-        -- Device was replaced or never registered
+        -- Device was replaced or evicted
         RETURN jsonb_build_object('status', 'evicted');
     END IF;
 
@@ -4038,12 +4137,13 @@ BEGIN
     SET last_active_at = now()
     WHERE id = v_my_seat.id;
 
-    -- 3. Check if the other device holds an active exclusive lease (< 45s old)
+    -- 3. Check if another device holds a newer active lease (< 45s old)
     SELECT device_name, device_type, last_lease_at INTO v_other_seat
     FROM public.user_device_seats
     WHERE user_id = v_user_id 
       AND device_id != p_device_id
-      AND last_lease_at > (now() - INTERVAL '45 seconds');
+      AND last_lease_at > (now() - INTERVAL '45 seconds')
+      AND last_lease_at > COALESCE(v_my_seat.last_lease_at, '1970-01-01'::timestamptz);
 
     IF FOUND THEN
         RETURN jsonb_build_object(
@@ -4053,15 +4153,13 @@ BEGIN
         );
     END IF;
 
+    -- 4. No conflict: refresh active lease so other devices cannot claim without a challenge
+    UPDATE public.user_device_seats
+    SET last_lease_at = now()
+    WHERE id = v_my_seat.id;
+
     RETURN jsonb_build_object('status', 'ok');
 END;
-
-
--- Function: user_has_password
-
-  SELECT COALESCE((encrypted_password IS NOT NULL AND encrypted_password != ''), false)
-  FROM auth.users
-  WHERE id = auth.uid();
 
 
 -- Function: get_flashcard_deck_stats
