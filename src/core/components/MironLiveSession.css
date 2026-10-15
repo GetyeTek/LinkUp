@@ -127,6 +127,93 @@
 .ml-mic-btn.active { background: #ff5f5f; color: #fff; animation: pulseRed 2s infinite; }
 @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255,95,95,0.4); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 
+/* --- LIVE MODE CREDIT EXHAUSTION CARD --- */
+.miron-credit-out-card.live-mode {
+    background: linear-gradient(135deg, rgba(35, 22, 5, 0.95) 0%, rgba(20, 14, 8, 0.98) 100%);
+    border: 1px solid rgba(241, 196, 15, 0.4);
+    border-radius: 20px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(241, 196, 15, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 440px;
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+    text-align: left;
+}
+
+.miron-credit-out-card.live-mode::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, #f1c40f, transparent);
+}
+
+.miron-credit-out-card.live-mode .mcoc-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.miron-credit-out-card.live-mode .mcoc-crown-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(241, 196, 15, 0.2);
+    border: 1px solid #f1c40f;
+    color: #f1c40f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(241, 196, 15, 0.3);
+}
+
+.miron-credit-out-card.live-mode .mcoc-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #f1c40f;
+}
+
+.miron-credit-out-card.live-mode .mcoc-text {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: #e5e5eb;
+    margin: 0;
+}
+
+.miron-credit-out-card.live-mode .mcoc-upgrade-btn {
+    background: linear-gradient(135deg, #fff3a8 0%, #f1c40f 45%, #b78a08 100%);
+    color: #0c0805;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 6px 20px rgba(241, 196, 15, 0.35);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    width: fit-content;
+}
+
+.miron-credit-out-card.live-mode .mcoc-upgrade-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(241, 196, 15, 0.5);
+}
+
+.miron-credit-out-card.live-mode .mcoc-upgrade-btn:active {
+    transform: scale(0.97);
+}
+
 /* ==============================================================================
    DESKTOP MIRON LIVE AUDIO STUDIO (>= 900px)
    ============================================================================== */
