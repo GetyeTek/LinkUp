@@ -32,7 +32,7 @@ export const invokeMiron = async (payload) => {
         body: JSON.stringify(payload)
     });
     if (!response.ok) {
-        throw new Error(`Miron Error: ${response.status} ${response.statusText}`);
+        throw new Error("Miron is currently operating at maximum capacity across campus networks. Please try again in a few moments.");
     }
     return response.json();
 };
