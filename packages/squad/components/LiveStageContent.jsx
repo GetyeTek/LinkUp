@@ -11,6 +11,8 @@ import InteractiveBoard from '../../../src/core/components/InteractiveBoard.jsx'
 import { invokeSocial } from '../api.js';
 
 const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiveState, onLeave, currentUser, pendingChunks, setShowMironSetup, devBoardPayload, setDevBoardPayload }) => {
+    const { user: userProfile } = usePlatform();
+    const isProUser = Boolean(userProfile?.is_pro);
     const [qInput, setQInput] = useState('');
     const [liveQuestions, setLiveQuestions] = useState([]);
     const [aiConnected, setAiConnected] = useState(false);
@@ -326,6 +328,10 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
 
     const toggleMironState = async (turnOn) => {
         if (turnOn) {
+            if (!isProUser) {
+                window.dispatchEvent(new CustomEvent('open-premium-modal'));
+                return;
+            }
             setShowMironSetup(true);
         } else {
             if (stageMicEnabled) setStageMicEnabled(false);
@@ -500,8 +506,14 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     {isMeHost && (
                         <button 
                             className={`miron-header-toggle \${isAiHosting ? 'active' : ''}`} 
-                            onClick={() => toggleMironState(!isAiHosting)}
-                            title={isAiHosting ? "Disconnect Miron" : "Let Miron Host"}
+                            onClick={() => {
+                                if (!isAiHosting && !isProUser) {
+                                    window.dispatchEvent(new CustomEvent('open-premium-modal'));
+                                    return;
+                                }
+                                toggleMironState(!isAiHosting);
+                            }}
+                            title={!isProUser ? "Unlock Miron Co-Host (LinkUp Gold)" : (isAiHosting ? "Disconnect Miron" : "Let Miron Host")}
                             style={{ position: 'relative', width: '38px', height: '38px', borderRadius: '50%', padding: 0, overflow: 'visible', background: 'transparent', border: 'none' }}
                         >
                             {isAiHosting && <ConnectionRing isConnected={isConnected} />}
@@ -521,6 +533,11 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                                     {isAiHosting ? <i className="fas fa-pause text-white"></i> : <i className="fas fa-sparkles text-zinc-300"></i>}
                                 </div>
                             </div>
+                            {!isProUser && (
+                                <span className="miron-toggle-pro-badge" title="LinkUp Gold Required">
+                                    <i className="fas fa-crown"></i>
+                                </span>
+                            )}
                         </button>
                     )}
                     <button 
