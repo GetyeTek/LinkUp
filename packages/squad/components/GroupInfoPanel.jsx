@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from '../../../src/core/components/AvatarCropperModal.jsx';
 import GroupMembersTab from './GroupMembersTab.jsx';
 import GroupMediaTab from './GroupMediaTab.jsx';
@@ -203,12 +203,28 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
                         e.target.value = null;
                     }} />
-                    <div className="si-avatar-container" onClick={() => myRole === 'owner' && fileInputRef.current?.click()} style={{cursor: myRole === 'owner' ? 'pointer' : 'default'}}>
-                        <div className="si-avatar">
-                            {displayAvatar && !avatarError ? <img src={displayAvatar} alt="Squad" onError={() => setAvatarError(true)} /> : <i className="fas fa-users"></i>}
-                        </div>
-                        {myRole === 'owner' && <div className="si-avatar-edit"><i className="fas fa-pencil"></i></div>}
-                    </div>
+                    {(() => {
+                        const isClass = chatInfo.metadata?.focus === 'Class';
+                        const fallbackImg = getAvatarFallback(chatInfo.title);
+                        return (
+                            <div className="si-avatar-container" onClick={() => myRole === 'owner' && fileInputRef.current?.click()} style={{cursor: myRole === 'owner' ? 'pointer' : 'default'}}>
+                                <div className={`si-avatar ${isClass ? 'avatar-shape-squircle' : 'avatar-shape-circle'}`}>
+                                    <img 
+                                        src={displayAvatar || fallbackImg} 
+                                        alt={chatInfo.title} 
+                                        onError={(e) => { 
+                                            e.target.onerror = null; 
+                                            e.target.src = fallbackImg; 
+                                        }} 
+                                    />
+                                </div>
+                                {myRole === 'owner' && <div className="si-avatar-edit"><i className="fas fa-pencil"></i></div>}
+                                <span className={`avatar-type-badge ${isClass ? 'class-badge' : 'squad-badge'}`} style={{ width: '22px', height: '22px', fontSize: '0.65rem', bottom: '-2px', right: '-2px' }}>
+                                    <i className={`fas ${isClass ? 'fa-graduation-cap' : 'fa-users'}`}></i>
+                                </span>
+                            </div>
+                        );
+                    })()}
                     <h2 className="si-title">{chatInfo.title}</h2>
                     <div className="si-ppn">#{conversationId.substring(0,8).toUpperCase()}</div>
                     <div className="si-badges">
