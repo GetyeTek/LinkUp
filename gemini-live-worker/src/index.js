@@ -665,7 +665,10 @@ export class GeminiLiveAgent {
       console.log(`[Agent|GEMINI|DB] ✅ Successfully leased Gemini API Key. Masked: ${geminiKey.substring(0, 4)}...${geminiKey.substring(geminiKey.length - 4)}`);
     } catch (err) {
       console.error(`[Agent|GEMINI|DB] ❌ Failed to lease key:`, err.message, err.stack);
-      this.broadcast(JSON.stringify({ error: `Database key lease failed: ${err.message}` }));
+      const friendlyMsg = err.message?.includes('INSUFFICIENT_CREDITS')
+        ? "Insufficient LinkUp Credits to start a live AI session."
+        : "Miron is currently operating at maximum capacity across campus networks. Please try again in a few moments.";
+      this.broadcast(JSON.stringify({ error: friendlyMsg }));
       this.isInitializingGemini = false;
       return;
     }
@@ -1124,7 +1127,7 @@ STUDY COMPANION NATURAL WORKFLOW & TOOL USAGE:
         console.error(`[Agent|GEMINI|WS] Error Details: ${err.message || err.error || JSON.stringify(err)}`);
         this.broadcast(JSON.stringify({
           event: "gemini_error",
-          error: err.message || "Unknown WebSocket error"
+          error: "Voice connection temporarily interrupted. Reconnecting..."
         }));
       });
 
