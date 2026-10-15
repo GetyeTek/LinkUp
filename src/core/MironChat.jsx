@@ -467,33 +467,11 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const sendMessage = async (textToSend) => {
         if (!textToSend.trim() || isTyping) return;
         isAutoScrollEnabled.current = true;
-
-        // 1. Frontend Pre-Flight Billing Guard
-        if (!userProfile?.is_pro && (userProfile?.linkoin_balance || 0) < 2) {
-            setMessages(prev => [...prev, 
-                { id: `user-${Date.now()}`, side: 'user', text: textToSend },
-                { id: `broke-${Date.now()}`, side: 'miron', text: "Looks like you're out of LinkUp Credits! Complete daily missions to earn more, or upgrade to LinkUp Premium for unlimited Miron AI access.", isBroke: true }
-            ]);
-            setTimeout(() => {
-                if (flowRef.current) flowRef.current.scrollTop = flowRef.current.scrollHeight;
-            }, 100);
-            return;
-        }
-
         setIsTyping(true);
 
-        // 2. Atomic Database Credit Burn (Deducts 2 credits immediately)
-        if (!userProfile?.is_pro) {
-            const { error: burnError } = await supabase.rpc('consume_miron_credits', { p_cost: 2, p_user_id: sessionUser.id });
-            if (burnError) {
-                 setMessages(prev => [...prev, 
-                    { id: `user-${Date.now()}`, side: 'user', text: textToSend },
-                    { id: `broke-${Date.now()}`, side: 'miron', text: "Transaction failed: Insufficient LinkUp Credits.", isBroke: true }
-                ]);
-                setIsTyping(false);
-                return;
-            }
-            // Optimistically update local profile balance to prevent UI layout shift
+        // Optimistically update local profile balance to prevent UI layout shift
+        // The backend will firmly reject via HTTP 402 if they are actually broke.
+        if (!userProfile?.is_pro && (userProfile?.linkoin_balance || 0) >= 2) {
             updateUserProfile({ linkoin_balance: userProfile.linkoin_balance - 2 });
         }
 
@@ -685,9 +663,21 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
 
         } catch (error) {
             console.error("Miron Communication Error:", error);
+            const isBroke = error.message.includes('402') || error.message.includes('INSUFFICIENT_CREDITS');
+
             setMessages(prev => prev.map(m => {
                 if (m.id === tempId) return { ...m, id: dbUserMsgId };
                 if (m.id === mironTempId) {
+                    if (isBroke) {
+                        return { 
+                            id: `broke-${Date.now()}`, 
+                            side: 'miron', 
+                            text: "Looks like you're out of LinkUp Credits! Complete daily missions to earn more, or upgrade to LinkUp Premium for unlimited Miron AI access.", 
+                            isStreaming: false,
+                            status: null,
+                            isBroke: true 
+                        };
+                    }
                     return {
                         id: Date.now() + 1,
                         side: 'miron',
@@ -698,6 +688,15 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                 }
                 return m;
             }));
+            
+            if (isBroke && !userProfile?.is_pro) {
+                // If they hit the wall, ensure the frontend UI accurately reflects their 0 balance
+                updateUserProfile({ linkoin_balance: 0 });
+            } else if (!isBroke && !userProfile?.is_pro) {
+                // If it failed for a server reason, refund the optimistic frontend deduction
+                updateUserProfile({ linkoin_balance: (userProfile?.linkoin_balance || 0) + 2 });
+            }
+            
             setIsTyping(false);
         }
     };
