@@ -554,20 +554,99 @@ const App = () => {
           </div>
       )}
 
-      {/* Concurrent Session Active Warning Banner */}
+      {/* Concurrent Session Active Blocking Barrier */}
       {leaseConflict && (
-          <div className="global-offline-banner" style={{ background: 'rgba(255, 171, 64, 0.95)', color: '#000', borderColor: '#ffab40', top: '70px', zIndex: 99999 }}>
-              <i className="fas fa-bolt" style={{ color: '#000' }}></i>
-              <span>Active on <strong>{leaseConflict}</strong></span>
-              <button 
-                  onClick={async () => {
-                      await claimDeviceLease();
-                      setLeaseConflict(null);
-                  }}
-                  style={{ background: '#000', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', marginLeft: '6px' }}
-              >
-                  Resume Here
-              </button>
+          <div style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 999999,
+              background: 'rgba(10, 10, 14, 0.96)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1.5rem',
+              textAlign: 'center',
+              fontFamily: 'Poppins, sans-serif'
+          }}>
+              <div style={{
+                  background: 'var(--surface-dark)',
+                  border: '1px solid rgba(255, 171, 64, 0.4)',
+                  borderRadius: '24px',
+                  width: '100%',
+                  maxWidth: '400px',
+                  padding: '2.25rem 1.75rem',
+                  boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 171, 64, 0.15)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center'
+              }}>
+                  <div style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'rgba(255, 171, 64, 0.15)',
+                      color: '#ffab40',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.8rem',
+                      marginBottom: '1.25rem',
+                      boxShadow: '0 0 20px rgba(255, 171, 64, 0.2)'
+                  }}>
+                      <i className="fas fa-pause"></i>
+                  </div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '1.3rem', color: '#fff', fontWeight: 700 }}>
+                      Active on Another Device
+                  </h3>
+                  <p style={{ margin: '0 0 1.75rem 0', fontSize: '0.88rem', color: '#aaa', lineHeight: 1.5 }}>
+                      Your account is currently active on <strong>{leaseConflict}</strong>. To protect your study data and prevent simultaneous account sharing, sessions are single-stream.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                      <button 
+                          onClick={async () => {
+                              await claimDeviceLease();
+                              setLeaseConflict(null);
+                          }}
+                          style={{
+                              width: '100%',
+                              padding: '14px',
+                              background: 'var(--accent-teal)',
+                              color: '#0c0c0c',
+                              border: 'none',
+                              borderRadius: '14px',
+                              fontSize: '0.92rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              boxShadow: '0 4px 15px rgba(66, 215, 184, 0.3)',
+                              fontFamily: 'Poppins, sans-serif'
+                          }}
+                      >
+                          Resume on this Device
+                      </button>
+                      <button 
+                          onClick={async () => {
+                              setLeaseConflict(null);
+                              await supabase.auth.signOut();
+                          }}
+                          style={{
+                              width: '100%',
+                              padding: '12px',
+                              background: 'transparent',
+                              color: '#888',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              borderRadius: '14px',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              fontFamily: 'Poppins, sans-serif'
+                          }}
+                      >
+                          Sign Out
+                      </button>
+                  </div>
+              </div>
           </div>
       )}
 
