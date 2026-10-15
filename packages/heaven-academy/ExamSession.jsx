@@ -45,7 +45,8 @@ const getNormalizedType = (q) => {
 };
 
 const ExamSession = ({ exam, onClose }) => {
-    const { sessionUser } = usePlatform();
+    const { sessionUser, user: userProfile } = usePlatform();
+    const isProUser = Boolean(userProfile?.is_pro);
     const currentUser = sessionUser;
     const loggedQsRef = useRef(new Set());
     const [timeLeft, setTimeLeft] = useState(exam.time_allowed_minutes * 60 || 3600);
@@ -75,6 +76,12 @@ const ExamSession = ({ exam, onClose }) => {
     }, []);
 
     useEffect(() => {
+        if (exam?.is_pro_gated && !isProUser) {
+            window.dispatchEvent(new CustomEvent('open-premium-modal'));
+            onClose();
+            return;
+        }
+
         const savedMode = localStorage.getItem('linkup_exam_grading_mode');
         if (savedMode) {
             setGradingMode(savedMode);
