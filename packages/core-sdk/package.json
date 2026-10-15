@@ -1,6 +1,6 @@
 {
   "name": "@linkup-platform/sdk-core",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "LinkUp Platform Foundation SDK",
   "main": "src/index.js",
   "type": "module",
