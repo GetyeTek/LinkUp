@@ -130,8 +130,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 }
 
                 // 6. Billing Guard
-                if (payload.event === "billing_error") {
-                    setTranscripts(prev => [...prev, { id: Date.now(), role: 'miron', text: payload.error, isFinal: true, isBroke: true }]);
+                if (payload.event === "billing_error" || (payload.error && (payload.error.includes('INSUFFICIENT_CREDITS') || payload.error.toLowerCase().includes('insufficient linkup credits')))) {
+                    setTranscripts(prev => [...prev, { 
+                        id: Date.now(), 
+                        role: 'miron', 
+                        text: "You have used all your LinkUp Credits for live voice study sessions. Upgrade to LinkUp Gold for unlimited 24/7 AI stages, audio tutoring, and full exam archives.", 
+                        isFinal: true, 
+                        isBroke: true 
+                    }]);
                     setIsMironSpeaking(false);
                     ws.close();
                 }
@@ -224,9 +230,29 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     )}
                     {transcripts.map(t => (
                         <div key={t.id} className={`ml-bubble-wrap ${t.role}`}>
-                            <div className="ml-bubble">
-                                {t.text || <span className="ml-typing-dots">...</span>}
-                            </div>
+                            {t.isBroke ? (
+                                <div className="miron-credit-out-card live-mode">
+                                    <div className="mcoc-header">
+                                        <div className="mcoc-crown-badge">
+                                            <i className="fa-solid fa-crown"></i>
+                                        </div>
+                                        <span className="mcoc-title">Credits Exhausted</span>
+                                    </div>
+                                    <p className="mcoc-text">{t.text}</p>
+                                    <button 
+                                        className="mcoc-upgrade-btn" 
+                                        onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
+                                    >
+                                        <i className="fa-solid fa-crown"></i>
+                                        <span>Upgrade to LinkUp Gold</span>
+                                        <i className="fa-solid fa-arrow-right"></i>
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="ml-bubble">
+                                    {t.text || <span className="ml-typing-dots">...</span>}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
