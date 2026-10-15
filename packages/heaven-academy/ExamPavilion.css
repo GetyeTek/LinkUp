@@ -716,6 +716,36 @@
     transform: scale(0.95);
 }
 
+.ppr-badge-orb.pro-locked {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+    border: 1px solid rgba(241, 196, 15, 0.35);
+    box-shadow: 0 0 10px rgba(241, 196, 15, 0.2);
+}
+
+.ppr-term-badge.pro-locked {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+    border: 1px solid rgba(241, 196, 15, 0.35);
+}
+
+.ppr-practice-btn.pro-locked {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+    border: 1px solid rgba(241, 196, 15, 0.4);
+}
+
+.pcf-paper-row.is-pro-locked:hover {
+    border-color: rgba(241, 196, 15, 0.4);
+    background: rgba(241, 196, 15, 0.04);
+}
+
+.pcf-paper-row.is-pro-locked:hover .ppr-practice-btn.pro-locked {
+    background: #f1c40f;
+    color: #0c0c0c;
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.4);
+}
+
 @media (max-width: 600px) {
     .pcf-header {
         padding: 12px 14px;
