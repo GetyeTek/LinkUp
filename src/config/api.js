@@ -27,9 +27,9 @@ export const invokeMironStream = async (payload, { onStatus, onChunk, onDone, on
         if (lower.includes('api_key') || lower.includes('gemini') || lower.includes('quota') || lower.includes('capacity') || response.status === 429) {
             throw new Error("Miron is currently operating at maximum capacity across campus networks. Please try again in a few moments.");
         }
-        if (response.status === 402 || lower.includes('insufficient_credits')) {
-            throw new Error("Insufficient LinkUp Credits. Please complete missions or upgrade to LinkUp Gold.");
-        }
+                        if (response.status === 402 || lower.includes('insufficient_credits')) {
+                    throw new Error("INSUFFICIENT_CREDITS: You've run out of LinkUp Credits. Complete daily missions to earn more, or upgrade to LinkUp Gold for unlimited Miron AI access.");
+                }
         throw new Error("Miron is momentarily busy. Please try asking again in a few moments.");
     }
 
