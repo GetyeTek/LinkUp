@@ -120,14 +120,21 @@ const MironMessageNode = React.memo(({ m, copiedId, handleCopyMessage, handleInl
     if (m.isBroke) {
         return (
             <div className={`chat-node ${m.side}`}>
-                <div className="athena-bubble" style={{ border: '1px solid rgba(241, 196, 15, 0.4)', background: 'rgba(241, 196, 15, 0.05)' }}>
-                    <p style={{ color: '#e0e0e0', margin: 0 }}>{m.text}</p>
+                <div className="miron-credit-out-card">
+                    <div className="mcoc-header">
+                        <div className="mcoc-crown-badge">
+                            <i className="fa-solid fa-crown"></i>
+                        </div>
+                        <span className="mcoc-title">LinkUp Credits Exhausted</span>
+                    </div>
+                    <p className="mcoc-text">{m.text}</p>
                     <button 
-                        className="pu-cta-gold-btn" 
-                        style={{ marginTop: '16px', padding: '10px 16px', fontSize: '0.9rem', width: 'auto', display: 'inline-flex' }} 
+                        className="mcoc-upgrade-btn" 
                         onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
                     >
-                        <i className="fas fa-crown"></i> Get LinkUp Premium
+                        <i className="fa-solid fa-crown"></i>
+                        <span>Upgrade to LinkUp Gold</span>
+                        <i className="fa-solid fa-arrow-right"></i>
                     </button>
                 </div>
             </div>
@@ -661,9 +668,9 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                 }
             });
 
-        } catch (error) {
             console.error("Miron Communication Error:", error);
-            const isBroke = error.message.includes('402') || error.message.includes('INSUFFICIENT_CREDITS');
+            const errMsg = String(error?.message || '').toLowerCase();
+            const isBroke = errMsg.includes('402') || errMsg.includes('insufficient_credits') || errMsg.includes('insufficient linkup credits') || errMsg.includes('out of linkup credits');
 
             setMessages(prev => prev.map(m => {
                 if (m.id === tempId) return { ...m, id: dbUserMsgId };
@@ -672,7 +679,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                         return { 
                             id: `broke-${Date.now()}`, 
                             side: 'miron', 
-                            text: "Looks like you're out of LinkUp Credits! Complete daily missions to earn more, or upgrade to LinkUp Premium for unlimited Miron AI access.", 
+                            text: "You've used all your LinkUp Credits for this study session. Upgrade to LinkUp Gold for unlimited 24/7 Miron AI, complete exam archives, and live audio co-hosting.", 
                             isStreaming: false,
                             status: null,
                             isBroke: true 
