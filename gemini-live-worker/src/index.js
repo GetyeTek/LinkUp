@@ -225,14 +225,17 @@ export class GeminiLiveAgent {
     this.conversationId = url.searchParams.get("agent");
     this.studentName = url.searchParams.get("name") || "Scholar";
     
-    // STRICT SECURITY: Trust Gateway Headers over URL parameters
+    // STRICT SECURITY: Enforce Gateway Authentication & Shared Secret Verification
     const verifiedUid = request.headers.get("X-Verified-User-Id");
-    this.userId = verifiedUid || url.searchParams.get("uid");
+    const internalSecret = request.headers.get("X-Internal-Gateway-Secret");
+    this.userId = verifiedUid;
     this.isOneOnOne = this.conversationId && this.conversationId.includes('miron-personal');
 
-    if (request.headers.get("Upgrade") === "websocket" && !verifiedUid) {
-        console.error("[Agent|DO|SECURITY] ⛔ Blocked direct WS access without Gateway verification.");
-        return new Response("Unauthorized Gateway Bypass", { status: 401 });
+    if (request.headers.get("Upgrade") === "websocket") {
+        if (!verifiedUid || internalSecret !== 'linkup-internal-worker-secret-2026') {
+            console.error("[Agent|DO|SECURITY] ⛔ Blocked unauthorized WS access without Gateway verification.");
+            return new Response("Unauthorized Gateway Bypass", { status: 401 });
+        }
     }
 
     // Handle the Supabase dynamic chunk append webhook
@@ -601,16 +604,28 @@ export class GeminiLiveAgent {
          throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in Worker environment variables.");
       }
 
-      // Determine the billable host/user
-      let billableUserId = this.userId;
-      if (!billableUserId && this.conversationId && !this.isOneOnOne) {
+      // Determine the billable host/user (Group stages MUST bill host; 1-on-1 bills user)
+      let billableUserId = null;
+      if (this.isOneOnOne) {
+          billableUserId = this.userId;
+      } else if (this.conversationId) {
           try {
               const res = await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}&select=metadata`, {
                   headers: { 'apikey': serviceRoleKey, 'Authorization': `Bearer ${serviceRoleKey}` }
               });
               const rows = await res.json();
-              if (rows && rows.length > 0) billableUserId = rows[0].metadata?.live_host_id;
-          } catch (e) {}
+              if (rows && rows.length > 0) {
+                  billableUserId = rows[0].metadata?.live_host_id;
+              }
+          } catch (e) {
+              console.error("[Agent|GEMINI|DB] Failed to resolve stage host:", e.message);
+          }
+      }
+
+      if (!billableUserId) {
+          console.error(`[Agent|GEMINI|DB] ❌ No billable host resolved for session ${this.conversationId}`);
+          this.broadcast(JSON.stringify({ event: "billing_error", error: "Unable to verify stage host billing credentials." }));
+          throw new Error("No billable user resolved for session.");
       }
 
       const rpcUrl = `${supabaseUrl}/rest/v1/rpc/lease_gemini_api_key`;
