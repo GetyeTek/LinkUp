@@ -500,7 +500,7 @@ export class GeminiLiveAgent {
     }
 
     // Instantly kill the session in the database to stop the ghost pulsing
-    if (this.conversationId) {
+    if (this.conversationId && !this.isOneOnOne) {
       const supabaseUrl = this.env?.SUPABASE_URL;
       const serviceKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
       
