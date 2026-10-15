@@ -152,7 +152,7 @@ export default {
       });
     }
 
-    // C. Secure Phone + Password Authentication Resolver
+    // C. Secure Phone + Password Authentication Resolver (Atomic SQL RPC)
     if (url.pathname === '/auth/phone-login') {
       if (request.method !== 'POST') {
         return new Response(JSON.stringify({ error: "METHOD_NOT_ALLOWED" }), { 
@@ -170,104 +170,53 @@ export default {
           });
         }
 
-        // 1. Phone Normalization (E.164)
-        let rawPhone = String(phone).replace(/[\s\-()]/g, '');
-        let normalizedPhone = rawPhone;
-        if (rawPhone.startsWith('0')) {
-          normalizedPhone = '+251' + rawPhone.slice(1);
-        } else if (rawPhone.startsWith('251')) {
-          normalizedPhone = '+' + rawPhone;
-        } else if (rawPhone.length === 9 && (rawPhone.startsWith('9') || rawPhone.startsWith('7'))) {
-          normalizedPhone = '+251' + rawPhone;
-        } else if (!rawPhone.startsWith('+')) {
-          normalizedPhone = '+' + rawPhone;
-        }
-
-        // 2. Gate 1: Check account existence in profiles
-        const profRes = await fetch(`${REAL_SUPABASE_URL}/rest/v1/profiles?phone=eq.${encodeURIComponent(normalizedPhone)}&select=id,registered_with_telegram,telegram_id`, {
+        // 1. Single Atomic RPC Call to Supabase Database (Service Role Execution)
+        const rpcRes = await fetch(`${REAL_SUPABASE_URL}/rest/v1/rpc/resolve_verified_phone_login_target`, {
+          method: 'POST',
           headers: {
             'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
-          }
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ p_phone: phone })
         });
 
-        if (!profRes.ok) {
-          console.error(`[Gateway] Profile lookup failed: ${await profRes.text()}`);
-          return new Response(JSON.stringify({ error: "SERVER_ERROR", message: "Database query failed." }), {
+        if (!rpcRes.ok) {
+          console.error(`[Gateway] Phone login target resolution failed: ${await rpcRes.text()}`);
+          return new Response(JSON.stringify({ error: "SERVER_ERROR", message: "Database verification failed." }), {
             status: 500,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
           });
         }
 
-        const profiles = await profRes.json();
-        if (!profiles || profiles.length === 0) {
+        const result = await rpcRes.json();
+
+        // 2. Evaluate Status from PostgreSQL
+        if (result.status !== 'OK') {
+          const statusCodes = {
+            'ACCOUNT_NOT_FOUND': 404,
+            'UNVERIFIED_PHONE': 403,
+            'SYNTHETIC_NO_PASSWORD': 400,
+            'NO_EMAIL_ATTACHED': 400,
+            'MISSING_FIELDS': 400
+          };
           return new Response(JSON.stringify({
-            error: "ACCOUNT_NOT_FOUND",
-            message: "No account found matching this phone number."
+            error: result.status,
+            message: result.message
           }), {
-            status: 404,
+            status: statusCodes[result.status] || 400,
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
           });
         }
 
-        const prof = profiles[0];
-
-        // 3. Gate 2: The Telegram Verification Sentry
-        if (!prof.registered_with_telegram || !prof.telegram_id) {
-          return new Response(JSON.stringify({
-            error: "UNVERIFIED_PHONE",
-            message: "This phone number has not been verified with Telegram yet. Please log in with your email address, then verify your phone via our Telegram bot to unlock phone login (and claim 50 free credits)!"
-          }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
-          });
-        }
-
-        // 4. Resolve internal GoTrue email
-        const userRes = await fetch(`${REAL_SUPABASE_URL}/auth/v1/admin/users/${prof.id}`, {
-          headers: {
-            'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
-          }
-        });
-
-        if (!userRes.ok) {
-          return new Response(JSON.stringify({ error: "USER_LOOKUP_FAILED", message: "Failed to resolve authentication account." }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
-          });
-        }
-
-        const userData = await userRes.json();
-        const userEmail = userData.email;
-        if (!userEmail) {
-          return new Response(JSON.stringify({ error: "NO_EMAIL_ATTACHED", message: "Account has no email identity attached." }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
-          });
-        }
-
-        // 5. Gate 3: Check synthetic accounts without passwords
-        const isSynthetic = userEmail.endsWith('@linkup.invalid');
-        const hasPassword = Boolean(userData.encrypted_password);
-        if (isSynthetic && !hasPassword) {
-          return new Response(JSON.stringify({
-            error: "SYNTHETIC_NO_PASSWORD",
-            message: "This account was created via Telegram and has no password configured yet. Please tap 'Log in with Telegram' below to sign in."
-          }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
-          });
-        }
-
-        // 6. Gate 4: Authenticate with Supabase GoTrue
+        // 3. Authenticate with Supabase GoTrue using resolved email
         const tokenRes = await fetch(`${REAL_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
           method: 'POST',
           headers: {
             'apikey': REAL_ANON_KEY,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ email: userEmail, password })
+          body: JSON.stringify({ email: result.email, password })
         });
 
         const tokenData = await tokenRes.json();
