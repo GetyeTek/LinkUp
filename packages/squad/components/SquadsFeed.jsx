@@ -56,7 +56,10 @@ const SquadsFeed = ({
                 <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
                     {activeView === 'class' ? t('your_classes', 'Your Classes') : t('your_groups', 'Your Groups')}
                 </h3>
-                <button style={{ background: 'var(--accent-teal)', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen(true)}>
+                <button 
+                    style={{ background: 'var(--accent-teal)', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }} 
+                    onClick={() => setIsGroupCreatorOpen(activeView === 'class' ? 'class' : 'academic')}
+                >
                     <i className="fas fa-plus"></i> {t('new', 'New')} {activeView === 'class' ? t('class_singular', 'Class') : t('group_singular', 'Group')}
                 </button>
             </div>
