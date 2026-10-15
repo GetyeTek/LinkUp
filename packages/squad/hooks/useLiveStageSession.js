@@ -93,7 +93,11 @@ export const useLiveStageSession = ({ chat, localChatInfo, setLocalChatInfo, cur
             setLiveState('full');
             setShowRecoveryModal(false);
         } catch (err) {
-            setAlertNotice({ title: "Stage Error", msg: err.message, success: false });
+            const rawMsg = err.message || '';
+            const cleanMsg = (rawMsg.toLowerCase().includes('api key') || rawMsg.toLowerCase().includes('gemini') || rawMsg.toLowerCase().includes('capacity'))
+                ? "Miron is currently operating at maximum capacity across campus networks. Please try again shortly."
+                : rawMsg;
+            setAlertNotice({ title: "Stage Notice", msg: cleanMsg, success: false });
         }
         setIsStartingLive(false);
     };
