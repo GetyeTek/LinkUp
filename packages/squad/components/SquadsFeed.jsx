@@ -74,13 +74,17 @@ const SquadsFeed = ({
                                 <div className={`messages-list-item ${activeChatId === chat.conversation_id ? 'active-chat-item' : ''}`} key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
                                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                                         {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
-                                        <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
-                                            {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-users-rectangle"></i>}
+                                        <div className="group-avatar-shell avatar-shape-squircle" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', overflow: 'hidden' }}>
+                                            {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-chalkboard-user"></i>}
                                         </div>
+                                        <span className="avatar-type-badge class-badge" title="Official Class Section">
+                                            <i className="fas fa-graduation-cap"></i>
+                                        </span>
                                     </div>
                                     <div className="message-info">
                                         <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             {chat.title} 
+                                            <span className="squad-type-pill class-pill"><i className="fas fa-graduation-cap"></i> CLASS</span>
                                         </div>
                                         <div className="last-message">{chat.last_message_text || 'Class established'}</div>
                                     </div>
@@ -98,13 +102,17 @@ const SquadsFeed = ({
                                 <div className="messages-list-item suggested" key={chat.conversation_id} onClick={() => handlePreviewJoin(chat)}>
                                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                                         {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
-                                        <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
-                                            {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Class" /> : <i className="fas fa-users-rectangle"></i>}
+                                        <div className="group-avatar-shell avatar-shape-squircle" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', overflow: 'hidden' }}>
+                                            {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Class" /> : <i className="fas fa-chalkboard-user"></i>}
                                         </div>
+                                        <span className="avatar-type-badge class-badge" title="Official Class Section">
+                                            <i className="fas fa-graduation-cap"></i>
+                                        </span>
                                     </div>
                                     <div className="message-info">
                                         <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff' }}>
                                             {chat.title} 
+                                            <span className="squad-type-pill class-pill"><i className="fas fa-graduation-cap"></i> CLASS</span>
                                             {chat.relevance_score >= 10 ? (
                                                 <span style={{ fontSize: '0.65rem', background: 'rgba(255, 171, 64, 0.15)', color: '#ffab40', padding: '2px 6px', borderRadius: '4px' }}>Friend</span>
                                             ) : chat.relevance_score >= 5 ? (
@@ -144,15 +152,18 @@ const SquadsFeed = ({
                             mySquads.map(chat => (
                                 <div className={`messages-list-item ${activeChatId === chat.conversation_id ? 'active-chat-item' : ''}`} key={chat.conversation_id} onClick={() => handleChatClick(chat)}>
                                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
-                                        {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
-                                        <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
-                                            {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-users"></i>}
+                                        {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring"></div>}
+                                        <div className="group-avatar-shell avatar-shape-circle" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', overflow: 'hidden' }}>
+                                            {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-layer-group"></i>}
                                         </div>
+                                        <span className="avatar-type-badge squad-badge" title="Study Group">
+                                            <i className="fas fa-users"></i>
+                                        </span>
                                     </div>
                                     <div className="message-info">
                                         <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             {chat.title} 
-                                            {chat.metadata?.focus && <span style={{ fontSize: '0.65rem', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', padding: '2px 6px', borderRadius: '4px' }}>{chat.metadata.focus}</span>}
+                                            <span className="squad-type-pill squad-pill"><i className="fas fa-layer-group"></i> {chat.metadata?.focus || 'SQUAD'}</span>
                                         </div>
                                         <div className="last-message">{chat.last_message_text || 'Group established'}</div>
                                     </div>
@@ -169,15 +180,18 @@ const SquadsFeed = ({
                             suggestedSquads.map(chat => (
                                 <div className="messages-list-item suggested" key={chat.conversation_id} onClick={() => handlePreviewJoin(chat)}>
                                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
-                                        {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring square"></div>}
-                                        <div style={{ width: '100%', height: '100%', borderRadius: '14px', background: 'rgba(66, 215, 184, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--accent-teal)', overflow: 'hidden' }}>
+                                        {isSessionLive(chat.metadata) && <div className="list-live-pulse-ring"></div>}
+                                        <div className="group-avatar-shell avatar-shape-circle" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', overflow: 'hidden' }}>
                                             {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Group" /> : <i className="fas fa-globe"></i>}
                                         </div>
+                                        <span className="avatar-type-badge squad-badge" title="Study Group">
+                                            <i className="fas fa-users"></i>
+                                        </span>
                                     </div>
                                     <div className="message-info">
                                         <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff' }}>
                                             {chat.title} 
-                                            {chat.metadata?.focus && <span style={{ fontSize: '0.65rem', background: 'rgba(255, 255, 255, 0.1)', color: '#ccc', padding: '2px 6px', borderRadius: '4px' }}>{chat.metadata.focus}</span>}
+                                            <span className="squad-type-pill squad-pill"><i className="fas fa-layer-group"></i> {chat.metadata?.focus || 'SQUAD'}</span>
                                         </div>
                                         <div className="last-message" style={{color: '#888'}}>
                                             <i className="fas fa-user" style={{marginRight: '4px'}}></i> {chat.member_count} Members
