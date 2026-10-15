@@ -153,17 +153,21 @@ const LiveStageSetupModal = ({
     useEffect(() => {
         if (show) {
             if (mode === 'miron') {
+                if (!userProfile?.is_pro) {
+                    window.dispatchEvent(new CustomEvent('open-premium-modal'));
+                    onClose();
+                    return;
+                }
                 supabase.from('books').select('id, title, course_code, toc, cover_url').eq('is_published', true).order('title').then(({ data }) => {
                     if (data) setBooks(data);
                 });
             }
         } else {
-            // Reset state
             setSelectedBook(null);
             setSelectedNode(null);
             setGenError(null);
         }
-    }, [show, mode]);
+    }, [show, mode, userProfile?.is_pro]);
 
     if (!show) return null;
 
@@ -212,7 +216,14 @@ const LiveStageSetupModal = ({
                 });
 
             } catch (err) {
-                setGenError(err.message || "Failed to generate lecture script.");
+                const lower = String(err.message || '').toLowerCase();
+                if (lower.includes('api key') || lower.includes('no_api_keys') || lower.includes('gemini') || lower.includes('capacity')) {
+                    setGenError("Miron is currently operating at maximum capacity across campus networks. Please try again in a few moments.");
+                } else if (lower.includes('insufficient_credits')) {
+                    setGenError("Insufficient LinkUp Credits. Upgrade to LinkUp Gold for unlimited sessions.");
+                } else {
+                    setGenError(err.message || "Failed to generate lecture script.");
+                }
             }
             setIsGenerating(false);
         } else {
