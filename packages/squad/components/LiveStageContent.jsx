@@ -505,7 +505,7 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
                     )}
                     {isMeHost && (
                         <button 
-                            className={`miron-header-toggle \${isAiHosting ? 'active' : ''}`} 
+                            className={`miron-header-toggle ${isAiHosting ? 'active' : ''}`} 
                             onClick={() => {
                                 if (!isAiHosting && !isProUser) {
                                     window.dispatchEvent(new CustomEvent('open-premium-modal'));
