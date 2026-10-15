@@ -41,8 +41,6 @@ const LiveStageSetupModal = ({
     liveSetupData,
     setLiveSetupData,
     onStartLive,
-    onDevInject,
-    onLocalBoardTest,
     onInviteMiron,
     isStartingLive,
     conversation_id
@@ -53,102 +51,6 @@ const LiveStageSetupModal = ({
     const [selectedNode, setSelectedNode] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [genError, setGenError] = useState(null);
-
-    // Dev Sandbox States
-    const [isDevMode, setIsDevMode] = useState(false);
-    const [devPayload, setDevPayload] = useState(JSON.stringify({
-      action: "draw",
-      elements: [
-        {
-          id: "bg-accent",
-          text: "",
-          type: "shape",
-          x: "50%",
-          y: "50%",
-          animation: "fade-in",
-          customStyles: {
-            width: "90vw",
-            height: "50vh",
-            background: "radial-gradient(circle, rgba(155, 89, 182, 0.12) 0%, transparent 70%)",
-            borderRadius: "50%",
-            zIndex: "0"
-          }
-        },
-        {
-          id: "title",
-          text: "Maxwell's Equations",
-          type: "title",
-          x: "50%",
-          y: "20%",
-          fontSize: "2.5rem",
-          color: "#42d7b8",
-          animation: "pop-in",
-          fontWeight: "800",
-          fontFamily: "serif",
-          customStyles: {
-            textShadow: "0 10px 30px rgba(66, 215, 184, 0.6)",
-            letterSpacing: "2px",
-            zIndex: "2"
-          }
-        },
-        {
-          id: "subtitle",
-          text: "The Foundation of Electromagnetism",
-          type: "body",
-          x: "50%",
-          y: "30%",
-          fontSize: "1rem",
-          color: "#ffab40",
-          animation: "slide-up",
-          fontWeight: "600",
-          fontFamily: "sans-serif",
-          customStyles: {
-            textTransform: "uppercase",
-            letterSpacing: "3px",
-            zIndex: "2"
-          }
-        },
-        {
-          id: "equation-card",
-          text: "∇ ⋅ E = ρ / ε₀\n∇ ⋅ B = 0\n∇ × E = -∂B/∂t\n∇ × B = μ₀(J + ε₀∂E/∂t)",
-          type: "code",
-          x: "50%",
-          y: "55%",
-          fontSize: "1.1rem",
-          color: "#fff",
-          animation: "pop-in",
-          fontWeight: "bold",
-          customStyles: {
-            fontFamily: "monospace",
-            background: "rgba(0, 0, 0, 0.6)",
-            border: "1px solid rgba(66, 215, 184, 0.4)",
-            padding: "1.5rem",
-            borderRadius: "16px",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
-            lineHeight: "1.8",
-            textAlign: "left",
-            zIndex: "2",
-            whiteSpace: "pre"
-          }
-        },
-        {
-          id: "footnote",
-          text: "Notice how the equations unify electricity and magnetism into a single electromagnetic tensor.",
-          type: "body",
-          x: "50%",
-          y: "85%",
-          fontSize: "0.85rem",
-          color: "#a0a0a0",
-          animation: "fade-in",
-          fontStyle: "italic",
-          customStyles: {
-            maxWidth: "400px",
-            lineHeight: "1.6",
-            zIndex: "2"
-          }
-        }
-      ]
-    }, null, 2));
 
     useEffect(() => {
         if (show) {
@@ -175,16 +77,6 @@ const LiveStageSetupModal = ({
     const handlePrepareLecture = async () => {
         if (mode === 'miron' && !userProfile?.is_pro && (userProfile?.linkoin_balance || 0) < 20) {
             setGenError("Insufficient Credits. Miron group live hosting requires 20 LinkUp Credits per session. Upgrade to LinkUp Gold for unlimited sessions.");
-            return;
-        }
-
-        if (isDevMode && onDevInject) {
-            try {
-                const parsed = JSON.parse(devPayload);
-                onDevInject(parsed);
-            } catch (e) {
-                setGenError("Invalid JSON Payload: " + e.message);
-            }
             return;
         }
 
@@ -256,14 +148,6 @@ const LiveStageSetupModal = ({
                         )}
                     </h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <button 
-                            className={`icon-button ${isDevMode ? 'active' : ''}`} 
-                            style={{ color: isDevMode ? 'var(--accent-teal)' : '#888', background: isDevMode ? 'rgba(66, 215, 184, 0.1)' : 'transparent', borderRadius: '8px' }} 
-                            onClick={() => setIsDevMode(!isDevMode)} 
-                            title="Dev Mode: Board Injector"
-                        >
-                            <i className="fas fa-bug"></i>
-                        </button>
                         <button className="icon-button" style={{ color: '#888' }} onClick={onClose} disabled={isGenerating}><i className="fas fa-times"></i></button>
                     </div>
                 </header>
@@ -275,18 +159,7 @@ const LiveStageSetupModal = ({
                         </div>
                     )}
 
-                    {isDevMode ? (
-                        <div className="pc-group" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <label className="pc-label">Dev: Inject Board Payload</label>
-                            <textarea
-                                className="pc-input dev-payload-textarea"
-                                value={devPayload}
-                                onChange={e => setDevPayload(e.target.value)}
-                                style={{ flex: 1, minHeight: '260px', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', lineHeight: '1.4' }}
-                                spellCheck="false"
-                            />
-                        </div>
-                    ) : mode === 'miron' ? (
+                    {mode === 'miron' ? (
                         <>
                             {!selectedBook ? (
                                 <div className="books-grid">
@@ -331,12 +204,26 @@ const LiveStageSetupModal = ({
                             </div>
                             <div className="pc-group">
                                 <label className="pc-label">Course</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
-                                    {['Physics', 'Chemistry', 'Mathematics', 'Biology', 'CS'].map(c => (
-                                        <div key={c} className={`qa-pill ${liveSetupData.course === c ? 'active' : ''}`} onClick={() => setLiveSetupData({...liveSetupData, course: c})}>{c}</div>
+                                <div className="ls-course-pills-wrap">
+                                    {['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science', 'General'].map(c => (
+                                        <div 
+                                            key={c} 
+                                            className={`ls-course-pill ${liveSetupData.course === c ? 'active' : ''}`} 
+                                            onClick={() => setLiveSetupData({...liveSetupData, course: c})}
+                                        >
+                                            <i className={`fas ${
+                                                c === 'Physics' ? 'fa-bolt' :
+                                                c === 'Chemistry' ? 'fa-flask' :
+                                                c === 'Mathematics' ? 'fa-square-root-variable' :
+                                                c === 'Biology' ? 'fa-dna' :
+                                                c === 'Computer Science' ? 'fa-laptop-code' :
+                                                'fa-book-open'
+                                            }`}></i>
+                                            <span>{c}</span>
+                                        </div>
                                     ))}
                                 </div>
-                                <input type="text" className="pc-input" placeholder="Or type custom course..." value={liveSetupData.course} onChange={e => setLiveSetupData({...liveSetupData, course: e.target.value})} />
+                                <input type="text" className="pc-input" placeholder="Or type custom course name..." value={liveSetupData.course} onChange={e => setLiveSetupData({...liveSetupData, course: e.target.value})} />
                             </div>
                         </div>
                     )}
@@ -345,19 +232,10 @@ const LiveStageSetupModal = ({
                 <button 
                     className="poll-submit-btn" 
                     onClick={handlePrepareLecture} 
-                    disabled={isGenerating || isStartingLive || (!isDevMode && mode === 'miron' ? (!selectedBook || !isChildNode) : (!isDevMode && (!liveSetupData?.topic?.trim() || !liveSetupData?.course?.trim())))}
+                    disabled={isGenerating || isStartingLive || (mode === 'miron' ? (!selectedBook || !isChildNode) : (!liveSetupData?.topic?.trim() || !liveSetupData?.course?.trim()))}
                 >
-                    {isDevMode ? 'Simulate Board' : (isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? 'Prepare Lecture & Invite' : 'Go Live'))}
+                    {isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? 'Prepare Lecture & Invite' : 'Go Live')}
                 </button>
-                {mode === 'host' && !isDevMode && onDevInject && (
-                    <button 
-                        className="poll-submit-btn" 
-                        style={{background: 'transparent', border: '2px dashed var(--accent-teal)', color: 'var(--accent-teal)', marginTop: '10px'}}
-                        onClick={() => setIsDevMode(true)}
-                    >
-                        <i className="fas fa-hammer"></i> Quick Board (Local Test)
-                    </button>
-                )}
             </div>
         </div>,
         document.body
