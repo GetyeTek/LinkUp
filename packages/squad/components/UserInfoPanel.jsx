@@ -18,17 +18,20 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
             try {
                 let profileData = null;
                 
-                if (isMe) {
-                    // Full access to own profile
-                    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-                    profileData = data;
-                } else {
-                    // Secure RPC access to public fields for peers
-                    const { data, error } = await supabase.rpc('get_user_profile_public', { target_user_id: userId });
-                    if (!error && data) {
+                                    if (isMe) {
+                        // Full access to own profile
+                        const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
                         profileData = data;
+                    } else {
+                        // Secure RPC access to public fields for peers with fallback
+                        const { data, error } = await supabase.rpc('get_user_profile_public', { target_user_id: userId });
+                        if (!error && data) {
+                            profileData = data;
+                        } else {
+                            const { data: directData } = await supabase.from('profiles').select('id, full_name, username, avatar_url, department, level, bio, is_pro').eq('id', userId).maybeSingle();
+                            if (directData) profileData = directData;
+                        }
                     }
-                }
                 
                 if (profileData) {
                     setProfile(profileData);
