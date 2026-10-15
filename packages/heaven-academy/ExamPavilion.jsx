@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { invokeBookReader } from './api.js';
 import { universityIconMap } from './components/BookCard.jsx';
-import { supabase, getCachedBookCover } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getCachedBookCover } from '@linkup-platform/sdk-core';
 import ExamSession from './ExamSession.jsx';
 import './ExamPavilion.css';
 
@@ -31,6 +31,8 @@ const ExamPavilion = ({
     homeUniversityId, 
     onClose 
 }) => {
+    const { user: userProfile } = usePlatform();
+    const isProUser = Boolean(userProfile?.is_pro);
     const [allUnis, setAllUnis] = useState(universities);
 
     useEffect(() => {
@@ -205,12 +207,19 @@ const ExamPavilion = ({
             map.get(uniId).exams.push(exam);
         });
 
-        // Sort papers within each university descending by year / date
+        // Sort papers deterministically: date DESC, exam_type ASC, id ASC
         map.forEach(group => {
             group.exams.sort((a, b) => {
                 const dateA = String(a.date || '').toLowerCase();
                 const dateB = String(b.date || '').toLowerCase();
-                return dateB.localeCompare(dateA);
+                return dateB.localeCompare(dateA) || 
+                       String(a.exam_type || '').localeCompare(String(b.exam_type || '')) || 
+                       String(a.id).localeCompare(String(b.id));
+            });
+
+            // Immutable 25% Free / 75% Pro Gating rule applied at catalog root
+            group.exams.forEach((exam, idx) => {
+                exam.is_pro_gated = (idx % 4 !== 0);
             });
         });
 
@@ -497,21 +506,29 @@ const ExamPavilion = ({
                                                         const displayTime = exam.time_allowed_minutes ? `${exam.time_allowed_minutes}m` : '60m';
                                                         const displayMarks = exam.total_marks ? `${exam.total_marks} Marks` : '50 Marks';
 
+                                                        const isLocked = exam.is_pro_gated && !isProUser;
+
                                                         return (
                                                             <div 
                                                                 key={exam.id} 
-                                                                className="pcf-paper-row"
-                                                                onClick={() => setActiveSession(exam)}
+                                                                className={`pcf-paper-row ${isLocked ? 'is-pro-locked' : ''}`}
+                                                                onClick={() => {
+                                                                    if (isLocked) {
+                                                                        window.dispatchEvent(new CustomEvent('open-premium-modal'));
+                                                                        return;
+                                                                    }
+                                                                    setActiveSession(exam);
+                                                                }}
                                                             >
                                                                 <div className="ppr-left">
-                                                                    <div className={`ppr-badge-orb ${isFinal ? 'final' : 'midterm'}`}>
-                                                                        <i className={`fas ${isFinal ? 'fa-award' : 'fa-file-lines'}`}></i>
+                                                                    <div className={`ppr-badge-orb ${isLocked ? 'pro-locked' : (isFinal ? 'final' : 'midterm')}`}>
+                                                                        <i className={`fas ${isLocked ? 'fa-crown' : (isFinal ? 'fa-award' : 'fa-file-lines')}`}></i>
                                                                     </div>
                                                                     <div className="ppr-title-group">
                                                                         <div className="ppr-headline">
                                                                             <span className="ppr-exam-title">{displayType} Examination</span>
-                                                                            <span className={`ppr-term-badge ${isFinal ? 'final' : 'midterm'}`}>
-                                                                                {displayType}
+                                                                            <span className={`ppr-term-badge ${isLocked ? 'pro-locked' : (isFinal ? 'final' : 'midterm')}`}>
+                                                                                {isLocked ? 'PRO ARCHIVE' : displayType}
                                                                             </span>
                                                                         </div>
                                                                         <span className="ppr-date-sub"><i className="far fa-calendar-alt"></i> {displayDate}</span>
@@ -527,9 +544,15 @@ const ExamPavilion = ({
                                                                     </span>
                                                                 </div>
 
-                                                                <button className="ppr-practice-btn">
-                                                                    <i className="fas fa-bolt"></i> Practice
-                                                                </button>
+                                                                {isLocked ? (
+                                                                    <button className="ppr-practice-btn pro-locked">
+                                                                        <i className="fas fa-crown"></i> Unlock
+                                                                    </button>
+                                                                ) : (
+                                                                    <button className="ppr-practice-btn">
+                                                                        <i className="fas fa-bolt"></i> Practice
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         );
                                                     })}
