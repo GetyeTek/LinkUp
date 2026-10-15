@@ -168,8 +168,8 @@ const LiveStageSetupModal = ({
     if (!show) return null;
 
     const handlePrepareLecture = async () => {
-        if (mode === 'miron' && !userProfile?.is_pro && (userProfile?.linkoin_balance || 0) < 2) {
-            setGenError("Insufficient Credits. Miron requires 2 LinkUp Credits per live session.");
+        if (mode === 'miron' && !userProfile?.is_pro && (userProfile?.linkoin_balance || 0) < 20) {
+            setGenError("Insufficient Credits. Miron group live hosting requires 20 LinkUp Credits per session. Upgrade to LinkUp Gold for unlimited sessions.");
             return;
         }
 
