@@ -21,6 +21,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    // 0. Extract caller authentication & Pro status for server-side paywalls
+    let authedUser: any = null;
+    let isProUser = false;
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '').trim();
+      const { data: userData } = await supabase.auth.getUser(token);
+      if (userData?.user) {
+        authedUser = userData.user;
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('is_pro, pro_expires_at')
+          .eq('id', authedUser.id)
+          .maybeSingle();
+        isProUser = Boolean(prof?.is_pro && (!prof?.pro_expires_at || new Date(prof.pro_expires_at) > new Date()));
+      }
+    }
+
     // 1. LIST BOOKS (Database Driven)
     if (action === "list_books") {
       const { data: books, error } = await supabase
@@ -64,13 +82,12 @@ serve(async (req) => {
       return new Response(JSON.stringify({ universities: universityBooks }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 4. LEGACY EXAMS LISTING
+    // 4. EXAMS LISTING (Server-side Deterministic 75% Pro Gating)
     if (action === "list_exams") {
       const { university_id } = body;
       let query = supabase
         .from('exams')
-        .select(`id, exam_type, date, time_allowed_minutes, total_marks, university_id, courses(code, name), universities(name)`)
-        .order('created_at', { ascending: false });
+        .select(`id, exam_type, date, time_allowed_minutes, total_marks, university_id, courses(code, name), universities(name)`);
 
       if (university_id && university_id !== 'all') {
         query = query.eq('university_id', university_id);
@@ -79,12 +96,36 @@ serve(async (req) => {
       const { data, error } = await query;
       if (error) throw error;
 
-      const mappedExams = (data || []).map(exam => ({
-        ...exam,
-        course_name: exam.courses?.name || 'General Assessment',
-        course_code: exam.courses?.code || 'EXAM',
-        university_name: exam.universities?.name || null
-      }));
+      // Group exams by university to match the exact deterministic catalog index
+      const groups = new Map<string, any[]>();
+      (data || []).forEach((exam: any) => {
+        const uniId = exam.university_id || 'unknown';
+        if (!groups.has(uniId)) groups.set(uniId, []);
+        groups.get(uniId)!.push({
+          ...exam,
+          course_name: exam.courses?.name || 'General Assessment',
+          course_code: exam.courses?.code || 'EXAM',
+          university_name: exam.universities?.name || null
+        });
+      });
+
+      const mappedExams: any[] = [];
+      groups.forEach((groupExams) => {
+        // Deterministic sort: date DESC, exam_type ASC, id ASC
+        groupExams.sort((a, b) => {
+          const dateA = String(a.date || '').toLowerCase();
+          const dateB = String(b.date || '').toLowerCase();
+          return dateB.localeCompare(dateA) ||
+                 String(a.exam_type || '').localeCompare(String(b.exam_type || '')) ||
+                 String(a.id).localeCompare(String(b.id));
+        });
+
+        groupExams.forEach((exam, idx) => {
+          exam.is_pro_gated = (idx % 4 !== 0);
+          mappedExams.push(exam);
+        });
+      });
+
       return new Response(JSON.stringify({ exams: mappedExams }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -181,9 +222,47 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 5. LEGACY EXAM QUESTIONS
+    // 5. EXAM QUESTIONS (Server-Side Paywall Assertion)
     if (action === "get_exam_questions") {
       const { exam_id } = body;
+      if (!exam_id) throw new Error("Missing exam_id");
+
+      // Verify target exam details
+      const { data: targetExam, error: examErr } = await supabase
+        .from('exams')
+        .select('id, university_id, course_id, exam_type, date')
+        .eq('id', exam_id)
+        .single();
+
+      if (examErr || !targetExam) throw new Error("Exam not found");
+
+      // If user is not Pro, compute deterministic rank among siblings to prevent paywall bypass
+      if (!isProUser) {
+        const { data: siblings } = await supabase
+          .from('exams')
+          .select('id, exam_type, date')
+          .eq('university_id', targetExam.university_id)
+          .eq('course_id', targetExam.course_id);
+
+        const siblingList = (siblings || []).sort((a: any, b: any) => {
+          const dateA = String(a.date || '').toLowerCase();
+          const dateB = String(b.date || '').toLowerCase();
+          return dateB.localeCompare(dateA) ||
+                 String(a.exam_type || '').localeCompare(String(b.exam_type || '')) ||
+                 String(a.id).localeCompare(String(b.id));
+        });
+
+        const examIndex = siblingList.findIndex((e: any) => e.id === exam_id);
+        const isGated = examIndex !== -1 && (examIndex % 4 !== 0);
+
+        if (isGated) {
+          return new Response(JSON.stringify({
+            error: "PRO_REQUIRED",
+            message: "This exam paper is part of the LinkUp Pro Archive. Upgrade to LinkUp Gold to unlock full archives."
+          }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
       const [sectionsResp, metaResp] = await Promise.all([
         supabase.from('sections')
           .select('*, questions (*)')
