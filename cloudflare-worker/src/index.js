@@ -152,6 +152,152 @@ export default {
       });
     }
 
+    // C. Secure Phone + Password Authentication Resolver
+    if (url.pathname === '/auth/phone-login') {
+      if (request.method !== 'POST') {
+        return new Response(JSON.stringify({ error: "METHOD_NOT_ALLOWED" }), { 
+          status: 405, 
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin } 
+        });
+      }
+
+      try {
+        const { phone, password } = await request.json();
+        if (!phone || !password) {
+          return new Response(JSON.stringify({ error: "MISSING_FIELDS", message: "Phone and password are required." }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
+          });
+        }
+
+        // 1. Phone Normalization (E.164)
+        let rawPhone = String(phone).replace(/[\s\-()]/g, '');
+        let normalizedPhone = rawPhone;
+        if (rawPhone.startsWith('0')) {
+          normalizedPhone = '+251' + rawPhone.slice(1);
+        } else if (rawPhone.startsWith('251')) {
+          normalizedPhone = '+' + rawPhone;
+        } else if (rawPhone.length === 9 && (rawPhone.startsWith('9') || rawPhone.startsWith('7'))) {
+          normalizedPhone = '+251' + rawPhone;
+        } else if (!rawPhone.startsWith('+')) {
+          normalizedPhone = '+' + rawPhone;
+        }
+
+        // 2. Gate 1: Check account existence in profiles
+        const profRes = await fetch(`${REAL_SUPABASE_URL}/rest/v1/profiles?phone=eq.${encodeURIComponent(normalizedPhone)}&select=id,registered_with_telegram,telegram_id`, {
+          headers: {
+            'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        });
+
+        if (!profRes.ok) {
+          console.error(`[Gateway] Profile lookup failed: ${await profRes.text()}`);
+          return new Response(JSON.stringify({ error: "SERVER_ERROR", message: "Database query failed." }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
+          });
+        }
+
+        const profiles = await profRes.json();
+        if (!profiles || profiles.length === 0) {
+          return new Response(JSON.stringify({
+            error: "ACCOUNT_NOT_FOUND",
+            message: "No account found matching this phone number."
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
+          });
+        }
+
+        const prof = profiles[0];
+
+        // 3. Gate 2: The Telegram Verification Sentry
+        if (!prof.registered_with_telegram || !prof.telegram_id) {
+          return new Response(JSON.stringify({
+            error: "UNVERIFIED_PHONE",
+            message: "This phone number has not been verified with Telegram yet. Please log in with your email address, then verify your phone via our Telegram bot to unlock phone login (and claim 50 free credits)!"
+          }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
+          });
+        }
+
+        // 4. Resolve internal GoTrue email
+        const userRes = await fetch(`${REAL_SUPABASE_URL}/auth/v1/admin/users/${prof.id}`, {
+          headers: {
+            'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        });
+
+        if (!userRes.ok) {
+          return new Response(JSON.stringify({ error: "USER_LOOKUP_FAILED", message: "Failed to resolve authentication account." }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
+          });
+        }
+
+        const userData = await userRes.json();
+        const userEmail = userData.email;
+        if (!userEmail) {
+          return new Response(JSON.stringify({ error: "NO_EMAIL_ATTACHED", message: "Account has no email identity attached." }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
+          });
+        }
+
+        // 5. Gate 3: Check synthetic accounts without passwords
+        const isSynthetic = userEmail.endsWith('@linkup.invalid');
+        const hasPassword = Boolean(userData.encrypted_password);
+        if (isSynthetic && !hasPassword) {
+          return new Response(JSON.stringify({
+            error: "SYNTHETIC_NO_PASSWORD",
+            message: "This account was created via Telegram and has no password configured yet. Please tap 'Log in with Telegram' below to sign in."
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
+          });
+        }
+
+        // 6. Gate 4: Authenticate with Supabase GoTrue
+        const tokenRes = await fetch(`${REAL_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: {
+            'apikey': REAL_ANON_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email: userEmail, password })
+        });
+
+        const tokenData = await tokenRes.json();
+        if (!tokenRes.ok) {
+          return new Response(JSON.stringify({
+            error: "INVALID_CREDENTIALS",
+            message: "Invalid phone number or password. Please verify your credentials and try again."
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
+          });
+        }
+
+        return new Response(JSON.stringify(tokenData), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': resolvedCorsOrigin,
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        });
+      } catch (err) {
+        console.error(`[Gateway] Phone login error: ${err.message}`);
+        return new Response(JSON.stringify({ error: "INTERNAL_ERROR", message: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': resolvedCorsOrigin }
+        });
+      }
+    }
+
     const targetUrl = new URL(url.pathname + url.search, REAL_SUPABASE_URL);
     const modifiedHeaders = new Headers(request.headers);
 
