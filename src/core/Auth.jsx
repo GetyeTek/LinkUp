@@ -114,7 +114,11 @@ const Auth = () => {
         setLoading(true);
         setError(null);
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
+            const cleanIdentifier = email.toLowerCase().trim();
+            if (!cleanIdentifier.includes('@')) {
+                throw new Error("Password recovery requires your account email address. If you registered via Telegram, please use the Telegram login button below.");
+            }
+            const { error } = await supabase.auth.resetPasswordForEmail(cleanIdentifier, {
                 redirectTo: getBasePath()
             });
             if (error) throw error;
@@ -241,12 +245,58 @@ const Auth = () => {
                     action: 'signin'
                 });
             } else {
-                // Standard Sign-In
-                const { error: signInError } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                });
-                if (signInError) throw signInError;
+                const cleanInput = email.trim();
+                const rawClean = cleanInput.replace(/[\s\-()]/g, '');
+                const isPhoneCandidate = !cleanInput.includes('@') && /^(?:\+251|251|0)?[79]\d{8}$/.test(rawClean);
+
+                if (isPhoneCandidate) {
+                    const phoneRes = await fetch('https://linkup-gateway.getyeteklu2.workers.dev/auth/phone-login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phone: cleanInput, password })
+                    });
+
+                    const resData = await phoneRes.json();
+
+                    if (!phoneRes.ok) {
+                        if (resData.error === 'UNVERIFIED_PHONE') {
+                            setNotice({
+                                title: "Phone Login Locked",
+                                message: resData.message || "This phone number is not verified with Telegram. Please sign in with your email address first, then link your phone via our Telegram bot.",
+                                type: "exists",
+                                actionLabel: "Okay"
+                            });
+                            return;
+                        } else if (resData.error === 'SYNTHETIC_NO_PASSWORD') {
+                            setNotice({
+                                title: "Telegram Account Detected",
+                                message: resData.message || "You haven't set a password for this account yet. Please tap 'Log in with Telegram' below.",
+                                type: "google",
+                                actionLabel: "Okay"
+                            });
+                            return;
+                        } else {
+                            throw new Error(resData.message || "Invalid phone number or password.");
+                        }
+                    }
+
+                    if (resData.access_token && resData.refresh_token) {
+                        const { error: sessionError } = await supabase.auth.setSession({
+                            access_token: resData.access_token,
+                            refresh_token: resData.refresh_token
+                        });
+                        if (sessionError) throw sessionError;
+                    } else {
+                        throw new Error("Failed to initialize session.");
+                    }
+                } else {
+                    // Standard Email Sign-In
+                    const { error: signInError } = await supabase.auth.signInWithPassword({
+                        email: cleanInput,
+                        password,
+                    });
+                    if (signInError) throw signInError;
+                }
             }
         } catch (err) {
             const isPhoneConflict = err.message && (
@@ -365,14 +415,14 @@ const Auth = () => {
 
                     <div className="input-group">
                         <input 
-                            type="email" 
+                            type={isSignUp || isForgotPassword ? "email" : "text"} 
                             className="auth-input" 
-                            placeholder="Email address" 
+                            placeholder={isSignUp ? "Email address" : (isForgotPassword ? "Email address for recovery" : "Email or Phone (e.g. 09...)")} 
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
                         />
-                        <i className="fas fa-envelope input-icon"></i>
+                        <i className={`fas ${isSignUp || isForgotPassword || email.includes('@') ? "fa-envelope" : "fa-user-tag"} input-icon`}></i>
                     </div>
 
                     {isSignUp && !isForgotPassword && (
