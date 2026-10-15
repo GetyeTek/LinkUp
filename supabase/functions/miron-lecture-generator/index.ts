@@ -131,9 +131,9 @@ serve(async (req) => {
                     throw new Error("Access Denied: Only group owners or admins are authorized to trigger lecture generation.");
                 }
 
-                // Server-Side Credit Metering: Deduct 2 credits or verify active Pro pass
+                // Server-Side Credit Metering: Deduct 20 credits or verify active Pro pass for group lecture generation
                 const { error: creditErr } = await supabase.rpc('consume_miron_credits', {
-                    p_cost: 2,
+                    p_cost: 20,
                     p_user_id: authedUserId
                 });
 
@@ -142,7 +142,7 @@ serve(async (req) => {
                     return new Response(JSON.stringify({
                         error: isBroke ? "INSUFFICIENT_CREDITS" : "BILLING_ERROR",
                         message: isBroke 
-                            ? "Insufficient LinkUp Credits. 2 Credits or LinkUp Premium required to invite Miron."
+                            ? "Insufficient LinkUp Credits. 20 Credits or LinkUp Premium required for group AI live hosting."
                             : creditErr.message
                     }), {
                         status: isBroke ? 402 : 400,
