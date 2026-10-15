@@ -1,6 +1,49 @@
 /* --- INTERACTIVE TREE EXPLORER --- */
 /* Explorer tabs removed */
 
+/* Course Selection Pills */
+.ls-course-pills-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.ls-course-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #aaa;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    -webkit-user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ls-course-pill:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.ls-course-pill.active {
+    background: rgba(66, 215, 184, 0.15);
+    border-color: var(--accent-teal);
+    color: var(--accent-teal);
+    box-shadow: 0 0 12px rgba(66, 215, 184, 0.2);
+    transform: translateY(-1px);
+}
+
+.ls-course-pill:active {
+    transform: scale(0.96);
+}
+
 .books-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
 .book-selector-card { display: flex; align-items: center; gap: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); padding: 12px; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
 .book-selector-card:hover { border-color: var(--accent-teal); }
