@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DOMPurify from 'dompurify';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './FlashcardArena.css';
 
 const formatChapterPillLabel = (title, index) => {
@@ -28,6 +28,8 @@ const sanitizeCard = (c) => ({
 });
 
 const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
+    const { user: userProfile } = usePlatform();
+    const isProUser = Boolean(userProfile?.is_pro);
     const isVault = deck?.course_code === 'VAULT';
     const [chapters, setChapters] = useState([]);
     const [selectedChapter, setSelectedChapter] = useState(null);
@@ -176,11 +178,22 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                     }
                 }
 
+                const totalChapters = availableChapters.length;
+                const gatedCount = Math.min(totalChapters - 1, Math.ceil(totalChapters * 0.5));
+                const firstGatedIndex = totalChapters - gatedCount;
+
+                availableChapters = availableChapters.map((ch, idx) => ({
+                    ...ch,
+                    is_pro_gated: idx >= firstGatedIndex
+                }));
+
                 setChapters(availableChapters);
 
                 const savedChapter = localStorage.getItem(`linkup_fc_ch_${deck.course_code}`);
-                const initialChapter = (savedChapter && availableChapters.some(c => c.title === savedChapter))
-                    ? savedChapter
+                const candidate = availableChapters.find(c => c.title === savedChapter);
+                const isCandidateAllowed = candidate && (!candidate.is_pro_gated || isProUser);
+                const initialChapter = isCandidateAllowed 
+                    ? candidate.title 
                     : (availableChapters[0]?.title || null);
 
                 if (initialChapter) {
@@ -197,7 +210,15 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
         resolveChapters();
     }, [deck?.course_code, isVault, loadChapterCards]);
 
-    const handleSelectChapter = (chapterTitle) => {
+    const handleSelectChapter = (chapter) => {
+        const chapterTitle = typeof chapter === 'string' ? chapter : chapter.title;
+        const chObj = typeof chapter === 'string' ? chapters.find(c => c.title === chapter) : chapter;
+
+        if (chObj?.is_pro_gated && !isProUser) {
+            window.dispatchEvent(new CustomEvent('open-premium-modal'));
+            return;
+        }
+
         if (chapterTitle === selectedChapter) return;
         setSelectedChapter(chapterTitle);
         localStorage.setItem(`linkup_fc_ch_${deck.course_code}`, chapterTitle);
@@ -274,23 +295,30 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                     </div>
 
                     {/* Horizontal Chapter Selector Pill Strip */}
+                    {/* Horizontal Chapter Selector Pill Strip */}
                     {!isVault && chapters.length > 0 && (
                         <nav className="fca-chapter-strip">
-                            {chapters.map((ch) => (
-                                <button 
-                                    key={ch.title}
-                                    className={`fca-chapter-pill ${selectedChapter === ch.title ? 'active' : ''}`}
-                                    onClick={() => handleSelectChapter(ch.title)}
-                                    title={ch.title}
-                                >
-                                    {selectedChapter === ch.title && loadingCards ? (
-                                        <i className="fas fa-circle-notch fa-spin"></i>
-                                    ) : (
-                                        <i className="fas fa-bookmark" style={{ fontSize: '0.65rem' }}></i>
-                                    )}
-                                    <span>{ch.label}</span>
-                                </button>
-                            ))}
+                            {chapters.map((ch) => {
+                                const isLocked = ch.is_pro_gated && !isProUser;
+                                return (
+                                    <button 
+                                        key={ch.title}
+                                        className={`fca-chapter-pill ${selectedChapter === ch.title ? 'active' : ''} ${isLocked ? 'is-locked-pill' : ''}`}
+                                        onClick={() => handleSelectChapter(ch)}
+                                        title={ch.title}
+                                    >
+                                        {isLocked ? (
+                                            <i className="fas fa-crown" style={{ fontSize: '0.65rem', color: '#f1c40f' }}></i>
+                                        ) : selectedChapter === ch.title && loadingCards ? (
+                                            <i className="fas fa-circle-notch fa-spin"></i>
+                                        ) : (
+                                            <i className="fas fa-bookmark" style={{ fontSize: '0.65rem' }}></i>
+                                        )}
+                                        <span>{ch.label}</span>
+                                        {isLocked && <span className="fca-pro-tag">PRO</span>}
+                                    </button>
+                                );
+                            })}
                         </nav>
                     )}
 
