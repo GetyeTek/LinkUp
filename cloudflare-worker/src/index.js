@@ -103,9 +103,10 @@ export default {
         
         const authData = await authCheckRes.json();
         
-        // Rewrite the request to inject the verified user ID for the Durable Object
+        // Rewrite the request to inject the verified user ID and internal gateway secret
         const modifiedReqHeaders = new Headers(request.headers);
         modifiedReqHeaders.set('X-Verified-User-Id', authData.id);
+        modifiedReqHeaders.set('X-Internal-Gateway-Secret', 'linkup-internal-worker-secret-2026');
         
         const doReq = new Request(request.url, {
             method: request.method,
