@@ -224,8 +224,16 @@ export class GeminiLiveAgent {
     const url = new URL(request.url);
     this.conversationId = url.searchParams.get("agent");
     this.studentName = url.searchParams.get("name") || "Scholar";
-    this.userId = url.searchParams.get("uid");
+    
+    // STRICT SECURITY: Trust Gateway Headers over URL parameters
+    const verifiedUid = request.headers.get("X-Verified-User-Id");
+    this.userId = verifiedUid || url.searchParams.get("uid");
     this.isOneOnOne = this.conversationId && this.conversationId.includes('miron-personal');
+
+    if (request.headers.get("Upgrade") === "websocket" && !verifiedUid) {
+        console.error("[Agent|DO|SECURITY] ⛔ Blocked direct WS access without Gateway verification.");
+        return new Response("Unauthorized Gateway Bypass", { status: 401 });
+    }
 
     // Handle the Supabase dynamic chunk append webhook
     if (request.method === "POST" && url.searchParams.get("action") === "append_chunks") {
@@ -665,6 +673,27 @@ export class GeminiLiveAgent {
           console.error("[Agent|GEMINI|WS] Could not read error response text.", e.message);
         }
         console.error(`[Agent|GEMINI|WS] ❌ Websocket missing from response! Body: ${errText}`);
+        
+        // ROLLBACK / REFUND: The connection failed, refund the 2 credits
+        if (billableUserId) {
+            console.log(`[Agent|GEMINI|WS] Connection failed. Issuing 2-credit refund to ${billableUserId}...`);
+            try {
+                await fetch(`${supabaseUrl}/rest/v1/linkoin_transactions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': serviceRoleKey, 'Authorization': `Bearer ${serviceRoleKey}` },
+                    body: JSON.stringify({
+                        user_id: billableUserId,
+                        amount: 2,
+                        transaction_type: 'refund',
+                        description: 'Miron Live Connection Failed',
+                        idempotency_key: `refund_live_${crypto.randomUUID()}`
+                    })
+                });
+            } catch (refundErr) {
+                console.error("[Agent|GEMINI|WS] ❌ Refund failed to execute:", refundErr.message);
+            }
+        }
+
         throw new Error(`Google Handshake HTTP ${geminiResponse.status}: ${errText}`);
       }
 
