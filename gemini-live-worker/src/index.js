@@ -224,6 +224,7 @@ export class GeminiLiveAgent {
     const url = new URL(request.url);
     this.conversationId = url.searchParams.get("agent");
     this.studentName = url.searchParams.get("name") || "Scholar";
+    this.userId = url.searchParams.get("uid");
     this.isOneOnOne = this.conversationId && this.conversationId.includes('miron-personal');
 
     // Handle the Supabase dynamic chunk append webhook
@@ -592,6 +593,18 @@ export class GeminiLiveAgent {
          throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in Worker environment variables.");
       }
 
+      // Determine the billable host/user
+      let billableUserId = this.userId;
+      if (!billableUserId && this.conversationId && !this.isOneOnOne) {
+          try {
+              const res = await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}&select=metadata`, {
+                  headers: { 'apikey': serviceRoleKey, 'Authorization': `Bearer ${serviceRoleKey}` }
+              });
+              const rows = await res.json();
+              if (rows && rows.length > 0) billableUserId = rows[0].metadata?.live_host_id;
+          } catch (e) {}
+      }
+
       const rpcUrl = `${supabaseUrl}/rest/v1/rpc/lease_gemini_api_key`;
       console.log(`[Agent|GEMINI|DB] Executing POST request to Supabase RPC: ${rpcUrl}`);
 
@@ -601,7 +614,8 @@ export class GeminiLiveAgent {
           "Content-Type": "application/json",
           "apikey": serviceRoleKey,
           "Authorization": `Bearer ${serviceRoleKey}`
-        }
+        },
+        body: JSON.stringify({ p_user_id: billableUserId || null, p_cost: 2 })
       });
 
       console.log(`[Agent|GEMINI|DB] Supabase response status: ${dbResponse.status} ${dbResponse.statusText}`);
@@ -609,6 +623,9 @@ export class GeminiLiveAgent {
       if (!dbResponse.ok) {
         const errText = await dbResponse.text();
         console.error(`[Agent|GEMINI|DB] ❌ RPC Error Response Body: ${errText}`);
+        if (errText.includes('INSUFFICIENT_CREDITS')) {
+            this.broadcast(JSON.stringify({ event: "billing_error", error: "Insufficient LinkUp Credits to start a live AI session." }));
+        }
         throw new Error(`Supabase RPC HTTP ${dbResponse.status}: ${errText}`);
       }
 
