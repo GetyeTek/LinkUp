@@ -100,8 +100,23 @@ export default {
           console.error(`[Gateway] ⛔ Invalid auth token on WebSocket upgrade`);
           return new Response(JSON.stringify({ error: "Invalid Authentication Token" }), { status: 401 });
         }
+        
+        const authData = await authCheckRes.json();
+        
+        // Rewrite the request to inject the verified user ID for the Durable Object
+        const modifiedReqHeaders = new Headers(request.headers);
+        modifiedReqHeaders.set('X-Verified-User-Id', authData.id);
+        
+        const doReq = new Request(request.url, {
+            method: request.method,
+            headers: modifiedReqHeaders,
+            body: request.body
+        });
+        
+        return env.GEMINI_WORKER.fetch(doReq);
       }
 
+      // Ensure webhook HTTP POSTs also pass through transparently
       return env.GEMINI_WORKER.fetch(request);
     }
 
