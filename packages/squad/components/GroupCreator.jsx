@@ -3,13 +3,14 @@ import { supabase } from '@linkup-platform/sdk-core';
 import './GroupCreator.css';
 
 const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
-    const [step, setStep] = useState(initialMode ? 2 : 1);
+    const effectiveMode = initialMode === 'class' ? 'class' : (initialMode === 'academic' ? 'academic' : '');
+    const [step, setStep] = useState(effectiveMode ? 2 : 1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [form, setForm] = useState({ 
-        type: initialMode || '', 
+        type: effectiveMode, 
         title: '', 
-        focus: initialMode === 'class' ? 'Class' : '', 
+        focus: effectiveMode === 'class' ? 'Class' : '', 
         privacy: 'public', 
         slug: '' 
     });
@@ -91,7 +92,7 @@ const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
             <div className="gc-card">
                 <header className="gc-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
                     <button className="icon-button" onClick={onClose} disabled={loading}><i className="fas fa-chevron-left"></i></button>
-                    <h2>Create New Group</h2>
+                    <h2>{form.type === 'class' ? 'Create Official Class' : (form.type === 'academic' ? 'Create Study Squad' : 'Create New Group')}</h2>
                 </header>
 
                 <div className="gc-body">
