@@ -31,10 +31,44 @@ export const invokeMiron = async (payload) => {
         },
         body: JSON.stringify(payload)
     });
+    
     if (!response.ok) {
         throw new Error("Miron is currently operating at maximum capacity across campus networks. Please try again in a few moments.");
     }
-    return response.json();
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let buffer = '';
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data:')) continue;
+            const jsonStr = trimmed.slice(5).trim();
+            if (!jsonStr) continue;
+            try {
+                const event = JSON.parse(jsonStr);
+                if (event.type === 'chunk') fullText += event.delta;
+                if (event.type === 'done') {
+                    return {
+                        response: fullText,
+                        snapshots: event.snapshots,
+                        quizzes: event.quizzes,
+                        flashcards: event.flashcards
+                    };
+                }
+                if (event.type === 'error') throw new Error(event.message);
+            } catch (e) {}
+        }
+    }
+    return { response: fullText };
 };
 
 export const invokePlanMyDay = async (payload = {}) => {
