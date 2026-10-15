@@ -420,7 +420,54 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // 1. Mandatory Identity Assertion: Verify user JWT token on the server
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "UNAUTHORIZED", message: "Missing Authorization header." }), { 
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '').trim();
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: "UNAUTHORIZED", message: "Invalid or expired authorization token." }), { 
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    const userId = user.id;
     const { history, prompt, context } = await req.json();
+
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+      return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Prompt text is required." }), { 
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // 2. Server-Side Hard Paywall & Credit Metering (2 Credits per turn)
+    // Enforced strictly BEFORE touching any LLM, embedding model, or database query
+    const { error: creditErr } = await supabase.rpc('consume_miron_credits', {
+      p_cost: 2,
+      p_user_id: userId
+    });
+
+    if (creditErr) {
+      const isBroke = creditErr.message?.includes('INSUFFICIENT_CREDITS');
+      return new Response(JSON.stringify({ 
+        error: isBroke ? "INSUFFICIENT_CREDITS" : "BILLING_ERROR", 
+        message: isBroke ? "Insufficient LinkUp Credits. Complete daily tasks or upgrade to Premium." : creditErr.message 
+      }), { status: isBroke ? 402 : 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 3. Inspect user Pro status for conditional refund tracking
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('is_pro, pro_expires_at')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    const isPro = Boolean(userProfile?.is_pro && (!userProfile?.pro_expires_at || new Date(userProfile.pro_expires_at) > new Date()));
 
     // 1. API Key Round-Robin Engine (Groq & Gemini)
     async function getApiKey(service: 'groq' | 'gemini') {
@@ -1077,17 +1124,20 @@ serve(async (req) => {
               sendEvent('chunk', { delta: finalText });
             }
           } catch (err: any) {
-            console.error(`[MIRON CATASTROPHIC FAILURE] Both engines failed. Issuing refund...`);
-            try {
+            console.error(`[MIRON CATASTROPHIC FAILURE] Both engines failed. Evaluating refund...`, err);
+            // Only refund if the user was non-pro and actually paid credits
+            if (!isPro) {
+              try {
                 await supabase.from('linkoin_transactions').insert({
-                    user_id: requesterId,
-                    amount: 2,
-                    transaction_type: 'refund',
-                    description: 'Miron Text Generation Failed',
-                    idempotency_key: `refund_text_${crypto.randomUUID()}`
+                  user_id: userId,
+                  amount: 2,
+                  transaction_type: 'refund',
+                  description: 'Miron Text Generation Failed',
+                  idempotency_key: `refund_text_${crypto.randomUUID()}`
                 });
-            } catch (refundErr) {
+              } catch (refundErr) {
                 console.error("[Miron Athena] Refund failed to execute:", refundErr);
+              }
             }
             sendEvent('error', { message: err.message });
           }
