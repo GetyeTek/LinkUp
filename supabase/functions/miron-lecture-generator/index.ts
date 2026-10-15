@@ -118,7 +118,7 @@ serve(async (req) => {
             const { book_id, chapter_title, conversation_id } = body;
             if (!conversation_id) throw new Error("conversation_id parameter is required for stateful generation.");
 
-            // Security: If called by an authenticated user, verify they hold admin/owner privileges in the group
+            // Security: If called by an authenticated user, verify role and enforce server-side credit deduction
             if (authedUserId) {
                 const { data: member, error: memErr } = await supabase
                     .from('conversation_members')
@@ -129,6 +129,25 @@ serve(async (req) => {
 
                 if (memErr || !member || !['owner', 'admin'].includes(member.role)) {
                     throw new Error("Access Denied: Only group owners or admins are authorized to trigger lecture generation.");
+                }
+
+                // Server-Side Credit Metering: Deduct 2 credits or verify active Pro pass
+                const { error: creditErr } = await supabase.rpc('consume_miron_credits', {
+                    p_cost: 2,
+                    p_user_id: authedUserId
+                });
+
+                if (creditErr) {
+                    const isBroke = creditErr.message?.includes('INSUFFICIENT_CREDITS');
+                    return new Response(JSON.stringify({
+                        error: isBroke ? "INSUFFICIENT_CREDITS" : "BILLING_ERROR",
+                        message: isBroke 
+                            ? "Insufficient LinkUp Credits. 2 Credits or LinkUp Premium required to invite Miron."
+                            : creditErr.message
+                    }), {
+                        status: isBroke ? 402 : 400,
+                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                    });
                 }
             }
 
