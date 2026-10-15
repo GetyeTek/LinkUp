@@ -117,6 +117,23 @@ const MironMessageNode = React.memo(({ m, copiedId, handleCopyMessage, handleInl
         );
     });
 
+    if (m.isBroke) {
+        return (
+            <div className={`chat-node ${m.side}`}>
+                <div className="athena-bubble" style={{ border: '1px solid rgba(241, 196, 15, 0.4)', background: 'rgba(241, 196, 15, 0.05)' }}>
+                    <p style={{ color: '#e0e0e0', margin: 0 }}>{m.text}</p>
+                    <button 
+                        className="pu-cta-gold-btn" 
+                        style={{ marginTop: '16px', padding: '10px 16px', fontSize: '0.9rem', width: 'auto', display: 'inline-flex' }} 
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
+                    >
+                        <i className="fas fa-crown"></i> Get LinkUp Premium
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={`chat-node ${m.side}`}>
             <div className="athena-bubble">
@@ -162,7 +179,7 @@ const MironMessageNode = React.memo(({ m, copiedId, handleCopyMessage, handleInl
 
 const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const autoSentRef = useRef(false);
-    const { sessionUser } = usePlatform();
+    const { sessionUser, user: userProfile, updateUserProfile } = usePlatform();
     const [avatarError, setAvatarError] = useState(false);
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
@@ -450,6 +467,35 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const sendMessage = async (textToSend) => {
         if (!textToSend.trim() || isTyping) return;
         isAutoScrollEnabled.current = true;
+
+        // 1. Frontend Pre-Flight Billing Guard
+        if (!userProfile?.is_pro && (userProfile?.linkoin_balance || 0) < 2) {
+            setMessages(prev => [...prev, 
+                { id: `user-${Date.now()}`, side: 'user', text: textToSend },
+                { id: `broke-${Date.now()}`, side: 'miron', text: "Looks like you're out of LinkUp Credits! Complete daily missions to earn more, or upgrade to LinkUp Premium for unlimited Miron AI access.", isBroke: true }
+            ]);
+            setTimeout(() => {
+                if (flowRef.current) flowRef.current.scrollTop = flowRef.current.scrollHeight;
+            }, 100);
+            return;
+        }
+
+        setIsTyping(true);
+
+        // 2. Atomic Database Credit Burn (Deducts 2 credits immediately)
+        if (!userProfile?.is_pro) {
+            const { error: burnError } = await supabase.rpc('consume_miron_credits', { p_cost: 2, p_user_id: sessionUser.id });
+            if (burnError) {
+                 setMessages(prev => [...prev, 
+                    { id: `user-${Date.now()}`, side: 'user', text: textToSend },
+                    { id: `broke-${Date.now()}`, side: 'miron', text: "Transaction failed: Insufficient LinkUp Credits.", isBroke: true }
+                ]);
+                setIsTyping(false);
+                return;
+            }
+            // Optimistically update local profile balance to prevent UI layout shift
+            updateUserProfile({ linkoin_balance: userProfile.linkoin_balance - 2 });
+        }
 
         let currentThread = activeThread;
         const tempId = `temp-${Date.now()}`;
