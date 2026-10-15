@@ -355,6 +355,27 @@
     transform: scale(1.02);
 }
 
+.fca-chapter-pill.is-locked-pill {
+    border-color: rgba(241, 196, 15, 0.3);
+    color: #dcd0bc;
+}
+
+.fca-chapter-pill.is-locked-pill:hover {
+    border-color: #f1c40f;
+    background: rgba(241, 196, 15, 0.1);
+}
+
+.fca-pro-tag {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 800;
+    background: rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 2px;
+}
+
 .fca-chapter-pill:disabled {
     opacity: 0.6;
     cursor: not-allowed;
