@@ -153,7 +153,8 @@ const LiveStageSetupModal = ({
     useEffect(() => {
         if (show) {
             if (mode === 'miron') {
-                if (!userProfile?.is_pro) {
+                const hasEnoughCredits = (userProfile?.linkoin_balance || 0) >= 20;
+                if (!userProfile?.is_pro && !hasEnoughCredits) {
                     window.dispatchEvent(new CustomEvent('open-premium-modal'));
                     onClose();
                     return;
@@ -167,7 +168,7 @@ const LiveStageSetupModal = ({
             setSelectedNode(null);
             setGenError(null);
         }
-    }, [show, mode, userProfile?.is_pro]);
+    }, [show, mode, userProfile?.is_pro, userProfile?.linkoin_balance]);
 
     if (!show) return null;
 
