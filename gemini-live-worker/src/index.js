@@ -27,6 +27,54 @@ const NUMBER_WORD_MAP = {
   'xvi': '16', 'xvii': '17', 'xviii': '18', 'xix': '19', 'xx': '20'
 };
 
+const GROQ_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "get_book_toc",
+      description: "Fetch the Table of Contents of a specific university course book.",
+      parameters: {
+        type: "object",
+        properties: {
+          course_code: { type: "string", description: "The course code (e.g. 'PHYS 1011', 'LOCT 1011', 'BIOL 1012', 'CHEM 1012', etc.)" }
+        },
+        required: ["course_code"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_book_section",
+      description: "Read the full text of a specific chapter or section from the course book.",
+      parameters: {
+        type: "object",
+        properties: {
+          course_code: { type: "string", description: "The course code (e.g. 'PHYS 1011')" },
+          section_title: { type: "string", description: "Exact title of the section from the TOC" }
+        },
+        required: ["course_code", "section_title"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_book_page",
+      description: "Read the text of a specific page or range of pages from the course book.",
+      parameters: {
+        type: "object",
+        properties: {
+          course_code: { type: "string", description: "The course code (e.g. 'PHYS 1011')" },
+          start_page: { type: "integer", description: "Starting page number" },
+          end_page: { type: "integer", description: "Optional ending page number" }
+        },
+        required: ["course_code", "start_page"]
+      }
+    }
+  }
+];
+
 function normalizeTextTokens(str) {
   if (!str) return [];
   return str
@@ -194,6 +242,11 @@ export class GeminiLiveAgent {
     this.currentBookId = null;
     this.currentCourseCode = null;
     this.lastPromptTokens = 0;
+
+    // --- 1-ON-1 COGNITIVE PIPELINE STATE (GROQ BRAIN + GEMINI VOICE) ---
+    this.isGroqSynthesizing = false;
+    this.pendingUserSpeech = "";
+    this.speechDebounceTimer = null;
     
     console.log(`[Agent|DO|INIT] 🏗️ Native Constructor initialized.`);
   }
@@ -316,6 +369,144 @@ export class GeminiLiveAgent {
     }
   }
 
+  async executeTool(name, args) {
+    this.broadcast(JSON.stringify({ type: "tool_call_state", executing: true }));
+    const authHeaders = {
+      'apikey': this.env.SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
+    };
+
+    const fetchWithTimeout = async (url, options = {}, timeoutMs = 2500) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+      } catch (err) {
+        clearTimeout(id);
+        throw err;
+      }
+    };
+
+    let result = {};
+    try {
+      if (name === "get_book_toc") {
+        const code = (args.course_code || "").toUpperCase().trim();
+        const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,title,toc,page_offset`, { headers: authHeaders });
+        const json = await res.json();
+        if (json && json.length > 0) {
+          result = { status: "success", book_id: json[0].id, title: json[0].title, page_offset: json[0].page_offset || 0, toc: json[0].toc };
+        } else {
+          result = { status: "error", message: `Book for course ${code} not found.` };
+        }
+      } else if (name === "read_book_section") {
+        const code = (args.course_code || "").toUpperCase().trim();
+        const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,toc,page_offset`, { headers: authHeaders });
+        const json = await res.json();
+        
+        if (json && json.length > 0 && json[0].toc) {
+          const bookId = json[0].id;
+          const offset = json[0].page_offset || 0;
+          const matchResult = findBestMatchingTocNode(json[0].toc, args.section_title, 0.80);
+
+          if (matchResult) {
+            const { matchedItem, flatList } = matchResult;
+            const startPage = matchedItem.page;
+            const targetDepth = matchedItem.depth;
+            let endPage = 99999;
+            for (let i = matchedItem.originalIndex + 1; i < flatList.length; i++) {
+              const candidate = flatList[i];
+              if (candidate.depth <= targetDepth && candidate.page && candidate.page > startPage) {
+                endPage = candidate.page;
+                break;
+              }
+            }
+
+            const physicalStart = Math.max(1, startPage + offset);
+            const physicalEnd = endPage === 99999 ? 99999 : Math.max(1, endPage + offset);
+
+            const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${physicalStart}&page_number=lt.${physicalEnd}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
+            const pages = await pageRes.json();
+            
+            const extractTextFromBlockArray = (blocks) => {
+              return (blocks || []).map(b => {
+                if (!b) return '';
+                let text = [];
+                if (b.main) text.push(b.main);
+                if (b.sub) text.push(b.sub);
+                if (b.title) text.push(b.title);
+                if (b.body) text.push(b.body);
+                if (b.text) text.push(b.text);
+                if (b.items && Array.isArray(b.items)) text.push(b.items.join(' '));
+                if (b.premises) text.push(b.premises.join(' '));
+                if (b.conclusion) text.push(b.conclusion);
+                if (b.question) text.push(b.question);
+                return text.join(' ').replace(/<[^>]+>/g, '').trim(); 
+              }).filter(Boolean).join('\n');
+            };
+
+            const sectionText = (pages || []).map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
+            result = { 
+              status: "success", 
+              matched_section: matchedItem.title,
+              breadcrumb: matchedItem.breadcrumb,
+              text: sectionText || "Section is empty." 
+            };
+          } else {
+            result = { status: "error", message: `Section "${args.section_title}" not found in TOC with sufficient confidence (>=80%).` };
+          }
+        } else {
+          result = { status: "error", message: "Course book not found." };
+        }
+      } else if (name === "read_book_page") {
+        const code = (args.course_code || "").toUpperCase().trim();
+        const start = args.start_page;
+        const end = args.end_page || (start + 1);
+
+        const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,page_offset`, { headers: authHeaders });
+        const json = await res.json();
+
+        if (json && json.length > 0) {
+          const bookId = json[0].id;
+          const offset = json[0].page_offset || 0;
+          const physicalStart = Math.max(1, start + offset);
+          const physicalEnd = Math.max(1, end + offset);
+
+          const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${physicalStart}&page_number=lte.${physicalEnd}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
+          const pages = await pageRes.json();
+
+          const extractTextFromBlockArray = (blocks) => {
+            return (blocks || []).map(b => {
+              if (!b) return '';
+              let text = [];
+              if (b.main) text.push(b.main);
+              if (b.sub) text.push(b.sub);
+              if (b.title) text.push(b.title);
+              if (b.body) text.push(b.body);
+              if (b.text) text.push(b.text);
+              if (b.items && Array.isArray(b.items)) text.push(b.items.join(' '));
+              if (b.premises) text.push(b.premises.join(' '));
+              if (b.conclusion) text.push(b.conclusion);
+              if (b.question) text.push(b.question);
+              return text.join(' ').replace(/<[^>]+>/g, '').trim(); 
+            }).filter(Boolean).join('\n');
+          };
+
+          const sectionText = (pages || []).map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
+          result = { status: "success", text: sectionText || "Pages are empty or do not exist." };
+        } else {
+          result = { status: "error", message: "Course book not found." };
+        }
+      }
+    } catch (err) {
+      result = { status: "error", message: err.message };
+    } finally {
+      this.broadcast(JSON.stringify({ type: "tool_call_state", executing: false }));
+    }
+    return result;
+  }
+
   async executeGroqCognitiveTurn(userMsg) {
     if (!userMsg || !userMsg.trim()) return;
 
@@ -326,17 +517,29 @@ export class GeminiLiveAgent {
 
       this.groqChatHistory.push({ role: "user", content: userMsg });
 
-      const systemPrompt = `You are Miron, a brilliant, charismatic peer tutor and university mentor helping ${this.studentName}.
-Explain academic and university concepts clearly, accurately, and intuitively.
-Structure your answers with conversational clarity, real-world examples, and step-by-step logic.
-Keep your response concise and engaging (under 3 paragraphs unless extensive depth is specifically requested) so it sounds natural when spoken.`;
+      const systemPrompt = `You are Miron, an expert university peer tutor and charismatic classmate studying with ${this.studentName}.
+You are the primary cognitive brain of this live study session.
+
+CRITICAL LINGUISTIC RULES:
+- Write primarily in casual, natural Amharic (using the Ge'ez/Fidel alphabet), seamlessly blended with English technical and academic terms.
+- Use English for subject names, course concepts, formulas, definitions, and campus slang that Addis Ababa university students naturally blend in.
+- Sound like a supportive, ride-or-die study buddy—warm, encouraging, sharp, and conversational.
+- Keep your spoken explanations punchy, intuitive, and conversational (1-3 paragraphs) so it flows naturally when spoken aloud.
+
+TOOLS:
+You have access to course curriculum textbooks via tools:
+- "get_book_toc": Check the Table of Contents of a course book (e.g. 'PHYS 1011', 'LOCT 1011', 'BIOL 1012', 'CHEM 1012', etc.).
+- "read_book_section": Read exact textbook explanations and definitions for a section title.
+- "read_book_page": Read specific pages of a course textbook.
+Use tools when the student asks about a specific course or topic from their curriculum.`;
 
       let totalTokens = this.countTokens(systemPrompt);
       const contextualMessages = [];
 
       for (let i = this.groqChatHistory.length - 1; i >= 0; i--) {
         const msg = this.groqChatHistory[i];
-        const msgTokens = this.countTokens(msg.content);
+        const contentStr = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content || '');
+        const msgTokens = this.countTokens(contentStr);
         if (totalTokens + msgTokens > 5500) break;
         totalTokens += msgTokens;
         contextualMessages.unshift(msg);
@@ -345,22 +548,30 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
       this.lastPromptTokens = totalTokens;
       this.emitLog("TIKTOKEN", `Context tokens compiled: ${totalTokens} / 6500`, { tokens: totalTokens });
 
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...contextualMessages
-          ],
-          temperature: 0.7,
-          max_tokens: 1024
-        })
-      });
+      const callGroqApi = async (msgs) => {
+        return await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: msgs,
+            tools: GROQ_TOOLS,
+            tool_choice: "auto",
+            temperature: 0.7,
+            max_tokens: 1024
+          })
+        });
+      };
+
+      let currentMessages = [
+        { role: "system", content: systemPrompt },
+        ...contextualMessages
+      ];
+
+      let res = await callGroqApi(currentMessages);
 
       if (!res.ok) {
         const errText = await res.text();
@@ -370,8 +581,40 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
         throw new Error(`Groq API error ${res.status}: ${errText}`);
       }
 
-      const data = await res.json();
-      const assistantText = data.choices?.[0]?.message?.content || "";
+      let data = await res.json();
+      let choice = data.choices?.[0];
+
+      // Handle function / tool calling loop (up to 2 rounds)
+      let toolRounds = 0;
+      while (choice?.message?.tool_calls && choice.message.tool_calls.length > 0 && toolRounds < 2) {
+        toolRounds++;
+        const toolCalls = choice.message.tool_calls;
+        currentMessages.push(choice.message);
+
+        for (const tc of toolCalls) {
+          const fnName = tc.function.name;
+          let fnArgs = {};
+          try { fnArgs = JSON.parse(tc.function.arguments); } catch(e){}
+          this.emitLog("TOOL", `Executing tool: ${fnName}`, fnArgs);
+          
+          const toolResult = await this.executeTool(fnName, fnArgs);
+          currentMessages.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            name: fnName,
+            content: JSON.stringify(toolResult)
+          });
+        }
+
+        res = await callGroqApi(currentMessages);
+        if (!res.ok) {
+          throw new Error(`Groq API error on tool response: ${res.status}`);
+        }
+        data = await res.json();
+        choice = data.choices?.[0];
+      }
+
+      const assistantText = choice?.message?.content || "";
       const usage = data.usage || {};
       const finalTokens = usage.total_tokens || (totalTokens + this.countTokens(assistantText));
 
@@ -385,11 +628,12 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
         }));
 
         const cleanChunk = sanitizeForSpeech(assistantText);
-        const prompt = `Synthesize and speak the following peer tutor explanation to ${this.studentName} in your warm, authentic voice (natural campus Amharic and English blend):\n\n${cleanChunk}`;
+        const prompt = `Synthesize and speak the following peer tutor explanation to ${this.studentName} in your warm, authentic voice (natural campus Amharic and English blend). Speak it naturally:\n\n${cleanChunk}`;
         const payload = JSON.stringify({
           clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
         });
 
+        this.isGroqSynthesizing = true;
         if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
           this.geminiWs.send(payload);
         } else {
@@ -397,6 +641,7 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
         }
       }
     } catch (e) {
+      this.isGroqSynthesizing = false;
       this.emitLog("ERROR", `Cognitive turn failed: ${e.message}`, { error: e.message });
       console.error("[Agent|Groq|CognitiveTurn]", e.message);
     }
@@ -796,11 +1041,18 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
                 return;
             }
 
-            if (this.isOneOnOne && (parsed.action === "chat" || parsed.text)) {
-                const userMsg = parsed.text || parsed.message;
-                this.emitLog("USER", userMsg);
-                this.ctx.waitUntil(this.executeGroqCognitiveTurn(userMsg));
-                return;
+            // --- 1-ON-1 TEXT INPUT INTERCEPTOR (GROQ BRAIN) ---
+            let oneOnOneText = null;
+            if (parsed.clientContent?.turns) {
+                oneOnOneText = parsed.clientContent.turns[0]?.parts?.[0]?.text;
+            } else if (parsed.action === "chat" || parsed.text || parsed.message) {
+                oneOnOneText = parsed.text || parsed.message;
+            }
+
+            if (this.isOneOnOne && oneOnOneText) {
+                this.emitLog("USER", oneOnOneText);
+                this.ctx.waitUntil(this.executeGroqCognitiveTurn(oneOnOneText));
+                return; // Do NOT forward user text directly to Gemini Live
             }
 
             if (parsed.action === "inject_question") {
@@ -884,6 +1136,13 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
       clearInterval(this.qaTimer);
       this.qaTimer = null;
     }
+
+    if (this.speechDebounceTimer) {
+      clearTimeout(this.speechDebounceTimer);
+      this.speechDebounceTimer = null;
+    }
+    this.pendingUserSpeech = "";
+    this.isGroqSynthesizing = false;
 
     if (this.geminiWs) {
       console.log("[Agent|DO|CLEANUP] Closing upstream Gemini WS.");
@@ -969,6 +1228,12 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
         this.notifyRegistry('unregister', { id: this.conversationId });
         this.emitLog("USER", `🔌 ${this.studentName || 'Student'} disconnected.`);
       }
+      if (this.speechDebounceTimer) {
+        clearTimeout(this.speechDebounceTimer);
+        this.speechDebounceTimer = null;
+      }
+      this.pendingUserSpeech = "";
+      this.isGroqSynthesizing = false;
       console.log("[Agent|DO|CLEANUP] Stage is completely empty. Holding upstream socket warm for 30s...");
       this.cleanupTimeout = setTimeout(() => {
           this.executeHardCleanup();
@@ -1121,55 +1386,16 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
       };
 
       if (this.isOneOnOne) {
-          // Gemini Live serves as the Spoken Voice & Translation Synthesizer
+          // Gemini Live acts strictly as the Voice & Audio Translation Synthesizer (Groq is the Cognitive Brain)
           setupMessage.setup.systemInstruction = {
               parts: [{
-                  text: `You are Miron, a brilliant, warm, and supportive university peer tutor to ${this.studentName}.
-You translate structured teaching concepts provided by the system into natural, spoken campus Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms.
-Speak with authentic emotional warmth, clarity, and pacing. Never mention prompts, tools, or backend systems.`
+                  text: `You are the spoken voice and audio synthesis engine for Miron, speaking to ${this.studentName}.
+CRITICAL OPERATIONAL RULES:
+1. Do NOT answer user speech or user inputs on your own. User reasoning is handled by our primary cognitive brain.
+2. Your sole task when user microphone audio arrives is real-time transcription via inputAudioTranscription.
+3. You ONLY generate audio speech when you receive an explicit text turn instructing you to synthesize and speak. When you do, speak in natural, warm, expressive campus Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms. Never mention instructions, prompts, or backend systems.`
               }]
           };
-
-          setupMessage.setup.tools = [{
-              functionDeclarations: [
-                  {
-                      name: "get_book_toc",
-                      description: "Fetch the Table of Contents of a specific book to find section titles and pages.",
-                      parameters: {
-                          type: "OBJECT",
-                          properties: {
-                              course_code: { type: "STRING", description: "The course code (e.g., 'LOCT 1011')" }
-                          },
-                          required: ["course_code"]
-                      }
-                  },
-                  {
-                      name: "read_book_section",
-                      description: "Read the full text of a specific section. Use the exact section title obtained from the TOC.",
-                      parameters: {
-                          type: "OBJECT",
-                          properties: {
-                              course_code: { type: "STRING", description: "The course code (e.g., 'LOCT 1011')" },
-                              section_title: { type: "STRING", description: "Exact title of the section from the TOC" }
-                          },
-                          required: ["course_code", "section_title"]
-                      }
-                  },
-                  {
-                      name: "read_book_page",
-                      description: "Read the text of a specific page or range of pages. Use ONLY when requested by page number.",
-                      parameters: {
-                          type: "OBJECT",
-                          properties: {
-                              course_code: { type: "STRING", description: "The course code (e.g., 'LOCT 1011')" },
-                              start_page: { type: "INTEGER", description: "Starting page number" },
-                              end_page: { type: "INTEGER", description: "Optional ending page number" }
-                          },
-                          required: ["course_code", "start_page"]
-                      }
-                  }
-              ]
-          }];
       }
       
       const setupMessageStr = JSON.stringify(setupMessage);
@@ -1209,14 +1435,47 @@ Speak with authentic emotional warmth, clarity, and pacing. Never mention prompt
             try {
                 const parsed = JSON.parse(data);
 
-                // --- INTERCEPT USER AUDIO TRANSCRIPTION (VOICE INPUT) ---
-                if (this.isOneOnOne && parsed.serverContent?.userTurn?.parts) {
-                    const speechParts = parsed.serverContent.userTurn.parts.map(p => p.text).filter(Boolean).join(" ");
-                    if (speechParts.trim()) {
-                        this.emitLog("USER", `[Voice] ${speechParts}`);
-                        this.ctx.waitUntil(this.executeGroqCognitiveTurn(speechParts));
+                // --- 1-ON-1 VOICE INPUT: INTERCEPT STT TRANSCRIPTION FOR GROQ ---
+                if (this.isOneOnOne && parsed.serverContent?.inputTranscription?.text) {
+                    const speechChunk = parsed.serverContent.inputTranscription.text;
+                    this.pendingUserSpeech = (this.pendingUserSpeech || "") + speechChunk;
+
+                    // Pass transcription through to client so student sees their user bubble in real-time
+                    this.broadcast(data);
+
+                    if (this.speechDebounceTimer) clearTimeout(this.speechDebounceTimer);
+                    this.speechDebounceTimer = setTimeout(() => {
+                        const fullSpoken = (this.pendingUserSpeech || "").trim();
+                        this.pendingUserSpeech = "";
+                        if (fullSpoken.length > 0) {
+                            this.emitLog("USER", `[Voice] ${fullSpoken}`);
+                            this.ctx.waitUntil(this.executeGroqCognitiveTurn(fullSpoken));
+                        }
+                    }, 1200);
+
+                    return;
+                }
+
+                // If user finished speech turn according to VAD, flush speech immediately
+                if (this.isOneOnOne && parsed.serverContent?.turnComplete && !this.isGroqSynthesizing && this.pendingUserSpeech?.trim()) {
+                    if (this.speechDebounceTimer) clearTimeout(this.speechDebounceTimer);
+                    const fullSpoken = this.pendingUserSpeech.trim();
+                    this.pendingUserSpeech = "";
+                    this.emitLog("USER", `[Voice] ${fullSpoken}`);
+                    this.ctx.waitUntil(this.executeGroqCognitiveTurn(fullSpoken));
+                }
+
+                // --- 1-ON-1 AUDIO SUPPRESSION: BLOCK ROGUE GEMINI SPEECH ---
+                if (this.isOneOnOne && !this.isGroqSynthesizing) {
+                    if (parsed.serverContent?.modelTurn || parsed.serverContent?.outputTranscription) {
+                        // Drop autonomous Gemini model responses; Groq is the primary cognitive brain
                         return;
                     }
+                }
+
+                // Turn completed for Groq speech synthesis
+                if (this.isOneOnOne && parsed.serverContent?.turnComplete && this.isGroqSynthesizing) {
+                    this.isGroqSynthesizing = false;
                 }
                 
                 // --- TOOL CALL INTERCEPTOR ---
