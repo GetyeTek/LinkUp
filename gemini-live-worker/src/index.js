@@ -250,7 +250,7 @@ THE DECONSTRUCTION DOCTRINE (NO SURFACE-LEVEL DEFINITIONS):
 
 SUBSTANTIAL YET PACED EXPLANATIONS:
 - Deliver rich, comprehensive mini-lectures that drain the nuance of the specific concept.
-- Maintain conversational flow. Do not output massive walls of text. Break your thoughts into 2-4 well-paced paragraphs so the spoken delivery remains engaging and digestible.
+- Maintain conversational flow. Do not output massive walls of text.
 
 BAN LAZY CHECK-INS & ESCAPE HATCHES:
 - NEVER end an explanation with lazy pass-the-mic questions like "Is that clear?", "Do you understand?", or "Any questions?".
@@ -604,11 +604,22 @@ export class GeminiLiveAgent {
 
       const systemPrompt = MIRON_MASTER_BASE.replace(/\$\{studentName\}/g, this.studentName) + `
 
-CRITICAL LINGUISTIC RULES (PRIMARY BRAIN):
+CRITICAL LINGUISTIC & FORMATTING RULES (PRIMARY BRAIN):
 - Explain academic concepts with crystal clarity, step-by-step logic, and intuitive real-world analogies.
-- Formulate your entire response in clear, concise, and engaging English.
-- Do NOT generate in Amharic script. Your English explanation will be translated and vocalized in real time by the speech engine.
-- Sound like a supportive, ride-or-die study buddy—warm, encouraging, sharp, and conversational.`;
+- Formulate your entire response in clear, concise, and engaging English. Do NOT generate in Amharic script.
+- Sound like a supportive, ride-or-die study buddy—warm, encouraging, sharp, and conversational.
+- You MUST output your response STRICTLY as a JSON object containing an array of "spoken_chunks".
+- Each chunk should represent a complete, well-paced thought (a single long sentence or a few short ones) to be spoken sequentially by the speech engine.
+- DO NOT output any markdown, explanations, or text outside the JSON object.
+
+JSON SCHEMA REQUIREMENT:
+{
+  "spoken_chunks": [
+    "Your first well-paced thought goes here.",
+    "The next logical point or sentence.",
+    "Conclude with a thought-provoking challenge."
+  ]
+}`;
 
       let totalTokens = this.countTokens(systemPrompt);
       const contextualMessages = [];
@@ -638,7 +649,8 @@ CRITICAL LINGUISTIC RULES (PRIMARY BRAIN):
             tools: GROQ_TOOLS,
             tool_choice: "auto",
             temperature: 0.7,
-            max_tokens: 1024
+            max_tokens: 1024,
+            response_format: { type: "json_object" }
           })
         });
       };
@@ -691,24 +703,37 @@ CRITICAL LINGUISTIC RULES (PRIMARY BRAIN):
         choice = data.choices?.[0];
       }
 
-      const assistantText = choice?.message?.content || "";
+      const rawContent = choice?.message?.content || "";
       const usage = data.usage || {};
-      const finalTokens = usage.total_tokens || (totalTokens + this.countTokens(assistantText));
+      const finalTokens = usage.total_tokens || (totalTokens + this.countTokens(rawContent));
 
-      if (assistantText) {
-        this.groqChatHistory.push({ role: "assistant", content: assistantText });
+      if (rawContent) {
+        this.groqChatHistory.push({ role: "assistant", content: rawContent });
         this.emitLog("GROQ", `Cognitive response generated (${finalTokens} tokens).`, { tokens: finalTokens });
+
+        let chunks = [];
+        try {
+            const cleaned = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+            const parsed = JSON.parse(cleaned);
+            if (parsed.spoken_chunks && Array.isArray(parsed.spoken_chunks)) {
+                chunks = parsed.spoken_chunks;
+            } else {
+                throw new Error("Missing spoken_chunks array in JSON");
+            }
+        } catch (err) {
+            console.warn("[Agent|Groq] JSON parse failed, falling back to regex chunking.", err);
+            const cleanRaw = rawContent.replace(/[{}"\[\]]/g, '').trim();
+            chunks = cleanRaw.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+        }
+
+        const sanitizedChunks = chunks.map(c => sanitizeForSpeech(c)).filter(Boolean);
 
         this.broadcast(JSON.stringify({
           type: "miron_thought",
-          text: assistantText
+          text: sanitizedChunks.join(' ')
         }));
 
-        const cleanChunk = sanitizeForSpeech(assistantText);
-        
-        // Smart Pacing: Split massive responses by paragraph boundaries
-        const paragraphs = cleanChunk.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
-        this.translationQueue.push(...paragraphs);
+        this.translationQueue.push(...sanitizedChunks);
         
         // Trigger the queue loop
         this.processTranslationQueue();
