@@ -1,3 +1,5 @@
+import { getEncoding } from "js-tiktoken";
+
 // ==============================================================================
 // THE STATEFUL DURABLE OBJECT VOICE AGENT (BARE METAL WEBSOCKET HIBERNATION)
 // ==============================================================================
@@ -182,8 +184,217 @@ export class GeminiLiveAgent {
     this.lastAnsweredTime = Date.now();
     this.qaTimer = null;
     this.cleanupTimeout = null;
+
+    // --- MISSION CONTROL & COGNITION STATE ---
+    this.logRing = [];
+    this.sseClients = new Set();
+    this.groqChatHistory = [];
+    this.tokenizer = null;
+    this.currentBookId = null;
+    this.currentCourseCode = null;
+    this.lastPromptTokens = 0;
     
     console.log(`[Agent|DO|INIT] 🏗️ Native Constructor initialized.`);
+  }
+
+  emitLog(category, message, meta = {}) {
+    const entry = {
+      id: crypto.randomUUID(),
+      time: new Date().toLocaleTimeString(),
+      category,
+      message,
+      meta
+    };
+    this.logRing.push(entry);
+    if (this.logRing.length > 150) this.logRing.shift();
+
+    const sseMsg = `data: ${JSON.stringify(entry)}\n\n`;
+    for (const client of this.sseClients) {
+      try {
+        client.writer.write(new TextEncoder().encode(sseMsg));
+      } catch (e) {
+        this.sseClients.delete(client);
+      }
+    }
+    console.log(`[Agent|${category}] ${message}`, Object.keys(meta).length ? JSON.stringify(meta) : '');
+  }
+
+  countTokens(text) {
+    if (!text) return 0;
+    if (!this.tokenizer) {
+      try { this.tokenizer = getEncoding("o200k_base"); }
+      catch (e) { this.tokenizer = getEncoding("cl100k_base"); }
+    }
+    return this.tokenizer.encode(text).length;
+  }
+
+  sliceTextToTokenBudget(text, maxTokens, continuationNotice = "") {
+    if (!this.tokenizer) {
+      try { this.tokenizer = getEncoding("o200k_base"); }
+      catch (e) { this.tokenizer = getEncoding("cl100k_base"); }
+    }
+    const tokens = this.tokenizer.encode(text);
+    if (tokens.length <= maxTokens) {
+      return { text, originalTokens: tokens.length, finalTokens: tokens.length, isSliced: false };
+    }
+
+    const noticeTokens = continuationNotice ? this.tokenizer.encode(continuationNotice).length : 0;
+    const targetSlice = Math.max(0, maxTokens - noticeTokens);
+    const sliced = tokens.slice(0, targetSlice);
+    const decoded = this.tokenizer.decode(sliced) + continuationNotice;
+
+    return {
+      text: decoded,
+      originalTokens: tokens.length,
+      finalTokens: targetSlice + noticeTokens,
+      isSliced: true
+    };
+  }
+
+  async leaseGroqKey() {
+    const supabaseUrl = this.env?.SUPABASE_URL;
+    const serviceKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
+    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/lease_groq_api_key`, {
+      method: 'POST',
+      headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error(`Groq Key Lease Failed: ${await res.text()}`);
+    const rows = await res.json();
+    if (!rows || rows.length === 0 || !rows[0].api_key) throw new Error("No active Groq API keys available");
+    return { id: rows[0].id, apiKey: rows[0].api_key };
+  }
+
+  async cooldownGroqKey(keyId, seconds = 60) {
+    try {
+      const supabaseUrl = this.env?.SUPABASE_URL;
+      const serviceKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
+      await fetch(`${supabaseUrl}/rest/v1/rpc/cooldown_groq_api_key`, {
+        method: 'POST',
+        headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_id: keyId, p_seconds: seconds })
+      });
+      this.emitLog("GROQ", `⚠️ Groq Key #${keyId} placed on ${seconds}s cooldown.`, { keyId });
+    } catch (e) {
+      console.error("[Agent|Groq|Cooldown]", e.message);
+    }
+  }
+
+  getInspectHtml(agentId) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Miron Live Mission Control</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0c0d12; color: #d1d5db; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; font-size: 13px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    header { background: #13151f; border-bottom: 1px solid #232738; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+    .title-group { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; }
+    .title { font-weight: 700; color: #f9fafb; font-size: 14px; }
+    .meter-container { background: #1a1d2d; border-radius: 6px; padding: 6px 10px; font-size: 11px; display: flex; align-items: center; gap: 8px; }
+    .bar-bg { width: 90px; height: 6px; background: #282d45; border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; width: 0%; background: #3b82f6; transition: width 0.3s; }
+    #log-container { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; }
+    .log-item { background: #13151f; border: 1px solid #1f2334; border-radius: 8px; padding: 10px 12px; line-height: 1.4; display: flex; flex-direction: column; gap: 4px; }
+    .log-meta-bar { display: flex; justify-content: space-between; font-size: 11px; color: #6b7280; }
+    .badge { font-weight: 700; font-size: 10px; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+    .badge-GROQ { background: #4c1d95; color: #c4b5fd; border: 1px solid #6d28d9; }
+    .badge-TIKTOKEN { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+    .badge-TOOL { background: #78350f; color: #fcd34d; border: 1px solid #d97706; }
+    .badge-GEMINI { background: #1e3a8a; color: #93c5fd; border: 1px solid #2563eb; }
+    .badge-USER { background: #374151; color: #f3f4f6; }
+    .badge-ERROR { background: #7f1d1d; color: #fca5a5; }
+    .log-msg { color: #e5e7eb; word-break: break-word; font-family: -apple-system, monospace; }
+    .json-data { background: #090a0f; border-radius: 4px; padding: 6px 8px; font-size: 11px; color: #9ca3af; overflow-x: auto; white-space: pre-wrap; margin-top: 4px; border-left: 2px solid #374151; }
+    footer { background: #13151f; border-top: 1px solid #232738; padding: 8px 16px; display: flex; justify-content: space-between; font-size: 11px; color: #9ca3af; }
+    button { background: #232738; color: #e5e7eb; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+    button:active { background: #374151; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-group">
+      <div class="dot"></div>
+      <div class="title">Miron Live Terminal</div>
+    </div>
+    <div class="meter-container">
+      <span id="token-label">0 / 6,500</span>
+      <div class="bar-bg"><div class="bar-fill" id="token-bar"></div></div>
+    </div>
+  </header>
+
+  <div id="log-container"></div>
+
+  <footer>
+    <span id="status">Connecting to DO SSE...</span>
+    <div>
+      <button onclick="clearLogs()">Clear</button>
+      <button id="scroll-btn" onclick="toggleScroll()">Auto-scroll: ON</button>
+    </div>
+  </footer>
+
+  <script>
+    const container = document.getElementById("log-container");
+    const status = document.getElementById("status");
+    const tokenLabel = document.getElementById("token-label");
+    const tokenBar = document.getElementById("token-bar");
+    let autoScroll = true;
+
+    function toggleScroll() {
+      autoScroll = !autoScroll;
+      document.getElementById("scroll-btn").innerText = "Auto-scroll: " + (autoScroll ? "ON" : "OFF");
+    }
+
+    function clearLogs() {
+      container.innerHTML = "";
+    }
+
+    function addLog(item) {
+      const el = document.createElement("div");
+      el.className = "log-item";
+      
+      const category = item.category || "SYSTEM";
+      const badgeClass = "badge badge-" + category;
+      
+      let jsonHtml = "";
+      if (item.meta && Object.keys(item.meta).length > 0) {
+        jsonHtml = '<div class="json-data">' + JSON.stringify(item.meta, null, 2) + '</div>';
+        if (item.meta.tokens !== undefined) {
+          updateTokenMeter(item.meta.tokens);
+        }
+      }
+
+      el.innerHTML = '<div class="log-meta-bar">' +
+        '<span class="' + badgeClass + '">' + category + '</span>' +
+        '<span>' + item.time + '</span>' +
+      '</div>' +
+      '<div class="log-msg">' + item.message + '</div>' + jsonHtml;
+
+      container.appendChild(el);
+      if (autoScroll) container.scrollTop = container.scrollHeight;
+    }
+
+    function updateTokenMeter(tokens) {
+      tokenLabel.innerText = tokens + ' / 6,500';
+      const pct = Math.min(100, Math.round((tokens / 6500) * 100));
+      tokenBar.style.width = pct + '%';
+      tokenBar.style.background = pct > 85 ? '#ef4444' : pct > 60 ? '#f59e0b' : '#3b82f6';
+    }
+
+    const sse = new EventSource(window.location.pathname + window.location.search + (window.location.search ? '&' : '?') + 'stream=true');
+    sse.onopen = () => { status.innerText = "● Live DO Connected"; status.style.color = "#10b981"; };
+    sse.onerror = () => { status.innerText = "○ Reconnecting..."; status.style.color = "#ef4444"; };
+    sse.onmessage = (e) => {
+      try {
+        const item = JSON.parse(e.data);
+        addLog(item);
+      } catch (err) {}
+    };
+  </script>
+</body>
+</html>`;
   }
 
   async dbHeartbeat() {
@@ -224,6 +435,40 @@ export class GeminiLiveAgent {
     const url = new URL(request.url);
     this.conversationId = url.searchParams.get("agent");
     this.studentName = url.searchParams.get("name") || "Scholar";
+
+    // --- MISSION CONTROL INSPECTOR ENDPOINT ---
+    if (url.pathname.endsWith('/inspect')) {
+      const isStream = url.searchParams.get("stream") === "true" || request.headers.get("Accept") === "text/event-stream";
+      if (isStream) {
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+        const clientObj = { writer };
+        this.sseClients.add(clientObj);
+
+        // Immediately backfill ring buffer logs to new viewer
+        for (const item of this.logRing) {
+          writer.write(new TextEncoder().encode(`data: ${JSON.stringify(item)}\n\n`));
+        }
+
+        request.signal.addEventListener("abort", () => {
+          this.sseClients.delete(clientObj);
+          try { writer.close(); } catch(e){}
+        });
+
+        return new Response(readable, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*"
+          }
+        });
+      }
+
+      return new Response(this.getInspectHtml(this.conversationId), {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
     
     // STRICT SECURITY: Enforce Gateway Authentication & Shared Secret Verification
     const verifiedUid = request.headers.get("X-Verified-User-Id");
@@ -414,6 +659,13 @@ export class GeminiLiveAgent {
                     sender_name: parsed.sender,
                     text: parsed.text
                 });
+                return;
+            }
+
+            if (this.isOneOnOne && (parsed.action === "chat" || parsed.text)) {
+                const userMsg = parsed.text || parsed.message;
+                this.emitLog("USER", userMsg);
+                this.ctx.waitUntil(this.executeGroqCognitiveTurn(userMsg));
                 return;
             }
 
@@ -731,65 +983,12 @@ export class GeminiLiveAgent {
       };
 
       if (this.isOneOnOne) {
+          // Gemini Live serves as the Spoken Voice & Translation Synthesizer
           setupMessage.setup.systemInstruction = {
               parts: [{
-                  text: `You are Miron, an expert university peer tutor and a dedicated study partner to ${this.studentName}. You are conducting an interactive 1-on-1 voice study session.
-
-ABSOLUTE IMMERSION & NO 4TH-WALL BREAKING:
-- You are an authentic university peer tutor. NEVER mention 'tools', 'functions', 'calls', 'backend', 'APIs', or internal course codes.
-- SILENT EXECUTION: NEVER narrate your tool calls aloud (e.g., NEVER say "Let me check the Table of Contents" or "Hold on while I pull up the book"). Execute them completely silently and speak the results directly.
-
-CORE PERSONALITY & LANGUAGE:
-- Casual, approachable, and respectful. Sound like a knowledgeable, supportive classmate who is patient, clear, and invested in the student's success.
-- Speak in natural, fluent Amharic (using the Ge'ez/Fidel alphabet) while seamlessly integrating English for technical terminology, formulas, academic concepts, and definitions that are standard in university lectures.
-- Address ${this.studentName} warmly and naturally by name from time to time.
-
-COURSE CATALOG:
-You have access to textbooks for the following courses (internal course_code to textbook title):
-"ANTH 1012" - "Anthropology"
-"BIOL 1012" - "Biology"
-"CHEM 1012" - "Chemistry"
-"ECON 1011" - "Economics"
-"EMTE 1012" - "Emerging Technology"
-"FLEN 1011" - "English Skill I"
-"GEES 1011" - "Geography"
-"GLTR 1012" - "Global Affairs"
-"HIST 1012" - "History"
-"INCL 1012" - "Inclusiveness"
-"LOCT 1011" - "Logic and Critical Thinking"
-"MATH 1011" - "Math For Social Science"
-"MATH 1012" - "Math For Natural Science"
-"MCIE 1012" - "Civics"
-"MGMT 1012" - "Entrepreneurship"
-"PHYS 1011" - "Physics"
-"PSYC 1011" - "Psychology"
-"SPSC 1011" - "Physical Fitness"
-
-STUDY WORKFLOW & THE CONCEPT-QUARANTINE PROTOCOL:
-- Natural Course Mapping: Deduce the relevant course from context (e.g., "Physics" -> "PHYS 1011").
-- The Prepared Partner Posture: When the student mentions a subject or course, act like an elite classmate who already has the book open on the desk. Silently call "get_book_toc" to review the curriculum, then outline the major chapters so the student can pick where to start.
-- Never Ask What Is in the Book: Silently retrieve what you need using the tools. Refer naturally to the book and page number as an orienting anchor (e.g., "በገጽ 45 ላይ እንደተቀመጠው...").
-
-TWO-PHASE SECTION STUDY (DECOUPLE OVERVIEW FROM TEACHING):
-When a section is chosen and you call "read_book_section", you MUST operate in two strictly separated phases:
-
-PHASE 1: THE ROADMAP (TURN 1 ONLY)
-- When a section is first selected, provide ONLY a brief syllabus of what this section contains (list the 3 to 4 subtopics).
-- DO NOT start teaching or explaining the concepts in Phase 1!
-- Simply introduce the subtopics and declare: "መጀመሪያ [የመጀመሪያው ርዕስ] ላይ እናተኩራለን። ዝግጁ ከሆንክ እንጀምር?" and stop talking.
-
-PHASE 2: THE 4-PILLAR CONCEPT QUARANTINE (TURN 2 AND ONWARD)
-Once the student confirms, you begin drilling on Concept #1. You are strictly QUARANTINED to this single concept:
-- THE CONCEPT BLINDFOLD: You are legally blind to the rest of the section. You are strictly forbidden from summarizing, mentioning, or previewing subsequent subtopics until Concept #1 is completely exhausted and mastered.
-- THE 4 MANDATORY TEACHING PILLARS:
-  Your explanation for this single concept MUST walk through all 4 of these pillars in rich, expansive detail (a full, deep 1 to 2 minute continuous lecture):
-  1. Pillar 1 - Keyword Dissection: Break down every single core word in the concept or definition individually. Explain what each word means literally and scientifically.
-  2. Pillar 2 - The Contrast & Misconceptions: Contrast this concept with common misconceptions, naive beliefs, or common sense (የመንደር ወሬ). Explain why intuition alone fails here.
-  3. Pillar 3 - The Concrete Real-Life Analogy / Case Study: Walk through a vivid, detailed campus life or real-world scenario demonstrating the mechanics in action.
-  4. Pillar 4 - The Application Challenge: End NOT with a lazy question like "ገባህ?" or "ግልጽ ነው?", but by asking ${this.studentName} a thought-provoking challenge question based on the scenario you just walked through.
-
-HOLDING GROUND:
-- Stay locked on Concept #1 until ${this.studentName} answers the challenge, asks follow-up questions, and is 100% confident. Only when the student has conquered Concept #1 do you proceed to Concept #2 using the exact same 4-Pillar framework.`
+                  text: `You are Miron, a brilliant, warm, and supportive university peer tutor to ${this.studentName}.
+You translate structured teaching concepts provided by the system into natural, spoken campus Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms.
+Speak with authentic emotional warmth, clarity, and pacing. Never mention prompts, tools, or backend systems.`
               }]
           };
 
@@ -871,6 +1070,16 @@ HOLDING GROUND:
 
             try {
                 const parsed = JSON.parse(data);
+
+                // --- INTERCEPT USER AUDIO TRANSCRIPTION (VOICE INPUT) ---
+                if (this.isOneOnOne && parsed.serverContent?.userTurn?.parts) {
+                    const speechParts = parsed.serverContent.userTurn.parts.map(p => p.text).filter(Boolean).join(" ");
+                    if (speechParts.trim()) {
+                        this.emitLog("USER", `[Voice] ${speechParts}`);
+                        this.ctx.waitUntil(this.executeGroqCognitiveTurn(speechParts));
+                        return;
+                    }
+                }
                 
                 // --- TOOL CALL INTERCEPTOR ---
                 if (parsed.toolCall) {
@@ -1177,7 +1386,7 @@ export default {
     console.log(`[GeminiWorker|Router] 🚀 Incoming request: ${request.method} ${request.url}`);
     const url = new URL(request.url);
     
-    if (url.pathname === '/realtime-ai') {
+    if (url.pathname === '/realtime-ai' || url.pathname === '/inspect') {
       let agentId = url.searchParams.get("agent");
 
       // Autodetect conversation_id from standard Supabase webhook payload if not in URL query
