@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-10-15T17:38:23.619Z
+-- Date: 2026-10-16T11:07:33.301Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -179,9 +179,7 @@ attempted_at (timestamp with time zone), topic_tag (text), course_code (text), s
 -- RLS POLICIES
 -- ========================
 Table: profiles | Policy: Allow update for owners | Cmd: UPDATE | Using: (auth.uid() = id)
-Table: conversations | Policy: Conversations visibility | Cmd: SELECT | Using: is_member_of(id)
 Table: conversation_members | Policy: Members visibility | Cmd: SELECT | Using: (is_member_of(conversation_id) OR (user_id = auth.uid()))
-Table: messages | Policy: Messages visibility | Cmd: SELECT | Using: is_member_of(conversation_id)
 null
 Table: messages | Policy: Users can update their own messages | Cmd: UPDATE | Using: (auth.uid() = sender_id)
 Table: messages | Policy: Users can delete their own messages | Cmd: DELETE | Using: (auth.uid() = sender_id)
@@ -1347,15 +1345,6 @@ BEGIN
 END;
 
 
--- Function: cooldown_api_key
-
-BEGIN
-    UPDATE public.api_keys
-    SET cooldown_until = (now() + interval '5 minutes')
-    WHERE id = p_key_id;
-END;
-
-
 -- Function: handle_new_user
 
 DECLARE
@@ -1544,24 +1533,6 @@ BEGIN
     WHERE id = OLD.conversation_id
       AND metadata->'pinned_message'->>'id' = OLD.id::text;
     RETURN OLD;
-END;
-
-
--- Function: mark_key_usage
-
-BEGIN
-  UPDATE api_keys 
-  SET last_used_at = NOW() 
-  WHERE id = key_id;
-END;
-
-
--- Function: set_key_cooldown_rpc
-
-BEGIN
-  UPDATE api_keys 
-  SET cooldown_until = NOW() + interval '5 minutes' 
-  WHERE id = key_id;
 END;
 
 
@@ -2009,17 +1980,6 @@ BEGIN
 END;
 
 
--- Function: cooldown_gemini_key
-
-BEGIN
-    -- Put the specific gemini key on cooldown for 5 minutes
-    UPDATE public.api_keys
-    SET cooldown_until = now() + INTERVAL '5 minutes'
-    WHERE api_key = expired_key
-      AND service = 'gemini';
-END;
-
-
 -- Function: force_live_question_defaults_fn
 
 BEGIN
@@ -2032,36 +1992,6 @@ BEGIN
         NEW.sender_id := auth.uid();
     END IF;
     RETURN NEW;
-END;
-
-
--- Function: get_and_rotate_gemini_key
-
-DECLARE
-    target_id bigint;
-    found_key text;
-END_TIME timestamptz;
-BEGIN
-    -- Select the least-recently-used active 'gemini' key that is not on cooldown
-    SELECT id, api_key
-    INTO target_id, found_key
-    FROM public.api_keys
-    WHERE service = 'gemini'
-      AND is_active = true
-      AND (cooldown_until IS NULL OR cooldown_until <= now())
-    ORDER BY last_used_at ASC NULLS FIRST
-    LIMIT 1
-    FOR UPDATE SKIP LOCKED; -- High-concurrency safety lock
-
-    -- If we successfully found a key, update its last_used_at and return it
-    IF found_key IS NOT NULL THEN
-        UPDATE public.api_keys
-        SET last_used_at = now()
-        WHERE id = target_id;
-        
-        selected_key := found_key;
-        RETURN NEXT;
-    END IF;
 END;
 
 
@@ -2511,24 +2441,6 @@ BEGIN
     -- 2. Hard-delete active session record
     DELETE FROM public.live_study_sessions WHERE conversation_id = conv_id;
 END;
-
-
--- Function: get_compiled_book
-
-  SELECT coalesce(
-    jsonb_object_agg(
-      kv.key, 
-      kv.value
-    ), 
-    '{}'::jsonb
-  )
-  FROM (
-    SELECT result_json
-    FROM book_results
-    WHERE pdf_name = target_pdf
-    ORDER BY page_number ASC
-  ) sub,
-  LATERAL jsonb_each(sub.result_json) kv;
 
 
 -- Function: get_my_referrals
@@ -3425,20 +3337,6 @@ BEGIN
 END;
 
 
--- Function: get_next_api_key
-
-BEGIN
-  RETURN QUERY
-  SELECT ak.id, ak.api_key
-  FROM api_keys ak
-  WHERE ak.service = target_service
-    AND ak.is_active = true
-    AND (ak.cooldown_until IS NULL OR ak.cooldown_until <= NOW())
-  ORDER BY ak.last_used_at ASC NULLS FIRST
-  LIMIT 1;
-END;
-
-
 -- Function: validate_payment_submission_on_insert
 
 DECLARE
@@ -3484,6 +3382,88 @@ BEGIN
 END;
 
 
+-- Function: resolve_verified_phone_login_target
+
+DECLARE
+    v_raw text;
+    v_normalized text;
+    v_prof record;
+    v_user record;
+    v_is_synthetic boolean;
+    v_has_password boolean;
+BEGIN
+    IF p_phone IS NULL OR trim(p_phone) = '' THEN
+        RETURN jsonb_build_object('status', 'MISSING_FIELDS', 'message', 'Phone number is required.');
+    END IF;
+
+    -- 1. Phone Normalization (E.164)
+    v_raw := regexp_replace(p_phone, '[\s\-()]', '', 'g');
+    IF v_raw ~ '^0[79]\d{8}$' THEN
+        v_normalized := '+251' || substring(v_raw from 2);
+    ELSIF v_raw ~ '^251[79]\d{8}$' THEN
+        v_normalized := '+' || v_raw;
+    ELSIF v_raw ~ '^[79]\d{8}$' THEN
+        v_normalized := '+251' || v_raw;
+    ELSIF v_raw ~ '^\+251[79]\d{8}$' THEN
+        v_normalized := v_raw;
+    ELSE
+        v_normalized := v_raw;
+    END IF;
+
+    -- 2. Gate 1: Check account existence in profiles
+    SELECT id, registered_with_telegram, telegram_id, phone
+    INTO v_prof
+    FROM public.profiles
+    WHERE phone = v_normalized
+    LIMIT 1;
+
+    IF v_prof IS NULL THEN
+        RETURN jsonb_build_object(
+            'status', 'ACCOUNT_NOT_FOUND',
+            'message', 'No account found matching this phone number.'
+        );
+    END IF;
+
+    -- 3. Gate 2: Enforce Telegram Verification
+    IF COALESCE(v_prof.registered_with_telegram, false) IS NOT TRUE OR v_prof.telegram_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'status', 'UNVERIFIED_PHONE',
+            'message', 'This phone number has not been verified with Telegram yet. Please log in with your email address, then verify your phone via our Telegram bot to unlock phone login (and claim 50 free credits)!'
+        );
+    END IF;
+
+    -- 4. Gate 3: User identity resolution in auth.users
+    SELECT id, email, encrypted_password
+    INTO v_user
+    FROM auth.users
+    WHERE id = v_prof.id
+    LIMIT 1;
+
+    IF v_user IS NULL OR v_user.email IS NULL THEN
+        RETURN jsonb_build_object(
+            'status', 'NO_EMAIL_ATTACHED',
+            'message', 'Account has no email identity attached.'
+        );
+    END IF;
+
+    v_is_synthetic := v_user.email LIKE '%@linkup.invalid';
+    v_has_password := COALESCE(v_user.encrypted_password IS NOT NULL AND v_user.encrypted_password != '', false);
+
+    IF v_is_synthetic AND NOT v_has_password THEN
+        RETURN jsonb_build_object(
+            'status', 'SYNTHETIC_NO_PASSWORD',
+            'message', 'This account was created via Telegram and has no password configured yet. Please tap ''Log in with Telegram'' below to sign in.'
+        );
+    END IF;
+
+    -- 5. All Gates Passed: Return email securely to service_role caller
+    RETURN jsonb_build_object(
+        'status', 'OK',
+        'email', v_user.email
+    );
+END;
+
+
 -- Function: get_user_weaknesses
 
 BEGIN
@@ -3499,46 +3479,6 @@ BEGIN
       AND uqa.attempted_at >= NOW() - INTERVAL '30 days'
     GROUP BY uqa.course_code, uqa.topic_tag
     ORDER BY accuracy_percentage ASC, total_attempts DESC;
-END;
-
-
--- Function: record_telemetry_flush
-
-DECLARE
-    v_user_id UUID := auth.uid();
-    v_date DATE := CURRENT_DATE;
-    v_dur INT := GREATEST(p_duration_seconds, 0);
-    v_act INT := GREATEST(p_interactions, 0);
-BEGIN
-    IF v_user_id IS NULL THEN
-        RETURN;
-    END IF;
-
-    INSERT INTO public.user_daily_telemetry (
-        user_id, date, total_active_seconds,
-        time_exam_seconds, time_books_seconds, time_miron_seconds,
-        time_connect_seconds, time_discover_seconds, time_home_seconds,
-        total_interactions, updated_at
-    ) VALUES (
-        v_user_id, v_date, v_dur,
-        CASE WHEN p_feature = 'exam' THEN v_dur ELSE 0 END,
-        CASE WHEN p_feature = 'books' THEN v_dur ELSE 0 END,
-        CASE WHEN p_feature = 'miron' THEN v_dur ELSE 0 END,
-        CASE WHEN p_feature = 'connect' THEN v_dur ELSE 0 END,
-        CASE WHEN p_feature = 'discover' THEN v_dur ELSE 0 END,
-        CASE WHEN p_feature = 'home' THEN v_dur ELSE 0 END,
-        v_act, NOW()
-    )
-    ON CONFLICT (user_id, date) DO UPDATE SET
-        total_active_seconds = user_daily_telemetry.total_active_seconds + EXCLUDED.total_active_seconds,
-        time_exam_seconds = user_daily_telemetry.time_exam_seconds + EXCLUDED.time_exam_seconds,
-        time_books_seconds = user_daily_telemetry.time_books_seconds + EXCLUDED.time_books_seconds,
-        time_miron_seconds = user_daily_telemetry.time_miron_seconds + EXCLUDED.time_miron_seconds,
-        time_connect_seconds = user_daily_telemetry.time_connect_seconds + EXCLUDED.time_connect_seconds,
-        time_discover_seconds = user_daily_telemetry.time_discover_seconds + EXCLUDED.time_discover_seconds,
-        time_home_seconds = user_daily_telemetry.time_home_seconds + EXCLUDED.time_home_seconds,
-        total_interactions = user_daily_telemetry.total_interactions + EXCLUDED.total_interactions,
-        updated_at = NOW();
 END;
 
 
@@ -3578,6 +3518,75 @@ BEGIN
     WHERE p.id = target_user_id;
     
     RETURN res;
+END;
+
+
+-- Function: admin_broadcast_notification
+
+DECLARE
+    v_count int;
+BEGIN
+    -- Strict security: Only the backend service_role key can fire global broadcasts
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
+        RAISE EXCEPTION 'Access Denied: Only system administrators can broadcast notifications.';
+    END IF;
+
+    -- High-speed fan-out insert using PostgreSQL SELECT
+    INSERT INTO public.notifications (user_id, title, description, type, icon, action_data)
+    SELECT 
+        id, 
+        p_title, 
+        p_description, 
+        p_type, 
+        p_icon, 
+        p_action_data
+    FROM public.profiles
+    WHERE (p_target_university_id IS NULL OR university_id = p_target_university_id)
+      AND (p_target_department IS NULL OR department = p_target_department);
+
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+    
+    RETURN jsonb_build_object(
+        'success', true, 
+        'users_notified', v_count,
+        'timestamp', now()
+    );
+END;
+
+
+-- Function: lease_groq_api_key
+
+DECLARE
+    selected_id bigint;
+BEGIN
+    SELECT k.id INTO selected_id
+    FROM api_keys k
+    WHERE k.service = 'groq'
+      AND k.is_active = true
+      AND (k.cooldown_until IS NULL OR k.cooldown_until <= NOW())
+    ORDER BY k.last_used_at ASC NULLS FIRST
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED;
+
+    IF selected_id IS NOT NULL THEN
+        UPDATE api_keys AS ak
+        SET last_used_at = NOW()
+        WHERE ak.id = selected_id;
+
+        RETURN QUERY 
+        SELECT k.id, k.api_key
+        FROM api_keys k
+        WHERE k.id = selected_id;
+    END IF;
+END;
+
+
+-- Function: cooldown_groq_api_key
+
+BEGIN
+    UPDATE api_keys
+    SET cooldown_until = NOW() + (p_seconds || ' seconds')::interval
+    WHERE id = p_id;
 END;
 
 
@@ -4217,40 +4226,6 @@ BEGIN
         'mistakes_due', v_mistakes_due,
         'course_decks', COALESCE(v_decks, '[]'::jsonb)
     );
-END;
-
-
--- Function: record_flashcard_review
-
-DECLARE
-    v_user_id UUID := auth.uid();
-    v_next_review TIMESTAMPTZ;
-BEGIN
-    IF v_user_id IS NULL THEN
-        RETURN jsonb_build_object('error', 'Unauthenticated');
-    END IF;
-
-    -- Clean intervals: Hard -> 1 day, Good -> 3 days, Easy -> 7 days
-    IF p_difficulty = 'hard' THEN
-        v_next_review := now() + INTERVAL '1 day';
-    ELSIF p_difficulty = 'good' THEN
-        v_next_review := now() + INTERVAL '3 days';
-    ELSE
-        v_next_review := now() + INTERVAL '7 days';
-    END IF;
-
-    INSERT INTO public.user_flashcard_reviews (
-        user_id, card_id, card_type, difficulty, review_count, next_review_at, last_reviewed_at
-    ) VALUES (
-        v_user_id, p_card_id, p_card_type, p_difficulty, 1, v_next_review, now()
-    )
-    ON CONFLICT (user_id, card_id, card_type) DO UPDATE SET
-        difficulty = EXCLUDED.difficulty,
-        review_count = user_flashcard_reviews.review_count + 1,
-        next_review_at = EXCLUDED.next_review_at,
-        last_reviewed_at = now();
-
-    RETURN jsonb_build_object('success', true, 'next_review_at', v_next_review);
 END;
 
 
