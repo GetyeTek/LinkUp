@@ -247,6 +247,20 @@ export class GeminiLiveAgent {
     this.isGroqSynthesizing = false;
     this.pendingUserSpeech = "";
     this.speechDebounceTimer = null;
+
+    // Restore persistent log ring and active rooms across DO hibernation
+    this.ctx.blockConcurrencyWhile(async () => {
+      try {
+        const storedLogs = await this.ctx.storage.get('log_ring');
+        if (storedLogs && Array.isArray(storedLogs)) {
+          this.logRing = storedLogs;
+        }
+        const storedRooms = await this.ctx.storage.get('active_rooms');
+        if (storedRooms && Array.isArray(storedRooms)) {
+          this.activeRooms = new Map(storedRooms);
+        }
+      } catch (e) {}
+    });
     
     console.log(`[Agent|DO|INIT] 🏗️ Native Constructor initialized.`);
   }
@@ -276,6 +290,7 @@ export class GeminiLiveAgent {
     };
     this.logRing.push(entry);
     if (this.logRing.length > 150) this.logRing.shift();
+    this.ctx.waitUntil(this.ctx.storage.put('log_ring', this.logRing));
 
     const sseMsg = `data: ${JSON.stringify(entry)}\n\n`;
     for (const client of this.sseClients) {
@@ -686,7 +701,7 @@ Use tools when the student asks about a specific course or topic from their curr
     <div class="title-group">
       <div class="dot"></div>
       <div class="title">Miron Live Terminal <span style="font-size: 11px; color: #9ca3af; font-weight: normal; margin-left: 6px;">(${agentId})</span></div>
-      <a href="/inspect" style="color: #60a5fa; text-decoration: none; font-size: 11px; margin-left: 12px; background: #1a1d2d; padding: 3px 8px; border-radius: 4px; border: 1px solid #282d45;">⇄ All Sessions</a>
+      <a href="/inspect?view=picker" style="color: #60a5fa; text-decoration: none; font-size: 11px; margin-left: 12px; background: #1a1d2d; padding: 3px 8px; border-radius: 4px; border: 1px solid #282d45;">⇄ Active Sessions</a>
     </div>
     <div class="meter-container">
       <span id="token-label">0 / 6,500</span>
@@ -816,6 +831,7 @@ Use tools when the student asks about a specific course or topic from their curr
           };
           this.logRing.push(relayedEntry);
           if (this.logRing.length > 150) this.logRing.shift();
+          this.ctx.waitUntil(this.ctx.storage.put('log_ring', this.logRing));
 
           const sseMsg = `data: ${JSON.stringify(relayedEntry)}\n\n`;
           for (const client of this.sseClients) {
@@ -843,6 +859,7 @@ Use tools when the student asks about a specific course or topic from their curr
           label: `${payload.student}'s ${payload.type} (${payload.id.slice(0, 8)}...)`,
           lastSeen: Date.now()
         });
+        this.ctx.waitUntil(this.ctx.storage.put('active_rooms', Array.from(this.activeRooms.entries())));
         this.emitLog("SYSTEM", `🟢 Active session registered: ${payload.student} (${payload.id.slice(0, 8)}...)`);
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
       } catch (e) {
@@ -854,6 +871,7 @@ Use tools when the student asks about a specific course or topic from their curr
       try {
         const payload = await request.json();
         this.activeRooms.delete(payload.id);
+        this.ctx.waitUntil(this.ctx.storage.put('active_rooms', Array.from(this.activeRooms.entries())));
         this.emitLog("SYSTEM", `🔴 Session disconnected: ${payload.id.slice(0, 8)}...`);
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
       } catch (e) {
@@ -878,21 +896,35 @@ Use tools when the student asks about a specific course or topic from their curr
         const clientObj = { writer };
         this.sseClients.add(clientObj);
 
+        // Immediate opening ping to defeat Cloudflare/browser stream buffering
+        writer.write(new TextEncoder().encode(`: connected\n\n`));
+
         // Immediately backfill ring buffer logs to new viewer
         for (const item of this.logRing) {
           writer.write(new TextEncoder().encode(`data: ${JSON.stringify(item)}\n\n`));
         }
 
+        // 15s Heartbeat to prevent edge proxy timeouts
+        const keepAliveTimer = setInterval(() => {
+          try {
+            writer.write(new TextEncoder().encode(`: ping\n\n`));
+          } catch(e) {
+            clearInterval(keepAliveTimer);
+          }
+        }, 15000);
+
         request.signal.addEventListener("abort", () => {
+          clearInterval(keepAliveTimer);
           this.sseClients.delete(clientObj);
           try { writer.close(); } catch(e){}
         });
 
         return new Response(readable, {
           headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
             "Access-Control-Allow-Origin": "*"
           }
         });
@@ -1864,56 +1896,36 @@ async function getActiveSessions(env) {
     console.error("[Registry|ActiveFetch|Error]", e.message);
   }
 
+  // 2. Fetch active stages from Supabase that have an active heartbeat within the last 45s
   const supabaseUrl = env?.SUPABASE_URL;
   const serviceKey = env?.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) return sessions;
 
   try {
-    const res1 = await fetch(`${supabaseUrl}/rest/v1/live_study_sessions?select=conversation_id,created_at&order=created_at.desc&limit=10`, {
+    const thresholdIso = new Date(Date.now() - 45000).toISOString();
+    const res = await fetch(`${supabaseUrl}/rest/v1/conversations?metadata->>is_live=eq.true&metadata->>live_heartbeat=gte.${thresholdIso}&select=id,metadata&limit=10`, {
       headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
     });
-    const liveStages = res1.ok ? await res1.json() : [];
+    const liveConvs = res.ok ? await res.json() : [];
 
-    const res2 = await fetch(`${supabaseUrl}/rest/v1/conversations?select=id,metadata,created_at&order=created_at.desc&limit=15`, {
-      headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
-    });
-    const convs = res2.ok ? await res2.json() : [];
-
-    const sessions = [];
-    const seen = new Set();
-
-    for (const stage of liveStages) {
-      if (stage.conversation_id && !seen.has(stage.conversation_id)) {
-        seen.add(stage.conversation_id);
-        sessions.push({
-          id: stage.conversation_id,
-          type: "Group Live Stage",
-          isLive: true,
-          label: `Live Stage: ${stage.conversation_id.slice(0, 8)}...`
-        });
-      }
-    }
-
-    for (const c of convs) {
+    for (const c of liveConvs) {
       if (!seen.has(c.id)) {
         seen.add(c.id);
         const meta = c.metadata || {};
-        const isLive = meta.is_live === true;
-        const topic = meta.live_topic || (c.id.includes('miron-personal') ? '1-on-1 Tutoring Session' : 'Group Conversation');
+        const topic = meta.live_topic || 'Live Group Stage';
         sessions.push({
           id: c.id,
-          type: isLive ? "Active Stage" : (c.id.includes('miron-personal') ? "1-on-1" : "Room"),
-          isLive,
+          type: "Group Live Stage",
+          isLive: true,
           label: `${topic} (${c.id.slice(0, 8)}...)`
         });
       }
     }
-
-    return sessions;
   } catch (e) {
-    console.error("[SessionPicker|Error]", e.message);
-    return [];
+    console.error("[SessionPicker|SupabaseSync|Error]", e.message);
   }
+
+  return sessions;
 }
 
 function renderSessionPickerHtml(sessions) {
@@ -1991,7 +2003,7 @@ function renderSessionPickerHtml(sessions) {
       <input type="text" id="manual-id" class="manual-input" placeholder="Enter conversation UUID or personal agent ID..." />
       <button type="submit" class="submit-btn">Inspect</button>
     </form>
-    <a href="/inspect?agent=debug-global" class="sandbox-btn">⚡ Launch Global Debug Sandbox (debug-global)</a>
+    <a href="/inspect" class="sandbox-btn">⚡ Launch Global Live Terminal (debug-global)</a>
   </div>
 </body>
 </html>`;
@@ -2004,19 +2016,17 @@ export default {
     
     if (url.pathname === '/inspect') {
       let agentId = url.searchParams.get("agent");
+      const wantsPicker = url.searchParams.get("view") === "picker" || url.searchParams.get("picker") === "true";
 
       if (!agentId) {
-        const isSse = url.searchParams.get("stream") === "true" || request.headers.get("Accept") === "text/event-stream";
-        if (isSse) {
-          const sessions = await getActiveSessions(env);
-          agentId = sessions.length > 0 ? sessions[0].id : "debug-global";
-          console.log(`[GeminiWorker|Router] Auto-routed SSE client to active agent: ${agentId}`);
-        } else {
+        if (wantsPicker) {
           const sessions = await getActiveSessions(env);
           return new Response(renderSessionPickerHtml(sessions), {
             headers: { "Content-Type": "text/html; charset=utf-8" }
           });
         }
+        // Default directly to the God-Mode Live Terminal
+        agentId = "debug-global";
       }
 
       console.log(`[GeminiWorker|Router] Routing to Durable Object for Agent ID: ${agentId}`);
