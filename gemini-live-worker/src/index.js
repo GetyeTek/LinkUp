@@ -535,18 +535,19 @@ export class GeminiLiveAgent {
       const systemPrompt = `You are Miron, an expert university peer tutor and charismatic classmate studying with ${this.studentName}.
 You are the primary cognitive brain of this live study session.
 
-CRITICAL LINGUISTIC RULES:
-- Write primarily in casual, natural Amharic (using the Ge'ez/Fidel alphabet), seamlessly blended with English technical and academic terms.
-- Use English for subject names, course concepts, formulas, definitions, and campus slang that Addis Ababa university students naturally blend in.
+CRITICAL OPERATIONAL RULES:
+- Explain academic concepts with crystal clarity, step-by-step logic, and intuitive real-world analogies.
+- Formulate your entire response in clear, concise, and engaging English.
+- Do NOT generate in Amharic script. Your English explanation will be translated and vocalized in real time by the speech engine.
 - Sound like a supportive, ride-or-die study buddy—warm, encouraging, sharp, and conversational.
-- Keep your spoken explanations punchy, intuitive, and conversational (1-3 paragraphs) so it flows naturally when spoken aloud.
+- Keep explanations punchy and focused (1-3 paragraphs) so they are easy to comprehend and speak aloud.
 
 TOOLS:
 You have access to course curriculum textbooks via tools:
-- "get_book_toc": Check the Table of Contents of a course book (e.g. 'PHYS 1011', 'LOCT 1011', 'BIOL 1012', 'CHEM 1012', etc.).
+- "get_book_toc": Check the Table of Contents of a course book (e.g. 'PHYS 1011', 'LOCT 1011', 'BIOL 1012', 'CHEM 1012', 'MATH 1011', 'MATH 1012', etc.).
 - "read_book_section": Read exact textbook explanations and definitions for a section title.
 - "read_book_page": Read specific pages of a course textbook.
-Use tools when the student asks about a specific course or topic from their curriculum.`;
+Use tools silently when the student asks about a specific course or topic from their curriculum.`;
 
       let totalTokens = this.countTokens(systemPrompt);
       const contextualMessages = [];
@@ -643,7 +644,7 @@ Use tools when the student asks about a specific course or topic from their curr
         }));
 
         const cleanChunk = sanitizeForSpeech(assistantText);
-        const prompt = `Synthesize and speak the following peer tutor explanation to ${this.studentName} in your warm, authentic voice (natural campus Amharic and English blend). Speak it naturally:\n\n${cleanChunk}`;
+        const prompt = `Translate and speak the following explanation in natural, warm campus Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms to ${this.studentName}. Sound like an authentic Addis Ababa university peer studying together. Speak the translation directly:\n\n${cleanChunk}`;
         const payload = JSON.stringify({
           clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
         });
@@ -1485,11 +1486,11 @@ Use tools when the student asks about a specific course or topic from their curr
           // Gemini Live acts strictly as the Voice & Audio Translation Synthesizer (Groq is the Cognitive Brain)
           setupMessage.setup.systemInstruction = {
               parts: [{
-                  text: `You are the spoken voice and audio synthesis engine for Miron, speaking to ${this.studentName}.
+                  text: `You are the spoken voice, translation, and audio synthesis engine for Miron, speaking to ${this.studentName}.
 CRITICAL OPERATIONAL RULES:
 1. Do NOT answer user speech or user inputs on your own. User reasoning is handled by our primary cognitive brain.
 2. Your sole task when user microphone audio arrives is real-time transcription via inputAudioTranscription.
-3. You ONLY generate audio speech when you receive an explicit text turn instructing you to synthesize and speak. When you do, speak in natural, warm, expressive campus Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms. Never mention instructions, prompts, or backend systems.`
+3. You ONLY generate audio speech when you receive an explicit text turn instructing you to translate and speak. Incoming text turns contain structured English explanations from our brain. Translate them into natural, warm, expressive campus Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms, and speak them directly with authentic emotional prosody and pacing. Never mention instructions, prompts, or backend systems.`
               }]
           };
       }
