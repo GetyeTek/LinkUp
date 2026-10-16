@@ -403,7 +403,8 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
   <header>
     <div class="title-group">
       <div class="dot"></div>
-      <div class="title">Miron Live Terminal</div>
+      <div class="title">Miron Live Terminal <span style="font-size: 11px; color: #9ca3af; font-weight: normal; margin-left: 6px;">(${agentId})</span></div>
+      <a href="/inspect" style="color: #60a5fa; text-decoration: none; font-size: 11px; margin-left: 12px; background: #1a1d2d; padding: 3px 8px; border-radius: 4px; border: 1px solid #282d45;">⇄ All Sessions</a>
     </div>
     <div class="meter-container">
       <span id="token-label">0 / 6,500</span>
@@ -1465,17 +1466,173 @@ Speak with authentic emotional warmth, clarity, and pacing. Never mention prompt
 }
 
 // ==============================================================================
-// PURE ROUTER
+// GLOBAL SESSION HUB & ROUTER
 // ==============================================================================
+async function getActiveSessions(env) {
+  const supabaseUrl = env?.SUPABASE_URL;
+  const serviceKey = env?.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) return [];
+
+  try {
+    const res1 = await fetch(`${supabaseUrl}/rest/v1/live_study_sessions?select=conversation_id,created_at&order=created_at.desc&limit=10`, {
+      headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
+    });
+    const liveStages = res1.ok ? await res1.json() : [];
+
+    const res2 = await fetch(`${supabaseUrl}/rest/v1/conversations?select=id,metadata,created_at&order=created_at.desc&limit=15`, {
+      headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` }
+    });
+    const convs = res2.ok ? await res2.json() : [];
+
+    const sessions = [];
+    const seen = new Set();
+
+    for (const stage of liveStages) {
+      if (stage.conversation_id && !seen.has(stage.conversation_id)) {
+        seen.add(stage.conversation_id);
+        sessions.push({
+          id: stage.conversation_id,
+          type: "Group Live Stage",
+          isLive: true,
+          label: `Live Stage: ${stage.conversation_id.slice(0, 8)}...`
+        });
+      }
+    }
+
+    for (const c of convs) {
+      if (!seen.has(c.id)) {
+        seen.add(c.id);
+        const meta = c.metadata || {};
+        const isLive = meta.is_live === true;
+        const topic = meta.live_topic || (c.id.includes('miron-personal') ? '1-on-1 Tutoring Session' : 'Group Conversation');
+        sessions.push({
+          id: c.id,
+          type: isLive ? "Active Stage" : (c.id.includes('miron-personal') ? "1-on-1" : "Room"),
+          isLive,
+          label: `${topic} (${c.id.slice(0, 8)}...)`
+        });
+      }
+    }
+
+    return sessions;
+  } catch (e) {
+    console.error("[SessionPicker|Error]", e.message);
+    return [];
+  }
+}
+
+function renderSessionPickerHtml(sessions) {
+  const sessionRowsHtml = sessions.length > 0 ? sessions.map(s => `
+    <a href="/inspect?agent=${encodeURIComponent(s.id)}" class="session-item">
+      <div class="session-info">
+        <div class="session-name">
+          <span class="badge ${s.isLive ? 'badge-live' : 'badge-conv'}">${s.isLive ? '● LIVE' : s.type}</span>
+          ${s.label}
+        </div>
+        <div class="session-id">${s.id}</div>
+      </div>
+      <span class="connect-tag">Inspect ➜</span>
+    </a>
+  `).join("") : '<div class="empty-state">No active stages currently detected in Supabase.<br/>Launch the debug sandbox or connect to a custom ID below.</div>';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Miron Live — Session Inspector</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0c0d12; color: #d1d5db; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    .card { background: #13151f; border: 1px solid #232738; border-radius: 12px; max-width: 580px; width: 100%; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #1f2334; }
+    .title-row { display: flex; align-items: center; gap: 10px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; }
+    h1 { font-size: 15px; font-weight: 700; color: #f9fafb; }
+    .subtitle { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .section-title { font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; color: #9ca3af; margin: 16px 0 8px; }
+    .session-list { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; }
+    .session-item { display: flex; align-items: center; justify-content: space-between; background: #1a1d2d; border: 1px solid #282d45; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: inherit; transition: all 0.15s; }
+    .session-item:hover { border-color: #3b82f6; background: #20243a; transform: translateY(-1px); }
+    .session-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .session-name { font-weight: 600; color: #f3f4f6; font-size: 13px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-id { font-size: 10px; color: #6b7280; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; flex-shrink: 0; }
+    .badge-live { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #059669; }
+    .badge-conv { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid #2563eb; }
+    .connect-tag { background: #2563eb; color: #fff; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 6px; flex-shrink: 0; margin-left: 10px; }
+    .empty-state { padding: 24px; text-align: center; color: #6b7280; font-size: 12px; border: 1px dashed #232738; border-radius: 8px; line-height: 1.5; }
+    .manual-box { margin-top: 18px; padding-top: 16px; border-top: 1px solid #1f2334; display: flex; gap: 8px; }
+    .manual-input { flex: 1; background: #0c0d12; border: 1px solid #282d45; color: #f9fafb; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-family: monospace; outline: none; }
+    .manual-input:focus { border-color: #3b82f6; }
+    .submit-btn { background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .submit-btn:hover { background: #2563eb; }
+    .sandbox-btn { background: #1a1d2d; color: #9ca3af; border: 1px solid #282d45; padding: 9px 14px; border-radius: 6px; font-size: 11px; cursor: pointer; text-decoration: none; display: block; text-align: center; margin-top: 10px; transition: 0.15s; }
+    .sandbox-btn:hover { background: #282d45; color: #fff; border-color: #3b82f6; }
+    .refresh-btn { background: #232738; color: #e5e7eb; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+    .refresh-btn:hover { background: #374151; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="title-row">
+        <div class="dot"></div>
+        <div>
+          <h1>Miron Live Mission Control</h1>
+          <div class="subtitle">Global Session Router & Diagnostics</div>
+        </div>
+      </div>
+      <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+    </div>
+
+    <div class="section-title">Active & Recent Sessions (${sessions.length})</div>
+    <div class="session-list">
+      ${sessionRowsHtml}
+    </div>
+
+    <div class="section-title">Direct Connection</div>
+    <form class="manual-box" onsubmit="event.preventDefault(); const v = document.getElementById('manual-id').value.trim(); if(v) location.href = '/inspect?agent=' + encodeURIComponent(v);">
+      <input type="text" id="manual-id" class="manual-input" placeholder="Enter conversation UUID or personal agent ID..." />
+      <button type="submit" class="submit-btn">Inspect</button>
+    </form>
+    <a href="/inspect?agent=debug-global" class="sandbox-btn">⚡ Launch Global Debug Sandbox (debug-global)</a>
+  </div>
+</body>
+</html>`;
+}
+
 export default {
   async fetch(request, env, ctx) {
     console.log(`[GeminiWorker|Router] 🚀 Incoming request: ${request.method} ${request.url}`);
     const url = new URL(request.url);
     
-    if (url.pathname === '/realtime-ai' || url.pathname === '/inspect') {
+    if (url.pathname === '/inspect') {
       let agentId = url.searchParams.get("agent");
 
-      // Autodetect conversation_id from standard Supabase webhook payload if not in URL query
+      if (!agentId) {
+        const isSse = url.searchParams.get("stream") === "true" || request.headers.get("Accept") === "text/event-stream";
+        if (isSse) {
+          const sessions = await getActiveSessions(env);
+          agentId = sessions.length > 0 ? sessions[0].id : "debug-global";
+          console.log(`[GeminiWorker|Router] Auto-routed SSE client to active agent: ${agentId}`);
+        } else {
+          const sessions = await getActiveSessions(env);
+          return new Response(renderSessionPickerHtml(sessions), {
+            headers: { "Content-Type": "text/html; charset=utf-8" }
+          });
+        }
+      }
+
+      console.log(`[GeminiWorker|Router] Routing to Durable Object for Agent ID: ${agentId}`);
+      const id = env.GeminiLiveAgent.idFromName(agentId);
+      const stub = env.GeminiLiveAgent.get(id);
+      return stub.fetch(request);
+    }
+
+    if (url.pathname === '/realtime-ai') {
+      let agentId = url.searchParams.get("agent");
+
       if (!agentId && request.method === "POST") {
         try {
           const clone = request.clone();
@@ -1488,23 +1645,21 @@ export default {
       }
 
       if (!agentId) {
-         console.error("[GeminiWorker|Router] ❌ Missing agent ID in URL query and webhook payload");
-         return new Response("Missing agent ID", { status: 400 });
+        console.error("[GeminiWorker|Router] ❌ Missing agent ID in URL query and webhook payload");
+        return new Response("Missing agent ID", { status: 400 });
       }
       
       console.log(`[GeminiWorker|Router] Resolving Native Durable Object for Stage UUID: ${agentId}`);
       try {
-         // Raw native DO initialization
-         const id = env.GeminiLiveAgent.idFromName(agentId);
-         const stub = env.GeminiLiveAgent.get(id);
-         console.log(`[GeminiWorker|Router] Forwarding request to DO stub...`);
-         return stub.fetch(request);
+        const id = env.GeminiLiveAgent.idFromName(agentId);
+        const stub = env.GeminiLiveAgent.get(id);
+        return stub.fetch(request);
       } catch(err) {
-         console.error(`[GeminiWorker|Router] ❌ Error routing to Native DO: ${err.message}\nStack: ${err.stack}`);
-         return new Response(`Native DO routing error: ${err.message}`, { status: 500 });
+        console.error(`[GeminiWorker|Router] ❌ Error routing to Native DO: ${err.message}\nStack: ${err.stack}`);
+        return new Response(`Native DO routing error: ${err.message}`, { status: 500 });
       }
     }
     
-    return new Response("Gemini Live Edge Worker active. Hit /realtime-ai to initialize DO.", { status: 200 });
+    return new Response("Gemini Live Edge Worker active. Hit /inspect or /realtime-ai.", { status: 200 });
   }
-}
+};
