@@ -556,7 +556,7 @@ Use tools when the student asks about a specific course or topic from their curr
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-20b",
             messages: msgs,
             tools: GROQ_TOOLS,
             tool_choice: "auto",
@@ -804,6 +804,70 @@ Use tools when the student asks about a specific course or topic from their curr
     const url = new URL(request.url);
     this.conversationId = url.searchParams.get("agent");
     this.studentName = url.searchParams.get("name") || "Scholar";
+
+    // --- INTERNAL GOD-MODE REGISTRY & RELAY HANDLERS ---
+    if (url.pathname === '/internal-log' && request.method === 'POST') {
+      try {
+        const { entry } = await request.json();
+        if (entry) {
+          const relayedEntry = {
+            ...entry,
+            message: `[${entry.student || 'Scholar'} | ${entry.room ? entry.room.slice(0, 14) + '...' : '1-on-1'}] ${entry.message}`
+          };
+          this.logRing.push(relayedEntry);
+          if (this.logRing.length > 150) this.logRing.shift();
+
+          const sseMsg = `data: ${JSON.stringify(relayedEntry)}\n\n`;
+          for (const client of this.sseClients) {
+            try {
+              client.writer.write(new TextEncoder().encode(sseMsg));
+            } catch (e) {
+              this.sseClients.delete(client);
+            }
+          }
+        }
+        return new Response("OK", { status: 200 });
+      } catch (e) {
+        return new Response(e.message, { status: 400 });
+      }
+    }
+
+    if (url.pathname === '/registry-register' && request.method === 'POST') {
+      try {
+        const payload = await request.json();
+        this.activeRooms.set(payload.id, {
+          id: payload.id,
+          student: payload.student || 'Scholar',
+          type: payload.type || '1-on-1 Voice Tutoring',
+          isLive: true,
+          label: `${payload.student}'s ${payload.type} (${payload.id.slice(0, 8)}...)`,
+          lastSeen: Date.now()
+        });
+        this.emitLog("SYSTEM", `🟢 Active session registered: ${payload.student} (${payload.id.slice(0, 8)}...)`);
+        return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(e.message, { status: 400 });
+      }
+    }
+
+    if (url.pathname === '/registry-unregister' && request.method === 'POST') {
+      try {
+        const payload = await request.json();
+        this.activeRooms.delete(payload.id);
+        this.emitLog("SYSTEM", `🔴 Session disconnected: ${payload.id.slice(0, 8)}...`);
+        return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(e.message, { status: 400 });
+      }
+    }
+
+    if (url.pathname === '/active-registry') {
+      const activeList = Array.from(this.activeRooms.values());
+      return new Response(JSON.stringify(activeList), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
     // --- MISSION CONTROL INSPECTOR ENDPOINT ---
     if (url.pathname.endsWith('/inspect')) {
