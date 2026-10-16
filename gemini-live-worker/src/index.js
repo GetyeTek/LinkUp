@@ -532,12 +532,16 @@ export class GeminiLiveAgent {
               }).filter(Boolean).join('\n');
             };
 
-            const sectionText = (pages || []).map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
+            const rawSectionText = (pages || []).map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
+            const sliced = this.sliceTextToTokenBudget(rawSectionText, 2200, "\n\n[...Section content truncated to protect TPM budget...]");
             result = { 
               status: "success", 
               matched_section: matchedItem.title,
               breadcrumb: matchedItem.breadcrumb,
-              text: sectionText || "Section is empty." 
+              text: sliced.text || "Section is empty.",
+              tokens: sliced.finalTokens,
+              original_tokens: sliced.originalTokens,
+              is_sliced: sliced.isSliced
             };
           } else {
             result = { status: "error", message: `Section "${args.section_title}" not found in TOC with sufficient confidence (>=80%).` };
@@ -579,8 +583,15 @@ export class GeminiLiveAgent {
             }).filter(Boolean).join('\n');
           };
 
-          const sectionText = (pages || []).map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
-          result = { status: "success", text: sectionText || "Pages are empty or do not exist." };
+          const rawSectionText = (pages || []).map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
+          const sliced = this.sliceTextToTokenBudget(rawSectionText, 2200, "\n\n[...Pages content truncated to protect TPM budget...]");
+          result = { 
+            status: "success", 
+            text: sliced.text || "Pages are empty or do not exist.",
+            tokens: sliced.finalTokens,
+            original_tokens: sliced.originalTokens,
+            is_sliced: sliced.isSliced
+          };
         } else {
           result = { status: "error", message: "Course book not found." };
         }
@@ -630,11 +641,28 @@ EXAMPLE OUTPUT FORMAT:
         contextualMessages.unshift(msg);
       }
 
-      this.lastPromptTokens = totalTokens;
-      this.emitLog("TIKTOKEN", `Context tokens compiled: ${totalTokens} / 6500`, { tokens: totalTokens });
+      let currentMessages = [
+        { role: "system", content: systemPrompt },
+        ...contextualMessages
+      ];
 
-      const callGroqApi = async (msgs) => {
-        return await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const callGroqWithAudit = async (msgs, roundLabel = "Turn 1") => {
+        let promptTokenSum = 0;
+        const breakdown = msgs.map(m => {
+          const contentStr = typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '');
+          const t = this.countTokens(contentStr);
+          promptTokenSum += t;
+          return { role: m.role, tokens: t };
+        });
+
+        this.lastPromptTokens = promptTokenSum;
+        this.emitLog("TIKTOKEN", `[${roundLabel}] Injected payload: ${promptTokenSum} tokens across ${msgs.length} messages.`, {
+          tokens: promptTokenSum,
+          round: roundLabel,
+          message_breakdown: breakdown
+        });
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${apiKey}`,
@@ -649,56 +677,83 @@ EXAMPLE OUTPUT FORMAT:
             max_tokens: 1024
           })
         });
-      };
 
-      let currentMessages = [
-        { role: "system", content: systemPrompt },
-        ...contextualMessages
-      ];
+        if (!response.ok) {
+          const errText = await response.text();
 
-      let res = await callGroqApi(currentMessages);
+          if (response.status === 429) {
+            await this.cooldownGroqKey(keyId, 60);
 
-      if (!res.ok) {
-        const errText = await res.text();
-        if (res.status === 429) {
-          await this.cooldownGroqKey(keyId, 60);
+            const rateLimitMeta = {
+              status: 429,
+              round: roundLabel,
+              injected_tokens: promptTokenSum,
+              retry_after: response.headers.get("retry-after") || "N/A",
+              limit_tokens: response.headers.get("x-ratelimit-limit-tokens") || "N/A",
+              remaining_tokens: response.headers.get("x-ratelimit-remaining-tokens") || "N/A",
+              reset_tokens: response.headers.get("x-ratelimit-reset-tokens") || "N/A"
+            };
+
+            try {
+              const parsedErr = JSON.parse(errText);
+              rateLimitMeta.raw_error = parsedErr;
+              const errMsg = parsedErr?.error?.message || "";
+              const limitMatch = errMsg.match(/Limit\s*(\d+)/i);
+              const reqMatch = errMsg.match(/Requested\s*(\d+)/i);
+              const usedMatch = errMsg.match(/Used\s*(\d+)/i);
+              if (limitMatch) rateLimitMeta.parsed_limit = parseInt(limitMatch[1], 10);
+              if (reqMatch) rateLimitMeta.parsed_requested = parseInt(reqMatch[1], 10);
+              if (usedMatch) rateLimitMeta.parsed_used = parseInt(usedMatch[1], 10);
+              if (limitMatch && reqMatch) {
+                rateLimitMeta.overage = rateLimitMeta.parsed_requested - rateLimitMeta.parsed_limit;
+              }
+            } catch (e) {
+              rateLimitMeta.raw_error_text = errText;
+            }
+
+            this.emitLog("RATE_LIMIT", `🚨 429 TPM Limit Exceeded on ${roundLabel}! Requested: ${rateLimitMeta.parsed_requested || promptTokenSum} tokens`, rateLimitMeta);
+          }
+
+          // Salvage Attempt: Recover text if Groq threw a tool error but generated valid spoken content
+          try {
+            const errJson = JSON.parse(errText);
+            const fg = errJson?.error?.failed_generation;
+            if (fg) {
+              let salvagedChunks = [];
+              const fgMatches = [...fg.matchAll(/<chunk>([\s\S]*?)<\/chunk>/gi)];
+              if (fgMatches.length > 0) {
+                salvagedChunks = fgMatches.map(m => m[1].trim()).filter(Boolean);
+              } else {
+                try {
+                  const parsedFg = JSON.parse(fg);
+                  if (Array.isArray(parsedFg.arguments?.spoken_chunks)) {
+                    salvagedChunks = parsedFg.arguments.spoken_chunks;
+                  }
+                } catch (e) {}
+              }
+              if (salvagedChunks.length > 0) {
+                this.emitLog("GROQ", `Salvaged ${salvagedChunks.length} chunks from failed generation.`);
+                const sanitizedChunks = salvagedChunks.map(c => sanitizeForSpeech(c)).filter(Boolean);
+                this.broadcast(JSON.stringify({
+                  type: "miron_thought",
+                  text: sanitizedChunks.join(' ')
+                }));
+                this.translationQueue.push(...sanitizedChunks);
+                this.processTranslationQueue();
+                return { isSalvaged: true };
+              }
+            }
+          } catch (salvageErr) {}
+
+          throw new Error(`Groq API error ${response.status}: ${errText}`);
         }
 
-        // Salvage Attempt: Recover text if Groq threw a tool error but generated valid spoken content
-        try {
-          const errJson = JSON.parse(errText);
-          const fg = errJson?.error?.failed_generation;
-          if (fg) {
-            let salvagedChunks = [];
-            const fgMatches = [...fg.matchAll(/<chunk>([\s\S]*?)<\/chunk>/gi)];
-            if (fgMatches.length > 0) {
-              salvagedChunks = fgMatches.map(m => m[1].trim()).filter(Boolean);
-            } else {
-              try {
-                const parsedFg = JSON.parse(fg);
-                if (Array.isArray(parsedFg.arguments?.spoken_chunks)) {
-                  salvagedChunks = parsedFg.arguments.spoken_chunks;
-                }
-              } catch (e) {}
-            }
-            if (salvagedChunks.length > 0) {
-              this.emitLog("GROQ", `Salvaged ${salvagedChunks.length} chunks from failed generation.`);
-              const sanitizedChunks = salvagedChunks.map(c => sanitizeForSpeech(c)).filter(Boolean);
-              this.broadcast(JSON.stringify({
-                type: "miron_thought",
-                text: sanitizedChunks.join(' ')
-              }));
-              this.translationQueue.push(...sanitizedChunks);
-              this.processTranslationQueue();
-              return;
-            }
-          }
-        } catch (salvageErr) {}
+        return await response.json();
+      };
 
-        throw new Error(`Groq API error ${res.status}: ${errText}`);
-      }
+      let data = await callGroqWithAudit(currentMessages, "Turn 1 (Initial Prompt)");
+      if (data?.isSalvaged) return;
 
-      let data = await res.json();
       let choice = data.choices?.[0];
 
       // Handle function / tool calling loop (up to 2 rounds)
@@ -716,12 +771,14 @@ EXAMPLE OUTPUT FORMAT:
           
           const toolResult = await this.executeTool(fnName, fnArgs);
           
-          // Log the exact tool result to SSE Mission Control
           if (toolResult.status === "error") {
             this.emitLog("ERROR", `Tool [${fnName}] failed: ${toolResult.message}`);
           } else {
-            this.emitLog("TOOL", `Tool [${fnName}] succeeded.`, { 
-              preview: JSON.stringify(toolResult).substring(0, 150) + "..." 
+            this.emitLog("TOOL", `Tool [${fnName}] succeeded (${toolResult.tokens || 0} tokens).`, { 
+              tokens: toolResult.tokens,
+              original_tokens: toolResult.original_tokens,
+              is_sliced: toolResult.is_sliced,
+              preview: (toolResult.text || "").substring(0, 200) + "..." 
             });
           }
 
@@ -733,11 +790,8 @@ EXAMPLE OUTPUT FORMAT:
           });
         }
 
-        res = await callGroqApi(currentMessages);
-        if (!res.ok) {
-          throw new Error(`Groq API error on tool response: ${res.status}`);
-        }
-        data = await res.json();
+        data = await callGroqWithAudit(currentMessages, `Turn ${toolRounds + 1} (Tool Response)`);
+        if (data?.isSalvaged) return;
         choice = data.choices?.[0];
       }
 
@@ -828,6 +882,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
     .badge-GEMINI { background: #1e3a8a; color: #93c5fd; border: 1px solid #2563eb; }
     .badge-USER { background: #374151; color: #f3f4f6; }
     .badge-ERROR { background: #7f1d1d; color: #fca5a5; }
+    .badge-RATE_LIMIT { background: #831843; color: #fbcfe8; border: 1px solid #be185d; }
     .log-msg { color: #e5e7eb; word-break: break-word; font-family: -apple-system, monospace; }
     .json-data { background: #090a0f; border-radius: 4px; padding: 6px 8px; font-size: 11px; color: #9ca3af; overflow-x: auto; white-space: pre-wrap; margin-top: 4px; border-left: 2px solid #374151; }
     footer { background: #13151f; border-top: 1px solid #232738; padding: 8px 16px; display: flex; justify-content: space-between; font-size: 11px; color: #9ca3af; }
