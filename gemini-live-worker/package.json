@@ -1,7 +1,9 @@
 {
   "name": "gemini-live-worker",
   "type": "module",
-  "dependencies": {},
+  "dependencies": {
+    "js-tiktoken": "^1.0.18"
+  },
   "devDependencies": {
     "wrangler": "^4.107.0"
   }
