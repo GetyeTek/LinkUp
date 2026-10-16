@@ -300,6 +300,7 @@ export class GeminiLiveAgent {
     this.speechDebounceTimer = null;
     this.translationQueue = [];
     this.isGeminiTranslating = false;
+    this.isGeminiFallbackActive = false;
 
     // Restore persistent log ring and active rooms across DO hibernation
     this.ctx.blockConcurrencyWhile(async () => {
@@ -604,22 +605,18 @@ export class GeminiLiveAgent {
 
       const systemPrompt = MIRON_MASTER_BASE.replace(/\$\{studentName\}/g, this.studentName) + `
 
-CRITICAL LINGUISTIC & FORMATTING RULES (PRIMARY BRAIN):
+      CRITICAL LINGUISTIC & FORMATTING RULES (PRIMARY BRAIN):
 - Explain academic concepts with crystal clarity, step-by-step logic, and intuitive real-world analogies.
 - Formulate your entire response in clear, concise, and engaging English. Do NOT generate in Amharic script.
 - Sound like a supportive, ride-or-die study buddy—warm, encouraging, sharp, and conversational.
-- You MUST output your response STRICTLY as a JSON object containing an array of "spoken_chunks".
-- Each chunk should represent a complete, well-paced thought (a single long sentence or a few short ones) to be spoken sequentially by the speech engine.
-- DO NOT output any markdown, explanations, or text outside the JSON object.
+- Wrap each spoken thought in <chunk>...</chunk> tags.
+- Each <chunk> must represent a single, well-paced thought (1 or 2 conversational sentences) for the audio engine to synthesize.
+- DO NOT use JSON. DO NOT invoke or hallucinate a function/tool named "JSON" or "response". Write raw conversational English with <chunk> tags directly in your message body.
 
-JSON SCHEMA REQUIREMENT:
-{
-  "spoken_chunks": [
-    "Your first well-paced thought goes here.",
-    "The next logical point or sentence.",
-    "Conclude with a thought-provoking challenge."
-  ]
-}`;
+EXAMPLE OUTPUT FORMAT:
+<chunk>Your first well-paced thought goes here.</chunk>
+<chunk>The next logical concept or concrete real-world analogy.</chunk>
+<chunk>Conclude with an active application challenge or thought experiment.</chunk>`;
 
       let totalTokens = this.countTokens(systemPrompt);
       const contextualMessages = [];
@@ -666,6 +663,38 @@ JSON SCHEMA REQUIREMENT:
         if (res.status === 429) {
           await this.cooldownGroqKey(keyId, 60);
         }
+
+        // Salvage Attempt: Recover text if Groq threw a tool error but generated valid spoken content
+        try {
+          const errJson = JSON.parse(errText);
+          const fg = errJson?.error?.failed_generation;
+          if (fg) {
+            let salvagedChunks = [];
+            const fgMatches = [...fg.matchAll(/<chunk>([\s\S]*?)<\/chunk>/gi)];
+            if (fgMatches.length > 0) {
+              salvagedChunks = fgMatches.map(m => m[1].trim()).filter(Boolean);
+            } else {
+              try {
+                const parsedFg = JSON.parse(fg);
+                if (Array.isArray(parsedFg.arguments?.spoken_chunks)) {
+                  salvagedChunks = parsedFg.arguments.spoken_chunks;
+                }
+              } catch (e) {}
+            }
+            if (salvagedChunks.length > 0) {
+              this.emitLog("GROQ", `Salvaged ${salvagedChunks.length} chunks from failed generation.`);
+              const sanitizedChunks = salvagedChunks.map(c => sanitizeForSpeech(c)).filter(Boolean);
+              this.broadcast(JSON.stringify({
+                type: "miron_thought",
+                text: sanitizedChunks.join(' ')
+              }));
+              this.translationQueue.push(...sanitizedChunks);
+              this.processTranslationQueue();
+              return;
+            }
+          }
+        } catch (salvageErr) {}
+
         throw new Error(`Groq API error ${res.status}: ${errText}`);
       }
 
@@ -721,17 +750,16 @@ JSON SCHEMA REQUIREMENT:
         this.emitLog("GROQ", `Cognitive response generated (${finalTokens} tokens).`, { tokens: finalTokens });
 
         let chunks = [];
-        try {
-            const cleaned = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-            const parsed = JSON.parse(cleaned);
-            if (parsed.spoken_chunks && Array.isArray(parsed.spoken_chunks)) {
-                chunks = parsed.spoken_chunks;
-            } else {
-                throw new Error("Missing spoken_chunks array in JSON");
-            }
-        } catch (err) {
-            console.warn("[Agent|Groq] JSON parse failed, falling back to regex chunking.", err);
-            const cleanRaw = rawContent.replace(/[{}"\[\]]/g, '').trim();
+        const chunkRegex = /<chunk>([\s\S]*?)<\/chunk>/gi;
+        let cMatch;
+        while ((cMatch = chunkRegex.exec(rawContent)) !== null) {
+            const trimmed = cMatch[1].trim();
+            if (trimmed) chunks.push(trimmed);
+        }
+
+        // Bulletproof Fallback: If model omitted <chunk> tags, split naturally on paragraph breaks
+        if (chunks.length === 0) {
+            const cleanRaw = rawContent.replace(/<[^>]+>/g, '').trim();
             chunks = cleanRaw.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
         }
 
@@ -756,6 +784,7 @@ JSON SCHEMA REQUIREMENT:
       // --- FALLBACK TO GEMINI ---
       // If Groq fails, Gemini abandons translation-only mode and temporarily assumes the Master Brain role.
       if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
+        this.isGeminiFallbackActive = true;
         const fallbackInstruction = `[SYSTEM ALERT: The primary cognitive brain has disconnected. You must immediately take over full reasoning capabilities to answer the user's latest query.]\n\n` + 
           MIRON_MASTER_BASE.replace(/\$\{studentName\}/g, this.studentName) + `
 
@@ -1350,6 +1379,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
     }
     this.pendingUserSpeech = "";
     this.isGroqSynthesizing = false;
+    this.isGeminiFallbackActive = false;
 
     if (this.geminiWs) {
       console.log("[Agent|DO|CLEANUP] Closing upstream Gemini WS.");
@@ -1442,6 +1472,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
       this.pendingUserSpeech = "";
       this.translationQueue = [];
       this.isGeminiTranslating = false;
+      this.isGeminiFallbackActive = false;
       console.log("[Agent|DO|CLEANUP] Stage is completely empty. Holding upstream socket warm for 30s...");
       this.cleanupTimeout = setTimeout(() => {
           this.executeHardCleanup();
@@ -1676,17 +1707,21 @@ CRITICAL OPERATIONAL RULES:
                 }
 
                 // --- 1-ON-1 AUDIO SUPPRESSION: BLOCK ROGUE GEMINI SPEECH ---
-                if (this.isOneOnOne && !this.isGeminiTranslating) {
+                if (this.isOneOnOne && !this.isGeminiTranslating && !this.isGeminiFallbackActive) {
                     if (parsed.serverContent?.modelTurn || parsed.serverContent?.outputTranscription) {
                         // Drop autonomous Gemini model responses; Groq is the primary cognitive brain
                         return;
                     }
                 }
 
-                // Turn completed for Groq speech synthesis: Fire the next chunk!
-                if (this.isOneOnOne && parsed.serverContent?.turnComplete && this.isGeminiTranslating) {
-                    this.isGeminiTranslating = false;
-                    this.processTranslationQueue(); // Load next paragraph if available
+                // Turn completed for Groq speech synthesis or Gemini fallback
+                if (this.isOneOnOne && parsed.serverContent?.turnComplete) {
+                    if (this.isGeminiFallbackActive) {
+                        this.isGeminiFallbackActive = false;
+                    } else if (this.isGeminiTranslating) {
+                        this.isGeminiTranslating = false;
+                        this.processTranslationQueue(); // Load next paragraph if available
+                    }
                 }
                 
                 // --- TOOL CALL INTERCEPTOR ---
