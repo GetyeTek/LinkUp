@@ -76,10 +76,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         const last = prev[prev.length - 1];
                         if (last && last.role === 'user' && !last.isFinal) {
                             const updated = [...prev];
-                            updated[updated.length - 1] = { ...last, text: userText, isFinal: true };
+                            updated[updated.length - 1] = { ...last, text: last.text + userText };
                             return updated;
                         } else {
-                            return [...prev, { id: Date.now(), role: 'user', text: userText, isFinal: true }];
+                            return [...prev, { id: Date.now(), role: 'user', text: userText, isFinal: false }];
                         }
                     });
                 }
@@ -103,7 +103,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 if (payload.serverContent?.turnComplete) {
                     setTranscripts(prev => {
                         const last = prev[prev.length - 1];
-                        if (last && last.role === 'miron') {
+                        if (last && !last.isFinal) {
                             const updated = [...prev];
                             updated[updated.length - 1] = { ...last, isFinal: true };
                             return updated;
