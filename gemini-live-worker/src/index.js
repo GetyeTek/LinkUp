@@ -687,6 +687,16 @@ JSON SCHEMA REQUIREMENT:
           this.emitLog("TOOL", `Executing tool: ${fnName}`, fnArgs);
           
           const toolResult = await this.executeTool(fnName, fnArgs);
+          
+          // Log the exact tool result to SSE Mission Control
+          if (toolResult.status === "error") {
+            this.emitLog("ERROR", `Tool [${fnName}] failed: ${toolResult.message}`);
+          } else {
+            this.emitLog("TOOL", `Tool [${fnName}] succeeded.`, { 
+              preview: JSON.stringify(toolResult).substring(0, 150) + "..." 
+            });
+          }
+
           currentMessages.push({
             role: "tool",
             tool_call_id: tc.id,
