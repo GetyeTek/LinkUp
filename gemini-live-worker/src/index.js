@@ -279,6 +279,92 @@ export class GeminiLiveAgent {
     }
   }
 
+  async executeGroqCognitiveTurn(userMsg) {
+    if (!userMsg || !userMsg.trim()) return;
+
+    try {
+      this.emitLog("GROQ", `Cognitive turn initiated for: "${userMsg.slice(0, 100)}"`);
+
+      const { id: keyId, apiKey } = await this.leaseGroqKey();
+
+      this.groqChatHistory.push({ role: "user", content: userMsg });
+
+      const systemPrompt = `You are Miron, a brilliant, charismatic peer tutor and university mentor helping ${this.studentName}.
+Explain academic and university concepts clearly, accurately, and intuitively.
+Structure your answers with conversational clarity, real-world examples, and step-by-step logic.
+Keep your response concise and engaging (under 3 paragraphs unless extensive depth is specifically requested) so it sounds natural when spoken.`;
+
+      let totalTokens = this.countTokens(systemPrompt);
+      const contextualMessages = [];
+
+      for (let i = this.groqChatHistory.length - 1; i >= 0; i--) {
+        const msg = this.groqChatHistory[i];
+        const msgTokens = this.countTokens(msg.content);
+        if (totalTokens + msgTokens > 5500) break;
+        totalTokens += msgTokens;
+        contextualMessages.unshift(msg);
+      }
+
+      this.lastPromptTokens = totalTokens;
+      this.emitLog("TIKTOKEN", `Context tokens compiled: ${totalTokens} / 6500`, { tokens: totalTokens });
+
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...contextualMessages
+          ],
+          temperature: 0.7,
+          max_tokens: 1024
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        if (res.status === 429) {
+          await this.cooldownGroqKey(keyId, 60);
+        }
+        throw new Error(`Groq API error ${res.status}: ${errText}`);
+      }
+
+      const data = await res.json();
+      const assistantText = data.choices?.[0]?.message?.content || "";
+      const usage = data.usage || {};
+      const finalTokens = usage.total_tokens || (totalTokens + this.countTokens(assistantText));
+
+      if (assistantText) {
+        this.groqChatHistory.push({ role: "assistant", content: assistantText });
+        this.emitLog("GROQ", `Cognitive response generated (${finalTokens} tokens).`, { tokens: finalTokens });
+
+        this.broadcast(JSON.stringify({
+          type: "miron_thought",
+          text: assistantText
+        }));
+
+        const cleanChunk = sanitizeForSpeech(assistantText);
+        const prompt = `Synthesize and speak the following peer tutor explanation to ${this.studentName} in your warm, authentic voice (natural campus Amharic and English blend):\n\n${cleanChunk}`;
+        const payload = JSON.stringify({
+          clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
+        });
+
+        if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
+          this.geminiWs.send(payload);
+        } else {
+          this.messageQueue.push(payload);
+        }
+      }
+    } catch (e) {
+      this.emitLog("ERROR", `Cognitive turn failed: ${e.message}`, { error: e.message });
+      console.error("[Agent|Groq|CognitiveTurn]", e.message);
+    }
+  }
+
   getInspectHtml(agentId) {
     return `<!DOCTYPE html>
 <html lang="en">
