@@ -649,8 +649,7 @@ JSON SCHEMA REQUIREMENT:
             tools: GROQ_TOOLS,
             tool_choice: "auto",
             temperature: 0.7,
-            max_tokens: 1024,
-            response_format: { type: "json_object" }
+            max_tokens: 1024
           })
         });
       };
