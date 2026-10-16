@@ -61,7 +61,19 @@ export default {
       }
     }
 
-    // A. Route AI Stage WebSocket connections directly to the Gemini Live edge worker service binding
+    // A. Route Mission Control Inspector directly to Gemini Live worker
+    if (url.pathname === '/inspect') {
+      if (!env.GEMINI_WORKER) {
+        console.error("[Gateway] ❌ FATAL: GEMINI_WORKER service binding missing!");
+        return new Response(JSON.stringify({ error: "Gemini Live Worker unlinked" }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+      return env.GEMINI_WORKER.fetch(request);
+    }
+
+    // B. Route AI Stage WebSocket connections directly to the Gemini Live edge worker service binding
     if (url.pathname === '/realtime-ai') {
       console.log(`[Gateway] 🔁 Forwarding /realtime-ai to GEMINI_WORKER service binding...`);
       if (!env.GEMINI_WORKER) {
