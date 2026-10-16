@@ -188,6 +188,7 @@ export class GeminiLiveAgent {
     // --- MISSION CONTROL & COGNITION STATE ---
     this.logRing = [];
     this.sseClients = new Set();
+    this.activeRooms = new Map();
     this.groqChatHistory = [];
     this.tokenizer = null;
     this.currentBookId = null;
@@ -195,6 +196,21 @@ export class GeminiLiveAgent {
     this.lastPromptTokens = 0;
     
     console.log(`[Agent|DO|INIT] 🏗️ Native Constructor initialized.`);
+  }
+
+  notifyRegistry(action, payload) {
+    if (!this.env?.GeminiLiveAgent) return;
+    this.ctx.waitUntil((async () => {
+      try {
+        const globalId = this.env.GeminiLiveAgent.idFromName("debug-global");
+        const globalStub = this.env.GeminiLiveAgent.get(globalId);
+        await globalStub.fetch(`https://gemini-live-worker/registry-${action}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {}
+    })());
   }
 
   emitLog(category, message, meta = {}) {
@@ -217,6 +233,27 @@ export class GeminiLiveAgent {
       }
     }
     console.log(`[Agent|${category}] ${message}`, Object.keys(meta).length ? JSON.stringify(meta) : '');
+
+    // God-Mode Relay: Mirror log to debug-global so global inspector sees all active traffic
+    if (this.conversationId && this.conversationId !== 'debug-global' && this.env?.GeminiLiveAgent) {
+      this.ctx.waitUntil((async () => {
+        try {
+          const globalId = this.env.GeminiLiveAgent.idFromName("debug-global");
+          const globalStub = this.env.GeminiLiveAgent.get(globalId);
+          await globalStub.fetch("https://gemini-live-worker/internal-log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              entry: {
+                ...entry,
+                room: this.conversationId,
+                student: this.studentName || 'Scholar'
+              }
+            })
+          });
+        } catch (e) {}
+      })());
+    }
   }
 
   countTokens(text) {
@@ -669,6 +706,16 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
 
     console.log(`[Agent|DO|CONNECT] Client securely joined live stage.`);
 
+    // Auto-register session in Global Registry & broadcast connection
+    if (this.conversationId && this.conversationId !== 'debug-global') {
+      this.notifyRegistry('register', {
+        id: this.conversationId,
+        student: this.studentName,
+        type: this.isOneOnOne ? '1-on-1 Voice Tutoring' : 'Live Group Stage'
+      });
+      this.emitLog("USER", `🔗 ${this.studentName || 'Student'} connected to ${this.isOneOnOne ? '1-on-1 Live Voice' : 'Stage'}.`);
+    }
+
     // Trigger Gemini sync asynchronously so we don't block the handshake
     if (!this.geminiWs && !this.isInitializingGemini) {
       console.log(`[Agent|DO] First client connected. Triggering Gemini initialization.`);
@@ -918,6 +965,10 @@ Keep your response concise and engaging (under 3 paragraphs unless extensive dep
     const activeSockets = this.ctx.getWebSockets().filter(s => s !== ws);
     
     if (activeSockets.length === 0) {
+      if (this.conversationId && this.conversationId !== 'debug-global') {
+        this.notifyRegistry('unregister', { id: this.conversationId });
+        this.emitLog("USER", `🔌 ${this.studentName || 'Student'} disconnected.`);
+      }
       console.log("[Agent|DO|CLEANUP] Stage is completely empty. Holding upstream socket warm for 30s...");
       this.cleanupTimeout = setTimeout(() => {
           this.executeHardCleanup();
@@ -1469,9 +1520,30 @@ Speak with authentic emotional warmth, clarity, and pacing. Never mention prompt
 // GLOBAL SESSION HUB & ROUTER
 // ==============================================================================
 async function getActiveSessions(env) {
+  const sessions = [];
+  const seen = new Set();
+
+  // 1. Fetch live in-memory sessions from God-Mode registry (1-on-1 voice & active stages)
+  try {
+    const globalId = env.GeminiLiveAgent.idFromName("debug-global");
+    const globalStub = env.GeminiLiveAgent.get(globalId);
+    const regRes = await globalStub.fetch("https://gemini-live-worker/active-registry");
+    if (regRes.ok) {
+      const activeList = await regRes.json();
+      for (const item of activeList) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          sessions.push(item);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[Registry|ActiveFetch|Error]", e.message);
+  }
+
   const supabaseUrl = env?.SUPABASE_URL;
   const serviceKey = env?.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) return [];
+  if (!supabaseUrl || !serviceKey) return sessions;
 
   try {
     const res1 = await fetch(`${supabaseUrl}/rest/v1/live_study_sessions?select=conversation_id,created_at&order=created_at.desc&limit=10`, {
