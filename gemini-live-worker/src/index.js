@@ -296,9 +296,10 @@ export class GeminiLiveAgent {
     this.lastPromptTokens = 0;
 
     // --- 1-ON-1 COGNITIVE PIPELINE STATE (GROQ BRAIN + GEMINI VOICE) ---
-    this.isGroqSynthesizing = false;
     this.pendingUserSpeech = "";
     this.speechDebounceTimer = null;
+    this.translationQueue = [];
+    this.isGeminiTranslating = false;
 
     // Restore persistent log ring and active rooms across DO hibernation
     this.ctx.blockConcurrencyWhile(async () => {
@@ -434,6 +435,23 @@ export class GeminiLiveAgent {
     } catch (e) {
       console.error("[Agent|Groq|Cooldown]", e.message);
     }
+  }
+
+  processTranslationQueue() {
+    if (!this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN || !this.isGeminiSetupComplete) return;
+    if (this.isGeminiTranslating || this.translationQueue.length === 0) return;
+
+    const chunk = this.translationQueue.shift();
+    this.isGeminiTranslating = true;
+    
+    const prompt = `Translate and speak the following explanation in natural, warm campus Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms to ${this.studentName}. Sound like an authentic Addis Ababa university peer studying together. Speak the translation directly:\n\n${chunk}`;
+    
+    const payload = JSON.stringify({
+        clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
+    });
+    
+    this.geminiWs.send(payload);
+    this.emitLog("GEMINI", `Translating chunk (${chunk.length} chars). ${this.translationQueue.length} chunks remaining.`);
   }
 
   async executeTool(name, args) {
@@ -687,20 +705,17 @@ CRITICAL LINGUISTIC RULES (PRIMARY BRAIN):
         }));
 
         const cleanChunk = sanitizeForSpeech(assistantText);
-        const prompt = `Translate and speak the following explanation in natural, warm campus Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms to ${this.studentName}. Sound like an authentic Addis Ababa university peer studying together. Speak the translation directly:\n\n${cleanChunk}`;
-        const payload = JSON.stringify({
-          clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
-        });
-
-        this.isGroqSynthesizing = true;
-        if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
-          this.geminiWs.send(payload);
-        } else {
-          this.messageQueue.push(payload);
-        }
+        
+        // Smart Pacing: Split massive responses by paragraph boundaries
+        const paragraphs = cleanChunk.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+        this.translationQueue.push(...paragraphs);
+        
+        // Trigger the queue loop
+        this.processTranslationQueue();
       }
     } catch (e) {
-      this.isGroqSynthesizing = false;
+      this.translationQueue = [];
+      this.isGeminiTranslating = false;
       this.emitLog("ERROR", `Cognitive turn failed: ${e.message}. Engaging Gemini fallback.`, { error: e.message });
       console.error("[Agent|Groq|CognitiveTurn]", e.message);
 
@@ -1208,6 +1223,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
 
             if (this.isOneOnOne && oneOnOneText) {
                 this.emitLog("USER", oneOnOneText);
+                this.translationQueue = []; // INTERRUPT: Clear pending translation chunks
                 this.ctx.waitUntil(this.executeGroqCognitiveTurn(oneOnOneText));
                 return; // Do NOT forward user text directly to Gemini Live
             }
@@ -1390,7 +1406,8 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
         this.speechDebounceTimer = null;
       }
       this.pendingUserSpeech = "";
-      this.isGroqSynthesizing = false;
+      this.translationQueue = [];
+      this.isGeminiTranslating = false;
       console.log("[Agent|DO|CLEANUP] Stage is completely empty. Holding upstream socket warm for 30s...");
       this.cleanupTimeout = setTimeout(() => {
           this.executeHardCleanup();
@@ -1594,6 +1611,8 @@ CRITICAL OPERATIONAL RULES:
 
                 // --- 1-ON-1 VOICE INPUT: INTERCEPT STT TRANSCRIPTION FOR GROQ ---
                 if (this.isOneOnOne && parsed.serverContent?.inputTranscription?.text) {
+                    this.translationQueue = []; // INTERRUPT: Nuke the remaining script if user barges in!
+
                     const speechChunk = parsed.serverContent.inputTranscription.text;
                     this.pendingUserSpeech = (this.pendingUserSpeech || "") + speechChunk;
 
@@ -1614,7 +1633,7 @@ CRITICAL OPERATIONAL RULES:
                 }
 
                 // If user finished speech turn according to VAD, flush speech immediately
-                if (this.isOneOnOne && parsed.serverContent?.turnComplete && !this.isGroqSynthesizing && this.pendingUserSpeech?.trim()) {
+                if (this.isOneOnOne && parsed.serverContent?.turnComplete && !this.isGeminiTranslating && this.pendingUserSpeech?.trim()) {
                     if (this.speechDebounceTimer) clearTimeout(this.speechDebounceTimer);
                     const fullSpoken = this.pendingUserSpeech.trim();
                     this.pendingUserSpeech = "";
@@ -1623,16 +1642,17 @@ CRITICAL OPERATIONAL RULES:
                 }
 
                 // --- 1-ON-1 AUDIO SUPPRESSION: BLOCK ROGUE GEMINI SPEECH ---
-                if (this.isOneOnOne && !this.isGroqSynthesizing) {
+                if (this.isOneOnOne && !this.isGeminiTranslating) {
                     if (parsed.serverContent?.modelTurn || parsed.serverContent?.outputTranscription) {
                         // Drop autonomous Gemini model responses; Groq is the primary cognitive brain
                         return;
                     }
                 }
 
-                // Turn completed for Groq speech synthesis
-                if (this.isOneOnOne && parsed.serverContent?.turnComplete && this.isGroqSynthesizing) {
-                    this.isGroqSynthesizing = false;
+                // Turn completed for Groq speech synthesis: Fire the next chunk!
+                if (this.isOneOnOne && parsed.serverContent?.turnComplete && this.isGeminiTranslating) {
+                    this.isGeminiTranslating = false;
+                    this.processTranslationQueue(); // Load next paragraph if available
                 }
                 
                 // --- TOOL CALL INTERCEPTOR ---
