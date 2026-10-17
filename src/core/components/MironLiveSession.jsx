@@ -521,6 +521,12 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                          stage === 'section_confirm' ? 'Ready to Study' :
                          `${selectedBook?.course_code || 'Reader'} • p.${currentPage?.page_number || ''}`}
                     </span>
+                    {isConnected && (
+                        <span className="ml-voice-status-pill">
+                            <i className="fas fa-headphones-simple"></i>
+                            <span>Live Voice</span>
+                        </span>
+                    )}
                 </div>
 
                 <div className="ml-header-right">
@@ -557,6 +563,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             alt="Miron" 
                             className={`ml-avatar ${isMironSpeaking ? 'is-speaking' : ''} ${isConsulting ? 'consulting-mode' : ''}`} 
                         />
+                        {isConnected && isMironSpeaking && (
+                            <div className="ml-speaking-eq-pill" title="Miron Speaking">
+                                <span className="ml-eq-bar b1"></span>
+                                <span className="ml-eq-bar b2"></span>
+                                <span className="ml-eq-bar b3"></span>
+                                <span className="ml-eq-bar b4"></span>
+                            </div>
+                        )}
                     </div>
                     {isConsulting && (
                         <span className="ml-consulting-badge">
@@ -570,7 +584,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     <div className="ml-stage-content course-grid-stage">
                         <div className="ml-stage-header">
                             <h2>What are we studying today?</h2>
-                            <p>Pick a course and Miron will walk you through the curriculum step by step.</p>
+                            <p>Tap a course to explore the curriculum out loud with Miron.</p>
                         </div>
                         {!isCatalogRevealed ? (
                             <div className="ml-courses-grid skeleton-grid">
@@ -605,7 +619,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             <div className="ml-card-icon-box">
                                                 <i className={`fa-solid ${COURSE_ICONS[b.course_code] || 'fa-book-open'}`}></i>
                                             </div>
-                                            <span className="ml-card-code-tag">{b.course_code || 'COURSE'}</span>
+                                            <div className="ml-card-top-tags">
+                                                <span className="ml-voice-cue-chip" title="Voice Guided"><i className="fas fa-volume-high"></i></span>
+                                                <span className="ml-card-code-tag">{b.course_code || 'COURSE'}</span>
+                                            </div>
                                         </div>
 
                                         <h3 className="ml-card-name">{b.title}</h3>
@@ -705,7 +722,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                                         className="ml-toc-section-item" 
                                                                         onClick={() => handleSelectSection(sub, node.title)}
                                                                     >
-                                                                        <span className="ml-toc-sec-title">{sub.title}</span>
+                                                                        <span className="ml-toc-sec-title">
+                                                                            <i className="fas fa-volume-low ml-sec-voice-glyph"></i>
+                                                                            {sub.title}
+                                                                        </span>
                                                                         <span className="ml-toc-sec-arrow">
                                                                             {sub.page ? `p.${sub.page}` : ''} <i className="fas fa-arrow-right"></i>
                                                                         </span>
