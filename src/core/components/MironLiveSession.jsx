@@ -514,7 +514,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 )}
 
                 {/* STAGE 1: TOC SELECT OR STAGE 2: SECTION CONFIRM (SPLIT MASTER-DETAIL WORKSPACE) */}
-                {(stage === 'toc_select' || stage === 'section_confirm') && selectedBook && (
+                {/* STAGE 1, 2, and 3: SPLIT MASTER-DETAIL WORKSPACE */}
+                {stage !== 'course_select' && selectedBook && (
                     <div className="ml-stage-content toc-split-stage">
                         <div className="ml-toc-split-layout">
                             
@@ -542,12 +543,18 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             <span>Pick a chapter on the right to reveal study topics</span>
                                         </div>
                                     )}
+                                    {stage === 'reading' && (
+                                        <div className="ml-showcase-prompt-tip" style={{background: 'rgba(66, 215, 184, 0.1)', borderColor: 'rgba(66, 215, 184, 0.25)'}}>
+                                            <i className="fas fa-book-open"></i>
+                                            <span>Reading Page {currentPage?.page_number || ''}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Column 2: Interactive Pane (TOC Accordion or Section Confirm) */}
+                            {/* Column 2: Interactive Pane (TOC Accordion, Section Confirm, or Reader) */}
                             <div className="ml-toc-interactive-pane">
-                                {stage === 'toc_select' ? (
+                                {stage === 'toc_select' && (
                                     <div className="ml-toc-accordion">
                                         {(selectedBook.toc || []).map((node, chIdx) => {
                                             const isExpanded = expandedChapters.has(chIdx);
@@ -583,8 +590,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             );
                                         })}
                                     </div>
-                                ) : (
-                                    /* Stage 2: Section Confirmation Card */
+                                )}
+
+                                {stage === 'section_confirm' && (
                                     <div className="ml-confirm-card">
                                         <span className="ml-confirm-tag">
                                             <i className="fas fa-bookmark"></i> SELECTED TOPIC
@@ -611,56 +619,55 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         </div>
                                     </div>
                                 )}
+
+                                {stage === 'reading' && (
+                                    <div className="ml-reader-workspace">
+                                        <div className="ml-reader-bar">
+                                            <button 
+                                                className="ml-page-nav-btn" 
+                                                onClick={handlePrevPage} 
+                                                disabled={activePageIndex === 0}
+                                            >
+                                                <i className="fas fa-chevron-left"></i> Prev
+                                            </button>
+                                            <span className="ml-page-indicator">
+                                                Page {activePageIndex + 1} of {sectionPages.length}
+                                            </span>
+                                            <button 
+                                                className="ml-page-nav-btn" 
+                                                onClick={handleNextPage} 
+                                                disabled={activePageIndex >= sectionPages.length - 1}
+                                            >
+                                                Next <i className="fas fa-chevron-right"></i>
+                                            </button>
+                                        </div>
+
+                                        <div className="ml-page-viewport" ref={pageContainerRef}>
+                                            {isLoadingPages ? (
+                                                <div className="ml-page-loader">
+                                                    <i className="fas fa-circle-notch fa-spin fa-2x"></i>
+                                                    <p>Loading textbook page...</p>
+                                                </div>
+                                            ) : currentPage ? (
+                                                <div className="page-wrapper engine-universal" data-page-number={currentPage.page_number}>
+                                                    <div className="page-canvas">
+                                                        {(currentPage.content_json || []).map((block, idx) => (
+                                                            <div key={idx} className="block-target-wrapper">
+                                                                {renderBookBlock ? (
+                                                                    renderBookBlock(block, idx, { bookTitle: selectedBook?.title })
+                                                                ) : (
+                                                                    <p>{block.body || block.text || block.main || ''}</p>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                        </div>
-                    </div>
-                )}
-
-                {/* STAGE 3: HORIZONTAL PAGINATED READER */}
-                {stage === 'reading' && (
-                    <div className="ml-stage-content reading-stage">
-                        <div className="ml-reader-bar">
-                            <button 
-                                className="ml-page-nav-btn" 
-                                onClick={handlePrevPage} 
-                                disabled={activePageIndex === 0}
-                            >
-                                <i className="fas fa-chevron-left"></i> Prev
-                            </button>
-                            <span className="ml-page-indicator">
-                                Page {activePageIndex + 1} of {sectionPages.length}
-                            </span>
-                            <button 
-                                className="ml-page-nav-btn" 
-                                onClick={handleNextPage} 
-                                disabled={activePageIndex >= sectionPages.length - 1}
-                            >
-                                Next <i className="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
-
-                        <div className="ml-page-viewport" ref={pageContainerRef}>
-                            {isLoadingPages ? (
-                                <div className="ml-page-loader">
-                                    <i className="fas fa-circle-notch fa-spin fa-2x"></i>
-                                    <p>Loading textbook page...</p>
-                                </div>
-                            ) : currentPage ? (
-                                <div className="page-wrapper engine-universal" data-page-number={currentPage.page_number}>
-                                    <div className="page-canvas">
-                                        {(currentPage.content_json || []).map((block, idx) => (
-                                            <div key={idx} className="block-target-wrapper">
-                                                {renderBookBlock ? (
-                                                    renderBookBlock(block, idx, { bookTitle: selectedBook?.title })
-                                                ) : (
-                                                    <p>{block.body || block.text || block.main || ''}</p>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : null}
                         </div>
                     </div>
                 )}
