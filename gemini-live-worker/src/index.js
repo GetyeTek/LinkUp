@@ -1327,6 +1327,13 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
         // --- INTERCEPT CONTROL MESSAGES (DO STATE MACHINE) ---
         try {
             const parsed = JSON.parse(message);
+            if (parsed.action === "hangup") {
+                console.log(`[Agent|DO|STATE] Intercepted explicit hangup for ${this.conversationId}. Executing immediate hard cleanup.`);
+                await this.executeHardCleanup();
+                try { ws.close(1000, "Session ended by user"); } catch (e) {}
+                return;
+            }
+
             if (parsed.action === "start_lecture") {
                 console.log(`[Agent|DO|STATE] Intercepted start_lecture. Fetching chunks from database for ${this.conversationId}...`);
                 
@@ -1487,6 +1494,17 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
     this.pendingUserSpeech = "";
     this.isGroqSynthesizing = false;
     this.isGeminiFallbackActive = false;
+    this.groqChatHistory = [];
+    this.readingQueue = [];
+    this.currentChunkIndex = 0;
+    this.stageState = "idle";
+    this.questionBucket = [];
+    this.pendingAnswersQueue = [];
+    this.translationQueue = [];
+    this.messageQueue = [];
+    this.currentBookId = null;
+    this.currentCourseCode = null;
+    this.lastPromptTokens = 0;
 
     if (this.geminiWs) {
       console.log("[Agent|DO|CLEANUP] Closing upstream Gemini WS.");
@@ -1579,11 +1597,16 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
       this.pendingUserSpeech = "";
       this.translationQueue = [];
       this.isGeminiTranslating = false;
-      this.isGeminiFallbackActive = false;
-      console.log("[Agent|DO|CLEANUP] Stage is completely empty. Holding upstream socket warm for 30s...");
-      this.cleanupTimeout = setTimeout(() => {
-          this.executeHardCleanup();
-      }, 30000);
+                this.isGeminiFallbackActive = false;
+          if (this.isOneOnOne) {
+            console.log("[Agent|DO|CLEANUP] 1-on-1 session disconnected. Tearing down upstream immediately without grace period.");
+            this.executeHardCleanup();
+          } else {
+            console.log("[Agent|DO|CLEANUP] Stage is completely empty. Holding upstream socket warm for 30s...");
+            this.cleanupTimeout = setTimeout(() => {
+                this.executeHardCleanup();
+            }, 30000);
+          }
     }
   }
 
