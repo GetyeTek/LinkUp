@@ -104,6 +104,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const transcriptRef = useRef(null);
     const pageContainerRef = useRef(null);
     const isHangingUpRef = useRef(false);
+    const hasSentReadyRef = useRef(false);
 
     const { playAudioChunk } = useGeminiAudio(wsRef, micActive);
     const renderBookBlock = getComponent('book-block-renderer');
@@ -148,6 +149,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             applyDOMHighlight(pageContainerRef.current, activeHighlight);
         }
     }, [activeHighlight, activePageIndex, stage]);
+
+    // 3.5. Signal Client Ready on Course Select Stage
+    useEffect(() => {
+        if (isConnected && books.length > 0 && stage === 'course_select' && !hasSentReadyRef.current) {
+            hasSentReadyRef.current = true;
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ action: "client_ready", stage: "course_select" }));
+            }
+        }
+    }, [isConnected, books.length, stage]);
 
     // 4. Core WebSocket Connection to Gemini DO
     useEffect(() => {
@@ -378,6 +389,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
     const handleHangup = () => {
         isHangingUpRef.current = true;
+        hasSentReadyRef.current = false;
         if (wsRef.current) {
             try {
                 if (wsRef.current.readyState === WebSocket.OPEN) {
