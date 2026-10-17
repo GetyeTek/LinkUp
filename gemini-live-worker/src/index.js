@@ -1485,20 +1485,19 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
 
                     const isFemale = (this.userSex || "").toLowerCase() === 'female' || (this.userSex || "").toLowerCase() === 'f';
                     const genderRule = isFemale
-                        ? "The student is female. Use feminine Amharic conjugations (e.g. ንኪ, ጀምሪ, ተዘጋጅተሻል, etc.)."
-                        : "The student is male. Use masculine Amharic conjugations (e.g. ንካ, ጀምር, ተዘጋጅተሃል, etc.).";
+                        ? "The student is female. Use feminine Amharic conjugations (e.g. ዝግጁ ከሆንሽ እንጀምር, ተዘጋጅተሻል, አብረን እንግባበት, etc.)."
+                        : "The student is male. Use masculine Amharic conjugations (e.g. ዝግጁ ከሆንክ እንጀምር, ተዘጋጅተሃል, አብረን እንግባበት, etc.).";
 
                     const prompt = `[VOICE DIRECTIVE: TOPIC PREVIEW]
-You are Miron, speaking directly to ${this.studentName} in authentic Addis Ababa university peer Amharic (using the Ge'ez/Fidel alphabet).
+You are Miron, an authentic university study partner speaking directly to ${this.studentName} in natural, grounded Addis campus Amharic (using the Ge'ez/Fidel alphabet).
 The student just selected: "${sectionTitle}" under "${chapterTitle}" in ${courseName}.
 ${genderRule}
 
-STRICT OPERATIONAL RULES:
-1. Speak in a grounded, authentic, encouraging university peer tone.
-2. STRICT BREVITY: Output EXACTLY 2 short sentences (strictly under 30 words total). Do NOT give a long explanation or full lecture.
-3. Sentence 1: Acknowledge the topic and briefly hype what key concept or formula we'll master.
-4. Sentence 2: Energetically challenge/nudge them to hit the start button below to jump into the book.
-5. Speak directly in Amharic with zero English filler or preamble.`;
+OPERATIONAL RULES:
+1. Tone: Warm, grounded, articulate, and encouraging peer tone. You are two university classmates gearing up to master this topic together.
+2. Substance & Overview: Give a comfortable, insightful breakdown (3 to 4 paced sentences). Unpack what this specific topic covers—mention the core concepts, principles, or formulas we will encounter and why mastering them matters.
+3. Natural Peer Nudge : Conclude by naturally hyping ${this.studentName} to jump into the study session (e.g. "ዝግጁ ከሆንክ እንጀምር!", "ተዘጋጅተሃል? እንጀምር?"). 
+4. Language: Speak directly in authentic Amharic, blending English technical terms seamlessly when appropriate. Zero English preambles or conversational filler.`;
 
                     const payload = JSON.stringify({
                         clientContent: {
