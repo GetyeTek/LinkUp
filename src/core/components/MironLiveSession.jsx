@@ -352,6 +352,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         setStage('toc_select');
         setExpandedChapters(new Set([0]));
         setIsTocRevealed(false);
+        setIsMironSpeaking(false);
+        clearTimeout(speakingTimeout.current);
         clearTimeout(tocTimeoutRef.current);
         tocTimeoutRef.current = setTimeout(() => {
             if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -384,6 +386,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         });
         setStage('section_confirm');
         setIsConfirmRevealed(false);
+        setIsMironSpeaking(false);
+        clearTimeout(speakingTimeout.current);
         clearTimeout(confirmTimeoutRef.current);
         confirmTimeoutRef.current = setTimeout(() => {
             if (wsRef.current?.readyState === WebSocket.OPEN) {
