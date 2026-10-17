@@ -120,9 +120,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [showTranscriptDrawer, setShowTranscriptDrawer] = useState(false);
     const [isCatalogRevealed, setIsCatalogRevealed] = useState(false);
     const [isTocRevealed, setIsTocRevealed] = useState(false);
+    const [isConfirmRevealed, setIsConfirmRevealed] = useState(false);
 
     const wsRef = useRef(null);
     const tocTimeoutRef = useRef(null);
+    const confirmTimeoutRef = useRef(null);
     const speakingTimeout = useRef(null);
     const transcriptRef = useRef(null);
     const pageContainerRef = useRef(null);
@@ -194,6 +196,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (isMironSpeaking) {
             if (stage === 'course_select') setIsCatalogRevealed(true);
             if (stage === 'toc_select') setIsTocRevealed(true);
+            if (stage === 'section_confirm') setIsConfirmRevealed(true);
         }
     }, [isMironSpeaking, stage]);
 
@@ -371,11 +374,26 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             parentTitle: parentChapterTitle
         });
         setStage('section_confirm');
-        emitVoicePrompt(`I chose to study "${sectionNode.title}". Give me an authentic, concise summary of what we'll master in this section and ask me to hit confirm.`);
+        setIsConfirmRevealed(false);
+        clearTimeout(confirmTimeoutRef.current);
+        confirmTimeoutRef.current = setTimeout(() => setIsConfirmRevealed(true), 5000);
+
+        const friendlyName = (selectedBook?.course_code && COURSE_NAMES[selectedBook.course_code]) || (selectedBook?.title || 'Course').replace(/^General\s+/i, '');
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+                action: "section_selected",
+                course_name: friendlyName,
+                chapter_title: parentChapterTitle,
+                section_title: sectionNode.title
+            }));
+        }
     };
 
     const handleConfirmStartReading = async () => {
         if (!selectedBook || !selectedSection) return;
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ action: "interrupt" }));
+        }
         setIsLoadingPages(true);
         setStage('reading');
 
@@ -438,6 +456,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         isHangingUpRef.current = true;
         hasSentReadyRef.current = false;
         clearTimeout(tocTimeoutRef.current);
+        clearTimeout(confirmTimeoutRef.current);
         if (wsRef.current) {
             try {
                 if (wsRef.current.readyState === WebSocket.OPEN) {
@@ -688,31 +707,49 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 )}
 
                                 {stage === 'section_confirm' && (
-                                    <div className="ml-confirm-card">
-                                        <span className="ml-confirm-tag">
-                                            <i className="fas fa-bookmark"></i> SELECTED TOPIC
-                                        </span>
-                                        <span className="ml-confirm-parent">{selectedSection.parentTitle}</span>
-                                        <h2 className="ml-confirm-title">{selectedSection.title}</h2>
-                                        <div className="ml-confirm-meta">
-                                            <span><i className="far fa-file-alt"></i> Starts on Page {selectedSection.page || 1}</span>
-                                            <span><i className="fas fa-bolt"></i> Co-Pilot Guided Session</span>
+                                    !isConfirmRevealed ? (
+                                        <div className="ml-confirm-card skeleton">
+                                            <div className="ml-skeleton-box pill-skeleton" style={{ width: 110, height: 16 }}></div>
+                                            <div className="ml-skeleton-box sub-skeleton" style={{ width: 140, height: 13, margin: '10px 0 6px' }}></div>
+                                            <div className="ml-skeleton-box title-skeleton" style={{ width: '85%', height: 26, margin: '6px 0 14px' }}></div>
+                                            <div className="ml-confirm-meta" style={{ width: '100%', gap: 12 }}>
+                                                <div className="ml-skeleton-box" style={{ width: 120, height: 14 }}></div>
+                                                <div className="ml-skeleton-box" style={{ width: 150, height: 14 }}></div>
+                                            </div>
+                                            <div className="ml-skeleton-box" style={{ width: '100%', height: 14, margin: '16px 0 8px' }}></div>
+                                            <div className="ml-skeleton-box" style={{ width: '90%', height: 14, marginBottom: 20 }}></div>
+                                            <div className="ml-confirm-actions-row">
+                                                <div className="ml-skeleton-box" style={{ width: 120, height: 46, borderRadius: 14 }}></div>
+                                                <div className="ml-skeleton-box" style={{ flex: 1, height: 46, borderRadius: 14 }}></div>
+                                            </div>
                                         </div>
+                                    ) : (
+                                        <div className="ml-confirm-card">
+                                            <span className="ml-confirm-tag">
+                                                <i className="fas fa-bookmark"></i> SELECTED TOPIC
+                                            </span>
+                                            <span className="ml-confirm-parent">{selectedSection.parentTitle}</span>
+                                            <h2 className="ml-confirm-title">{selectedSection.title}</h2>
+                                            <div className="ml-confirm-meta">
+                                                <span><i className="far fa-file-alt"></i> Starts on Page {selectedSection.page || 1}</span>
+                                                <span><i className="fas fa-bolt"></i> Co-Pilot Guided Session</span>
+                                            </div>
 
-                                        <p className="ml-confirm-blurb">
-                                            Miron will read through this section with you, breaking down concepts, formulas, and highlighting key sentences live as he explains them.
-                                        </p>
+                                            <p className="ml-confirm-blurb">
+                                                Miron will read through this section with you, breaking down concepts, formulas, and highlighting key sentences live as he explains them.
+                                            </p>
 
-                                        <div className="ml-confirm-actions-row">
-                                            <button className="ml-btn-back-toc" onClick={() => setStage('toc_select')}>
-                                                <i className="fas fa-chevron-left"></i> Change Topic
-                                            </button>
-                                            <button className="ml-start-grind-btn" onClick={handleConfirmStartReading}>
-                                                <span>Start Reading with Miron</span>
-                                                <i className="fas fa-arrow-right"></i>
-                                            </button>
+                                            <div className="ml-confirm-actions-row">
+                                                <button className="ml-btn-back-toc" onClick={() => setStage('toc_select')}>
+                                                    <i className="fas fa-chevron-left"></i> Change Topic
+                                                </button>
+                                                <button className="ml-start-grind-btn" onClick={handleConfirmStartReading}>
+                                                    <span>Start Reading with Miron</span>
+                                                    <i className="fas fa-arrow-right"></i>
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )
                                 )}
 
                                 {stage === 'reading' && (
