@@ -185,20 +185,25 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     }, [isConnected, books.length, stage]);
 
-    // 3.6. Catalog Initial 5s Safety Ceiling
+    // 3.6. Gated Catalog Reveal: Shimmer remains active until Miron is connected
     useEffect(() => {
+        if (!isConnected) {
+            setIsCatalogRevealed(false);
+            return;
+        }
+        // Safety ceiling only ticks down once connection is hot
         const timer = setTimeout(() => setIsCatalogRevealed(true), 5000);
         return () => clearTimeout(timer);
-    }, []);
+    }, [isConnected]);
 
-    // 3.7. Synchronize Reveal With Miron's Voice
+    // 3.7. Synchronize Reveal With Miron's Voice (Gated on Active Connection)
     useEffect(() => {
-        if (isMironSpeaking) {
+        if (isConnected && isMironSpeaking) {
             if (stage === 'course_select') setIsCatalogRevealed(true);
             if (stage === 'toc_select') setIsTocRevealed(true);
             if (stage === 'section_confirm') setIsConfirmRevealed(true);
         }
-    }, [isMironSpeaking, stage]);
+    }, [isConnected, isMironSpeaking, stage]);
 
     // 4. Core WebSocket Connection to Gemini DO
     useEffect(() => {
@@ -348,7 +353,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         setExpandedChapters(new Set([0]));
         setIsTocRevealed(false);
         clearTimeout(tocTimeoutRef.current);
-        tocTimeoutRef.current = setTimeout(() => setIsTocRevealed(true), 5000);
+        tocTimeoutRef.current = setTimeout(() => {
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+                setIsTocRevealed(true);
+            }
+        }, 5000);
 
         const friendlyName = (book.course_code && COURSE_NAMES[book.course_code]) || (book.title || 'Course').replace(/^General\s+/i, '');
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -376,7 +385,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         setStage('section_confirm');
         setIsConfirmRevealed(false);
         clearTimeout(confirmTimeoutRef.current);
-        confirmTimeoutRef.current = setTimeout(() => setIsConfirmRevealed(true), 5000);
+        confirmTimeoutRef.current = setTimeout(() => {
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+                setIsConfirmRevealed(true);
+            }
+        }, 5000);
 
         const friendlyName = (selectedBook?.course_code && COURSE_NAMES[selectedBook.course_code]) || (selectedBook?.title || 'Course').replace(/^General\s+/i, '');
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -500,9 +513,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 </div>
 
                 <div className="ml-status">
-                    <span className="live-dot"></span>
+                    <span className="live-dot" style={!isConnected ? { background: '#f59e0b', boxShadow: '0 0 8px #f59e0b' } : {}}></span>
                     <span>
-                        {stage === 'course_select' ? 'Select a Course' : 
+                        {!isConnected ? 'Connecting to Miron...' :
+                         stage === 'course_select' ? 'Select a Course' : 
                          stage === 'toc_select' ? (selectedBook?.course_code || selectedBook?.title) :
                          stage === 'section_confirm' ? 'Ready to Study' :
                          `${selectedBook?.course_code || 'Reader'} • p.${currentPage?.page_number || ''}`}
