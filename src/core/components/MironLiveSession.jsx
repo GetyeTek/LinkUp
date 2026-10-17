@@ -541,7 +541,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         </div>
                         {!isCatalogRevealed ? (
                             <div className="ml-courses-grid skeleton-grid">
-                                {Array.from({ length: 12 }).map((_, idx) => (
+                                {Array.from({ length: 18 }).map((_, idx) => (
                                     <div key={idx} className="ml-course-card skeleton">
                                         <div className="ml-card-top-row">
                                             <div className="ml-skeleton-box icon-skeleton"></div>
