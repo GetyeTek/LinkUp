@@ -378,9 +378,6 @@ export class GeminiLiveAgent {
     this.pendingTemplateSpeech = null;
     this.isSpeakingTemplate = false;
     this.isGeneratingSectionSummary = false;
-    if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
-    if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
-    this.activeTurn = null;
 
     // Diagnostic & Turn Tracking State
     this.activeTurn = null;
@@ -885,7 +882,7 @@ EXAMPLE DEEP DRILL OUTPUT:
             const rateLimitMeta = {
               status: 429,
               round: roundLabel,
-              injected_tokens: promptTokenSum,
+              injected_tokens: estimatedTotalPrompt,
               retry_after: response.headers.get("retry-after") || "N/A",
               limit_tokens: response.headers.get("x-ratelimit-limit-tokens") || "N/A",
               remaining_tokens: response.headers.get("x-ratelimit-remaining-tokens") || "N/A",
@@ -909,7 +906,7 @@ EXAMPLE DEEP DRILL OUTPUT:
               rateLimitMeta.raw_error_text = errText;
             }
 
-            this.emitLog("RATE_LIMIT", `🚨 429 TPM Limit Exceeded on ${roundLabel}! Requested: ${rateLimitMeta.parsed_requested || promptTokenSum} tokens`, rateLimitMeta);
+            this.emitLog("RATE_LIMIT", `🚨 429 TPM Limit Exceeded on ${roundLabel}! Requested: ${rateLimitMeta.parsed_requested || estimatedTotalPrompt} tokens`, rateLimitMeta);
           }
 
           // Salvage Attempt: Recover text if Groq threw a tool error but generated valid spoken content
@@ -1752,6 +1749,14 @@ OPERATIONAL RULES:
     this.currentBookId = null;
     this.currentCourseCode = null;
     this.lastPromptTokens = 0;
+    this.userSex = null;
+    this.hasGreeted = false;
+    this.pendingTemplateSpeech = null;
+    this.isSpeakingTemplate = false;
+    this.isGeneratingSectionSummary = false;
+    if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
+    if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
+    this.activeTurn = null;
 
     if (this.geminiWs) {
       console.log("[Agent|DO|CLEANUP] Closing upstream Gemini WS.");
