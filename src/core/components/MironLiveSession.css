@@ -123,12 +123,17 @@
 }
 
 .ml-course-card.skeleton,
-.ml-toc-chapter-card.skeleton {
+.ml-toc-chapter-card.skeleton,
+.ml-confirm-card.skeleton {
     pointer-events: none !important;
     background: #141418 !important;
     border-color: rgba(255, 255, 255, 0.04) !important;
     box-shadow: none !important;
     cursor: default !important;
+}
+
+.ml-confirm-card:not(.skeleton) {
+    animation: fadeInCard 0.25s ease-out forwards;
 }
 
 .ml-course-card.skeleton {
