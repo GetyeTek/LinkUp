@@ -513,80 +513,105 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     </div>
                 )}
 
-                {/* STAGE 1: TABLE OF CONTENTS ACCORDION */}
-                {stage === 'toc_select' && selectedBook && (
-                    <div className="ml-stage-content toc-stage">
-                        <div className="ml-book-hero-banner">
-                            {selectedBook.cover_url && (
-                                <img src={selectedBook.cover_url} className="ml-bh-cover" alt="" />
-                            )}
-                            <div className="ml-bh-text">
-                                <span className="ml-cbc-code">{selectedBook.course_code}</span>
-                                <h2>{selectedBook.title}</h2>
-                                <p>Tap a chapter to reveal topics, then pick a section.</p>
+                {/* STAGE 1: TOC SELECT OR STAGE 2: SECTION CONFIRM (SPLIT MASTER-DETAIL WORKSPACE) */}
+                {(stage === 'toc_select' || stage === 'section_confirm') && selectedBook && (
+                    <div className="ml-stage-content toc-split-stage">
+                        <div className="ml-toc-split-layout">
+                            
+                            {/* Column 1: Prominent Book Showcase (Desktop: Left Column, Mobile: Sleek Header) */}
+                            <div className="ml-toc-book-showcase">
+                                <div className="ml-showcase-cover-wrapper">
+                                    {selectedBook.cover_url ? (
+                                        <img src={selectedBook.cover_url} className="ml-showcase-cover" alt={selectedBook.title} />
+                                    ) : (
+                                        <div className="ml-showcase-fallback-cover">
+                                            <i className={`fa-solid ${COURSE_ICONS[selectedBook.course_code] || 'fa-book-open'}`}></i>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="ml-showcase-details">
+                                    <span className="ml-card-code-tag">{selectedBook.course_code || 'CURRICULUM'}</span>
+                                    <h2 className="ml-showcase-title">{selectedBook.title}</h2>
+                                    <p className="ml-showcase-meta">
+                                        {selectedBook.toc?.length ? `${selectedBook.toc.length} Chapters in Syllabus` : 'Official Curriculum Textbook'}
+                                    </p>
+                                    {stage === 'toc_select' && (
+                                        <div className="ml-showcase-prompt-tip">
+                                            <i className="fas fa-hand-pointer"></i>
+                                            <span>Pick a chapter on the right to reveal study topics</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="ml-toc-accordion">
-                            {(selectedBook.toc || []).map((node, chIdx) => {
-                                const isExpanded = expandedChapters.has(chIdx);
-                                const hasChildren = node.children && node.children.length > 0;
+                            {/* Column 2: Interactive Pane (TOC Accordion or Section Confirm) */}
+                            <div className="ml-toc-interactive-pane">
+                                {stage === 'toc_select' ? (
+                                    <div className="ml-toc-accordion">
+                                        {(selectedBook.toc || []).map((node, chIdx) => {
+                                            const isExpanded = expandedChapters.has(chIdx);
+                                            const hasChildren = node.children && node.children.length > 0;
 
-                                return (
-                                    <div key={chIdx} className={`ml-toc-chapter-card ${isExpanded ? 'expanded' : ''}`}>
-                                        <div className="ml-toc-ch-header" onClick={() => toggleChapterExpand(chIdx)}>
-                                            <div className="ml-toc-ch-left">
-                                                <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
-                                                <span className="ml-toc-ch-title">{node.title}</span>
-                                            </div>
-                                            {node.page && <span className="ml-toc-page-pill">p.{node.page}</span>}
+                                            return (
+                                                <div key={chIdx} className={`ml-toc-chapter-card ${isExpanded ? 'expanded' : ''}`}>
+                                                    <div className="ml-toc-ch-header" onClick={() => toggleChapterExpand(chIdx)}>
+                                                        <div className="ml-toc-ch-left">
+                                                            <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
+                                                            <span className="ml-toc-ch-title">{node.title}</span>
+                                                        </div>
+                                                        {node.page && <span className="ml-toc-page-pill">p.{node.page}</span>}
+                                                    </div>
+
+                                                    {isExpanded && hasChildren && (
+                                                        <div className="ml-toc-sections-list">
+                                                            {node.children.map((sub, sIdx) => (
+                                                                <div 
+                                                                    key={sIdx} 
+                                                                    className="ml-toc-section-item" 
+                                                                    onClick={() => handleSelectSection(sub, node.title)}
+                                                                >
+                                                                    <span className="ml-toc-sec-title">{sub.title}</span>
+                                                                    <span className="ml-toc-sec-arrow">
+                                                                        {sub.page ? `p.${sub.page}` : ''} <i className="fas fa-arrow-right"></i>
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    /* Stage 2: Section Confirmation Card */
+                                    <div className="ml-confirm-card">
+                                        <span className="ml-confirm-tag">
+                                            <i className="fas fa-bookmark"></i> SELECTED TOPIC
+                                        </span>
+                                        <span className="ml-confirm-parent">{selectedSection.parentTitle}</span>
+                                        <h2 className="ml-confirm-title">{selectedSection.title}</h2>
+                                        <div className="ml-confirm-meta">
+                                            <span><i className="far fa-file-alt"></i> Starts on Page {selectedSection.page || 1}</span>
+                                            <span><i className="fas fa-bolt"></i> Co-Pilot Guided Session</span>
                                         </div>
 
-                                        {isExpanded && hasChildren && (
-                                            <div className="ml-toc-sections-list">
-                                                {node.children.map((sub, sIdx) => (
-                                                    <div 
-                                                        key={sIdx} 
-                                                        className="ml-toc-section-item" 
-                                                        onClick={() => handleSelectSection(sub, node.title)}
-                                                    >
-                                                        <span className="ml-toc-sec-title">{sub.title}</span>
-                                                        <span className="ml-toc-sec-arrow">
-                                                            {sub.page ? `p.${sub.page}` : ''} <i className="fas fa-arrow-right"></i>
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
+                                        <p className="ml-confirm-blurb">
+                                            Miron will read through this section with you, breaking down concepts, formulas, and highlighting key sentences live as he explains them.
+                                        </p>
 
-                {/* STAGE 2: SECTION CONFIRM CARD */}
-                {stage === 'section_confirm' && selectedSection && (
-                    <div className="ml-stage-content confirm-stage">
-                        <div className="ml-confirm-card">
-                            <span className="ml-confirm-tag">
-                                <i className="fas fa-bookmark"></i> SELECTED TOPIC
-                            </span>
-                            <span className="ml-confirm-parent">{selectedSection.parentTitle}</span>
-                            <h2 className="ml-confirm-title">{selectedSection.title}</h2>
-                            <div className="ml-confirm-meta">
-                                <span><i className="far fa-file-alt"></i> Page {selectedSection.page || 1}</span>
-                                <span><i className="fas fa-bolt"></i> Co-Pilot Guided Session</span>
+                                        <div className="ml-confirm-actions-row">
+                                            <button className="ml-btn-back-toc" onClick={() => setStage('toc_select')}>
+                                                <i className="fas fa-chevron-left"></i> Change Topic
+                                            </button>
+                                            <button className="ml-start-grind-btn" onClick={handleConfirmStartReading}>
+                                                <span>Start Reading with Miron</span>
+                                                <i className="fas fa-arrow-right"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            <p className="ml-confirm-blurb">
-                                Miron will read through this section with you, breaking down concepts, formulas, and highlighting key sentences live as he explains them.
-                            </p>
-
-                            <button className="ml-start-grind-btn" onClick={handleConfirmStartReading}>
-                                <span>Start Reading with Miron</span>
-                                <i className="fas fa-arrow-right"></i>
-                            </button>
                         </div>
                     </div>
                 )}
