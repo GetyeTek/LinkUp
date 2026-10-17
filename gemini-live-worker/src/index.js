@@ -401,11 +401,20 @@ export class GeminiLiveAgent {
     const targetSlice = Math.max(0, maxTokens - noticeTokens);
     const sliced = tokens.slice(0, targetSlice);
     const decoded = this.tokenizer.decode(sliced) + continuationNotice;
+    const finalTokens = targetSlice + noticeTokens;
+    const tokensRemoved = tokens.length - finalTokens;
+
+    this.emitLog("SLICER", `✂️ Sliced textbook payload: ${tokens.length} -> ${finalTokens} tokens (-${tokensRemoved} tokens trimmed for TPM budget)`, {
+      original_tokens: tokens.length,
+      final_tokens: finalTokens,
+      tokens_saved: tokensRemoved,
+      max_budget: maxTokens
+    });
 
     return {
       text: decoded,
       originalTokens: tokens.length,
-      finalTokens: targetSlice + noticeTokens,
+      finalTokens,
       isSliced: true
     };
   }
@@ -482,7 +491,8 @@ export class GeminiLiveAgent {
         const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,title,toc,page_offset`, { headers: authHeaders });
         const json = await res.json();
         if (json && json.length > 0) {
-          result = { status: "success", book_id: json[0].id, title: json[0].title, page_offset: json[0].page_offset || 0, toc: json[0].toc };
+          const tocTokens = this.countTokens(JSON.stringify(json[0].toc || []));
+          result = { status: "success", book_id: json[0].id, title: json[0].title, page_offset: json[0].page_offset || 0, toc: json[0].toc, tokens: tocTokens };
         } else {
           result = { status: "error", message: `Book for course ${code} not found.` };
         }
@@ -647,18 +657,32 @@ EXAMPLE OUTPUT FORMAT:
       ];
 
       const callGroqWithAudit = async (msgs, roundLabel = "Turn 1") => {
-        let promptTokenSum = 0;
+        let messageTokenSum = 0;
         const breakdown = msgs.map(m => {
-          const contentStr = typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '');
+          let contentStr = "";
+          if (typeof m.content === 'string') {
+            contentStr = m.content;
+          } else if (m.tool_calls) {
+            contentStr = JSON.stringify(m.tool_calls);
+          } else {
+            contentStr = JSON.stringify(m.content || '');
+          }
           const t = this.countTokens(contentStr);
-          promptTokenSum += t;
+          messageTokenSum += t;
           return { role: m.role, tokens: t };
         });
 
-        this.lastPromptTokens = promptTokenSum;
-        this.emitLog("TIKTOKEN", `[${roundLabel}] Injected payload: ${promptTokenSum} tokens across ${msgs.length} messages.`, {
-          tokens: promptTokenSum,
+        // Account for hidden function schemas injected into the prompt by Groq
+        const toolSchemasTokens = this.countTokens(JSON.stringify(GROQ_TOOLS));
+        const estimatedTotalPrompt = messageTokenSum + toolSchemasTokens;
+
+        this.lastPromptTokens = estimatedTotalPrompt;
+        this.emitLog("TIKTOKEN", `[${roundLabel}] Pre-Flight Audit: ${estimatedTotalPrompt} tokens (Messages: ${messageTokenSum} | Tool Schemas: ${toolSchemasTokens})`, {
+          tokens: estimatedTotalPrompt,
           round: roundLabel,
+          estimated_prompt_tokens: estimatedTotalPrompt,
+          messages_tokens: messageTokenSum,
+          tools_schema_tokens: toolSchemasTokens,
           message_breakdown: breakdown
         });
 
@@ -748,7 +772,26 @@ EXAMPLE OUTPUT FORMAT:
           throw new Error(`Groq API error ${response.status}: ${errText}`);
         }
 
-        return await response.json();
+        const resData = await response.json();
+        const usage = resData.usage || {};
+
+        if (usage.prompt_tokens !== undefined) {
+          const delta = usage.prompt_tokens - estimatedTotalPrompt;
+          const matchPercent = (100 - (Math.abs(delta) / usage.prompt_tokens) * 100).toFixed(1);
+
+          this.emitLog("TIKTOKEN", `[${roundLabel} Verification] Groq Actual: ${usage.prompt_tokens} vs Tiktoken Est: ${estimatedTotalPrompt} (Delta: ${delta >= 0 ? '+' : ''}${delta} tokens | ${matchPercent}% accuracy)`, {
+            round: roundLabel,
+            tokens: usage.total_tokens || usage.prompt_tokens,
+            groq_prompt_tokens: usage.prompt_tokens,
+            tiktoken_estimated_prompt: estimatedTotalPrompt,
+            delta_tokens: delta,
+            accuracy: `${matchPercent}%`,
+            groq_completion_tokens: usage.completion_tokens,
+            groq_total_tokens: usage.total_tokens
+          });
+        }
+
+        return resData;
       };
 
       let data = await callGroqWithAudit(currentMessages, "Turn 1 (Initial Prompt)");
@@ -801,7 +844,15 @@ EXAMPLE OUTPUT FORMAT:
 
       if (rawContent) {
         this.groqChatHistory.push({ role: "assistant", content: rawContent });
-        this.emitLog("GROQ", `Cognitive response generated (${finalTokens} tokens).`, { tokens: finalTokens });
+        const promptCount = usage.prompt_tokens || totalTokens;
+        const completionCount = usage.completion_tokens || this.countTokens(rawContent);
+
+        this.emitLog("GROQ", `Cognitive response generated: ${finalTokens} tokens total (Prompt: ${promptCount} | Generated Output: ${completionCount}) across ${chunks.length} spoken chunks.`, { 
+          tokens: finalTokens,
+          prompt_tokens: promptCount,
+          completion_tokens: completionCount,
+          spoken_chunks_count: chunks.length
+        });
 
         let chunks = [];
         const chunkRegex = /<chunk>([\s\S]*?)<\/chunk>/gi;
@@ -883,6 +934,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
     .badge-USER { background: #374151; color: #f3f4f6; }
     .badge-ERROR { background: #7f1d1d; color: #fca5a5; }
     .badge-RATE_LIMIT { background: #831843; color: #fbcfe8; border: 1px solid #be185d; }
+    .badge-SLICER { background: #14532d; color: #bbf7d0; border: 1px solid #16a34a; }
     .log-msg { color: #e5e7eb; word-break: break-word; font-family: -apple-system, monospace; }
     .json-data { background: #090a0f; border-radius: 4px; padding: 6px 8px; font-size: 11px; color: #9ca3af; overflow-x: auto; white-space: pre-wrap; margin-top: 4px; border-left: 2px solid #374151; }
     footer { background: #13151f; border-top: 1px solid #232738; padding: 8px 16px; display: flex; justify-content: space-between; font-size: 11px; color: #9ca3af; }
