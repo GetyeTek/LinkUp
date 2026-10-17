@@ -384,10 +384,12 @@ export class GeminiLiveAgent {
     this.hasGreeted = false;
     this.pendingTemplateSpeech = null;
     this.isSpeakingTemplate = false;
+    this.isGeneratingSectionSummary = false;
     this.userSex = null;
     this.hasGreeted = false;
     this.pendingTemplateSpeech = null;
     this.isSpeakingTemplate = false;
+    this.isGeneratingSectionSummary = false;
 
     // --- 1-ON-1 COGNITIVE PIPELINE STATE (GROQ BRAIN + GEMINI VOICE) ---
     this.pendingUserSpeech = "";
@@ -1473,6 +1475,56 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
                 return;
             }
 
+            if (parsed.action === "section_selected") {
+                console.log(`[Agent|DO|STATE] Intercepted section_selected for ${this.conversationId} (${parsed.section_title})`);
+                if (this.isOneOnOne) {
+                    this.isGeneratingSectionSummary = true;
+                    const courseName = parsed.course_name || (this.currentCourseCode || "our course");
+                    const chapterTitle = parsed.chapter_title || "this chapter";
+                    const sectionTitle = parsed.section_title || "this section";
+
+                    const isFemale = (this.userSex || "").toLowerCase() === 'female' || (this.userSex || "").toLowerCase() === 'f';
+                    const genderRule = isFemale
+                        ? "The student is female. Use feminine Amharic conjugations (e.g. ንኪ, ጀምሪ, ተዘጋጅተሻል, etc.)."
+                        : "The student is male. Use masculine Amharic conjugations (e.g. ንካ, ጀምር, ተዘጋጅተሃል, etc.).";
+
+                    const prompt = `[VOICE DIRECTIVE: TOPIC PREVIEW]
+You are Miron, speaking directly to ${this.studentName} in authentic Addis Ababa university peer Amharic (using the Ge'ez/Fidel alphabet).
+The student just selected: "${sectionTitle}" under "${chapterTitle}" in ${courseName}.
+${genderRule}
+
+STRICT OPERATIONAL RULES:
+1. Speak in a grounded, authentic, encouraging university peer tone.
+2. STRICT BREVITY: Output EXACTLY 2 short sentences (strictly under 30 words total). Do NOT give a long explanation or full lecture.
+3. Sentence 1: Acknowledge the topic and briefly hype what key concept or formula we'll master.
+4. Sentence 2: Energetically challenge/nudge them to hit the start button below to jump into the book.
+5. Speak directly in Amharic with zero English filler or preamble.`;
+
+                    const payload = JSON.stringify({
+                        clientContent: {
+                            turns: [{ role: "user", parts: [{ text: prompt }] }],
+                            turnComplete: true
+                        }
+                    });
+
+                    if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
+                        this.geminiWs.send(payload);
+                    } else {
+                        this.pendingTemplateSpeech = prompt;
+                    }
+                    this.emitLog("GEMINI", `🎙️ Generating dynamic section preview for: "${sectionTitle}"`);
+                }
+                return;
+            }
+
+            if (parsed.action === "interrupt") {
+                console.log(`[Agent|DO|STATE] Intercepted client interrupt for ${this.conversationId}`);
+                this.isSpeakingTemplate = false;
+                this.isGeneratingSectionSummary = false;
+                this.translationQueue = [];
+                return;
+            }
+
             if (parsed.action === "hangup") {
                 console.log(`[Agent|DO|STATE] Intercepted explicit hangup for ${this.conversationId}. Executing immediate hard cleanup.`);
                 await this.executeHardCleanup();
@@ -1975,6 +2027,7 @@ CRITICAL OPERATIONAL RULES:
                 if (this.isOneOnOne && parsed.serverContent?.inputTranscription?.text) {
                     this.translationQueue = []; // INTERRUPT: Nuke the remaining script if user barges in!
                     this.isSpeakingTemplate = false;
+                    this.isGeneratingSectionSummary = false;
 
                     const speechChunk = parsed.serverContent.inputTranscription.text;
                     this.pendingUserSpeech = (this.pendingUserSpeech || "") + speechChunk;
@@ -2005,7 +2058,7 @@ CRITICAL OPERATIONAL RULES:
                 }
 
                 // --- 1-ON-1 AUDIO SUPPRESSION: BLOCK ROGUE GEMINI SPEECH ---
-                if (this.isOneOnOne && !this.isGeminiTranslating && !this.isGeminiFallbackActive && !this.isSpeakingTemplate) {
+                if (this.isOneOnOne && !this.isGeminiTranslating && !this.isGeminiFallbackActive && !this.isSpeakingTemplate && !this.isGeneratingSectionSummary) {
                     if (parsed.serverContent?.modelTurn || parsed.serverContent?.outputTranscription) {
                         // Drop autonomous Gemini model responses; Groq is the primary cognitive brain
                         return;
@@ -2016,6 +2069,8 @@ CRITICAL OPERATIONAL RULES:
                 if (this.isOneOnOne && parsed.serverContent?.turnComplete) {
                     if (this.isSpeakingTemplate) {
                         this.isSpeakingTemplate = false;
+                    } else if (this.isGeneratingSectionSummary) {
+                        this.isGeneratingSectionSummary = false;
                     } else if (this.isGeminiFallbackActive) {
                         this.isGeminiFallbackActive = false;
                     } else if (this.isGeminiTranslating) {
