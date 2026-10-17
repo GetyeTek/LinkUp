@@ -519,7 +519,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         <div className="ml-toc-split-layout">
                             
                             {/* Column 1: Prominent Book Showcase (Desktop: Left Column, Mobile: Sleek Header) */}
-                            <div className="ml-toc-book-showcase">
+                            <div className="ml-toc-book-showcase" style={selectedBook.cover_url ? { '--bg-cover': `url("${selectedBook.cover_url}")` } : {}}>
+                                <div className="ml-showcase-backdrop-blur"></div>
                                 <div className="ml-showcase-cover-wrapper">
                                     {selectedBook.cover_url ? (
                                         <img src={selectedBook.cover_url} className="ml-showcase-cover" alt={selectedBook.title} />
