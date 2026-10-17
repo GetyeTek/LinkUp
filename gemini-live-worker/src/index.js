@@ -844,15 +844,6 @@ EXAMPLE OUTPUT FORMAT:
 
       if (rawContent) {
         this.groqChatHistory.push({ role: "assistant", content: rawContent });
-        const promptCount = usage.prompt_tokens || totalTokens;
-        const completionCount = usage.completion_tokens || this.countTokens(rawContent);
-
-        this.emitLog("GROQ", `Cognitive response generated: ${finalTokens} tokens total (Prompt: ${promptCount} | Generated Output: ${completionCount}) across ${chunks.length} spoken chunks.`, { 
-          tokens: finalTokens,
-          prompt_tokens: promptCount,
-          completion_tokens: completionCount,
-          spoken_chunks_count: chunks.length
-        });
 
         let chunks = [];
         const chunkRegex = /<chunk>([\s\S]*?)<\/chunk>/gi;
@@ -869,6 +860,15 @@ EXAMPLE OUTPUT FORMAT:
         }
 
         const sanitizedChunks = chunks.map(c => sanitizeForSpeech(c)).filter(Boolean);
+        const promptCount = usage.prompt_tokens || totalTokens;
+        const completionCount = usage.completion_tokens || this.countTokens(rawContent);
+
+        this.emitLog("GROQ", `Cognitive response generated: ${finalTokens} tokens total (Prompt: ${promptCount} | Generated Output: ${completionCount}) across ${sanitizedChunks.length} spoken chunks.`, { 
+          tokens: finalTokens,
+          prompt_tokens: promptCount,
+          completion_tokens: completionCount,
+          spoken_chunks_count: sanitizedChunks.length
+        });
 
         this.broadcast(JSON.stringify({
           type: "miron_thought",
