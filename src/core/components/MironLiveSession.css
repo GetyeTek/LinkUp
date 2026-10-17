@@ -106,6 +106,83 @@
 .ml-stage-header h2 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
 .ml-stage-header p { font-size: 0.78rem; color: #aaa; margin: 0; }
 
+/* YOUTUBE-STYLE SKELETON SHIMMER ANIMATION */
+@keyframes shimmerWave {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+@keyframes fadeInCard {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ml-courses-grid:not(.skeleton-grid),
+.ml-toc-accordion:not(.skeleton-accordion) {
+    animation: fadeInCard 0.25s ease-out forwards;
+}
+
+.ml-course-card.skeleton,
+.ml-toc-chapter-card.skeleton {
+    pointer-events: none !important;
+    background: #141418 !important;
+    border-color: rgba(255, 255, 255, 0.04) !important;
+    box-shadow: none !important;
+    cursor: default !important;
+}
+
+.ml-skeleton-box {
+    border-radius: 6px;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 25%,
+        rgba(255, 255, 255, 0.09) 50%,
+        rgba(255, 255, 255, 0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmerWave 1.8s infinite linear;
+}
+
+.ml-skeleton-box.icon-skeleton {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+}
+
+.ml-skeleton-box.pill-skeleton {
+    width: 44px;
+    height: 14px;
+    border-radius: 4px;
+}
+
+.ml-skeleton-box.title-skeleton {
+    width: 82%;
+    height: 15px;
+    margin: 8px 0 4px 0;
+}
+
+.ml-skeleton-box.sub-skeleton {
+    width: 50%;
+    height: 11px;
+    margin-bottom: 8px;
+}
+
+.ml-skeleton-box.footer-skeleton {
+    width: 55px;
+    height: 10px;
+}
+
+.ml-skeleton-box.ch-icon-skeleton {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+}
+
+.ml-skeleton-box.ch-title-skeleton {
+    width: 140px;
+    height: 14px;
+}
+
 /* STAGE 0: ULTRA-COMPACT 18-COURSE GRID */
 .ml-courses-grid {
     display: grid;
