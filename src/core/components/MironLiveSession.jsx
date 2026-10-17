@@ -180,9 +180,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         isHangingUpRef.current = true;
         if (wsRef.current) {
             try {
+                if (wsRef.current.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({ action: "hangup" }));
+                }
                 wsRef.current.close(1000, "User ended session");
             } catch (e) {}
         }
+        setTranscripts([]);
         onClose();
     };
 
