@@ -383,9 +383,11 @@ export class GeminiLiveAgent {
     this.userSex = null;
     this.hasGreeted = false;
     this.pendingTemplateSpeech = null;
+    this.isSpeakingTemplate = false;
     this.userSex = null;
     this.hasGreeted = false;
     this.pendingTemplateSpeech = null;
+    this.isSpeakingTemplate = false;
 
     // --- 1-ON-1 COGNITIVE PIPELINE STATE (GROQ BRAIN + GEMINI VOICE) ---
     this.pendingUserSpeech = "";
@@ -547,6 +549,7 @@ export class GeminiLiveAgent {
       return;
     }
 
+    this.isSpeakingTemplate = true;
     const prompt = `[VOICE SYNTHESIS DIRECTIVE] Read and speak the following exact Amharic text aloud to ${this.studentName} with an authentic, warm, and natural university peer tone. Do NOT translate into English or any other language. Do NOT add introductory or concluding commentary. Speak only these exact Amharic words:\n\n${amharicText}`;
 
     const payload = JSON.stringify({
@@ -1971,6 +1974,7 @@ CRITICAL OPERATIONAL RULES:
                 // --- 1-ON-1 VOICE INPUT: INTERCEPT STT TRANSCRIPTION FOR GROQ ---
                 if (this.isOneOnOne && parsed.serverContent?.inputTranscription?.text) {
                     this.translationQueue = []; // INTERRUPT: Nuke the remaining script if user barges in!
+                    this.isSpeakingTemplate = false;
 
                     const speechChunk = parsed.serverContent.inputTranscription.text;
                     this.pendingUserSpeech = (this.pendingUserSpeech || "") + speechChunk;
@@ -2001,7 +2005,7 @@ CRITICAL OPERATIONAL RULES:
                 }
 
                 // --- 1-ON-1 AUDIO SUPPRESSION: BLOCK ROGUE GEMINI SPEECH ---
-                if (this.isOneOnOne && !this.isGeminiTranslating && !this.isGeminiFallbackActive) {
+                if (this.isOneOnOne && !this.isGeminiTranslating && !this.isGeminiFallbackActive && !this.isSpeakingTemplate) {
                     if (parsed.serverContent?.modelTurn || parsed.serverContent?.outputTranscription) {
                         // Drop autonomous Gemini model responses; Groq is the primary cognitive brain
                         return;
@@ -2010,7 +2014,9 @@ CRITICAL OPERATIONAL RULES:
 
                 // Turn completed for Groq speech synthesis or Gemini fallback
                 if (this.isOneOnOne && parsed.serverContent?.turnComplete) {
-                    if (this.isGeminiFallbackActive) {
+                    if (this.isSpeakingTemplate) {
+                        this.isSpeakingTemplate = false;
+                    } else if (this.isGeminiFallbackActive) {
                         this.isGeminiFallbackActive = false;
                     } else if (this.isGeminiTranslating) {
                         this.isGeminiTranslating = false;
