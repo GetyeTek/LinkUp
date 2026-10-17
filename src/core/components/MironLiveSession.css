@@ -131,6 +131,11 @@
     cursor: default !important;
 }
 
+.ml-course-card.skeleton {
+    min-height: 124px !important;
+    padding: 13px 14px !important;
+}
+
 .ml-skeleton-box {
     border-radius: 6px;
     background: linear-gradient(
@@ -144,32 +149,32 @@
 }
 
 .ml-skeleton-box.icon-skeleton {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border-radius: 8px;
 }
 
 .ml-skeleton-box.pill-skeleton {
-    width: 44px;
-    height: 14px;
+    width: 48px;
+    height: 15px;
     border-radius: 4px;
 }
 
 .ml-skeleton-box.title-skeleton {
-    width: 82%;
-    height: 15px;
-    margin: 8px 0 4px 0;
+    width: 84%;
+    height: 17px;
+    margin: 10px 0 6px 0;
 }
 
 .ml-skeleton-box.sub-skeleton {
-    width: 50%;
-    height: 11px;
-    margin-bottom: 8px;
+    width: 54%;
+    height: 12px;
+    margin-bottom: 10px;
 }
 
 .ml-skeleton-box.footer-skeleton {
-    width: 55px;
-    height: 10px;
+    width: 60px;
+    height: 11px;
 }
 
 .ml-skeleton-box.ch-icon-skeleton {
@@ -676,6 +681,10 @@
         padding: 9px 10px;
         min-height: 95px;
         border-radius: 14px;
+    }
+    .ml-course-card.skeleton {
+        min-height: 108px !important;
+        padding: 11px 12px !important;
     }
     .ml-card-icon-box {
         width: 28px;
