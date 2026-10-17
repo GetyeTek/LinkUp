@@ -24,6 +24,26 @@ const COURSE_ICONS = {
     'ANTH 1012': 'fa-people-group'
 };
 
+const COURSE_NAMES = {
+    'PHYS 1011': 'Physics',
+    'BIOL 1012': 'Biology',
+    'CHEM 1012': 'Chemistry',
+    'MATH 1011': 'Math',
+    'MATH 1012': 'Math',
+    'LOCT 1011': 'Logic',
+    'EMTE 1012': 'Emerging Tech',
+    'FLEN 1011': 'English',
+    'ECON 1011': 'Economics',
+    'GEES 1011': 'Geography',
+    'HIST 1012': 'History',
+    'INCL 1012': 'Inclusiveness',
+    'MCIE 1012': 'Civics',
+    'MGMT 1012': 'Entrepreneurship',
+    'PSYC 1011': 'Psychology',
+    'SPSC 1011': 'Fitness',
+    'ANTH 1012': 'Anthropology'
+};
+
 // DOM Range Highlighter for active textbook page
 const clearDOMHighlights = (root) => {
     if (!root) return;
@@ -306,7 +326,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         setSelectedBook(book);
         setStage('toc_select');
         setExpandedChapters(new Set([0]));
-        emitVoicePrompt(`I selected ${book.title} (${book.course_code || 'our course'}). Give me a friendly peer welcome and prompt me to pick a chapter or section.`);
+        const friendlyName = (book.course_code && COURSE_NAMES[book.course_code]) || (book.title || 'Course').replace(/^General\s+/i, '');
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+                action: "course_selected",
+                course_name: friendlyName
+            }));
+        }
     };
 
     const toggleChapterExpand = (chIndex) => {
