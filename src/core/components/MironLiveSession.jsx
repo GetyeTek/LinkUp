@@ -118,8 +118,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [activeHighlight, setActiveHighlight] = useState(null);
     const [isLoadingPages, setIsLoadingPages] = useState(false);
     const [showTranscriptDrawer, setShowTranscriptDrawer] = useState(false);
+    const [isCatalogRevealed, setIsCatalogRevealed] = useState(false);
+    const [isTocRevealed, setIsTocRevealed] = useState(false);
 
     const wsRef = useRef(null);
+    const tocTimeoutRef = useRef(null);
     const speakingTimeout = useRef(null);
     const transcriptRef = useRef(null);
     const pageContainerRef = useRef(null);
@@ -179,6 +182,20 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         }
     }, [isConnected, books.length, stage]);
+
+    // 3.6. Catalog Initial 5s Safety Ceiling
+    useEffect(() => {
+        const timer = setTimeout(() => setIsCatalogRevealed(true), 5000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // 3.7. Synchronize Reveal With Miron's Voice
+    useEffect(() => {
+        if (isMironSpeaking) {
+            if (stage === 'course_select') setIsCatalogRevealed(true);
+            if (stage === 'toc_select') setIsTocRevealed(true);
+        }
+    }, [isMironSpeaking, stage]);
 
     // 4. Core WebSocket Connection to Gemini DO
     useEffect(() => {
@@ -326,6 +343,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         setSelectedBook(book);
         setStage('toc_select');
         setExpandedChapters(new Set([0]));
+        setIsTocRevealed(false);
+        clearTimeout(tocTimeoutRef.current);
+        tocTimeoutRef.current = setTimeout(() => setIsTocRevealed(true), 5000);
+
         const friendlyName = (book.course_code && COURSE_NAMES[book.course_code]) || (book.title || 'Course').replace(/^General\s+/i, '');
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({
@@ -416,6 +437,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const handleHangup = () => {
         isHangingUpRef.current = true;
         hasSentReadyRef.current = false;
+        clearTimeout(tocTimeoutRef.current);
         if (wsRef.current) {
             try {
                 if (wsRef.current.readyState === WebSocket.OPEN) {
@@ -517,38 +539,56 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             <h2>What are we studying today?</h2>
                             <p>Pick a course and Miron will walk you through the curriculum step by step.</p>
                         </div>
-                        <div className="ml-courses-grid">
-                            {books.map(b => (
-                                <div 
-                                    key={b.id} 
-                                    className="ml-course-card" 
-                                    onClick={() => handleSelectCourse(b)}
-                                    style={b.cover_url ? {
-                                        backgroundImage: `linear-gradient(145deg, rgba(14, 14, 18, 0.70) 0%, rgba(10, 10, 14, 0.88) 100%), url("${b.cover_url}")`,
-                                        backgroundSize: 'cover',
-                                        backgroundPosition: 'center'
-                                    } : {}}
-                                >
-                                    <div className="ml-card-top-row">
-                                        <div className="ml-card-icon-box">
-                                            <i className={`fa-solid ${COURSE_ICONS[b.course_code] || 'fa-book-open'}`}></i>
+                        {!isCatalogRevealed ? (
+                            <div className="ml-courses-grid skeleton-grid">
+                                {Array.from({ length: 12 }).map((_, idx) => (
+                                    <div key={idx} className="ml-course-card skeleton">
+                                        <div className="ml-card-top-row">
+                                            <div className="ml-skeleton-box icon-skeleton"></div>
+                                            <div className="ml-skeleton-box pill-skeleton"></div>
                                         </div>
-                                        <span className="ml-card-code-tag">{b.course_code || 'COURSE'}</span>
+                                        <div className="ml-skeleton-box title-skeleton"></div>
+                                        <div className="ml-skeleton-box sub-skeleton"></div>
+                                        <div className="ml-card-footer">
+                                            <div className="ml-skeleton-box footer-skeleton"></div>
+                                        </div>
                                     </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="ml-courses-grid">
+                                {books.map(b => (
+                                    <div 
+                                        key={b.id} 
+                                        className="ml-course-card" 
+                                        onClick={() => handleSelectCourse(b)}
+                                        style={b.cover_url ? {
+                                            backgroundImage: `linear-gradient(145deg, rgba(14, 14, 18, 0.70) 0%, rgba(10, 10, 14, 0.88) 100%), url("${b.cover_url}")`,
+                                            backgroundSize: 'cover',
+                                            backgroundPosition: 'center'
+                                        } : {}}
+                                    >
+                                        <div className="ml-card-top-row">
+                                            <div className="ml-card-icon-box">
+                                                <i className={`fa-solid ${COURSE_ICONS[b.course_code] || 'fa-book-open'}`}></i>
+                                            </div>
+                                            <span className="ml-card-code-tag">{b.course_code || 'COURSE'}</span>
+                                        </div>
 
-                                    <h3 className="ml-card-name">{b.title}</h3>
+                                        <h3 className="ml-card-name">{b.title}</h3>
 
-                                    <div className="ml-card-footer">
-                                        <span className="ml-card-count">
-                                            {b.toc?.length ? `${b.toc.length} Chapters` : 'Curriculum Book'}
-                                        </span>
-                                        <span className="ml-card-arrow">
-                                            <i className="fas fa-arrow-right"></i>
-                                        </span>
+                                        <div className="ml-card-footer">
+                                            <span className="ml-card-count">
+                                                {b.toc?.length ? `${b.toc.length} Chapters` : 'Curriculum Book'}
+                                            </span>
+                                            <span className="ml-card-arrow">
+                                                <i className="fas fa-arrow-right"></i>
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -594,41 +634,57 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             {/* Column 2: Interactive Pane (TOC Accordion, Section Confirm, or Reader) */}
                             <div className="ml-toc-interactive-pane">
                                 {stage === 'toc_select' && (
-                                    <div className="ml-toc-accordion">
-                                        {(selectedBook.toc || []).map((node, chIdx) => {
-                                            const isExpanded = expandedChapters.has(chIdx);
-                                            const hasChildren = node.children && node.children.length > 0;
-
-                                            return (
-                                                <div key={chIdx} className={`ml-toc-chapter-card ${isExpanded ? 'expanded' : ''}`}>
-                                                    <div className="ml-toc-ch-header" onClick={() => toggleChapterExpand(chIdx)}>
+                                    !isTocRevealed ? (
+                                        <div className="ml-toc-accordion skeleton-accordion">
+                                            {Array.from({ length: 6 }).map((_, idx) => (
+                                                <div key={idx} className="ml-toc-chapter-card skeleton">
+                                                    <div className="ml-toc-ch-header">
                                                         <div className="ml-toc-ch-left">
-                                                            <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
-                                                            <span className="ml-toc-ch-title">{node.title}</span>
+                                                            <div className="ml-skeleton-box ch-icon-skeleton"></div>
+                                                            <div className="ml-skeleton-box ch-title-skeleton"></div>
                                                         </div>
-                                                        {node.page && <span className="ml-toc-page-pill">p.{node.page}</span>}
+                                                        <div className="ml-skeleton-box pill-skeleton"></div>
                                                     </div>
-
-                                                    {isExpanded && hasChildren && (
-                                                        <div className="ml-toc-sections-list">
-                                                            {node.children.map((sub, sIdx) => (
-                                                                <div 
-                                                                    key={sIdx} 
-                                                                    className="ml-toc-section-item" 
-                                                                    onClick={() => handleSelectSection(sub, node.title)}
-                                                                >
-                                                                    <span className="ml-toc-sec-title">{sub.title}</span>
-                                                                    <span className="ml-toc-sec-arrow">
-                                                                        {sub.page ? `p.${sub.page}` : ''} <i className="fas fa-arrow-right"></i>
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="ml-toc-accordion">
+                                            {(selectedBook.toc || []).map((node, chIdx) => {
+                                                const isExpanded = expandedChapters.has(chIdx);
+                                                const hasChildren = node.children && node.children.length > 0;
+
+                                                return (
+                                                    <div key={chIdx} className={`ml-toc-chapter-card ${isExpanded ? 'expanded' : ''}`}>
+                                                        <div className="ml-toc-ch-header" onClick={() => toggleChapterExpand(chIdx)}>
+                                                            <div className="ml-toc-ch-left">
+                                                                <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
+                                                                <span className="ml-toc-ch-title">{node.title}</span>
+                                                            </div>
+                                                            {node.page && <span className="ml-toc-page-pill">p.{node.page}</span>}
+                                                        </div>
+
+                                                        {isExpanded && hasChildren && (
+                                                            <div className="ml-toc-sections-list">
+                                                                {node.children.map((sub, sIdx) => (
+                                                                    <div 
+                                                                        key={sIdx} 
+                                                                        className="ml-toc-section-item" 
+                                                                        onClick={() => handleSelectSection(sub, node.title)}
+                                                                    >
+                                                                        <span className="ml-toc-sec-title">{sub.title}</span>
+                                                                        <span className="ml-toc-sec-arrow">
+                                                                            {sub.page ? `p.${sub.page}` : ''} <i className="fas fa-arrow-right"></i>
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )
                                 )}
 
                                 {stage === 'section_confirm' && (
