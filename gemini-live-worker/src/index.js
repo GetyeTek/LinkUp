@@ -55,6 +55,45 @@ function pickGreeting(name, sex) {
   return chosen.replace(/\$\{name\}/g, name || 'Scholar');
 }
 
+const COURSE_SELECTION_TEMPLATES = {
+  male: [
+    "መልካም! አሁን ደግሞ እንድናጠና የምትፈልገውን ሴክሽን ምረጥ።",
+    "እሺ ${course}ን መርጠሃል። አሁን ደግሞ እንድናጠና የምትፈልገውን ምዕራፍ ወይም ሴክሽን ምረጥ።",
+    "${course} ጥሩ ምርጫ ነው። ከ${course} ውስጥ የትኛውን ሴክሽን ነው ማጥናት የምትፈልገው?",
+    "አሪፍ! አሁን ደግሞ ከ${course} ውስጥ የምንጀምርበትን ምዕራፍ ምረጥ።",
+    "መልካም! ${course}ን ይዘናል። አሁን የትኛውን ሴክሽን እናጥና?",
+    "ተመችቶኛል! ${course}ን ለመጨረስ ዝግጁ ነን። ከየትኛው ሴክሽን እንጀምር?",
+    "በጣም ጥሩ! አሁን ከ${course} የምትፈልገውን ምዕራፍ ወይም ሴክሽን ምረጥ።",
+    "እሺ ${course}ን መርጠሃል። ቀጥሎ የምናጠናውን ሴክሽን ምረጥ።"
+  ],
+  female: [
+    "መልካም! አሁን ደግሞ እንድናጠና የምትፈልጊውን ሴክሽን ምረጪ።",
+    "እሺ ${course}ን መርጠሻል። አሁን ደግሞ እንድናጠና የምትፈልጊውን ምዕራፍ ወይም ሴክሽን ምረጪ።",
+    "${course} ጥሩ ምርጫ ነው። ከ${course} ውስጥ የትኛውን ሴክሽን ነው ማጥናት የምትፈልጊው?",
+    "አሪፍ! አሁን ደግሞ ከ${course} ውስጥ የምንጀምርበትን ምዕራፍ ምረጪ።",
+    "መልካም! ${course}ን ይዘናል። አሁን የትኛውን ሴክሽን እናጥና?",
+    "ተመችቶኛል! ${course}ን ለመጨረስ ዝግጁ ነን። ከየትኛው ሴክሽን እንጀምር?",
+    "በጣም ጥሩ! አሁን ከ${course} የምትፈልጊውን ምዕራፍ ወይም ሴክሽን ምረጪ።",
+    "እሺ ${course}ን መርጠሻል። ቀጥሎ የምናጠናውን ሴክሽን ምረጪ።"
+  ],
+  neutral: [
+    "መልካም! ${course}ን ይዘናል። አሁን የትኛውን ሴክሽን እናጥና?",
+    "ተመችቶኛል! ${course}ን ለመጨረስ ዝግጁ ነን። ከየትኛው ሴክሽን እንጀምር?"
+  ]
+};
+
+function pickCourseResponse(course, sex) {
+  const s = (sex || "").toLowerCase();
+  let list = COURSE_SELECTION_TEMPLATES.neutral;
+  if (s === 'male' || s === 'm') {
+    list = COURSE_SELECTION_TEMPLATES.male;
+  } else if (s === 'female' || s === 'f') {
+    list = COURSE_SELECTION_TEMPLATES.female;
+  }
+  const chosen = list[Math.floor(Math.random() * list.length)];
+  return chosen.replace(/\$\{course\}/g, course || 'ትምህርቱን');
+}
+
 const GENERIC_STOP_WORDS = new Set([
   'chapter', 'section', 'unit', 'module', 'part', 'topic', 'lesson',
   'overview', 'introduction', 'summary', 'review', 'exercises', 'questions',
@@ -1418,6 +1457,15 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
                     this.hasGreeted = true;
                     const greeting = pickGreeting(this.studentName, this.userSex);
                     this.speakPreformattedAmharic(greeting);
+                }
+                return;
+            }
+
+            if (parsed.action === "course_selected") {
+                console.log(`[Agent|DO|STATE] Intercepted course_selected for ${this.conversationId} (course: ${parsed.course_name})`);
+                if (this.isOneOnOne) {
+                    const speech = pickCourseResponse(parsed.course_name, this.userSex);
+                    this.speakPreformattedAmharic(speech);
                 }
                 return;
             }
