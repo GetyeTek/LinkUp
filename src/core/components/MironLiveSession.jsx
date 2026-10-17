@@ -1,8 +1,55 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { usePlatform, useGeminiAudio, supabase } from '@linkup-platform/sdk-core';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { usePlatform, useGeminiAudio, supabase, getComponent } from '@linkup-platform/sdk-core';
 import FloatingMironOrb from './FloatingMironOrb.jsx';
 import MironConnectionRing from './MironConnectionRing.jsx';
 import './MironLiveSession.css';
+
+// DOM Range Highlighter for active textbook page
+const clearDOMHighlights = (root) => {
+    if (!root) return;
+    const marks = root.querySelectorAll('mark.miron-live-highlight');
+    marks.forEach(m => {
+        const parent = m.parentNode;
+        while (m.firstChild) parent.insertBefore(m.firstChild, m);
+        parent.removeChild(m);
+        parent.normalize();
+    });
+};
+
+const applyDOMHighlight = (root, searchText) => {
+    if (!root || !searchText || searchText.trim().length < 3) return;
+    clearDOMHighlights(root);
+
+    const cleanTarget = searchText.trim().toLowerCase().replace(/\s+/g, ' ');
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    let targetWords = cleanTarget.split(' ').filter(w => w.length > 2);
+    let searchPhrase = targetWords.slice(0, 7).join(' ');
+
+    while ((node = walker.nextNode())) {
+        const val = node.nodeValue.toLowerCase().replace(/\s+/g, ' ');
+        let matchIdx = val.indexOf(cleanTarget);
+        let matchLen = searchText.trim().length;
+
+        if (matchIdx === -1 && searchPhrase) {
+            matchIdx = val.indexOf(searchPhrase);
+            matchLen = searchPhrase.length;
+        }
+
+        if (matchIdx !== -1) {
+            try {
+                const range = document.createRange();
+                range.setStart(node, matchIdx);
+                range.setEnd(node, Math.min(node.nodeValue.length, matchIdx + matchLen));
+                const mark = document.createElement('mark');
+                mark.className = 'miron-live-highlight';
+                range.surroundContents(mark);
+                mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } catch (e) {}
+            break;
+        }
+    }
+};
 
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const { sessionUser } = usePlatform();
@@ -13,16 +60,55 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [textInput, setTextInput] = useState('');
     const [transcripts, setTranscripts] = useState([]);
     const [isMironSpeaking, setIsMironSpeaking] = useState(false);
+    const [isConsulting, setIsConsulting] = useState(false);
+
+    // --- CLASSROOM WORKSPACE STATE MACHINE ---
+    // 'course_select' | 'toc_select' | 'section_confirm' | 'reading'
+    const [stage, setStage] = useState('course_select');
+    const [books, setBooks] = useState([]);
+    const [selectedBook, setSelectedBook] = useState(null);
+    const [selectedSection, setSelectedSection] = useState(null);
+    const [expandedChapters, setExpandedChapters] = useState(new Set());
+    const [sectionPages, setSectionPages] = useState([]);
+    const [activePageIndex, setActivePageIndex] = useState(0);
+    const [activeHighlight, setActiveHighlight] = useState(null);
+    const [isLoadingPages, setIsLoadingPages] = useState(false);
+    const [showTranscriptDrawer, setShowTranscriptDrawer] = useState(false);
 
     const wsRef = useRef(null);
-    const recognitionRef = useRef(null);
     const speakingTimeout = useRef(null);
     const transcriptRef = useRef(null);
+    const pageContainerRef = useRef(null);
     const isHangingUpRef = useRef(false);
 
     const { playAudioChunk } = useGeminiAudio(wsRef, micActive);
+    const renderBookBlock = getComponent('book-block-renderer');
 
-    // Auto-scroll transcripts smoothly
+    // 1. Hydrate Course Books (Fast cache hit + fresh DB fetch)
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('linkup_books_catalog');
+            if (raw) {
+                const list = JSON.parse(raw);
+                if (Array.isArray(list) && list.length > 0) {
+                    setBooks(list.filter(b => !b.isExamTrigger && !b.isFlashcardTrigger));
+                }
+            }
+        } catch (e) {}
+
+        supabase
+            .from('books')
+            .select('id, title, course_code, toc, cover_url, page_offset')
+            .eq('is_published', true)
+            .order('title', { ascending: true })
+            .then(({ data, error }) => {
+                if (!error && data) {
+                    setBooks(data);
+                }
+            });
+    }, []);
+
+    // 2. Auto-scroll Transcripts
     useEffect(() => {
         if (transcriptRef.current) {
             transcriptRef.current.scrollTo({
@@ -32,9 +118,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     }, [transcripts]);
 
-    const [isConsulting, setIsConsulting] = useState(false);
+    // 3. Live Highlight Synchronization
+    useEffect(() => {
+        if (stage === 'reading' && pageContainerRef.current && activeHighlight) {
+            applyDOMHighlight(pageContainerRef.current, activeHighlight);
+        }
+    }, [activeHighlight, activePageIndex, stage]);
 
-    // 1. Core WebSocket Connection to Gemini DO
+    // 4. Core WebSocket Connection to Gemini DO
     useEffect(() => {
         if (!sessionUser?.id) return;
         const agentId = `miron-personal-${sessionUser.id}-${sessionId}`;
@@ -60,91 +151,96 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             ws.onclose = () => {
                 setIsConnected(false);
                 if (isMounted && !isHangingUpRef.current) {
-                    console.log("[Miron Live] Connection lost. Reconnecting in 2 seconds...");
                     reconnectTimer = setTimeout(connectWS, 2000);
                 }
             };
 
             ws.onmessage = (e) => {
-            try {
-                const payload = JSON.parse(e.data);
-                
-                // 1. Intercept User Speech Transcript natively from Gemini
-                if (payload.serverContent?.inputTranscription?.text) {
-                    const userText = payload.serverContent.inputTranscription.text;
-                    setTranscripts(prev => {
-                        const last = prev[prev.length - 1];
-                        if (last && last.role === 'user' && !last.isFinal) {
-                            const updated = [...prev];
-                            updated[updated.length - 1] = { ...last, text: last.text + userText };
-                            return updated;
-                        } else {
+                try {
+                    const payload = JSON.parse(e.data);
+
+                    // A. Intercept User Transcription
+                    if (payload.serverContent?.inputTranscription?.text) {
+                        const userText = payload.serverContent.inputTranscription.text;
+                        setTranscripts(prev => {
+                            const last = prev[prev.length - 1];
+                            if (last && last.role === 'user' && !last.isFinal) {
+                                const updated = [...prev];
+                                updated[updated.length - 1] = { ...last, text: last.text + userText };
+                                return updated;
+                            }
                             return [...prev, { id: Date.now(), role: 'user', text: userText, isFinal: false }];
-                        }
-                    });
-                }
+                        });
+                    }
 
-                // 2. Intercept Gemini Speech Transcript natively
-                if (payload.serverContent?.outputTranscription?.text) {
-                    const mironText = payload.serverContent.outputTranscription.text;
-                    setTranscripts(prev => {
-                        const last = prev[prev.length - 1];
-                        if (last && last.role === 'miron' && !last.isFinal) {
-                            const updated = [...prev];
-                            updated[updated.length - 1] = { ...last, text: last.text + mironText };
-                            return updated;
-                        } else {
+                    // B. Intercept Gemini Speech Transcript
+                    if (payload.serverContent?.outputTranscription?.text) {
+                        const mironText = payload.serverContent.outputTranscription.text;
+                        setTranscripts(prev => {
+                            const last = prev[prev.length - 1];
+                            if (last && last.role === 'miron' && !last.isFinal) {
+                                const updated = [...prev];
+                                updated[updated.length - 1] = { ...last, text: last.text + mironText };
+                                return updated;
+                            }
                             return [...prev, { id: Date.now(), role: 'miron', text: mironText, isFinal: false }];
-                        }
-                    });
-                }
+                        });
+                    }
 
-                // 3. Lock the bubble when the turn is over
-                if (payload.serverContent?.turnComplete) {
-                    setTranscripts(prev => {
-                        const last = prev[prev.length - 1];
-                        if (last && !last.isFinal) {
-                            const updated = [...prev];
-                            updated[updated.length - 1] = { ...last, isFinal: true };
-                            return updated;
-                        }
-                        return prev;
-                    });
-                }
+                    // C. Finalize bubble
+                    if (payload.serverContent?.turnComplete) {
+                        setTranscripts(prev => {
+                            const last = prev[prev.length - 1];
+                            if (last && !last.isFinal) {
+                                const updated = [...prev];
+                                updated[updated.length - 1] = { ...last, isFinal: true };
+                                return updated;
+                            }
+                            return prev;
+                        });
+                    }
 
-                // 4. Play Voice Output Chunks (Failsafe sequential flow)
-                if (payload.serverContent?.modelTurn?.parts) {
-                    for (const part of payload.serverContent.modelTurn.parts) {
-                        if (part.inlineData?.data) {
-                            playAudioChunk(part.inlineData.data);
-                            setIsMironSpeaking(true);
-                            clearTimeout(speakingTimeout.current);
-                            speakingTimeout.current = setTimeout(() => setIsMironSpeaking(false), 800);
+                    // D. Voice Output Audio Chunks
+                    if (payload.serverContent?.modelTurn?.parts) {
+                        for (const part of payload.serverContent.modelTurn.parts) {
+                            if (part.inlineData?.data) {
+                                playAudioChunk(part.inlineData.data);
+                                setIsMironSpeaking(true);
+                                clearTimeout(speakingTimeout.current);
+                                speakingTimeout.current = setTimeout(() => setIsMironSpeaking(false), 800);
+                            }
                         }
                     }
-                }
 
-                // 5. Intercept consulting state from Durable Object
-                if (payload.type === "tool_call_state") {
-                    setIsConsulting(payload.executing);
-                }
+                    // E. Live Highlight Transmission
+                    if (payload.type === "live_highlight" && payload.text) {
+                        setActiveHighlight(payload.text);
+                    } else if (payload.type === "miron_thought" && typeof payload.text === 'string') {
+                        const hlMatch = payload.text.match(/highlight=["']([^"']+)["']/i);
+                        if (hlMatch) {
+                            setActiveHighlight(hlMatch[1]);
+                        }
+                    }
 
-                // 6. Billing Guard
-                if (payload.event === "billing_error" || (payload.error && (payload.error.includes('INSUFFICIENT_CREDITS') || payload.error.toLowerCase().includes('insufficient linkup credits')))) {
-                    setTranscripts(prev => [...prev, { 
-                        id: Date.now(), 
-                        role: 'miron', 
-                        text: "You have used all your LinkUp Credits for live voice study sessions. Upgrade to LinkUp Gold for unlimited 24/7 AI stages, audio tutoring, and full exam archives.", 
-                        isFinal: true, 
-                        isBroke: true 
-                    }]);
-                    setIsMironSpeaking(false);
-                    ws.close();
-                }
-            } catch (err) {
-                console.error("WS Parse error", err);
-            }
-        };
+                    // F. Tool Consulting State
+                    if (payload.type === "tool_call_state") {
+                        setIsConsulting(payload.executing);
+                    }
+
+                    // G. Billing Alert
+                    if (payload.event === "billing_error" || (payload.error && payload.error.toLowerCase().includes('insufficient_credits'))) {
+                        setTranscripts(prev => [...prev, {
+                            id: Date.now(),
+                            role: 'miron',
+                            text: "You have used all your LinkUp Credits for live voice study sessions. Upgrade to LinkUp Gold for unlimited AI stages.",
+                            isFinal: true,
+                            isBroke: true
+                        }]);
+                        setIsMironSpeaking(false);
+                        ws.close();
+                    }
+                } catch (err) {}
+            };
         };
 
         connectWS();
@@ -156,24 +252,107 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [sessionUser?.id]);
 
-
-
-    // 5. Explicit Text Injection
-    const handleSendText = () => {
-        if (!textInput.trim()) return;
-        const text = textInput.trim();
-        setTextInput('');
-        
-        setTranscripts(prev => [...prev, { id: Date.now(), role: 'user', text, isFinal: true }]);
-
+    // Send verbal intent to DO
+    const emitVoicePrompt = (spokenText) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({
                 clientContent: {
-                    turns: [{ role: "user", parts: [{ text }] }],
+                    turns: [{ role: "user", parts: [{ text: spokenText }] }],
                     turnComplete: true
                 }
             }));
         }
+    };
+
+    // --- NAVIGATION FLOW HANDLERS ---
+    const handleSelectCourse = (book) => {
+        setSelectedBook(book);
+        setStage('toc_select');
+        setExpandedChapters(new Set([0]));
+        emitVoicePrompt(`I selected ${book.title} (${book.course_code || 'our course'}). Give me a friendly peer welcome and prompt me to pick a chapter or section.`);
+    };
+
+    const toggleChapterExpand = (chIndex) => {
+        setExpandedChapters(prev => {
+            const next = new Set(prev);
+            if (next.has(chIndex)) next.delete(chIndex);
+            else next.add(chIndex);
+            return next;
+        });
+    };
+
+    const handleSelectSection = (sectionNode, parentChapterTitle) => {
+        setSelectedSection({
+            ...sectionNode,
+            parentTitle: parentChapterTitle
+        });
+        setStage('section_confirm');
+        emitVoicePrompt(`I chose to study "${sectionNode.title}". Give me an authentic, concise summary of what we'll master in this section and ask me to hit confirm.`);
+    };
+
+    const handleConfirmStartReading = async () => {
+        if (!selectedBook || !selectedSection) return;
+        setIsLoadingPages(true);
+        setStage('reading');
+
+        const offset = selectedBook.page_offset || 0;
+        const logicalStart = selectedSection.page || 1;
+        const physicalStart = Math.max(1, logicalStart + offset);
+        const physicalEnd = physicalStart + 6;
+
+        try {
+            const { data, error } = await supabase
+                .from('book_pages')
+                .select('id, page_number, content_json')
+                .eq('book_id', selectedBook.id)
+                .gte('page_number', physicalStart)
+                .lte('page_number', physicalEnd)
+                .order('page_number', { ascending: true });
+
+            if (error) throw error;
+            const validPages = data && data.length > 0 ? data : [
+                { id: 'blank', page_number: physicalStart, content_json: [{ type: 'paragraph', body: `Welcome to ${selectedSection.title}. Let's begin the review.` }] }
+            ];
+
+            setSectionPages(validPages);
+            setActivePageIndex(0);
+            setIsLoadingPages(false);
+
+            // Feed Miron Page 1
+            const p1 = validPages[0];
+            const p1Text = (p1.content_json || []).map(b => b.body || b.text || b.main || '').filter(Boolean).join(' ');
+            emitVoicePrompt(`We are confirmed on Page ${p1.page_number} for "${selectedSection.title}". Here is the raw page text:\n"""${p1Text.slice(0, 1800)}"""\nTeach me the first concept step by step. Remember to tag exact sentences you are discussing with <chunk highlight="...">.`);
+        } catch (e) {
+            console.error("Failed to load section pages:", e);
+            setIsLoadingPages(false);
+        }
+    };
+
+    const handleNextPage = () => {
+        if (activePageIndex < sectionPages.length - 1) {
+            const nextIdx = activePageIndex + 1;
+            setActivePageIndex(nextIdx);
+            setActiveHighlight(null);
+            const nextPage = sectionPages[nextIdx];
+            const text = (nextPage.content_json || []).map(b => b.body || b.text || b.main || '').filter(Boolean).join(' ');
+            emitVoicePrompt(`I turned the page to Page ${nextPage.page_number}. Here is the page content:\n"""${text.slice(0, 1800)}"""\nUnpack the concepts on this new page.`);
+        }
+    };
+
+    const handlePrevPage = () => {
+        if (activePageIndex > 0) {
+            const prevIdx = activePageIndex - 1;
+            setActivePageIndex(prevIdx);
+            setActiveHighlight(null);
+        }
+    };
+
+    const handleSendText = () => {
+        if (!textInput.trim()) return;
+        const text = textInput.trim();
+        setTextInput('');
+        setTranscripts(prev => [...prev, { id: Date.now(), role: 'user', text, isFinal: true }]);
+        emitVoicePrompt(text);
     };
 
     const handleHangup = () => {
@@ -194,79 +373,263 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         return <FloatingMironOrb mironAvatarUrl={mironAvatarUrl} isConnected={isConnected} onClick={() => setViewState('full')} />;
     }
 
+    const currentPage = sectionPages[activePageIndex];
+
     return (
         <div className="ml-overlay">
             <div className="ml-ambient"></div>
-            
+
+            {/* Header Bar */}
             <header className="ml-header">
-                <button className="athena-close" onClick={() => setViewState('minimized')}><i className="fas fa-chevron-down"></i></button>
-                <div className="ml-status">
-                    <span className="live-dot"></span> Live Voice Session
+                <div className="ml-header-left">
+                    {stage !== 'course_select' && (
+                        <button 
+                            className="ml-back-btn" 
+                            onClick={() => {
+                                if (stage === 'reading') setStage('section_confirm');
+                                else if (stage === 'section_confirm') setStage('toc_select');
+                                else if (stage === 'toc_select') setStage('course_select');
+                            }}
+                        >
+                            <i className="fas fa-chevron-left"></i>
+                        </button>
+                    )}
+                    <button className="athena-close" onClick={() => setViewState('minimized')}>
+                        <i className="fas fa-chevron-down"></i>
+                    </button>
                 </div>
-                <button className="athena-close" onClick={handleHangup} style={{color: '#ff5f5f'}}><i className="fas fa-phone-slash"></i></button>
+
+                <div className="ml-status">
+                    <span className="live-dot"></span>
+                    <span>
+                        {stage === 'course_select' ? 'Select a Course' : 
+                         stage === 'toc_select' ? (selectedBook?.course_code || selectedBook?.title) :
+                         stage === 'section_confirm' ? 'Ready to Study' :
+                         `${selectedBook?.course_code || 'Reader'} • p.${currentPage?.page_number || ''}`}
+                    </span>
+                </div>
+
+                <div className="ml-header-right">
+                    {stage === 'reading' && (
+                        <button 
+                            className={`ml-transcript-toggle ${showTranscriptDrawer ? 'active' : ''}`}
+                            onClick={() => setShowTranscriptDrawer(!showTranscriptDrawer)}
+                            title="Toggle Live Transcript"
+                        >
+                            <i className="fas fa-comment-dots"></i>
+                        </button>
+                    )}
+                    <button className="athena-close" onClick={handleHangup} style={{ color: '#ff5f5f' }}>
+                        <i className="fas fa-phone-slash"></i>
+                    </button>
+                </div>
             </header>
 
-            <div className="ml-stage">
-                <div className="ml-avatar-container">
-                    <MironConnectionRing isConnected={isConnected} />
-                    {isConnected && !isConsulting && (
-                        <>
-                            <div className="ml-halo"></div>
-                            <div className="ml-halo" style={{animationDelay: '0.6s'}}></div>
-                        </>
-                    )}
-                    {isConsulting && (
-                        <>
-                            <div className="ml-consulting-pulse-1"></div>
-                            <div className="ml-consulting-pulse-2"></div>
-                            <div className="ml-consulting-label">Consulting textbook...</div>
-                        </>
-                    )}
-                    <img src={mironAvatarUrl} alt="Miron" className={`ml-avatar ${isConsulting ? 'consulting-mode' : ''}`} />
-                </div>
-            </div>
+            {/* Interactive Workspace */}
+            <main className={`ml-classroom-body ${stage}`}>
 
-            <div className="ml-transcript-area">
-                <div className="ml-transcript-scroll" ref={transcriptRef}>
-                    <div style={{ minHeight: '60vh', flexShrink: 0 }}></div>
-                    {transcripts.length === 0 && (
-                        <div className="ml-empty-prompt">Listening...</div>
+                {/* Compact Miron Avatar Strip */}
+                <div className={`ml-avatar-strip ${stage}`}>
+                    <div className="ml-avatar-mini-container">
+                        <MironConnectionRing isConnected={isConnected} />
+                        {isConnected && !isConsulting && isMironSpeaking && (
+                            <>
+                                <div className="ml-halo"></div>
+                                <div className="ml-halo" style={{ animationDelay: '0.6s' }}></div>
+                            </>
+                        )}
+                        <img 
+                            src={mironAvatarUrl} 
+                            alt="Miron" 
+                            className={`ml-avatar ${isMironSpeaking ? 'is-speaking' : ''} ${isConsulting ? 'consulting-mode' : ''}`} 
+                        />
+                    </div>
+                    {isConsulting && (
+                        <span className="ml-consulting-badge">
+                            <i className="fas fa-circle-notch fa-spin"></i> Consulting textbook...
+                        </span>
                     )}
-                    {transcripts.map(t => (
-                        <div key={t.id} className={`ml-bubble-wrap ${t.role}`}>
-                            {t.isBroke ? (
-                                <div className="miron-credit-out-card live-mode">
-                                    <div className="mcoc-header">
-                                        <div className="mcoc-crown-badge">
-                                            <i className="fa-solid fa-crown"></i>
-                                        </div>
-                                        <span className="mcoc-title">Credits Exhausted</span>
+                </div>
+
+                {/* STAGE 0: COURSE SELECT GRID */}
+                {stage === 'course_select' && (
+                    <div className="ml-stage-content course-grid-stage">
+                        <div className="ml-stage-header">
+                            <h2>What are we studying today?</h2>
+                            <p>Pick a course and Miron will walk you through the curriculum step by step.</p>
+                        </div>
+                        <div className="ml-courses-bento">
+                            {books.map(b => (
+                                <div key={b.id} className="ml-course-bento-card" onClick={() => handleSelectCourse(b)}>
+                                    <div className="ml-cbc-cover">
+                                        {b.cover_url ? (
+                                            <img src={b.cover_url} alt="" />
+                                        ) : (
+                                            <i className="fas fa-book-open"></i>
+                                        )}
                                     </div>
-                                    <p className="mcoc-text">{t.text}</p>
-                                    <button 
-                                        className="mcoc-upgrade-btn" 
-                                        onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
-                                    >
-                                        <i className="fa-solid fa-crown"></i>
-                                        <span>Upgrade to LinkUp Gold</span>
-                                        <i className="fa-solid fa-arrow-right"></i>
-                                    </button>
+                                    <div className="ml-cbc-info">
+                                        <span className="ml-cbc-code">{b.course_code || 'COURSE'}</span>
+                                        <h3 className="ml-cbc-title">{b.title}</h3>
+                                    </div>
+                                    <i className="fas fa-arrow-right ml-cbc-arrow"></i>
                                 </div>
-                            ) : (
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* STAGE 1: TABLE OF CONTENTS ACCORDION */}
+                {stage === 'toc_select' && selectedBook && (
+                    <div className="ml-stage-content toc-stage">
+                        <div className="ml-book-hero-banner">
+                            {selectedBook.cover_url && (
+                                <img src={selectedBook.cover_url} className="ml-bh-cover" alt="" />
+                            )}
+                            <div className="ml-bh-text">
+                                <span className="ml-cbc-code">{selectedBook.course_code}</span>
+                                <h2>{selectedBook.title}</h2>
+                                <p>Tap a chapter to reveal topics, then pick a section.</p>
+                            </div>
+                        </div>
+
+                        <div className="ml-toc-accordion">
+                            {(selectedBook.toc || []).map((node, chIdx) => {
+                                const isExpanded = expandedChapters.has(chIdx);
+                                const hasChildren = node.children && node.children.length > 0;
+
+                                return (
+                                    <div key={chIdx} className={`ml-toc-chapter-card ${isExpanded ? 'expanded' : ''}`}>
+                                        <div className="ml-toc-ch-header" onClick={() => toggleChapterExpand(chIdx)}>
+                                            <div className="ml-toc-ch-left">
+                                                <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
+                                                <span className="ml-toc-ch-title">{node.title}</span>
+                                            </div>
+                                            {node.page && <span className="ml-toc-page-pill">p.{node.page}</span>}
+                                        </div>
+
+                                        {isExpanded && hasChildren && (
+                                            <div className="ml-toc-sections-list">
+                                                {node.children.map((sub, sIdx) => (
+                                                    <div 
+                                                        key={sIdx} 
+                                                        className="ml-toc-section-item" 
+                                                        onClick={() => handleSelectSection(sub, node.title)}
+                                                    >
+                                                        <span className="ml-toc-sec-title">{sub.title}</span>
+                                                        <span className="ml-toc-sec-arrow">
+                                                            {sub.page ? `p.${sub.page}` : ''} <i className="fas fa-arrow-right"></i>
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* STAGE 2: SECTION CONFIRM CARD */}
+                {stage === 'section_confirm' && selectedSection && (
+                    <div className="ml-stage-content confirm-stage">
+                        <div className="ml-confirm-card">
+                            <span className="ml-confirm-tag">
+                                <i className="fas fa-bookmark"></i> SELECTED TOPIC
+                            </span>
+                            <span className="ml-confirm-parent">{selectedSection.parentTitle}</span>
+                            <h2 className="ml-confirm-title">{selectedSection.title}</h2>
+                            <div className="ml-confirm-meta">
+                                <span><i className="far fa-file-alt"></i> Page {selectedSection.page || 1}</span>
+                                <span><i className="fas fa-bolt"></i> Co-Pilot Guided Session</span>
+                            </div>
+
+                            <p className="ml-confirm-blurb">
+                                Miron will read through this section with you, breaking down concepts, formulas, and highlighting key sentences live as he explains them.
+                            </p>
+
+                            <button className="ml-start-grind-btn" onClick={handleConfirmStartReading}>
+                                <span>Start Reading with Miron</span>
+                                <i className="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* STAGE 3: HORIZONTAL PAGINATED READER */}
+                {stage === 'reading' && (
+                    <div className="ml-stage-content reading-stage">
+                        <div className="ml-reader-bar">
+                            <button 
+                                className="ml-page-nav-btn" 
+                                onClick={handlePrevPage} 
+                                disabled={activePageIndex === 0}
+                            >
+                                <i className="fas fa-chevron-left"></i> Prev
+                            </button>
+                            <span className="ml-page-indicator">
+                                Page {activePageIndex + 1} of {sectionPages.length}
+                            </span>
+                            <button 
+                                className="ml-page-nav-btn" 
+                                onClick={handleNextPage} 
+                                disabled={activePageIndex >= sectionPages.length - 1}
+                            >
+                                Next <i className="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+
+                        <div className="ml-page-viewport" ref={pageContainerRef}>
+                            {isLoadingPages ? (
+                                <div className="ml-page-loader">
+                                    <i className="fas fa-circle-notch fa-spin fa-2x"></i>
+                                    <p>Loading textbook page...</p>
+                                </div>
+                            ) : currentPage ? (
+                                <div className="page-wrapper engine-universal" data-page-number={currentPage.page_number}>
+                                    <div className="page-canvas">
+                                        {(currentPage.content_json || []).map((block, idx) => (
+                                            <div key={idx} className="block-target-wrapper">
+                                                {renderBookBlock ? (
+                                                    renderBookBlock(block, idx, { bookTitle: selectedBook?.title })
+                                                ) : (
+                                                    <p>{block.body || block.text || block.main || ''}</p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                )}
+
+                {/* Live Transcript Drawer */}
+                <div className={`ml-transcript-floating-drawer ${showTranscriptDrawer ? 'open' : ''}`}>
+                    <div className="ml-tfd-header">
+                        <span><i className="fas fa-comment-dots"></i> Live Transcript</span>
+                        <button onClick={() => setShowTranscriptDrawer(false)}><i className="fas fa-times"></i></button>
+                    </div>
+                    <div className="ml-tfd-scroll" ref={transcriptRef}>
+                        {transcripts.map(t => (
+                            <div key={t.id} className={`ml-bubble-wrap ${t.role}`}>
                                 <div className="ml-bubble">
                                     {t.text || <span className="ml-typing-dots">...</span>}
                                 </div>
-                            )}
-                        </div>
-                    ))}
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            </div>
 
-            <div className="ml-dock-container">
+            </main>
+
+            {/* Bottom Microphone / Chat Capsule */}
+            <footer className="ml-dock-container">
                 <div className="ml-dock">
                     <input 
                         type="text" 
-                        placeholder="Type to Miron..." 
+                        placeholder={stage === 'reading' ? "Ask Miron about this page..." : "Type to Miron..."} 
                         value={textInput}
                         onChange={e => setTextInput(e.target.value)}
                         onKeyPress={e => e.key === 'Enter' && handleSendText()}
@@ -281,7 +644,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         </button>
                     )}
                 </div>
-            </div>
+            </footer>
         </div>
     );
 };
