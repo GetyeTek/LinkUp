@@ -43,40 +43,7 @@ const applyDOMHighlight = (root, searchText) => {
     const words = searchText.trim().split(/\s+/).filter(w => w.length > 1);
     if (words.length === 0) return;
 
-    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\const applyDOMHighlight = (root, searchText) => {
-    if (!root || !searchText || searchText.trim().length < 3) return;
-    clearDOMHighlights(root);
-
-    const cleanTarget = searchText.trim().toLowerCase().replace(/\s+/g, ' ');
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
-    let node;
-    let targetWords = cleanTarget.split(' ').filter(w => w.length > 2);
-    let searchPhrase = targetWords.slice(0, 7).join(' ');
-
-    while ((node = walker.nextNode())) {
-        const val = node.nodeValue.toLowerCase().replace(/\s+/g, ' ');
-        let matchIdx = val.indexOf(cleanTarget);
-        let matchLen = searchText.trim().length;
-
-        if (matchIdx === -1 && searchPhrase) {
-            matchIdx = val.indexOf(searchPhrase);
-            matchLen = searchPhrase.length;
-        }
-
-        if (matchIdx !== -1) {
-            try {
-                const range = document.createRange();
-                range.setStart(node, matchIdx);
-                range.setEnd(node, Math.min(node.nodeValue.length, matchIdx + matchLen));
-                const mark = document.createElement('mark');
-                mark.className = 'miron-live-highlight';
-                range.surroundContents(mark);
-                mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } catch (e) {}
-            break;
-        }
-    }
-};');
+    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => '\\' + c);
     const fullPattern = words.map(escapeRegExp).join('\\s+');
     const shortPattern = words.slice(0, 5).map(escapeRegExp).join('\\s+');
 
