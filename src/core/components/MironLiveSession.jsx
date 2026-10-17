@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePlatform, useGeminiAudio, supabase, getComponent } from '@linkup-platform/sdk-core';
 import FloatingMironOrb from './FloatingMironOrb.jsx';
 import MironConnectionRing from './MironConnectionRing.jsx';
@@ -40,6 +40,13 @@ const applyDOMHighlight = (root, searchText) => {
     if (!root || !searchText || searchText.trim().length < 3) return;
     clearDOMHighlights(root);
 
+    const words = searchText.trim().split(/\s+/).filter(w => w.length > 1);
+    if (words.length === 0) return;
+
+    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\const applyDOMHighlight = (root, searchText) => {
+    if (!root || !searchText || searchText.trim().length < 3) return;
+    clearDOMHighlights(root);
+
     const cleanTarget = searchText.trim().toLowerCase().replace(/\s+/g, ' ');
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
     let node;
@@ -61,6 +68,36 @@ const applyDOMHighlight = (root, searchText) => {
                 const range = document.createRange();
                 range.setStart(node, matchIdx);
                 range.setEnd(node, Math.min(node.nodeValue.length, matchIdx + matchLen));
+                const mark = document.createElement('mark');
+                mark.className = 'miron-live-highlight';
+                range.surroundContents(mark);
+                mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } catch (e) {}
+            break;
+        }
+    }
+};');
+    const fullPattern = words.map(escapeRegExp).join('\\s+');
+    const shortPattern = words.slice(0, 5).map(escapeRegExp).join('\\s+');
+
+    const fullRegex = new RegExp(fullPattern, 'i');
+    const shortRegex = words.length > 4 ? new RegExp(shortPattern, 'i') : null;
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+
+    while ((node = walker.nextNode())) {
+        const raw = node.nodeValue;
+        let match = fullRegex.exec(raw);
+        if (!match && shortRegex) {
+            match = shortRegex.exec(raw);
+        }
+
+        if (match) {
+            try {
+                const range = document.createRange();
+                range.setStart(node, match.index);
+                range.setEnd(node, Math.min(raw.length, match.index + match[0].length));
                 const mark = document.createElement('mark');
                 mark.className = 'miron-live-highlight';
                 range.surroundContents(mark);
@@ -148,6 +185,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     // 4. Core WebSocket Connection to Gemini DO
     useEffect(() => {
         if (!sessionUser?.id) return;
+        isHangingUpRef.current = false;
         const agentId = `miron-personal-${sessionUser.id}-${sessionId}`;
         const studentName = sessionUser.user_metadata?.full_name?.split(' ')[0] || "Scholar";
         const url = `wss://linkup-gateway.getyeteklu2.workers.dev/realtime-ai?agent=${agentId}&name=${encodeURIComponent(studentName)}&uid=${sessionUser.id}`;
@@ -268,6 +306,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         return () => {
             isMounted = false;
             clearTimeout(reconnectTimer);
+            clearTimeout(speakingTimeout.current);
             if (ws) ws.close();
         };
     }, [sessionUser?.id]);
@@ -350,19 +389,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
     const handleNextPage = () => {
         if (activePageIndex < sectionPages.length - 1) {
-            const nextIdx = activePageIndex + 1;
-            setActivePageIndex(nextIdx);
+            setActivePageIndex(prev => prev + 1);
             setActiveHighlight(null);
-            const nextPage = sectionPages[nextIdx];
-            const text = (nextPage.content_json || []).map(b => b.body || b.text || b.main || '').filter(Boolean).join(' ');
-            emitVoicePrompt(`I turned the page to Page ${nextPage.page_number}. Here is the page content:\n"""${text.slice(0, 1800)}"""\nUnpack the concepts on this new page.`);
         }
     };
 
     const handlePrevPage = () => {
         if (activePageIndex > 0) {
-            const prevIdx = activePageIndex - 1;
-            setActivePageIndex(prevIdx);
+            setActivePageIndex(prev => prev - 1);
             setActiveHighlight(null);
         }
     };
@@ -681,9 +715,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     <div className="ml-tfd-scroll" ref={transcriptRef}>
                         {transcripts.map(t => (
                             <div key={t.id} className={`ml-bubble-wrap ${t.role}`}>
-                                <div className="ml-bubble">
-                                    {t.text || <span className="ml-typing-dots">...</span>}
-                                </div>
+                                {t.isBroke ? (
+                                    <div className="miron-credit-out-card live-mode">
+                                        <div className="mcoc-header">
+                                            <div className="mcoc-crown-badge"><i className="fas fa-crown"></i></div>
+                                            <span className="mcoc-title">LinkUp Gold Required</span>
+                                        </div>
+                                        <p className="mcoc-text">{t.text}</p>
+                                        <button className="mcoc-upgrade-btn" onClick={() => window.location.href = '/subscription'}>
+                                            <i className="fas fa-bolt"></i> Upgrade to LinkUp Gold
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="ml-bubble">
+                                        {t.text || <span className="ml-typing-dots">...</span>}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
