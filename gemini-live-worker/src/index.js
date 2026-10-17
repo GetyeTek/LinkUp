@@ -371,13 +371,6 @@ export class GeminiLiveAgent {
     this.qaTimer = null;
     this.cleanupTimeout = null;
 
-    // --- MISSION CONTROL & COGNITION STATE ---
-    this.logRing = [];
-    this.sseClients = new Set();
-    this.activeRooms = new Map();
-    this.groqChatHistory = [];
-    this.tokenizer = null;
-    this.currentBookId = null;
     this.currentCourseCode = null;
     this.lastPromptTokens = 0;
     this.userSex = null;
@@ -385,14 +378,16 @@ export class GeminiLiveAgent {
     this.pendingTemplateSpeech = null;
     this.isSpeakingTemplate = false;
     this.isGeneratingSectionSummary = false;
-    this.userSex = null;
-    this.hasGreeted = false;
-    this.pendingTemplateSpeech = null;
-    this.isSpeakingTemplate = false;
-    this.isGeneratingSectionSummary = false;
+    if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
+    if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
+    this.activeTurn = null;
+
+    // Diagnostic & Turn Tracking State
+    this.activeTurn = null;
+    this.turnWatchdogTimer = null;
+    this.turnDeadlineTimer = null;
 
     // --- 1-ON-1 COGNITIVE PIPELINE STATE (GROQ BRAIN + GEMINI VOICE) ---
-    this.pendingUserSpeech = "";
     this.speechDebounceTimer = null;
     this.translationQueue = [];
     this.isGeminiTranslating = false;
@@ -543,15 +538,66 @@ export class GeminiLiveAgent {
     }
   }
 
-  speakPreformattedAmharic(amharicText) {
+  startTurnAudit(turnType, previewText) {
+    const startTime = Date.now();
+    this.activeTurn = {
+      id: crypto.randomUUID().slice(0, 8),
+      type: turnType,
+      preview: (previewText || "").slice(0, 80),
+      startTime,
+      firstAudioTime: null,
+      audioChunksReceived: 0,
+      hasTimedOut: false
+    };
+
+    const isNavTurn = ["greeting", "course_select", "section_select"].includes(turnType);
+
+    this.emitLog("PROMPT", `📤 Prompt dispatched to Google [${turnType}]: "${this.activeTurn.preview}"`, {
+      turn_id: this.activeTurn.id,
+      turn_type: turnType,
+      ws_ready_state: this.geminiWs?.readyState ?? -1,
+      setup_complete: this.isGeminiSetupComplete
+    });
+
+    if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
+    this.turnWatchdogTimer = setTimeout(() => {
+      if (this.activeTurn && !this.activeTurn.firstAudioTime) {
+        const elapsed = Date.now() - startTime;
+        this.emitLog("LATENCY", `⚠️ Latency warning: ${elapsed}ms elapsed since [${turnType}] sent. Google hasn't returned audio yet.`, {
+          turn_id: this.activeTurn.id,
+          elapsed_ms: elapsed
+        });
+      }
+    }, 2500);
+
+    if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
+    if (isNavTurn) {
+      this.turnDeadlineTimer = setTimeout(() => {
+        if (this.activeTurn && !this.activeTurn.firstAudioTime) {
+          this.activeTurn.hasTimedOut = true;
+          this.isSpeakingTemplate = false;
+          this.isGeneratingSectionSummary = false;
+          this.emitLog("TIMEOUT", `⏰ 5.0s Timeout Busted for [${turnType}]! Discarding subsequent late audio frames.`, {
+            turn_id: this.activeTurn.id,
+            turn_type: turnType,
+            waited_ms: 5000
+          });
+        }
+      }, 5000);
+    }
+  }
+
+  speakPreformattedAmharic(amharicText, turnType = "template_speech") {
     if (!amharicText) return;
     if (!this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN || !this.isGeminiSetupComplete) {
-      console.log("[Agent|DO|TEMPLATE] Upstream not ready yet. Queuing preformatted speech.");
+      console.log(`[Agent|DO|TEMPLATE] Upstream not ready yet. Queuing preformatted speech: "${amharicText.slice(0, 40)}..."`);
       this.pendingTemplateSpeech = amharicText;
       return;
     }
 
     this.isSpeakingTemplate = true;
+    this.startTurnAudit(turnType, amharicText);
+
     const prompt = `[VOICE SYNTHESIS DIRECTIVE] Read and speak the following exact Amharic text aloud to ${this.studentName} with an authentic, warm, and natural university peer tone. Do NOT translate into English or any other language. Do NOT add introductory or concluding commentary. Speak only these exact Amharic words:\n\n${amharicText}`;
 
     const payload = JSON.stringify({
@@ -566,7 +612,6 @@ export class GeminiLiveAgent {
       type: "miron_thought",
       text: amharicText
     }));
-    this.emitLog("GEMINI", `🎙️ Spoke preformatted Amharic template: "${amharicText}"`);
   }
 
   processTranslationQueue() {
@@ -575,6 +620,7 @@ export class GeminiLiveAgent {
 
     const chunk = this.translationQueue.shift();
     this.isGeminiTranslating = true;
+    this.startTurnAudit("reading_chunk_translation", chunk);
     
     const prompt = `Translate and speak the following explanation in natural, authentic Amharic (using the Ge'ez/Fidel alphabet) with a normal, grounded peer tone, blended smoothly with English technical terms to ${this.studentName}. Sound like an authentic university peer studying together in an authentic normal tone. Speak the translation directly:\n\n${chunk}`;
     
@@ -1461,7 +1507,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
                 if (this.isOneOnOne && parsed.stage === "course_select" && !this.hasGreeted) {
                     this.hasGreeted = true;
                     const greeting = pickGreeting(this.studentName, this.userSex);
-                    this.speakPreformattedAmharic(greeting);
+                    this.speakPreformattedAmharic(greeting, "greeting");
                 }
                 return;
             }
@@ -1470,7 +1516,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
                 console.log(`[Agent|DO|STATE] Intercepted course_selected for ${this.conversationId} (course: ${parsed.course_name})`);
                 if (this.isOneOnOne) {
                     const speech = pickCourseResponse(parsed.course_name, this.userSex);
-                    this.speakPreformattedAmharic(speech);
+                    this.speakPreformattedAmharic(speech, "course_select");
                 }
                 return;
             }
@@ -1479,6 +1525,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
                 console.log(`[Agent|DO|STATE] Intercepted section_selected for ${this.conversationId} (${parsed.section_title})`);
                 if (this.isOneOnOne) {
                     this.isGeneratingSectionSummary = true;
+                    this.startTurnAudit("section_select", parsed.section_title);
                     const courseName = parsed.course_name || (this.currentCourseCode || "our course");
                     const chapterTitle = parsed.chapter_title || "this chapter";
                     const sectionTitle = parsed.section_title || "this section";
@@ -1521,6 +1568,9 @@ OPERATIONAL RULES:
                 this.isSpeakingTemplate = false;
                 this.isGeneratingSectionSummary = false;
                 this.translationQueue = [];
+                if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
+                if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
+                this.activeTurn = null;
                 return;
             }
 
@@ -2056,6 +2106,42 @@ CRITICAL OPERATIONAL RULES:
                     this.ctx.waitUntil(this.executeGroqCognitiveTurn(fullSpoken));
                 }
 
+                // Diagnostic: Intercept Google Level Errors
+                if (parsed.error) {
+                    this.emitLog("ERROR", `❌ Google returned explicit error: ${parsed.error.message || JSON.stringify(parsed.error)}`, parsed.error);
+                }
+
+                // Check for Audio Output & TTFA Audit
+                if (parsed.serverContent?.modelTurn?.parts) {
+                    let hasAudio = false;
+                    for (const part of parsed.serverContent.modelTurn.parts) {
+                        if (part.inlineData?.data) {
+                            hasAudio = true;
+                            break;
+                        }
+                    }
+
+                    if (hasAudio && this.activeTurn) {
+                        this.activeTurn.audioChunksReceived++;
+                        if (!this.activeTurn.firstAudioTime) {
+                            this.activeTurn.firstAudioTime = Date.now();
+                            const ttfa = this.activeTurn.firstAudioTime - this.activeTurn.startTime;
+                            this.emitLog("AUDIO_CHUNK", `⚡ First audio chunk received for [${this.activeTurn.type}] in ${ttfa}ms!`, {
+                                turn_id: this.activeTurn.id,
+                                ttfa_ms: ttfa,
+                                total_chunks: this.activeTurn.audioChunksReceived
+                            });
+                        }
+
+                        // DISCARD LATE NAVIGATION AUDIO (> 5s Timeout)
+                        const isNavTurn = ["greeting", "course_select", "section_select"].includes(this.activeTurn.type);
+                        if (isNavTurn && this.activeTurn.hasTimedOut) {
+                            this.emitLog("TIMEOUT", `🗑️ Discarding late audio frame for [${this.activeTurn.type}]: 5s deadline expired before response arrived.`);
+                            return; // Suppressed at source. Never hits user speakers!
+                        }
+                    }
+                }
+
                 // --- 1-ON-1 AUDIO SUPPRESSION: BLOCK ROGUE GEMINI SPEECH ---
                 if (this.isOneOnOne && !this.isGeminiTranslating && !this.isGeminiFallbackActive && !this.isSpeakingTemplate && !this.isGeneratingSectionSummary) {
                     if (parsed.serverContent?.modelTurn || parsed.serverContent?.outputTranscription) {
@@ -2064,8 +2150,25 @@ CRITICAL OPERATIONAL RULES:
                     }
                 }
 
-                // Turn completed for Groq speech synthesis or Gemini fallback
+                // Turn completed: Audit Dead-Air vs Completion
                 if (this.isOneOnOne && parsed.serverContent?.turnComplete) {
+                    if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
+                    if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
+
+                    if (this.activeTurn) {
+                        const totalTurnTime = Date.now() - this.activeTurn.startTime;
+                        if (this.activeTurn.audioChunksReceived === 0) {
+                            this.emitLog("DEAD_AIR", `💀 DEAD AIR: Google completed [${this.activeTurn.type}] without outputting any audio (${totalTurnTime}ms). Check prompt formatting or safety filtering.`, {
+                                turn_id: this.activeTurn.id,
+                                total_turn_ms: totalTurnTime,
+                                server_content: parsed.serverContent
+                            });
+                        } else {
+                            this.emitLog("GEMINI", `✅ Finished turn [${this.activeTurn.type}]: ${this.activeTurn.audioChunksReceived} audio chunks across ${totalTurnTime}ms.`);
+                        }
+                        this.activeTurn = null;
+                    }
+
                     if (this.isSpeakingTemplate) {
                         this.isSpeakingTemplate = false;
                     } else if (this.isGeneratingSectionSummary) {
