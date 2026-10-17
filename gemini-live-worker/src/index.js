@@ -371,6 +371,14 @@ export class GeminiLiveAgent {
     this.qaTimer = null;
     this.cleanupTimeout = null;
 
+    // --- MISSION CONTROL & COGNITION STATE ---
+    this.logRing = [];
+    this.sseClients = new Set();
+    this.activeRooms = new Map();
+    this.groqChatHistory = [];
+    this.tokenizer = null;
+    this.currentBookId = null;
+
     this.currentCourseCode = null;
     this.lastPromptTokens = 0;
     this.userSex = null;
@@ -385,6 +393,7 @@ export class GeminiLiveAgent {
     this.turnDeadlineTimer = null;
 
     // --- 1-ON-1 COGNITIVE PIPELINE STATE (GROQ BRAIN + GEMINI VOICE) ---
+    this.pendingUserSpeech = "";
     this.speechDebounceTimer = null;
     this.translationQueue = [];
     this.isGeminiTranslating = false;
