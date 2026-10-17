@@ -19,7 +19,7 @@ const GREETING_TEMPLATES = {
     "እንኳን ደህና መጣህ ${name}! ዛሬ አዲስ ነገር ለመማር ዝግጁ ነህ? ከታች ምረጥ።",
     "ሰላም ${name}! ዛሬ ምን እናጠና?",
     "እንዴት ነህ ${name}! ዛሬ ከእኔ ጋር የምታጠናው ኮርስ የየትኛው ነው?",
-    "ሰላም ${name}! ዛሬ የትኛው ኮርስ ላይ እንወጥር?",
+    "ሰላም ${name}! ዛሬ የትኛው ኮርስ ላይ እንስራ?",
     "ሰላም ${name}! ዛሬ ጥናታችንን በምን እንጀምር? የሚመችህን ኮርስ ምረጥ።",
     "ሰላም ${name}! ዛሬ ፈታኝ የሆነውን ኮርስ ለመጋፈጥ ዝግጁ ነህ? ከታች ምረጥ!"
   ],
@@ -32,18 +32,18 @@ const GREETING_TEMPLATES = {
     "እንኳን ደህና መጣሽ ${name}! ዛሬ አዲስ ነገር ለመማር ዝግጁ ነሽ? ከታች ምረጪ።",
     "ሰላም ${name}! ዛሬ ምን እናጠና?",
     "እንዴት ነሽ ${name}! ዛሬ ከእኔ ጋር የምታጠኚው ኮርስ የየትኛው ነው?",
-    "ሰላም ${name}! ዛሬ የትኛው ኮርስ ላይ እንወጥር?",
+    "ሰላም ${name}! ዛሬ የትኛው ኮርስ ላይ እንስራ?",
     "ሰላም ${name}! ዛሬ ጥናታችንን በምን እንጀምር? የሚመችሽን ኮርስ ምረጪ።",
     "ሰላም ${name}! ዛሬ ፈታኝ የሆነውን ኮርስ ለመጋፈጥ ዝግጁ ነሽ? ከታች ምረጪ!"
   ],
   neutral: [
     "ሰላም ${name}! ዛሬ በምን ኮርስ እንጀምር?",
     "ሰላም ${name}! ዛሬ ምን እናጠና?",
-    "ሰላም ${name}! ዛሬ የትኛው ኮርስ ላይ እንወጥር?"
+    "ሰላም ${name}! ዛሬ የትኛው ኮርስ ላይ እንስራ?"
   ]
 };
 
-function pickGreeting(name, sex) {
+function pickGreeting(name, sex, lastTemplate = null) {
   const s = (sex || "").toLowerCase();
   let list = GREETING_TEMPLATES.neutral;
   if (s === 'male' || s === 'm') {
@@ -51,8 +51,14 @@ function pickGreeting(name, sex) {
   } else if (s === 'female' || s === 'f') {
     list = GREETING_TEMPLATES.female;
   }
-  const chosen = list[Math.floor(Math.random() * list.length)];
-  return chosen.replace(/\$\{name\}/g, name || 'Scholar');
+  const pool = (lastTemplate && list.length > 1) 
+    ? list.filter(tpl => tpl !== lastTemplate) 
+    : list;
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  return {
+    raw: chosen,
+    spoken: chosen.replace(/\$\{name\}/g, name || 'Scholar')
+  };
 }
 
 const COURSE_SELECTION_TEMPLATES = {
@@ -62,7 +68,7 @@ const COURSE_SELECTION_TEMPLATES = {
     "${course} ጥሩ ምርጫ ነው። ከ${course} ውስጥ የትኛውን ሴክሽን ነው ማጥናት የምትፈልገው?",
     "አሪፍ! አሁን ደግሞ ከ${course} ውስጥ የምንጀምርበትን ምዕራፍ ምረጥ።",
     "መልካም! ${course}ን ይዘናል። አሁን የትኛውን ሴክሽን እናጥና?",
-    "ተመችቶኛል! ${course}ን ለመጨረስ ዝግጁ ነን። ከየትኛው ሴክሽን እንጀምር?",
+    "ጥሩ! ${course}ን ለመጨረስ ዝግጁ ነን። ከየትኛው ሴክሽን እንጀምር?",
     "በጣም ጥሩ! አሁን ከ${course} የምትፈልገውን ምዕራፍ ወይም ሴክሽን ምረጥ።",
     "እሺ ${course}ን መርጠሃል። ቀጥሎ የምናጠናውን ሴክሽን ምረጥ።"
   ],
@@ -72,17 +78,17 @@ const COURSE_SELECTION_TEMPLATES = {
     "${course} ጥሩ ምርጫ ነው። ከ${course} ውስጥ የትኛውን ሴክሽን ነው ማጥናት የምትፈልጊው?",
     "አሪፍ! አሁን ደግሞ ከ${course} ውስጥ የምንጀምርበትን ምዕራፍ ምረጪ።",
     "መልካም! ${course}ን ይዘናል። አሁን የትኛውን ሴክሽን እናጥና?",
-    "ተመችቶኛል! ${course}ን ለመጨረስ ዝግጁ ነን። ከየትኛው ሴክሽን እንጀምር?",
-    "በጣም ጥሩ! አሁን ከ${course} የምትፈልጊውን ምዕራፍ ወይም ሴክሽን ምረጪ።",
+    "ጥሩ! ${course}ን ለመጨረስ ዝግጁ ነን። ከየትኛው ሴክሽን እንጀምር?",
+    "በጣም ጥሩ! አሁን ከ${course} የምትፈልገውን ምዕራፍ ወይም ሴክሽን ምረጪ።",
     "እሺ ${course}ን መርጠሻል። ቀጥሎ የምናጠናውን ሴክሽን ምረጪ።"
   ],
   neutral: [
     "መልካም! ${course}ን ይዘናል። አሁን የትኛውን ሴክሽን እናጥና?",
-    "ተመችቶኛል! ${course}ን ለመጨረስ ዝግጁ ነን። ከየትኛው ሴክሽን እንጀምር?"
+    "ጥሩ! ${course}ን ለመጨረስ ዝግጁ ነን። ከየትኛው ሴክሽን እንጀምር?"
   ]
 };
 
-function pickCourseResponse(course, sex) {
+function pickCourseResponse(course, sex, lastTemplate = null) {
   const s = (sex || "").toLowerCase();
   let list = COURSE_SELECTION_TEMPLATES.neutral;
   if (s === 'male' || s === 'm') {
@@ -90,8 +96,14 @@ function pickCourseResponse(course, sex) {
   } else if (s === 'female' || s === 'f') {
     list = COURSE_SELECTION_TEMPLATES.female;
   }
-  const chosen = list[Math.floor(Math.random() * list.length)];
-  return chosen.replace(/\$\{course\}/g, course || 'ትምህርቱን');
+  const pool = (lastTemplate && list.length > 1) 
+    ? list.filter(tpl => tpl !== lastTemplate) 
+    : list;
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  return {
+    raw: chosen,
+    spoken: chosen.replace(/\$\{course\}/g, course || 'ትምህርቱን')
+  };
 }
 
 const GENERIC_STOP_WORDS = new Set([
@@ -383,6 +395,8 @@ export class GeminiLiveAgent {
     this.lastPromptTokens = 0;
     this.userSex = null;
     this.hasGreeted = false;
+    this.lastGreetingTemplate = null;
+    this.lastCourseTemplate = null;
     this.pendingTemplateSpeech = null;
     this.isSpeakingTemplate = false;
     this.isGeneratingSectionSummary = false;
@@ -1512,8 +1526,9 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
                 console.log(`[Agent|DO|STATE] Intercepted client_ready for ${this.conversationId} (stage: ${parsed.stage})`);
                 if (this.isOneOnOne && parsed.stage === "course_select" && !this.hasGreeted) {
                     this.hasGreeted = true;
-                    const greeting = pickGreeting(this.studentName, this.userSex);
-                    this.speakPreformattedAmharic(greeting, "greeting");
+                    const result = pickGreeting(this.studentName, this.userSex, this.lastGreetingTemplate);
+                    this.lastGreetingTemplate = result.raw;
+                    this.speakPreformattedAmharic(result.spoken, "greeting");
                 }
                 return;
             }
@@ -1521,8 +1536,9 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
             if (parsed.action === "course_selected") {
                 console.log(`[Agent|DO|STATE] Intercepted course_selected for ${this.conversationId} (course: ${parsed.course_name})`);
                 if (this.isOneOnOne) {
-                    const speech = pickCourseResponse(parsed.course_name, this.userSex);
-                    this.speakPreformattedAmharic(speech, "course_select");
+                    const result = pickCourseResponse(parsed.course_name, this.userSex, this.lastCourseTemplate);
+                    this.lastCourseTemplate = result.raw;
+                    this.speakPreformattedAmharic(result.spoken, "course_select");
                 }
                 return;
             }
