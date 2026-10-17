@@ -9,6 +9,52 @@ const sanitizeForSpeech = (txt) => {
     return txt.replace(/\[print\]/gi, '').replace(/\{[uhpbit]\}/gi, '');
 };
 
+const GREETING_TEMPLATES = {
+  male: [
+    "ሰላም ${name}፣ እንዴት ነህ? ዛሬ አብረን እንድናጠና የምትፈልገውን ኮርስ ከታች ምረጥ።",
+    "እንዴት ነህ ${name}። የምናጠናውን ኮርስ ምረጥ።",
+    "እንኳን ደህና መጣህ ${name}። ዛሬ ምንድነው ምናጠናው?",
+    "${name}፣ ደህና ነህ? ዛሬ ምን እናጥና? መምረጥ ትችላለህ።",
+    "ሰላም ${name}! ዛሬ በምን ኮርስ እንጀምር?",
+    "እንኳን ደህና መጣህ ${name}! ዛሬ አዲስ ነገር ለመማር ዝግጁ ነህ? ከታች ምረጥ።",
+    "ሰላም ${name}! ዛሬ ምን እናጠና?",
+    "እንዴት ነህ ${name}! ዛሬ ከእኔ ጋር የምታጠናው ኮርስ የየትኛው ነው?",
+    "ሰላም ${name}! ዛሬ የትኛው ኮርስ ላይ እንወጥር?",
+    "ሰላም ${name}! ዛሬ ጥናታችንን በምን እንጀምር? የሚመችህን ኮርስ ምረጥ።",
+    "ሰላም ${name}! ዛሬ ፈታኝ የሆነውን ኮርስ ለመጋፈጥ ዝግጁ ነህ? ከታች ምረጥ!"
+  ],
+  female: [
+    "ሰላም ${name}፣ እንዴት ነሽ? ዛሬ አብረን እንድናጠና የምትፈልጊውን ኮርስ ከታች ምረጪ።",
+    "እንዴት ነሽ ${name}። የምናጠናውን ኮርስ ምረጪ።",
+    "እንኳን ደህና መጣሽ ${name}። ዛሬ ምንድነው ምናጠናው?",
+    "${name}፣ ደህና ነሽ? ዛሬ ምን እናጥና? መምረጥ ትችያለሽ።",
+    "ሰላም ${name}! ዛሬ በምን ኮርስ እንጀምር?",
+    "እንኳን ደህና መጣሽ ${name}! ዛሬ አዲስ ነገር ለመማር ዝግጁ ነሽ? ከታች ምረጪ።",
+    "ሰላም ${name}! ዛሬ ምን እናጠና?",
+    "እንዴት ነሽ ${name}! ዛሬ ከእኔ ጋር የምታጠኚው ኮርስ የየትኛው ነው?",
+    "ሰላም ${name}! ዛሬ የትኛው ኮርስ ላይ እንወጥር?",
+    "ሰላም ${name}! ዛሬ ጥናታችንን በምን እንጀምር? የሚመችሽን ኮርስ ምረጪ።",
+    "ሰላም ${name}! ዛሬ ፈታኝ የሆነውን ኮርስ ለመጋፈጥ ዝግጁ ነሽ? ከታች ምረጪ!"
+  ],
+  neutral: [
+    "ሰላም ${name}! ዛሬ በምን ኮርስ እንጀምር?",
+    "ሰላም ${name}! ዛሬ ምን እናጠና?",
+    "ሰላም ${name}! ዛሬ የትኛው ኮርስ ላይ እንወጥር?"
+  ]
+};
+
+function pickGreeting(name, sex) {
+  const s = (sex || "").toLowerCase();
+  let list = GREETING_TEMPLATES.neutral;
+  if (s === 'male' || s === 'm') {
+    list = GREETING_TEMPLATES.male;
+  } else if (s === 'female' || s === 'f') {
+    list = GREETING_TEMPLATES.female;
+  }
+  const chosen = list[Math.floor(Math.random() * list.length)];
+  return chosen.replace(/\$\{name\}/g, name || 'Scholar');
+}
+
 const GENERIC_STOP_WORDS = new Set([
   'chapter', 'section', 'unit', 'module', 'part', 'topic', 'lesson',
   'overview', 'introduction', 'summary', 'review', 'exercises', 'questions',
@@ -295,6 +341,12 @@ export class GeminiLiveAgent {
     this.currentBookId = null;
     this.currentCourseCode = null;
     this.lastPromptTokens = 0;
+    this.userSex = null;
+    this.hasGreeted = false;
+    this.pendingTemplateSpeech = null;
+    this.userSex = null;
+    this.hasGreeted = false;
+    this.pendingTemplateSpeech = null;
 
     // --- 1-ON-1 COGNITIVE PIPELINE STATE (GROQ BRAIN + GEMINI VOICE) ---
     this.pendingUserSpeech = "";
@@ -446,6 +498,31 @@ export class GeminiLiveAgent {
     } catch (e) {
       console.error("[Agent|Groq|Cooldown]", e.message);
     }
+  }
+
+  speakPreformattedAmharic(amharicText) {
+    if (!amharicText) return;
+    if (!this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN || !this.isGeminiSetupComplete) {
+      console.log("[Agent|DO|TEMPLATE] Upstream not ready yet. Queuing preformatted speech.");
+      this.pendingTemplateSpeech = amharicText;
+      return;
+    }
+
+    const prompt = `[VOICE SYNTHESIS DIRECTIVE] Read and speak the following exact Amharic text aloud to ${this.studentName} with an authentic, warm, and natural university peer tone. Do NOT translate into English or any other language. Do NOT add introductory or concluding commentary. Speak only these exact Amharic words:\n\n${amharicText}`;
+
+    const payload = JSON.stringify({
+      clientContent: {
+        turns: [{ role: "user", parts: [{ text: prompt }] }],
+        turnComplete: true
+      }
+    });
+
+    this.geminiWs.send(payload);
+    this.broadcast(JSON.stringify({
+      type: "miron_thought",
+      text: amharicText
+    }));
+    this.emitLog("GEMINI", `🎙️ Spoke preformatted Amharic template: "${amharicText}"`);
   }
 
   processTranslationQueue() {
@@ -1335,6 +1412,16 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
         // --- INTERCEPT CONTROL MESSAGES (DO STATE MACHINE) ---
         try {
             const parsed = JSON.parse(message);
+            if (parsed.action === "client_ready") {
+                console.log(`[Agent|DO|STATE] Intercepted client_ready for ${this.conversationId} (stage: ${parsed.stage})`);
+                if (this.isOneOnOne && parsed.stage === "course_select" && !this.hasGreeted) {
+                    this.hasGreeted = true;
+                    const greeting = pickGreeting(this.studentName, this.userSex);
+                    this.speakPreformattedAmharic(greeting);
+                }
+                return;
+            }
+
             if (parsed.action === "hangup") {
                 console.log(`[Agent|DO|STATE] Intercepted explicit hangup for ${this.conversationId}. Executing immediate hard cleanup.`);
                 await this.executeHardCleanup();
@@ -1640,6 +1727,25 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
       let billableUserId = null;
       if (this.isOneOnOne) {
           billableUserId = this.userId;
+          if (this.userId) {
+              try {
+                  const profRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${this.userId}&select=sex,full_name`, {
+                      headers: { 'apikey': serviceRoleKey, 'Authorization': `Bearer ${serviceRoleKey}` }
+                  });
+                  if (profRes.ok) {
+                      const profData = await profRes.json();
+                      if (profData && profData.length > 0) {
+                          this.userSex = profData[0].sex;
+                          if (!this.studentName || this.studentName === 'Scholar') {
+                              this.studentName = (profData[0].full_name || 'Scholar').split(' ')[0];
+                          }
+                          console.log(`[Agent|GEMINI|PROFILE] Resolved student sex: ${this.userSex}, name: ${this.studentName}`);
+                      }
+                  }
+              } catch (profErr) {
+                  console.error("[Agent|GEMINI|PROFILE] Failed to fetch student sex:", profErr.message);
+              }
+          }
       } else if (this.conversationId) {
           try {
               const res = await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}&select=metadata`, {
@@ -1770,7 +1876,9 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
 CRITICAL OPERATIONAL RULES:
 1. Do NOT answer user speech or user inputs on your own. User reasoning is handled by our primary cognitive brain.
 2. Your sole task when user microphone audio arrives is real-time transcription via inputAudioTranscription.
-3. You ONLY generate audio speech when you receive an explicit text turn instructing you to translate and speak. Incoming text turns contain structured English explanations from our brain. Translate them into natural, authentic Amharic (using the Ge'ez/Fidel alphabet) with a normal, grounded peer tone, blended smoothly with English technical terms, and speak them directly with authentic prosody and pacing. Never mention course codes, instructions, prompts, or backend systems.`
+3. You ONLY generate audio speech when you receive an explicit text turn instructing you to speak.
+4. If an incoming text turn contains preformatted Amharic text under a [VOICE SYNTHESIS DIRECTIVE], read and speak it directly with authentic, warm peer prosody. Never translate it into English or add commentary.
+5. If an incoming text turn contains English explanations, translate them into natural, authentic Amharic (using the Ge'ez/Fidel alphabet) with a grounded peer tone, blended smoothly with English technical terms, and speak them directly. Never mention course codes, instructions, prompts, or backend systems.`
               }]
           };
       }
@@ -2095,6 +2203,12 @@ CRITICAL OPERATIONAL RULES:
         if (typeof data === 'string' && data.includes('"setupComplete"')) {
           console.log("[Agent|GEMINI|WS] 🟢 SetupComplete received! Gemini is fully ready. Unlocking queues...");
           this.isGeminiSetupComplete = true;
+
+          if (this.pendingTemplateSpeech) {
+            const speech = this.pendingTemplateSpeech;
+            this.pendingTemplateSpeech = null;
+            this.speakPreformattedAmharic(speech);
+          }
 
           console.log(`[Agent|GEMINI|WS] Flushing ${this.messageQueue.length} queued messages...`);
           while (this.messageQueue.length > 0) {
