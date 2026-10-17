@@ -4,6 +4,26 @@ import FloatingMironOrb from './FloatingMironOrb.jsx';
 import MironConnectionRing from './MironConnectionRing.jsx';
 import './MironLiveSession.css';
 
+const COURSE_ICONS = {
+    'PHYS 1011': 'fa-bolt',
+    'BIOL 1012': 'fa-dna',
+    'CHEM 1012': 'fa-flask',
+    'MATH 1011': 'fa-square-root-variable',
+    'MATH 1012': 'fa-chart-pie',
+    'LOCT 1011': 'fa-brain',
+    'EMTE 1012': 'fa-robot',
+    'FLEN 1011': 'fa-comments',
+    'ECON 1011': 'fa-chart-line',
+    'GEES 1011': 'fa-earth-africa',
+    'HIST 1012': 'fa-landmark-dome',
+    'INCL 1012': 'fa-hands-holding-circle',
+    'MCIE 1012': 'fa-scale-balanced',
+    'MGMT 1012': 'fa-briefcase',
+    'PSYC 1011': 'fa-head-side-virus',
+    'SPSC 1011': 'fa-person-running',
+    'ANTH 1012': 'fa-people-group'
+};
+
 // DOM Range Highlighter for active textbook page
 const clearDOMHighlights = (root) => {
     if (!root) return;
@@ -458,21 +478,35 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             <h2>What are we studying today?</h2>
                             <p>Pick a course and Miron will walk you through the curriculum step by step.</p>
                         </div>
-                        <div className="ml-courses-bento">
+                        <div className="ml-courses-grid">
                             {books.map(b => (
-                                <div key={b.id} className="ml-course-bento-card" onClick={() => handleSelectCourse(b)}>
-                                    <div className="ml-cbc-cover">
-                                        {b.cover_url ? (
-                                            <img src={b.cover_url} alt="" />
-                                        ) : (
-                                            <i className="fas fa-book-open"></i>
-                                        )}
+                                <div 
+                                    key={b.id} 
+                                    className="ml-course-card" 
+                                    onClick={() => handleSelectCourse(b)}
+                                    style={b.cover_url ? {
+                                        backgroundImage: `linear-gradient(145deg, rgba(14, 14, 18, 0.70) 0%, rgba(10, 10, 14, 0.88) 100%), url("${b.cover_url}")`,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center'
+                                    } : {}}
+                                >
+                                    <div className="ml-card-top-row">
+                                        <div className="ml-card-icon-box">
+                                            <i className={`fa-solid ${COURSE_ICONS[b.course_code] || 'fa-book-open'}`}></i>
+                                        </div>
+                                        <span className="ml-card-code-tag">{b.course_code || 'COURSE'}</span>
                                     </div>
-                                    <div className="ml-cbc-info">
-                                        <span className="ml-cbc-code">{b.course_code || 'COURSE'}</span>
-                                        <h3 className="ml-cbc-title">{b.title}</h3>
+
+                                    <h3 className="ml-card-name">{b.title}</h3>
+
+                                    <div className="ml-card-footer">
+                                        <span className="ml-card-count">
+                                            {b.toc?.length ? `${b.toc.length} Chapters` : 'Curriculum Book'}
+                                        </span>
+                                        <span className="ml-card-arrow">
+                                            <i className="fas fa-arrow-right"></i>
+                                        </span>
                                     </div>
-                                    <i className="fas fa-arrow-right ml-cbc-arrow"></i>
                                 </div>
                             ))}
                         </div>
