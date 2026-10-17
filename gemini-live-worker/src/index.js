@@ -405,6 +405,7 @@ export class GeminiLiveAgent {
     this.activeTurn = null;
     this.turnWatchdogTimer = null;
     this.turnDeadlineTimer = null;
+    this.pendingTurnCompletions = 0;
 
     // --- 1-ON-1 COGNITIVE PIPELINE STATE (GROQ BRAIN + GEMINI VOICE) ---
     this.pendingUserSpeech = "";
@@ -560,6 +561,13 @@ export class GeminiLiveAgent {
 
   startTurnAudit(turnType, previewText) {
     const startTime = Date.now();
+
+    // Shield 1: Queue trailing turnComplete absorption if previous turn was still active
+    if (this.activeTurn) {
+      this.pendingTurnCompletions++;
+      this.emitLog("TURN_SYNC", `⏭️ Previous turn [${this.activeTurn.type}] superceded by [${turnType}]. Queued 1 trailing turnComplete absorption. Total pending: ${this.pendingTurnCompletions}`);
+    }
+
     this.activeTurn = {
       id: crypto.randomUUID().slice(0, 8),
       type: turnType,
@@ -1590,6 +1598,7 @@ OPERATIONAL RULES:
                 this.isSpeakingTemplate = false;
                 this.isGeneratingSectionSummary = false;
                 this.translationQueue = [];
+                this.pendingTurnCompletions = 0;
                 if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
                 if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
                 this.activeTurn = null;
@@ -1782,6 +1791,7 @@ OPERATIONAL RULES:
     if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
     if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
     this.activeTurn = null;
+    this.pendingTurnCompletions = 0;
 
     if (this.geminiWs) {
       console.log("[Agent|DO|CLEANUP] Closing upstream Gemini WS.");
@@ -2182,6 +2192,22 @@ CRITICAL OPERATIONAL RULES:
 
                 // Turn completed: Audit Dead-Air vs Completion
                 if (this.isOneOnOne && parsed.serverContent?.turnComplete) {
+                    // Shield 1: Absorb trailing turnComplete from superceded turn
+                    if (this.pendingTurnCompletions > 0) {
+                        this.pendingTurnCompletions--;
+                        this.emitLog("TURN_SYNC", `🛡️ Absorbed trailing turnComplete from superceded turn. Active turn [${this.activeTurn?.type || 'none'}] remains armed. Pending completions remaining: ${this.pendingTurnCompletions}`);
+                        return; // Keep activeTurn and speaking gates open!
+                    }
+
+                    // Shield 2: Sub-750ms Phantom Guard
+                    if (this.activeTurn && this.activeTurn.audioChunksReceived === 0) {
+                        const totalTurnTime = Date.now() - this.activeTurn.startTime;
+                        if (totalTurnTime < 750) {
+                            this.emitLog("TURN_SYNC", `⚡ Sub-750ms phantom turnComplete detected (${totalTurnTime}ms). Absorbing artifact without disarming [${this.activeTurn.type}].`);
+                            return; // Mathematically impossible to be the new turn
+                        }
+                    }
+
                     if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
                     if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
 
