@@ -298,6 +298,32 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
         const connectWS = async () => {
             if (!isMounted || isHangingUpRef.current) return;
+
+            // Strict Backend Pre-Flight Verification (Source of Truth)
+            try {
+                const { data: freshProfile, error: profileErr } = await supabase
+                    .from('profiles')
+                    .select('is_pro, linkoin_balance, pro_expires_at')
+                    .eq('id', sessionUser.id)
+                    .maybeSingle();
+
+                if (!profileErr && freshProfile) {
+                    const isPro = Boolean(freshProfile.is_pro && (!freshProfile.pro_expires_at || new Date(freshProfile.pro_expires_at) > new Date()));
+                    const hasCredits = (freshProfile.linkoin_balance || 0) >= 2;
+
+                    if (!isPro && !hasCredits) {
+                        console.warn("[Miron Live] Backend pre-flight credit check failed. Triggering paywall.");
+                        isHangingUpRef.current = true;
+                        window.dispatchEvent(new CustomEvent('open-premium-modal'));
+                        onClose();
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error("[Miron Live] Pre-flight credit verification error:", err);
+            }
+
+            if (!isMounted || isHangingUpRef.current) return;
             const { data: { session } } = await supabase.auth.getSession();
             const token = session?.access_token || '';
             ws = new WebSocket(url, ["access_token", token]);
@@ -387,8 +413,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         setIsConsulting(payload.executing);
                     }
 
-                    // G. Billing Alert
+                    // G. Billing Alert & Circuit Breaker
                     if (payload.event === "billing_error" || (payload.error && payload.error.toLowerCase().includes('insufficient_credits'))) {
+                        isHangingUpRef.current = true;
+                        if (reconnectTimer) clearTimeout(reconnectTimer);
+                        setIsConnected(false);
+                        setIsMironSpeaking(false);
+                        window.dispatchEvent(new CustomEvent('open-premium-modal'));
                         setTranscripts(prev => [...prev, {
                             id: Date.now(),
                             role: 'miron',
@@ -396,8 +427,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             isFinal: true,
                             isBroke: true
                         }]);
-                        setIsMironSpeaking(false);
-                        ws.close();
+                        try {
+                            ws.close(1000, "Insufficient credits");
+                        } catch (e) {}
                     }
                 } catch (err) {}
             };
@@ -976,7 +1008,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             <span className="mcoc-title">LinkUp Gold Required</span>
                                         </div>
                                         <p className="mcoc-text">{t.text}</p>
-                                        <button className="mcoc-upgrade-btn" onClick={() => window.location.href = '/subscription'}>
+                                        <button className="mcoc-upgrade-btn" onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}>
                                             <i className="fas fa-bolt"></i> Upgrade to LinkUp Gold
                                         </button>
                                     </div>
