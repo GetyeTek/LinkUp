@@ -1018,7 +1018,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             setActivePageNum(validPages[0]?.page_number || null);
             setIsLoadingPages(false);
             setStage('reading');
-
             bufferedHighlightsRef.current = [];
 
             // Semantic handoff: Backend DO takes full ownership of kickoff orchestration
@@ -1031,10 +1030,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     page_number: physicalStart
                 }));
             }
-        } catch (e) {
-            console.error("Failed to load section pages:", e);
-            setIsLoadingPages(false);
-        }
     };
 
     const handleNextPage = () => {
