@@ -135,6 +135,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [expandedChapters, setExpandedChapters] = useState(new Set());
     const [sectionPages, setSectionPages] = useState([]);
     const [activePageIndex, setActivePageIndex] = useState(0);
+    const [activePageNum, setActivePageNum] = useState(null);
     const [activeHighlight, setActiveHighlight] = useState(null);
     const [isLoadingPages, setIsLoadingPages] = useState(false);
     const [showTranscriptDrawer, setShowTranscriptDrawer] = useState(false);
@@ -185,10 +186,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         const cW = pageContainerRef.current.clientWidth;
         const cH = pageContainerRef.current.clientHeight;
         const pW = 794 * fitScale * scale;
-        const pH = (layerHeight || 1123) * fitScale * scale;
+        const totalHeight = (layerHeight || ((sectionPages.length || 1) * 1160)) * fitScale * scale;
 
         const clampedX = pW <= cW ? (cW - pW) / 2 : Math.min(16, Math.max(cW - pW - 16, x));
-        const clampedY = pH <= cH ? Math.max(16, (cH - pH) / 2) : Math.min(24, Math.max(cH - pH - 32, y));
+        const clampedY = totalHeight <= cH ? Math.max(16, (cH - totalHeight) / 2) : Math.min(24, Math.max(cH - totalHeight - 48, y));
         return { x: clampedX, y: clampedY };
     };
 
@@ -374,8 +375,12 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     if (transformRef.current.scale > 1.2) {
                         const targetScale = 1.0;
                         const initialW = 794 * fitScale;
+                        const currentScale = transformRef.current.scale;
+                        const py = (tapY - transformRef.current.y) / (currentScale * fitScale);
                         const nx = (cRect.width - initialW) / 2;
-                        transformRef.current = { scale: targetScale, x: nx, y: 16 };
+                        const ny = tapY - py * (targetScale * fitScale);
+                        const clamped = clampPosition(nx, ny, targetScale);
+                        transformRef.current = { scale: targetScale, x: clamped.x, y: clamped.y };
                         applyTransform(true);
                         setZoomMultiplier(1.0);
                     } else {
@@ -529,6 +534,25 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             window.removeEventListener('mouseup', onMouseUp);
         };
     }, [stage, activePageIndex, fitScale, viewState, isLoadingPages, sectionPages]);
+
+    // 3.45. Observe Active Page During Vertical Scroll
+    useEffect(() => {
+        if (stage !== 'reading' || !pageContainerRef.current || sectionPages.length === 0) return;
+        const pageEls = pageContainerRef.current.querySelectorAll('.ml-continuous-page');
+        if (pageEls.length === 0) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const pNum = entry.target.getAttribute('data-page-number');
+                    if (pNum) setActivePageNum(pNum);
+                }
+            });
+        }, { root: pageContainerRef.current, threshold: 0.15 });
+
+        pageEls.forEach(el => observer.observe(el));
+        return () => observer.disconnect();
+    }, [stage, sectionPages, viewState]);
 
     // 3.5. Signal Client Ready on Course Select Stage
     useEffect(() => {
@@ -821,6 +845,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
             setSectionPages(validPages);
             setActivePageIndex(0);
+            setActivePageNum(validPages[0]?.page_number || null);
             setIsLoadingPages(false);
             setStage('reading');
 
@@ -907,26 +932,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     <span className="live-dot" style={!isConnected ? { background: '#f59e0b', boxShadow: '0 0 8px #f59e0b' } : {}}></span>
                     {stage === 'reading' ? (
                         <div className="ml-reading-header-controls">
-                            <button 
-                                className="ml-hdr-page-btn" 
-                                onClick={handlePrevPage} 
-                                disabled={activePageIndex === 0}
-                                title="Previous Page"
-                            >
-                                <i className="fas fa-chevron-left"></i>
-                            </button>
                             <span className="ml-hdr-page-title">
-                                {selectedBook?.course_code || 'Book'} • p.{currentPage?.page_number || ''}
-                                <span className="ml-hdr-page-fraction"> ({activePageIndex + 1}/{sectionPages.length})</span>
+                                {selectedBook?.course_code || 'Book'}
+                                {activePageNum ? ` • p.${activePageNum}` : (sectionPages[0]?.page_number ? ` • p.${sectionPages[0].page_number}` : '')}
                             </span>
-                            <button 
-                                className="ml-hdr-page-btn" 
-                                onClick={handleNextPage} 
-                                disabled={activePageIndex >= sectionPages.length - 1}
-                                title="Next Page"
-                            >
-                                <i className="fas fa-chevron-right"></i>
-                            </button>
                         </div>
                     ) : (
                         <span>
@@ -945,16 +954,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 </div>
 
                 <div className="ml-header-right">
-                    {stage === 'reading' && (
-                        <button 
-                            className={`ml-header-zoom-btn ${zoomMultiplier > 1.1 ? 'active' : ''}`}
-                            onClick={handleToggleZoomFit}
-                            title={zoomMultiplier > 1.1 ? "Reset Fit" : "Zoom In"}
-                        >
-                            <i className={`fas ${zoomMultiplier > 1.1 ? 'fa-compress' : 'fa-magnifying-glass-plus'}`}></i>
-                            <span>{zoomMultiplier > 1.1 ? `${Math.round(zoomMultiplier * 100)}%` : 'Fit'}</span>
-                        </button>
-                    )}
                     <button className="athena-close" onClick={handleHangup} style={{ color: '#ff5f5f' }}>
                         <i className="fas fa-phone-slash"></i>
                     </button>
@@ -1223,7 +1222,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                     <i className="fas fa-circle-notch fa-spin fa-2x"></i>
                                                     <p>Loading textbook page...</p>
                                                 </div>
-                                            ) : currentPage ? (
+                                            ) : sectionPages && sectionPages.length > 0 ? (
                                                 (() => {
                                                     const bookPrefix = selectedBook?.course_code ? (COURSE_PREFIX_MAP[selectedBook.course_code.toUpperCase().trim()] || '') : '';
                                                     const engineClass = bookPrefix ? `engine-${bookPrefix}` : 'engine-universal';
@@ -1238,19 +1237,30 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                                 transition: 'opacity 0.18s ease'
                                                             }}
                                                         >
-                                                            <div className={`page-wrapper ${engineClass}`} data-page-number={currentPage.page_number}>
-                                                                <div className={`page-canvas ${engineClass}`}>
-                                                                    {(currentPage.content_json || []).map((block, idx) => (
-                                                                        <div key={idx} className="block-target-wrapper">
-                                                                            {renderBookBlock ? (
-                                                                                renderBookBlock(block, idx, { bookTitle: selectedBook?.title, courseCode: selectedBook?.course_code })
-                                                                            ) : (
-                                                                                <p>{block.body || block.text || block.main || ''}</p>
-                                                                            )}
+                                                            {sectionPages.map((page, pIdx) => (
+                                                                <div 
+                                                                    key={page.id || pIdx} 
+                                                                    className="ml-continuous-page"
+                                                                    data-page-number={page.page_number}
+                                                                >
+                                                                    <div className="ml-page-number-strip">
+                                                                        <span>Page {page.page_number}</span>
+                                                                    </div>
+                                                                    <div className={`page-wrapper ${engineClass}`} data-page-number={page.page_number}>
+                                                                        <div className={`page-canvas ${engineClass}`}>
+                                                                            {(page.content_json || []).map((block, idx) => (
+                                                                                <div key={idx} className="block-target-wrapper">
+                                                                                    {renderBookBlock ? (
+                                                                                        renderBookBlock(block, idx, { bookTitle: selectedBook?.title, courseCode: selectedBook?.course_code })
+                                                                                    ) : (
+                                                                                        <p>{block.body || block.text || block.main || ''}</p>
+                                                                                    )}
+                                                                                </div>
+                                                                            ))}
                                                                         </div>
-                                                                    ))}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
+                                                            ))}
                                                         </div>
                                                     );
                                                 })()
