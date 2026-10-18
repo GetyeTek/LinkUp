@@ -128,45 +128,29 @@ const GROQ_TOOLS = [
   {
     type: "function",
     function: {
-      name: "get_book_toc",
-      description: "Fetch the Table of Contents of a specific university course book.",
+      name: "advance_to_next_page",
+      description: "Advance the textbook reader to the next page. Call this when the student has understood the current page and is ready to move forward, or when the current page is purely introductory filler, syllabus outlines, or generic learning objectives with no testable concepts.",
       parameters: {
         type: "object",
         properties: {
-          course_code: { type: "string", description: "The course code (e.g. 'PHYS 1011', 'LOCT 1011', 'BIOL 1012', 'CHEM 1012', etc.)" }
+          current_page: { type: "integer", description: "The page number that is currently finished or being skipped" },
+          course_code: { type: "string", description: "The active course code (e.g. 'PHYS 1011')" },
+          reason: { type: "string", description: "Why advancing (e.g. 'completed topic breakdown' or 'skipped filler page')" }
         },
-        required: ["course_code"]
+        required: ["current_page"]
       }
     }
   },
   {
     type: "function",
     function: {
-      name: "read_book_section",
-      description: "Read the full text of a specific chapter or section from the course book.",
+      name: "mount_book_selection",
+      description: "Return to the course and textbook catalog screen when the student asks to switch subjects, courses, or study a different book.",
       parameters: {
         type: "object",
         properties: {
-          course_code: { type: "string", description: "The course code (e.g. 'PHYS 1011')" },
-          section_title: { type: "string", description: "Exact title of the section from the TOC" }
-        },
-        required: ["course_code", "section_title"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "read_book_page",
-      description: "Read the text of a specific page or range of pages from the course book.",
-      parameters: {
-        type: "object",
-        properties: {
-          course_code: { type: "string", description: "The course code (e.g. 'PHYS 1011')" },
-          start_page: { type: "integer", description: "Starting page number" },
-          end_page: { type: "integer", description: "Optional ending page number" }
-        },
-        required: ["course_code", "start_page"]
+          reason: { type: "string", description: "Why navigating to catalog" }
+        }
       }
     }
   }
@@ -308,58 +292,26 @@ function findBestMatchingTocNode(tocTree, rawQuery, confidenceThreshold = 0.80) 
   return { matchedItem: top.item, flatList };
 }
 
-const MIRON_MASTER_BASE = `You are Miron, an expert university peer tutor and a dedicated study partner to \${studentName}. You are conducting an interactive 1-on-1 voice study session.
+const MIRON_MASTER_BASE = `You are Miron, an expert university peer tutor and dedicated study partner to \${studentName}. You are conducting an interactive 1-on-1 voice study session sitting side-by-side with \${studentName}.
 
-AUTHENTIC TONE & COMPLETE IMMERSION:
-- Maintain an authentic, normal peer tone—grounded, natural, articulate, and direct. Avoid exaggerated slang or forced casualness.
-- NEVER mention, speak, or write course codes (e.g., 'PHYS 1011', 'BIOL 1012') to \${studentName}. Refer to all courses strictly by their friendly names (e.g., 'Physics', 'General Biology'). Course codes are strictly for internal tool function calls.
-- NEVER reveal background operations. Never say or imply you are pulling context, reading pages, inspecting the Table of Contents (TOC), executing calls, or looking things up. Execute all tool operations completely silently and deliver the content directly.
+CO-READING POSTURE & SHARED VISUAL CANVAS:
+- You and \${studentName} are looking at the exact same physical textbook page on screen. Always speak as if pointing directly at the page in front of you.
+- Use natural orienting anchors: "Let's start with page X, the first page of this section. We'll break down everything together.", "As you can see right here in the first paragraph...", "Look at this equation...", "Notice how the text defines...".
+- NEVER speak or write internal course codes (e.g., 'PHYS 1011'). Refer to all courses strictly by their friendly names (e.g., 'Physics', 'Biology').
+- NEVER reveal backend or prompt mechanics. Speak directly and naturally as a knowledgeable peer.
 
-COURSE CATALOG:
-You have access to textbooks for the following courses:
-"ANTH 1012" - "Anthropology"
-"BIOL 1012" - "Biology"
-"CHEM 1012" - "Chemistry"
-"ECON 1011" - "Economics"
-"EMTE 1012" - "Emerging Technology"
-"FLEN 1011" - "English Skill I"
-"GEES 1011" - "Geography"
-"GLTR 1012" - "Global Affairs"
-"HIST 1012" - "History"
-"INCL 1012" - "Inclusiveness"
-"LOCT 1011" - "Logic and Critical Thinking"
-"MATH 1011" - "Math For Social Science"
-"MATH 1012" - "Math For Natural Science"
-"MCIE 1012" - "Civics"
-"MGMT 1012" - "Entrepreneurship"
-"PHYS 1011" - "Physics"
-"PSYC 1011" - "Psychology"
-"SPSC 1011" - "Physical Fitness"
+THE DECONSTRUCTION DOCTRINE:
+- Dissect concepts into their core anatomical pillars. Do not just state definitions or read headings.
+- Explain real-life mechanisms and intuitive reasons why things work the way they do.
+- Deliver substantial, paced mini-lectures without flooding the student with massive unbroken walls of text.
 
-STUDY WORKFLOW & THE DEEP GRIND PROTOCOL:
-- Natural Course Mapping: Deduce the relevant course from context (e.g., "Physics" -> "PHYS 1011").
-- The Prepared Partner Posture: When the student mentions a subject, act like an elite classmate who already has the book open. Silently call "get_book_toc" to review the curriculum, then outline the major chapters so the student can pick where to start.
-- Never Ask What Is in the Book: Silently retrieve what you need using the tools. Refer naturally to the book and page number as an orienting anchor.
+PAGE ADVANCEMENT & FLUFF RULES:
+1. Dense Concept Pages: Work through the concepts on the current page step-by-step. When you finish explaining the page's core ideas, check in with \${studentName}—ask if they feel confident moving forward to the next page, and remind them they can ask questions via voice or write directly in the chat box.
+2. Filler / Objective Pages: If the current page is merely syllabus outlines, learning outcomes, a blank chapter splash, or generic introductory fluff with no testable concepts, DO NOT ask if they understand! State what the page outlines in one concise sentence, call "advance_to_next_page", and advance directly to the real material without hesitation.
 
-THE DECONSTRUCTION DOCTRINE (NO SURFACE-LEVEL DEFINITIONS):
-- NEVER just state a definition or translate a heading.
-- Dissect every concept into its anatomical pillars. Break down every single component in depth.
-- Walk through concrete, real-life scenarios showing how those components interact.
-
-SUBSTANTIAL YET PACED EXPLANATIONS:
-- Deliver rich, comprehensive mini-lectures that drain the nuance of the specific concept.
-- Maintain conversational flow. Do not output massive walls of text.
-
-BAN LAZY CHECK-INS & ESCAPE HATCHES:
-- NEVER end an explanation with lazy pass-the-mic questions like "Is that clear?", "Do you understand?", or "Any questions?".
-- Instead, conclude by challenging \${studentName} with an active thought experiment or an application question based directly on the deep explanation you just gave.
-
-THE SECTION GRIND (ONE CHUNK AT A TIME):
-When studying a section from "read_book_section":
-1. The Overview Map: Provide a generous overview of what the entire section covers to set context.
-2. Isolate Chunk #1: Immediately latch onto the very first concept. Apply the Deconstruction Doctrine fully. Do NOT touch Chunk #2 yet.
-3. Application Challenge: Conclude Chunk #1 with an active, thought-provoking application challenge.
-4. Hold Ground: Stay on that specific concept, discussing and clarifying it, until \${studentName} demonstrates understanding or explicitly asks to move on.`;
+AVAILABLE COGNITIVE TOOLS:
+- advance_to_next_page: Advance to the next physical textbook page.
+- mount_book_selection: Return to the course catalog grid if \${studentName} asks to switch to another course or book.`;
 
 export class GeminiLiveAgent {
   constructor(ctx, env) {
@@ -400,6 +352,8 @@ export class GeminiLiveAgent {
     this.pendingTemplateSpeech = null;
     this.isSpeakingTemplate = false;
     this.isGeneratingSectionSummary = false;
+    this.currentPageNumber = null;
+    this.currentTranslatingChunkIndex = null;
 
     // Diagnostic & Turn Tracking State
     this.activeTurn = null;
@@ -646,18 +600,22 @@ export class GeminiLiveAgent {
     if (!this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN || !this.isGeminiSetupComplete) return;
     if (this.isGeminiTranslating || this.translationQueue.length === 0) return;
 
-    const chunk = this.translationQueue.shift();
+    const item = this.translationQueue.shift();
+    const chunkText = typeof item === 'object' ? item.text : item;
+    const chunkIdx = typeof item === 'object' ? item.index : 0;
+    this.currentTranslatingChunkIndex = chunkIdx;
+
     this.isGeminiTranslating = true;
-    this.startTurnAudit("reading_chunk_translation", chunk);
+    this.startTurnAudit("reading_chunk_translation", chunkText);
     
-    const prompt = `Translate and speak the following explanation in natural, authentic Amharic (using the Ge'ez/Fidel alphabet) with a normal, grounded peer tone, blended smoothly with English technical terms to ${this.studentName}. Sound like an authentic university peer studying together in an authentic normal tone. Speak the translation directly:\n\n${chunk}`;
+    const prompt = `Translate and speak the following explanation in natural, authentic Amharic (using the Ge'ez/Fidel alphabet) with a normal, grounded peer tone, blended smoothly with English technical terms to ${this.studentName}. Sound like an authentic university peer studying together in an authentic normal tone. Speak the translation directly:\n\n${chunkText}`;
     
     const payload = JSON.stringify({
         clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
     });
     
     this.geminiWs.send(payload);
-    this.emitLog("GEMINI", `Translating chunk (${chunk.length} chars). ${this.translationQueue.length} chunks remaining.`);
+    this.emitLog("GEMINI", `Translating chunk #${chunkIdx} (${chunkText.length} chars). ${this.translationQueue.length} chunks remaining.`);
   }
 
   async executeTool(name, args) {
@@ -682,96 +640,37 @@ export class GeminiLiveAgent {
 
     let result = {};
     try {
-      if (name === "get_book_toc") {
-        const code = (args.course_code || "").toUpperCase().trim();
-        const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,title,toc,page_offset`, { headers: authHeaders });
-        const json = await res.json();
-        if (json && json.length > 0) {
-          const tocTokens = this.countTokens(JSON.stringify(json[0].toc || []));
-          result = { status: "success", book_id: json[0].id, title: json[0].title, page_offset: json[0].page_offset || 0, toc: json[0].toc, tokens: tocTokens };
-        } else {
-          result = { status: "error", message: `Book for course ${code} not found.` };
-        }
-      } else if (name === "read_book_section") {
-        const code = (args.course_code || "").toUpperCase().trim();
-        const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,toc,page_offset`, { headers: authHeaders });
-        const json = await res.json();
-        
-        if (json && json.length > 0 && json[0].toc) {
-          const bookId = json[0].id;
-          const offset = json[0].page_offset || 0;
-          const matchResult = findBestMatchingTocNode(json[0].toc, args.section_title, 0.80);
+      if (name === "advance_to_next_page") {
+        const pageToFetch = (args.current_page || this.currentPageNumber || 1) + 1;
+        const code = (args.course_code || this.currentCourseCode || "").toUpperCase().trim();
+        this.currentPageNumber = pageToFetch;
 
-          if (matchResult) {
-            const { matchedItem, flatList } = matchResult;
-            const startPage = matchedItem.page;
-            const targetDepth = matchedItem.depth;
-            let endPage = 99999;
-            for (let i = matchedItem.originalIndex + 1; i < flatList.length; i++) {
-              const candidate = flatList[i];
-              if (candidate.depth <= targetDepth && candidate.page && candidate.page > startPage) {
-                endPage = candidate.page;
-                break;
-              }
-            }
+        this.emitLog("TOOL", `⏩ Advancing to Page ${pageToFetch} (${code || 'active course'})`, { pageToFetch, reason: args.reason });
 
-            const physicalStart = Math.max(1, startPage + offset);
-            const physicalEnd = endPage === 99999 ? 99999 : Math.max(1, endPage + offset);
+        // Broadcast page_turn so client can scroll and bring page into focus
+        this.broadcast(JSON.stringify({
+          type: "page_turn",
+          page_number: pageToFetch,
+          reason: args.reason || "advancing"
+        }));
 
-            const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${physicalStart}&page_number=lt.${physicalEnd}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
-            const pages = await pageRes.json();
-            
-            const extractTextFromBlockArray = (blocks) => {
-              return (blocks || []).map(b => {
-                if (!b) return '';
-                let text = [];
-                if (b.main) text.push(b.main);
-                if (b.sub) text.push(b.sub);
-                if (b.title) text.push(b.title);
-                if (b.body) text.push(b.body);
-                if (b.text) text.push(b.text);
-                if (b.items && Array.isArray(b.items)) text.push(b.items.join(' '));
-                if (b.premises) text.push(b.premises.join(' '));
-                if (b.conclusion) text.push(b.conclusion);
-                if (b.question) text.push(b.question);
-                return text.join(' ').replace(/<[^>]+>/g, '').trim(); 
-              }).filter(Boolean).join('\n');
-            };
-
-            const rawSectionText = (pages || []).map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
-            const sliced = this.sliceTextToTokenBudget(rawSectionText, 2200, "\n\n[...Section content truncated to protect TPM budget...]");
-            result = { 
-              status: "success", 
-              matched_section: matchedItem.title,
-              breadcrumb: matchedItem.breadcrumb,
-              text: sliced.text || "Section is empty.",
-              tokens: sliced.finalTokens,
-              original_tokens: sliced.originalTokens,
-              is_sliced: sliced.isSliced
-            };
-          } else {
-            result = { status: "error", message: `Section "${args.section_title}" not found in TOC with sufficient confidence (>=80%).` };
+        let bookId = this.currentBookId;
+        if (!bookId && code) {
+          const bRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id`, { headers: authHeaders });
+          const bData = await bRes.json();
+          if (bData && bData.length > 0) {
+            bookId = bData[0].id;
+            this.currentBookId = bookId;
           }
-        } else {
-          result = { status: "error", message: "Course book not found." };
         }
-      } else if (name === "read_book_page") {
-        const code = (args.course_code || "").toUpperCase().trim();
-        const start = args.start_page;
-        const end = args.end_page || (start + 1);
 
-        const res = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/books?course_code=eq.${code}&is_published=eq.true&select=id,page_offset`, { headers: authHeaders });
-        const json = await res.json();
+        let query = `${this.env.SUPABASE_URL}/rest/v1/book_pages?page_number=eq.${pageToFetch}&select=page_number,content_json`;
+        if (bookId) query += `&book_id=eq.${bookId}`;
 
-        if (json && json.length > 0) {
-          const bookId = json[0].id;
-          const offset = json[0].page_offset || 0;
-          const physicalStart = Math.max(1, start + offset);
-          const physicalEnd = Math.max(1, end + offset);
+        const pageRes = await fetchWithTimeout(query, { headers: authHeaders });
+        const pages = await pageRes.json();
 
-          const pageRes = await fetchWithTimeout(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=gte.${physicalStart}&page_number=lte.${physicalEnd}&select=page_number,content_json&order=page_number.asc`, { headers: authHeaders });
-          const pages = await pageRes.json();
-
+        if (pages && pages.length > 0) {
           const extractTextFromBlockArray = (blocks) => {
             return (blocks || []).map(b => {
               if (!b) return '';
@@ -789,18 +688,30 @@ export class GeminiLiveAgent {
             }).filter(Boolean).join('\n');
           };
 
-          const rawSectionText = (pages || []).map(p => `--- PAGE ${p.page_number} ---\n` + extractTextFromBlockArray(p.content_json || [])).join("\n\n");
-          const sliced = this.sliceTextToTokenBudget(rawSectionText, 2200, "\n\n[...Pages content truncated to protect TPM budget...]");
-          result = { 
-            status: "success", 
-            text: sliced.text || "Pages are empty or do not exist.",
-            tokens: sliced.finalTokens,
-            original_tokens: sliced.originalTokens,
-            is_sliced: sliced.isSliced
+          const rawPageText = extractTextFromBlockArray(pages[0].content_json || []);
+          const sliced = this.sliceTextToTokenBudget(rawPageText, 2200, "\n\n[...Page content truncated to protect TPM budget...]");
+          result = {
+            status: "success",
+            page_number: pageToFetch,
+            text: sliced.text || "Page content loaded.",
+            instruction: `The student's viewport has scrolled to Page ${pageToFetch}. Ground your next explanation directly on this new page text. Remember to wrap verbatim snippets in <chunk highlight="...">.`
           };
         } else {
-          result = { status: "error", message: "Course book not found." };
+          result = {
+            status: "error",
+            message: `Page ${pageToFetch} could not be found or the section has ended.`
+          };
         }
+      } else if (name === "mount_book_selection") {
+        this.emitLog("TOOL", `📚 Mounting book catalog selection on student screen.`);
+        this.broadcast(JSON.stringify({
+          type: "navigate_stage",
+          stage: "course_select"
+        }));
+        result = {
+          status: "success",
+          message: "The student has been navigated to the course catalog screen to choose another book."
+        };
       }
     } catch (err) {
       result = { status: "error", message: err.message };
@@ -825,21 +736,18 @@ export class GeminiLiveAgent {
       CRITICAL LINGUISTIC & FORMATTING RULES (PRIMARY BRAIN):
 - Authentic, Normal Tone: Speak in an authentic, normal peer tone—clear, articulate, grounded, and engaging. Do not use forced casual slang or overly hype speech.
 - STRICT COURSE NAME RULE: NEVER mention, write, or reveal course codes (e.g. 'PHYS 1011', 'BIOL 1012') in your speech. Always use the friendly, natural course name (e.g. 'Physics', 'Biology'). Course codes are strictly for internal tool arguments.
-- NO 4TH-WALL OR BACKEND EXPOSURE: NEVER reveal what you are doing behind the scenes. Never mention checking the Table of Contents, pulling textbook pages, seeing the TOC, querying functions, or retrieving context. Present the material directly as natural knowledge.
+- CO-READING ILLUSION: You and ${this.studentName} are looking at the exact same physical textbook page on screen. Ground your speech directly on the text in front of you ("Look right here on page...", "As you can see in this line...", "Notice how it defines...").
 - Formulate your entire response in clear, concise English. Do NOT generate in Amharic script.
-- CHUNKING ARCHITECTURE:
-  * Wrap spoken units in <chunk>...</chunk> tags.
-  * SINGLE CHUNK RULE: If your response is simple or short (such as a greeting, short introduction, brief acknowledgment, quick answer, or concise summary), DO NOT break it into multiple chunks. Put the entire message inside a SINGLE <chunk>...</chunk>.
-  * MULTI-CHUNK RULE: Multiple chunks are reserved strictly for long, substantial explanations, deep breakdowns, or concept drills (each chunk being 1-2 paced sentences).
-- DO NOT use JSON. DO NOT invoke or hallucinate a function/tool named "JSON" or "response". Write raw conversational English with <chunk> tags directly in your message body.
-
-EXAMPLE SHORT OUTPUT:
-<chunk>Hey ${this.studentName}, welcome back! What topic in Physics would you like to dive into today?</chunk>
-
-EXAMPLE DEEP DRILL OUTPUT:
-<chunk>Let's break down gravitational potential energy step by step.</chunk>
-<chunk>When you lift an object against gravity, the work you do gets stored as potential energy in the gravitational field.</chunk>
-<chunk>If we double the height while keeping the mass constant, what happens to that stored energy?</chunk>`;
+- CHUNKING & HIGHLIGHT ARCHITECTURE:
+  * Wrap each spoken thought unit in <chunk highlight="...">...</chunk> tags.
+  * The 'highlight' attribute MUST be an EXACT, VERBATIM quote copy-pasted directly from the textbook page text provided. It can be a phrase, clause, or entire sentence. Do NOT paraphrase or alter punctuation in the highlight attribute.
+  * If a chunk is purely conversational or an application question without referring to a specific sentence on the page, omit the highlight attribute: <chunk>...</chunk>.
+  * SINGLE CHUNK RULE: If your response is short (greeting, quick answer, acknowledgment), put it in a single <chunk>.
+  * MULTI-CHUNK RULE: For teaching and concept breakdowns, use sequential paced chunks (1-2 sentences each).
+- ADVANCING PAGES & FLUFF HANDLING:
+  * When finishing a dense concept page, ask ${this.studentName} if everything makes sense or if they want to move to the next page, reminding them they can speak or type questions directly in chat.
+  * If a page is merely introductory filler, syllabus outlines, or generic learning objectives with no testable concepts, DO NOT ask if they understand! State what the page covers in one quick sentence, silently call "advance_to_next_page", and advance straight to the real material.
+- DO NOT use JSON. DO NOT invoke or hallucinate tools other than 'advance_to_next_page' and 'mount_book_selection'. Write raw conversational English with <chunk> tags directly in your message body.`;
 
       let totalTokens = this.countTokens(systemPrompt);
       const contextualMessages = [];
@@ -1048,11 +956,20 @@ EXAMPLE DEEP DRILL OUTPUT:
         this.groqChatHistory.push({ role: "assistant", content: rawContent });
 
         let chunks = [];
-        const chunkRegex = /<chunk>([\s\S]*?)<\/chunk>/gi;
+        let highlightQueue = [];
+        const chunkRegex = /<chunk(?:\s+highlight=["']([\s\S]*?)["'])?[^>]*>([\s\S]*?)<\/chunk>/gi;
         let cMatch;
+        let cIdx = 0;
         while ((cMatch = chunkRegex.exec(rawContent)) !== null) {
-            const trimmed = cMatch[1].trim();
-            if (trimmed) chunks.push(trimmed);
+            const hl = cMatch[1] ? cMatch[1].trim() : null;
+            const text = cMatch[2] ? cMatch[2].trim() : "";
+            if (text) {
+                chunks.push(text);
+                if (hl) {
+                    highlightQueue.push({ chunk_index: cIdx, highlight: hl });
+                }
+                cIdx++;
+            }
         }
 
         // Bulletproof Fallback: If model omitted <chunk> tags, split naturally on paragraph breaks
@@ -1069,15 +986,26 @@ EXAMPLE DEEP DRILL OUTPUT:
           tokens: finalTokens,
           prompt_tokens: promptCount,
           completion_tokens: completionCount,
-          spoken_chunks_count: sanitizedChunks.length
+          spoken_chunks_count: sanitizedChunks.length,
+          preloaded_highlights: highlightQueue.length
         });
+
+        // 1. Instantly preload the highlights manifest into the frontend queue (0ms visual sync preparation)
+        if (highlightQueue.length > 0) {
+            this.broadcast(JSON.stringify({
+                type: "preload_highlights",
+                queue: highlightQueue
+            }));
+        }
 
         this.broadcast(JSON.stringify({
           type: "miron_thought",
           text: sanitizedChunks.join(' ')
         }));
 
-        this.translationQueue.push(...sanitizedChunks);
+        // 2. Queue chunks with indexed markers so Green Light pulses can fire in lockstep
+        const indexedChunks = sanitizedChunks.map((text, idx) => ({ index: idx, text }));
+        this.translationQueue.push(...indexedChunks);
         
         // Trigger the queue loop
         this.processTranslationQueue();
@@ -1677,6 +1605,10 @@ OPERATIONAL RULES:
             }
 
             if (this.isOneOnOne && oneOnOneText) {
+                const pageMatch = oneOnOneText.match(/confirmed on Page (\d+)/i) || oneOnOneText.match(/Page (\d+)/i);
+                if (pageMatch) {
+                    this.currentPageNumber = parseInt(pageMatch[1], 10);
+                }
                 this.emitLog("USER", oneOnOneText);
                 this.translationQueue = []; // INTERRUPT: Clear pending translation chunks
                 this.ctx.waitUntil(this.executeGroqCognitiveTurn(oneOnOneText));
@@ -1788,6 +1720,8 @@ OPERATIONAL RULES:
     this.pendingTemplateSpeech = null;
     this.isSpeakingTemplate = false;
     this.isGeneratingSectionSummary = false;
+    this.currentPageNumber = null;
+    this.currentTranslatingChunkIndex = null;
     if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
     if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
     this.activeTurn = null;
@@ -2171,6 +2105,14 @@ CRITICAL OPERATIONAL RULES:
                                 ttfa_ms: ttfa,
                                 total_chunks: this.activeTurn.audioChunksReceived
                             });
+
+                            // Green light signal: Dispatched to the client in the exact millisecond the first audio packet lands
+                            if (this.activeTurn.type === "reading_chunk_translation" && this.currentTranslatingChunkIndex !== null) {
+                                this.broadcast(JSON.stringify({
+                                    type: "green_light_chunk",
+                                    chunk_index: this.currentTranslatingChunkIndex
+                                }));
+                            }
                         }
 
                         // DISCARD LATE NAVIGATION AUDIO (> 5s Timeout)
