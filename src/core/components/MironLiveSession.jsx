@@ -203,12 +203,19 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         cancelAnimationFrame(g.momentumRafId);
         let vx = g.velocity.vx;
         let vy = g.velocity.vy;
+        let lastTime = performance.now();
 
-        const step = () => {
-            vx *= 0.94;
-            vy *= 0.94;
+        const step = (currentTime) => {
+            const dt = Math.min(32, currentTime - lastTime);
+            lastTime = currentTime;
+            const timeFactor = dt / 16.666;
 
-            if (Math.hypot(vx, vy) < 0.25) {
+            // Silky exponential decay normalized across 60Hz and 120Hz
+            const friction = Math.pow(0.964, timeFactor);
+            vx *= friction;
+            vy *= friction;
+
+            if (Math.hypot(vx, vy) < 0.18) {
                 const targetScale = transformRef.current.scale;
                 const clamped = clampPosition(transformRef.current.x, transformRef.current.y, targetScale);
                 transformRef.current.x = clamped.x;
@@ -217,8 +224,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 return;
             }
 
-            const nextX = transformRef.current.x + vx;
-            const nextY = transformRef.current.y + vy;
+            const nextX = transformRef.current.x + vx * timeFactor;
+            const nextY = transformRef.current.y + vy * timeFactor;
             const currentScale = transformRef.current.scale;
             const clamped = clampPosition(nextX, nextY, currentScale);
 
@@ -507,16 +514,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 g.mode = 'none';
 
                 if (!wasPinching && g.history.length >= 2) {
-                    const recent = g.history.filter(h => now - h.time < 100);
+                    const recent = g.history.filter(h => now - h.time <= 65);
                     if (recent.length >= 2) {
                         const first = recent[0];
                         const last = recent[recent.length - 1];
-                        const dt = Math.max(16, last.time - first.time);
-                        const vx = ((last.x - first.x) / dt) * 16;
-                        const vy = ((last.y - first.y) / dt) * 16;
+                        const dt = Math.max(12, last.time - first.time);
+                        const rawVx = (last.x - first.x) / dt;
+                        const rawVy = (last.y - first.y) / dt;
+                        const speed = Math.hypot(rawVx, rawVy);
 
-                        if (Math.hypot(vx, vy) > 1.2) {
-                            g.velocity = { vx, vy };
+                        if (speed > 0.12) {
+                            // Dynamic Kinetic Force: higher speeds amplify momentum distance
+                            const kineticMultiplier = 20 + Math.min(18, speed * 7);
+                            g.velocity = {
+                                vx: rawVx * kineticMultiplier,
+                                vy: rawVy * kineticMultiplier
+                            };
                             runMomentum();
                             return;
                         }
@@ -593,15 +606,21 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             if (!gestureStateRef.current.isMouseDown) return;
             gestureStateRef.current.isMouseDown = false;
             const now = Date.now();
-            const recent = gestureStateRef.current.history.filter(h => now - h.time < 100);
+            const recent = gestureStateRef.current.history.filter(h => now - h.time <= 65);
             if (recent.length >= 2) {
                 const first = recent[0];
                 const last = recent[recent.length - 1];
-                const dt = Math.max(16, last.time - first.time);
-                const vx = ((last.x - first.x) / dt) * 16;
-                const vy = ((last.y - first.y) / dt) * 16;
-                if (Math.hypot(vx, vy) > 1.2) {
-                    gestureStateRef.current.velocity = { vx, vy };
+                const dt = Math.max(12, last.time - first.time);
+                const rawVx = (last.x - first.x) / dt;
+                const rawVy = (last.y - first.y) / dt;
+                const speed = Math.hypot(rawVx, rawVy);
+
+                if (speed > 0.12) {
+                    const kineticMultiplier = 20 + Math.min(18, speed * 7);
+                    gestureStateRef.current.velocity = {
+                        vx: rawVx * kineticMultiplier,
+                        vy: rawVy * kineticMultiplier
+                    };
                     runMomentum();
                 }
             }
