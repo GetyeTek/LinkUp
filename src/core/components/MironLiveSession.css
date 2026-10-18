@@ -789,12 +789,12 @@
     .reading-stage-active .ml-page-viewport .page-wrapper {
         max-width: 100%;
     }
-    .reading-stage-active .ml-page-viewport .page-canvas {
-        padding: 24px 16px 48px 16px !important;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        font-size: 15px;
-    }
+            .reading-stage-active .ml-page-viewport .page-canvas {
+            width: 794px !important;
+            min-height: 1123px !important;
+            padding: 60px 70px 50px 70px !important;
+            border-radius: 4px !important;
+        }
 }
 
 @media (max-width: 600px) {
