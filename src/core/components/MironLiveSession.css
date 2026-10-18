@@ -757,6 +757,44 @@
     .ml-showcase-prompt-tip {
         display: none;
     }
+
+    /* Mobile Full-Bleed Immersive Reading Experience */
+    .reading-stage-active.toc-split-stage {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+    .reading-stage-active .ml-toc-book-showcase {
+        display: none !important;
+    }
+    .reading-stage-active .ml-toc-interactive-pane {
+        padding-right: 0;
+        overflow-y: visible;
+    }
+    .reading-stage-active .ml-reader-workspace {
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        min-height: auto;
+        flex: 1;
+    }
+    .reading-stage-active .ml-reader-bar {
+        padding: 8px 12px;
+        background: rgba(18, 18, 22, 0.95);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .reading-stage-active .ml-page-viewport {
+        padding: 0.75rem 0.6rem 5rem 0.6rem;
+        background: transparent;
+    }
+    .reading-stage-active .ml-page-viewport .page-wrapper {
+        max-width: 100%;
+    }
+    .reading-stage-active .ml-page-viewport .page-canvas {
+        padding: 24px 16px 48px 16px !important;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 15px;
+    }
 }
 
 @media (max-width: 600px) {
@@ -857,9 +895,17 @@
     width: 100%; max-width: 760px;
 }
 .ml-page-viewport .page-canvas {
-    width: 100% !important; min-height: auto !important; padding: 32px 24px !important;
-    background: #141416 !important; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); color: #f3f4f6 !important;
+    --page-bg: #141416;
+    --text-color: #f3f4f6;
+    --border: rgba(255, 255, 255, 0.12);
+    --accent: #42d7b8;
+    width: 100% !important; min-height: auto !important; padding: 40px 32px !important;
+    background: var(--page-bg) !important; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); color: var(--text-color) !important;
+    font-family: 'Times New Roman', Times, 'Nyala', 'Kefa', 'Abyssinica SIL', serif;
+    display: flex; flex-direction: column; contain: content; text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    line-height: 1.55;
 }
 
 /* REAL-TIME DYNAMIC HIGHLIGHT GLOW */
