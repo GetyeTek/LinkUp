@@ -981,7 +981,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    will-change: transform;
+    will-change: transform, opacity;
 }
 
 .ml-page-viewport .page-wrapper {
