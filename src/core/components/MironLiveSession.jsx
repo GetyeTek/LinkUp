@@ -169,7 +169,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         lastPan: { x: 0, y: 0 },
         lastTapTime: 0,
         lastTapPos: { x: 0, y: 0 },
-        isMouseDown: false
+        isMouseDown: false,
+        history: [],
+        velocity: { vx: 0, vy: 0 },
+        momentumRafId: null
     });
 
     const applyTransform = (smooth = false, explicitFit = null) => {
@@ -185,12 +188,51 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (!pageContainerRef.current) return { x, y };
         const cW = pageContainerRef.current.clientWidth;
         const cH = pageContainerRef.current.clientHeight;
+        const liveH = a4LayerRef.current?.offsetHeight || 0;
+        const totalUnscaledH = Math.max(liveH, (sectionPages.length || 1) * 1150);
         const pW = 794 * fitScale * scale;
-        const totalHeight = (layerHeight || ((sectionPages.length || 1) * 1160)) * fitScale * scale;
+        const totalHeight = totalUnscaledH * fitScale * scale;
 
         const clampedX = pW <= cW ? (cW - pW) / 2 : Math.min(16, Math.max(cW - pW - 16, x));
         const clampedY = totalHeight <= cH ? Math.max(16, (cH - totalHeight) / 2) : Math.min(24, Math.max(cH - totalHeight - 48, y));
         return { x: clampedX, y: clampedY };
+    };
+
+    const runMomentum = () => {
+        const g = gestureStateRef.current;
+        cancelAnimationFrame(g.momentumRafId);
+        let vx = g.velocity.vx;
+        let vy = g.velocity.vy;
+
+        const step = () => {
+            vx *= 0.94;
+            vy *= 0.94;
+
+            if (Math.hypot(vx, vy) < 0.25) {
+                const targetScale = transformRef.current.scale;
+                const clamped = clampPosition(transformRef.current.x, transformRef.current.y, targetScale);
+                transformRef.current.x = clamped.x;
+                transformRef.current.y = clamped.y;
+                applyTransform(true);
+                return;
+            }
+
+            const nextX = transformRef.current.x + vx;
+            const nextY = transformRef.current.y + vy;
+            const currentScale = transformRef.current.scale;
+            const clamped = clampPosition(nextX, nextY, currentScale);
+
+            if (clamped.x !== nextX) vx = 0;
+            if (clamped.y !== nextY) vy = 0;
+
+            transformRef.current.x = clamped.x;
+            transformRef.current.y = clamped.y;
+            applyTransform(false);
+
+            g.momentumRafId = requestAnimationFrame(step);
+        };
+
+        g.momentumRafId = requestAnimationFrame(step);
     };
 
     const handleToggleZoomFit = () => {
@@ -346,6 +388,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             const g = gestureStateRef.current;
             const cRect = container.getBoundingClientRect();
 
+            // Tap-to-Stop: Instantly catch and stop any kinetic momentum
+            cancelAnimationFrame(g.momentumRafId);
+
             if (e.touches.length === 2) {
                 if (e.cancelable) e.preventDefault();
                 g.mode = 'pinch';
@@ -362,6 +407,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 const t = e.touches[0];
                 g.mode = 'pan';
                 g.lastPan = { x: t.clientX, y: t.clientY };
+                g.history = [{ time: now, x: t.clientX, y: t.clientY }];
 
                 // Double Tap Detection
                 const dt = now - g.lastTapTime;
@@ -405,6 +451,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         const onTouchMove = (e) => {
             const g = gestureStateRef.current;
             const cRect = container.getBoundingClientRect();
+            const now = Date.now();
 
             if (g.mode === 'pinch' && e.touches.length >= 2) {
                 if (e.cancelable) e.preventDefault();
@@ -432,6 +479,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 const dy = t.clientY - g.lastPan.y;
                 g.lastPan = { x: t.clientX, y: t.clientY };
 
+                // Track rolling touch history for kinetic release velocity
+                g.history = g.history.filter(h => now - h.time < 100);
+                g.history.push({ time: now, x: t.clientX, y: t.clientY });
+
                 const targetScale = transformRef.current.scale;
                 const nextX = transformRef.current.x + dx;
                 const nextY = transformRef.current.y + dy;
@@ -445,11 +496,33 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
         const onTouchEnd = (e) => {
             const g = gestureStateRef.current;
+            const now = Date.now();
+
             if (e.touches.length === 1) {
                 g.mode = 'pan';
                 g.lastPan = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                g.history = [{ time: now, x: e.touches[0].clientX, y: e.touches[0].clientY }];
             } else if (e.touches.length === 0) {
+                const wasPinching = g.mode === 'pinch';
                 g.mode = 'none';
+
+                if (!wasPinching && g.history.length >= 2) {
+                    const recent = g.history.filter(h => now - h.time < 100);
+                    if (recent.length >= 2) {
+                        const first = recent[0];
+                        const last = recent[recent.length - 1];
+                        const dt = Math.max(16, last.time - first.time);
+                        const vx = ((last.x - first.x) / dt) * 16;
+                        const vy = ((last.y - first.y) / dt) * 16;
+
+                        if (Math.hypot(vx, vy) > 1.2) {
+                            g.velocity = { vx, vy };
+                            runMomentum();
+                            return;
+                        }
+                    }
+                }
+
                 const targetScale = Math.min(4.5, Math.max(1.0, transformRef.current.scale));
                 const clamped = clampPosition(transformRef.current.x, transformRef.current.y, targetScale);
                 transformRef.current = { scale: targetScale, x: clamped.x, y: clamped.y };
@@ -491,15 +564,21 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
         const onMouseDown = (e) => {
             if (e.button !== 0) return;
+            cancelAnimationFrame(gestureStateRef.current.momentumRafId);
             gestureStateRef.current.isMouseDown = true;
             gestureStateRef.current.lastPan = { x: e.clientX, y: e.clientY };
+            gestureStateRef.current.history = [{ time: Date.now(), x: e.clientX, y: e.clientY }];
         };
 
         const onMouseMove = (e) => {
             if (!gestureStateRef.current.isMouseDown) return;
+            const now = Date.now();
             const dx = e.clientX - gestureStateRef.current.lastPan.x;
             const dy = e.clientY - gestureStateRef.current.lastPan.y;
             gestureStateRef.current.lastPan = { x: e.clientX, y: e.clientY };
+
+            gestureStateRef.current.history = gestureStateRef.current.history.filter(h => now - h.time < 100);
+            gestureStateRef.current.history.push({ time: now, x: e.clientX, y: e.clientY });
 
             const targetScale = transformRef.current.scale;
             const nextX = transformRef.current.x + dx;
@@ -511,7 +590,21 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
 
         const onMouseUp = () => {
+            if (!gestureStateRef.current.isMouseDown) return;
             gestureStateRef.current.isMouseDown = false;
+            const now = Date.now();
+            const recent = gestureStateRef.current.history.filter(h => now - h.time < 100);
+            if (recent.length >= 2) {
+                const first = recent[0];
+                const last = recent[recent.length - 1];
+                const dt = Math.max(16, last.time - first.time);
+                const vx = ((last.x - first.x) / dt) * 16;
+                const vy = ((last.y - first.y) / dt) * 16;
+                if (Math.hypot(vx, vy) > 1.2) {
+                    gestureStateRef.current.velocity = { vx, vy };
+                    runMomentum();
+                }
+            }
         };
 
         container.addEventListener('touchstart', onTouchStart, { passive: false });
@@ -524,6 +617,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         window.addEventListener('mouseup', onMouseUp);
 
         return () => {
+            cancelAnimationFrame(gestureStateRef.current.momentumRafId);
             container.removeEventListener('touchstart', onTouchStart);
             container.removeEventListener('touchmove', onTouchMove);
             container.removeEventListener('touchend', onTouchEnd);
