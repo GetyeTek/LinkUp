@@ -171,10 +171,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         isMouseDown: false
     });
 
-    const applyTransform = (smooth = false) => {
+    const applyTransform = (smooth = false, explicitFit = null) => {
         if (!a4LayerRef.current) return;
+        const activeFit = explicitFit || fitScale;
         const { scale, x, y } = transformRef.current;
-        const currentEffective = fitScale * scale;
+        const currentEffective = activeFit * scale;
         a4LayerRef.current.style.transition = smooth ? 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)' : 'none';
         a4LayerRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${currentEffective})`;
     };
@@ -319,12 +320,19 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (stage !== 'reading' || viewState !== 'full' || !pageContainerRef.current) return;
         const container = pageContainerRef.current;
 
+        // Synchronously compute container dimensions to prevent any unscaled frame
+        const cW = container.clientWidth;
+        const padding = cW < 600 ? 16 : 32;
+        const computedFit = Math.max(0.35, Math.min((cW - padding) / 794, 1.2));
+        if (computedFit !== fitScale) {
+            setFitScale(computedFit);
+        }
+
         // Reset to centered fit on page change, resize, or restore from orb
-        const rect = container.getBoundingClientRect();
-        const pW = 794 * fitScale;
-        const x0 = Math.max(0, (rect.width - pW) / 2);
+        const pW = 794 * computedFit;
+        const x0 = Math.max(0, (cW - pW) / 2);
         transformRef.current = { scale: 1.0, x: x0, y: 16 };
-        applyTransform(false);
+        applyTransform(false, computedFit);
         setZoomMultiplier(1.0);
 
         // Smoothly reveal the canvas now that the matrix transform is locked
@@ -520,7 +528,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
         };
-    }, [stage, activePageIndex, fitScale, viewState]);
+    }, [stage, activePageIndex, fitScale, viewState, isLoadingPages, sectionPages]);
 
     // 3.5. Signal Client Ready on Course Select Stage
     useEffect(() => {
@@ -786,12 +794,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     };
 
     const handleConfirmStartReading = async () => {
-        if (!selectedBook || !selectedSection) return;
+        if (!selectedBook || !selectedSection || isLoadingPages) return;
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ action: "interrupt" }));
         }
         setIsLoadingPages(true);
-        setStage('reading');
 
         const offset = selectedBook.page_offset || 0;
         const logicalStart = selectedSection.page || 1;
@@ -815,6 +822,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             setSectionPages(validPages);
             setActivePageIndex(0);
             setIsLoadingPages(false);
+            setStage('reading');
 
             // Feed Miron Page 1
             const p1 = validPages[0];
@@ -1185,9 +1193,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 <button className="ml-btn-back-toc" onClick={() => setStage('toc_select')}>
                                                     <i className="fas fa-chevron-left"></i> Change Topic
                                                 </button>
-                                                <button className="ml-start-grind-btn" onClick={handleConfirmStartReading}>
-                                                    <span>Start Reading with Miron</span>
-                                                    <i className="fas fa-arrow-right"></i>
+                                                <button 
+                                                    className="ml-start-grind-btn" 
+                                                    onClick={handleConfirmStartReading}
+                                                    disabled={isLoadingPages}
+                                                >
+                                                    {isLoadingPages ? (
+                                                        <>
+                                                            <i className="fas fa-circle-notch fa-spin"></i>
+                                                            <span>Preparing Session...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>Start Reading with Miron</span>
+                                                            <i className="fas fa-arrow-right"></i>
+                                                        </>
+                                                    )}
                                                 </button>
                                             </div>
                                         </div>
