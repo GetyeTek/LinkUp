@@ -1019,11 +1019,18 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             setIsLoadingPages(false);
             setStage('reading');
 
-            // Feed Miron Page 1
-            const p1 = validPages[0];
-            const p1Text = (p1.content_json || []).map(b => b.body || b.text || b.main || '').filter(Boolean).join(' ');
             bufferedHighlightsRef.current = [];
-            emitVoicePrompt(`We are confirmed on Page ${p1.page_number} for "${selectedSection.title}" in ${selectedBook.course_code || selectedBook.title}. Here is the raw text on this page:\n"""${p1Text.slice(0, 2200)}"""\nWe are looking at Page ${p1.page_number} together. Start our co-study session by referencing this page directly. Dissect the first concept and remember to tag exact verbatim quotes you want to highlight using <chunk highlight="...">.`);
+
+            // Semantic handoff: Backend DO takes full ownership of kickoff orchestration
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({
+                    action: "confirm_start_reading",
+                    book_id: selectedBook.id,
+                    course_code: selectedBook.course_code || selectedBook.title,
+                    section_title: selectedSection.title,
+                    page_number: physicalStart
+                }));
+            }
         } catch (e) {
             console.error("Failed to load section pages:", e);
             setIsLoadingPages(false);
