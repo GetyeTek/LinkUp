@@ -157,6 +157,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const a4LayerRef = useRef(null);
     const isHangingUpRef = useRef(false);
     const hasSentReadyRef = useRef(false);
+    const bufferedHighlightsRef = useRef([]);
 
     // Gesture Matrix State (Ref-based for 120fps direct DOM manipulation)
     const transformRef = useRef({ scale: 1.0, x: 0, y: 16 });
@@ -811,13 +812,69 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         }
                     }
 
-                    // E. Live Highlight Transmission
-                    if (payload.type === "live_highlight" && payload.text) {
-                        setActiveHighlight(payload.text);
-                    } else if (payload.type === "miron_thought" && typeof payload.text === 'string') {
-                        const hlMatch = payload.text.match(/highlight=["']([^"']+)["']/i);
-                        if (hlMatch) {
-                            setActiveHighlight(hlMatch[1]);
+                    // E. Live Highlight Preload Queue & Green Light Synchronization
+                    if (payload.type === "preload_highlights" && Array.isArray(payload.queue)) {
+                        bufferedHighlightsRef.current = payload.queue;
+                    }
+
+                    if (payload.type === "green_light_chunk" && payload.chunk_index !== undefined) {
+                        const match = (bufferedHighlightsRef.current || []).find(h => h.chunk_index === payload.chunk_index);
+                        if (match && match.highlight) {
+                            setActiveHighlight(match.highlight);
+                        }
+                    }
+
+                    if (payload.type === "page_turn" && payload.page_number) {
+                        const targetPageNum = payload.page_number;
+                        setActivePageNum(targetPageNum);
+                        setActiveHighlight(null);
+
+                        setSectionPages(prevPages => {
+                            const exists = prevPages.some(p => p.page_number === targetPageNum);
+                            if (!exists && selectedBook?.id) {
+                                supabase
+                                    .from('book_pages')
+                                    .select('id, page_number, content_json')
+                                    .eq('book_id', selectedBook.id)
+                                    .gte('page_number', targetPageNum)
+                                    .lte('page_number', targetPageNum + 5)
+                                    .order('page_number', { ascending: true })
+                                    .then(({ data, error }) => {
+                                        if (!error && data && data.length > 0) {
+                                            setSectionPages(current => {
+                                                const existingIds = new Set(current.map(p => p.id));
+                                                const newPages = data.filter(p => !existingIds.has(p.id));
+                                                return [...current, ...newPages];
+                                            });
+                                        }
+                                    });
+                            }
+                            return prevPages;
+                        });
+
+                        setTimeout(() => {
+                            if (!pageContainerRef.current || !a4LayerRef.current) return;
+                            const pageEl = a4LayerRef.current.querySelector(`[data-page-number="${targetPageNum}"]`);
+                            if (pageEl) {
+                                const pageOffsetTop = pageEl.offsetTop;
+                                const currentScale = transformRef.current.scale;
+                                const effective = fitScale * currentScale;
+                                const targetY = -(pageOffsetTop * effective) + 24;
+                                const clamped = clampPosition(transformRef.current.x, targetY, currentScale);
+                                transformRef.current.y = clamped.y;
+                                applyTransform(true);
+                            }
+                        }, 120);
+                    }
+
+                    if (payload.type === "navigate_stage" && payload.stage) {
+                        setStage(payload.stage);
+                        if (payload.stage === 'course_select') {
+                            setSelectedBook(null);
+                            setSelectedSection(null);
+                            setSectionPages([]);
+                            setActiveHighlight(null);
+                            bufferedHighlightsRef.current = [];
                         }
                     }
 
@@ -965,7 +1022,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             // Feed Miron Page 1
             const p1 = validPages[0];
             const p1Text = (p1.content_json || []).map(b => b.body || b.text || b.main || '').filter(Boolean).join(' ');
-            emitVoicePrompt(`We are confirmed on Page ${p1.page_number} for "${selectedSection.title}". Here is the raw page text:\n"""${p1Text.slice(0, 1800)}"""\nTeach me the first concept step by step. Remember to tag exact sentences you are discussing with <chunk highlight="...">.`);
+            bufferedHighlightsRef.current = [];
+            emitVoicePrompt(`We are confirmed on Page ${p1.page_number} for "${selectedSection.title}" in ${selectedBook.course_code || selectedBook.title}. Here is the raw text on this page:\n"""${p1Text.slice(0, 2200)}"""\nWe are looking at Page ${p1.page_number} together. Start our co-study session by referencing this page directly. Dissect the first concept and remember to tag exact verbatim quotes you want to highlight using <chunk highlight="...">.`);
         } catch (e) {
             console.error("Failed to load section pages:", e);
             setIsLoadingPages(false);
