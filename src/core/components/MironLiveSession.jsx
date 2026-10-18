@@ -286,7 +286,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
     // 3.2. Auto-Fit A4 Scale Calculator
     useEffect(() => {
-        if (stage !== 'reading' || !pageContainerRef.current) return;
+        if (stage !== 'reading' || viewState !== 'full' || !pageContainerRef.current) return;
 
         const updateFitScale = () => {
             if (!pageContainerRef.current) return;
@@ -300,11 +300,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         const ro = new ResizeObserver(updateFitScale);
         ro.observe(pageContainerRef.current);
         return () => ro.disconnect();
-    }, [stage, activePageIndex]);
+    }, [stage, activePageIndex, viewState]);
 
     // 3.3. Unscaled A4 Paper Height Tracker & Initial Transform Reset
     useEffect(() => {
-        if (stage !== 'reading') return;
+        if (stage !== 'reading' || viewState !== 'full') return;
         const timer = setTimeout(() => {
             if (a4LayerRef.current) {
                 const h = a4LayerRef.current.offsetHeight;
@@ -312,20 +312,25 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         }, 80);
         return () => clearTimeout(timer);
-    }, [stage, activePageIndex, sectionPages, fitScale]);
+    }, [stage, activePageIndex, sectionPages, fitScale, viewState]);
 
     // 3.4. Gestures Engine: Focal Pinch-to-Zoom, 2D Pan, and Double Tap
     useEffect(() => {
-        if (stage !== 'reading' || !pageContainerRef.current) return;
+        if (stage !== 'reading' || viewState !== 'full' || !pageContainerRef.current) return;
         const container = pageContainerRef.current;
 
-        // Reset to centered fit on page change or resize
+        // Reset to centered fit on page change, resize, or restore from orb
         const rect = container.getBoundingClientRect();
         const pW = 794 * fitScale;
         const x0 = Math.max(0, (rect.width - pW) / 2);
         transformRef.current = { scale: 1.0, x: x0, y: 16 };
         applyTransform(false);
         setZoomMultiplier(1.0);
+
+        // Smoothly reveal the canvas now that the matrix transform is locked
+        if (a4LayerRef.current) {
+            a4LayerRef.current.style.opacity = '1';
+        }
 
         const onTouchStart = (e) => {
             const now = Date.now();
@@ -515,7 +520,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
         };
-    }, [stage, activePageIndex, fitScale]);
+    }, [stage, activePageIndex, fitScale, viewState]);
 
     // 3.5. Signal Client Ready on Course Select Stage
     useEffect(() => {
@@ -1207,7 +1212,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                             className="ml-a4-layer"
                                                             style={{
                                                                 width: '794px',
-                                                                transformOrigin: '0 0'
+                                                                transformOrigin: '0 0',
+                                                                opacity: 0,
+                                                                transition: 'opacity 0.18s ease'
                                                             }}
                                                         >
                                                             <div className={`page-wrapper ${engineClass}`} data-page-number={currentPage.page_number}>
