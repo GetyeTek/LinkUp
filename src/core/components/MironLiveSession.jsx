@@ -1030,6 +1030,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     page_number: physicalStart
                 }));
             }
+        } catch (e) {
+            console.error("Failed to load section pages:", e);
+            setIsLoadingPages(false);
+        }
     };
 
     const handleNextPage = () => {
