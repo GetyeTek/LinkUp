@@ -629,14 +629,38 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
                 <div className="ml-status">
                     <span className="live-dot" style={!isConnected ? { background: '#f59e0b', boxShadow: '0 0 8px #f59e0b' } : {}}></span>
-                    <span>
-                        {!isConnected ? 'Connecting to Miron...' :
-                         stage === 'course_select' ? 'Select a Course' : 
-                         stage === 'toc_select' ? (selectedBook?.course_code || selectedBook?.title) :
-                         stage === 'section_confirm' ? 'Ready to Study' :
-                         `${selectedBook?.course_code || 'Reader'} • p.${currentPage?.page_number || ''}`}
-                    </span>
-                    {isConnected && (
+                    {stage === 'reading' ? (
+                        <div className="ml-reading-header-controls">
+                            <button 
+                                className="ml-hdr-page-btn" 
+                                onClick={handlePrevPage} 
+                                disabled={activePageIndex === 0}
+                                title="Previous Page"
+                            >
+                                <i className="fas fa-chevron-left"></i>
+                            </button>
+                            <span className="ml-hdr-page-title">
+                                {selectedBook?.course_code || 'Book'} • p.{currentPage?.page_number || ''}
+                                <span className="ml-hdr-page-fraction"> ({activePageIndex + 1}/{sectionPages.length})</span>
+                            </span>
+                            <button 
+                                className="ml-hdr-page-btn" 
+                                onClick={handleNextPage} 
+                                disabled={activePageIndex >= sectionPages.length - 1}
+                                title="Next Page"
+                            >
+                                <i className="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    ) : (
+                        <span>
+                            {!isConnected ? 'Connecting to Miron...' :
+                             stage === 'course_select' ? 'Select a Course' : 
+                             stage === 'toc_select' ? (selectedBook?.course_code || selectedBook?.title) :
+                             'Ready to Study'}
+                        </span>
+                    )}
+                    {isConnected && stage !== 'reading' && (
                         <span className="ml-voice-status-pill">
                             <i className="fas fa-headphones-simple"></i>
                             <span>Live Voice</span>
@@ -647,11 +671,12 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 <div className="ml-header-right">
                     {stage === 'reading' && (
                         <button 
-                            className={`ml-transcript-toggle ${showTranscriptDrawer ? 'active' : ''}`}
-                            onClick={() => setShowTranscriptDrawer(!showTranscriptDrawer)}
-                            title="Toggle Live Transcript"
+                            className={`ml-header-zoom-btn ${zoomMultiplier > 1.1 ? 'active' : ''}`}
+                            onClick={() => setZoomMultiplier(prev => prev > 1.1 ? 1 : 1.5)}
+                            title={zoomMultiplier > 1.1 ? "Fit to Viewport" : "Zoom 150%"}
                         >
-                            <i className="fas fa-comment-dots"></i>
+                            <i className={`fas ${zoomMultiplier > 1.1 ? 'fa-compress' : 'fa-magnifying-glass-plus'}`}></i>
+                            <span>{zoomMultiplier > 1.1 ? 'Fit' : '150%'}</span>
                         </button>
                     )}
                     <button className="athena-close" onClick={handleHangup} style={{ color: '#ff5f5f' }}>
@@ -903,39 +928,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
                                 {stage === 'reading' && (
                                     <div className="ml-reader-workspace">
-                                        <div className="ml-reader-bar">
-                                            <div className="ml-reader-bar-left">
-                                                <button 
-                                                    className="ml-page-nav-btn" 
-                                                    onClick={handlePrevPage} 
-                                                    disabled={activePageIndex === 0}
-                                                >
-                                                    <i className="fas fa-chevron-left"></i> Prev
-                                                </button>
-                                                <span className="ml-page-indicator">
-                                                    p. {currentPage?.page_number || ''} ({activePageIndex + 1}/{sectionPages.length})
-                                                </span>
-                                                <button 
-                                                    className="ml-page-nav-btn" 
-                                                    onClick={handleNextPage} 
-                                                    disabled={activePageIndex >= sectionPages.length - 1}
-                                                >
-                                                    Next <i className="fas fa-chevron-right"></i>
-                                                </button>
-                                            </div>
-
-                                            <div className="ml-reader-bar-right">
-                                                <button 
-                                                    className="ml-zoom-toggle-btn"
-                                                    onClick={() => setZoomMultiplier(prev => prev > 1.1 ? 1 : 1.5)}
-                                                    title={zoomMultiplier > 1.1 ? "Fit to Viewport" : "Zoom 150%"}
-                                                >
-                                                    <i className={`fas ${zoomMultiplier > 1.1 ? 'fa-compress' : 'fa-magnifying-glass-plus'}`}></i>
-                                                    <span>{zoomMultiplier > 1.1 ? 'Fit' : '150%'}</span>
-                                                </button>
-                                            </div>
-                                        </div>
-
                                         <div className="ml-page-viewport" ref={pageContainerRef}>
                                             {isLoadingPages ? (
                                                 <div className="ml-page-loader">
