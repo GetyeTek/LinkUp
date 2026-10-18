@@ -791,6 +791,13 @@
     transform: scale(0.97);
 }
 
+.ml-start-grind-btn:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
 /* RESPONSIVE MOBILE ADAPTATIONS */
 @media (max-width: 899px) {
     .toc-split-stage {
