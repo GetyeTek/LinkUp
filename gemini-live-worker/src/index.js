@@ -615,7 +615,7 @@ export class GeminiLiveAgent {
     });
     
     this.geminiWs.send(payload);
-    this.emitLog("GEMINI", `Translating chunk #${chunkIdx} (${chunkText.length} chars). ${this.translationQueue.length} chunks remaining.`);
+    this.emitLog("GEMINI", `[STAGE 4/5 | TRANSLATE_SENT] 🎙️ Sent chunk #${chunkIdx} to Gemini Live (${chunkText.length} chars). ${this.translationQueue.length} chunks remaining in queue.`);
   }
 
   async executeTool(name, args) {
@@ -808,7 +808,9 @@ export class GeminiLiveAgent {
             tools: GROQ_TOOLS,
             tool_choice: "auto",
             temperature: 0.7,
-            max_tokens: 1024
+            max_completion_tokens: 2048,
+            max_tokens: 2048,
+            reasoning_effort: "low"
           })
         });
 
@@ -949,67 +951,80 @@ export class GeminiLiveAgent {
       }
 
       const rawContent = choice?.message?.content || "";
+      const reasoning = choice?.message?.reasoning || "";
+      const finishReason = choice?.finish_reason || "unknown";
       const usage = data.usage || {};
       const finalTokens = usage.total_tokens || (totalTokens + this.countTokens(rawContent));
+      const completionCount = usage.completion_tokens || this.countTokens(rawContent);
 
-      if (rawContent) {
-        this.groqChatHistory.push({ role: "assistant", content: rawContent });
-
-        let chunks = [];
-        let highlightQueue = [];
-        const chunkRegex = /<chunk(?:\s+highlight=["']([\s\S]*?)["'])?[^>]*>([\s\S]*?)<\/chunk>/gi;
-        let cMatch;
-        let cIdx = 0;
-        while ((cMatch = chunkRegex.exec(rawContent)) !== null) {
-            const hl = cMatch[1] ? cMatch[1].trim() : null;
-            const text = cMatch[2] ? cMatch[2].trim() : "";
-            if (text) {
-                chunks.push(text);
-                if (hl) {
-                    highlightQueue.push({ chunk_index: cIdx, highlight: hl });
-                }
-                cIdx++;
-            }
-        }
-
-        // Bulletproof Fallback: If model omitted <chunk> tags, split naturally on paragraph breaks
-        if (chunks.length === 0) {
-            const cleanRaw = rawContent.replace(/<[^>]+>/g, '').trim();
-            chunks = cleanRaw.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
-        }
-
-        const sanitizedChunks = chunks.map(c => sanitizeForSpeech(c)).filter(Boolean);
-        const promptCount = usage.prompt_tokens || totalTokens;
-        const completionCount = usage.completion_tokens || this.countTokens(rawContent);
-
-        this.emitLog("GROQ", `Cognitive response generated: ${finalTokens} tokens total (Prompt: ${promptCount} | Generated Output: ${completionCount}) across ${sanitizedChunks.length} spoken chunks.`, { 
-          tokens: finalTokens,
-          prompt_tokens: promptCount,
-          completion_tokens: completionCount,
-          spoken_chunks_count: sanitizedChunks.length,
-          preloaded_highlights: highlightQueue.length
-        });
-
-        // 1. Instantly preload the highlights manifest into the frontend queue (0ms visual sync preparation)
-        if (highlightQueue.length > 0) {
-            this.broadcast(JSON.stringify({
-                type: "preload_highlights",
-                queue: highlightQueue
-            }));
-        }
-
-        this.broadcast(JSON.stringify({
-          type: "miron_thought",
-          text: sanitizedChunks.join(' ')
-        }));
-
-        // 2. Queue chunks with indexed markers so Green Light pulses can fire in lockstep
-        const indexedChunks = sanitizedChunks.map((text, idx) => ({ index: idx, text }));
-        this.translationQueue.push(...indexedChunks);
-        
-        // Trigger the queue loop
-        this.processTranslationQueue();
+      if (reasoning) {
+        this.emitLog("GROQ", `[STAGE 2/5 | GROQ_THOUGHT] 🧠 Groq completed concise reasoning (${this.countTokens(reasoning)} tokens). Finish reason: ${finishReason}`);
       }
+
+      if (!rawContent) {
+        this.emitLog("ERROR", `❌ [STAGE 2/5 | EMPTY_CONTENT] Groq generated 0 content characters! Finish reason: ${finishReason}`, {
+          finish_reason: finishReason,
+          completion_tokens: completionCount,
+          has_reasoning: Boolean(reasoning),
+          raw_message: choice?.message
+        });
+        return;
+      }
+
+      this.groqChatHistory.push({ role: "assistant", content: rawContent });
+
+      let chunks = [];
+      let highlightQueue = [];
+      const chunkRegex = /<chunk(?:\s+highlight=["']([\s\S]*?)["'])?[^>]*>([\s\S]*?)<\/chunk>/gi;
+      let cMatch;
+      let cIdx = 0;
+      while ((cMatch = chunkRegex.exec(rawContent)) !== null) {
+          const hl = cMatch[1] ? cMatch[1].trim() : null;
+          const text = cMatch[2] ? cMatch[2].trim() : "";
+          if (text) {
+              chunks.push(text);
+              if (hl) {
+                  highlightQueue.push({ chunk_index: cIdx, highlight: hl });
+              }
+              cIdx++;
+          }
+      }
+
+      // Bulletproof Fallback: If model omitted <chunk> tags, split naturally on paragraph breaks
+      if (chunks.length === 0) {
+          const cleanRaw = rawContent.replace(/<[^>]+>/g, '').trim();
+          chunks = cleanRaw.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+      }
+
+      const sanitizedChunks = chunks.map(c => sanitizeForSpeech(c)).filter(Boolean);
+
+      this.emitLog("GROQ", `[STAGE 3/5 | CHUNKS_PARSED] 📦 Extracted ${sanitizedChunks.length} chunks (${highlightQueue.length} with exact highlights) in ${finalTokens} tokens total.`, {
+        finish_reason: finishReason,
+        total_tokens: finalTokens,
+        spoken_chunks_count: sanitizedChunks.length,
+        preloaded_highlights: highlightQueue.length
+      });
+
+      // 1. Instantly preload the highlights manifest into the frontend queue (0ms visual sync preparation)
+      if (highlightQueue.length > 0) {
+          this.emitLog("HIGHLIGHT", `[STAGE 3/5 | PRELOAD_SENT] 📋 Sent preload_highlights manifest to client (${highlightQueue.length} items).`);
+          this.broadcast(JSON.stringify({
+              type: "preload_highlights",
+              queue: highlightQueue
+          }));
+      }
+
+      this.broadcast(JSON.stringify({
+        type: "miron_thought",
+        text: sanitizedChunks.join(' ')
+      }));
+
+      // 2. Queue chunks with indexed markers so Green Light pulses can fire in lockstep
+      const indexedChunks = sanitizedChunks.map((text, idx) => ({ index: idx, text }));
+      this.translationQueue.push(...indexedChunks);
+      
+      this.emitLog("GEMINI", `[STAGE 3/5 | QUEUE_ENGAGED] Enqueued ${indexedChunks.length} chunks for voice translation. Starting vocalization pipeline...`);
+      this.processTranslationQueue();
     } catch (e) {
       this.translationQueue = [];
       this.isGeminiTranslating = false;
@@ -1522,7 +1537,7 @@ OPERATIONAL RULES:
             }
 
             if (parsed.action === "confirm_start_reading") {
-                console.log(`[Agent|DO|STATE] Intercepted confirm_start_reading for ${this.conversationId} (page: ${parsed.page_number}, section: ${parsed.section_title})`);
+                this.emitLog("TOOL", `[STAGE 1/5 | KICKOFF] 🚀 User started reading on Page ${parsed.page_number} for "${parsed.section_title}"`);
                 if (this.isOneOnOne) {
                     this.currentBookId = parsed.book_id || this.currentBookId;
                     this.currentCourseCode = parsed.course_code || this.currentCourseCode;
@@ -1566,6 +1581,7 @@ OPERATIONAL RULES:
                                 }
                             }
 
+                            this.emitLog("TOOL", `[STAGE 1/5 | DB_PAGE] 📄 Retrieved Page ${pageNum} text (${pageText.length} chars). Slicing token budget...`);
                             const sliced = this.sliceTextToTokenBudget(pageText || `Welcome to ${sectionTitle}.`, 2200);
 
                             const internalKickoffDirective = `[CO-STUDY COMMENCEMENT]
@@ -1575,10 +1591,10 @@ Here is the raw textbook text on this page:
 
 Start our co-study session by directly referencing this page out loud to ${this.studentName}. Introduce the section briefly, then dissect the very first concept step by step. Remember to tag exact verbatim quotes from the text using <chunk highlight="...">.`;
 
-                            this.emitLog("GROQ", `🚀 Commencing co-study on Page ${pageNum} for "${sectionTitle}"`);
+                            this.emitLog("GROQ", `[STAGE 1/5 | DIRECTIVE_READY] Dispathing co-study prompt to Groq Brain (${sliced.finalTokens} tokens)...`);
                             await this.executeGroqCognitiveTurn(internalKickoffDirective);
                         } catch (err) {
-                            console.error("[Agent|DO|START_READING] Error commencing reading session:", err.message);
+                            this.emitLog("ERROR", `❌ [STAGE 1/5 | KICKOFF_FAILED] ${err.message}`, { error: err.stack });
                         }
                     })());
                 }
@@ -2236,6 +2252,7 @@ CRITICAL OPERATIONAL RULES:
 
                             // Green light signal: Dispatched to the client in the exact millisecond the first audio packet lands
                             if (this.activeTurn.type === "reading_chunk_translation" && this.currentTranslatingChunkIndex !== null) {
+                                this.emitLog("AUDIO_CHUNK", `[STAGE 5/5 | AUDIO_STREAMING] 🟢 Green Light fired! First audio packet streaming to student (chunk #${this.currentTranslatingChunkIndex}).`);
                                 this.broadcast(JSON.stringify({
                                     type: "green_light_chunk",
                                     chunk_index: this.currentTranslatingChunkIndex
