@@ -44,6 +44,26 @@ const COURSE_NAMES = {
     'ANTH 1012': 'Anthropology'
 };
 
+const COURSE_PREFIX_MAP = {
+    'PHYS 1011': 'phys',
+    'BIOL 1012': 'biol',
+    'CHEM 1012': 'chem',
+    'MATH 1011': 'math',
+    'MATH 1012': 'math',
+    'LOCT 1011': 'logic',
+    'EMTE 1012': 'emte',
+    'FLEN 1011': 'flen',
+    'ECON 1011': 'econ',
+    'GEES 1011': 'geog',
+    'HIST 1012': 'history',
+    'INCL 1012': 'snie',
+    'MCIE 1012': 'mced',
+    'MGMT 1012': 'entre',
+    'PSYC 1011': 'psych',
+    'SPSC 1011': 'spsc',
+    'ANTH 1012': 'anthro'
+};
+
 // DOM Range Highlighter for active textbook page
 const clearDOMHighlights = (root) => {
     if (!root) return;
@@ -148,7 +168,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
         supabase
             .from('books')
-            .select('id, title, course_code, toc, cover_url, page_offset')
+            .select('id, title, course_code, toc, cover_url, page_offset, custom_css')
             .eq('is_published', true)
             .order('title', { ascending: true })
             .then(({ data, error }) => {
@@ -174,6 +194,29 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             applyDOMHighlight(pageContainerRef.current, activeHighlight);
         }
     }, [activeHighlight, activePageIndex, stage]);
+
+    // 3.1. Dynamic Custom Book CSS Injection (High-Fidelity Rendering)
+    useEffect(() => {
+        if (stage === 'reading' && selectedBook?.custom_css) {
+            const normalizedCss = selectedBook.custom_css
+                .replace(/(border(?:-[a-z]+)?\s*:\s*[^;}]*?)(#000000|#000|black)\b/gi, '$1var(--border, #000)')
+                .replace(/\b(background(?:-color)?\s*:\s*)(#ffffff|#fff|white)\s*;/gi, '$1var(--page-bg);')
+                .replace(/\b(color\s*:\s*)(#000000|#000|#111111|#111|#222222|#222|black)\s*;/gi, '$1var(--text-color);');
+
+            let styleTag = document.getElementById('ml-live-book-css');
+            if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'ml-live-book-css';
+                document.head.appendChild(styleTag);
+            }
+            styleTag.textContent = normalizedCss;
+        }
+
+        return () => {
+            const el = document.getElementById('ml-live-book-css');
+            if (el) el.remove();
+        };
+    }, [stage, selectedBook]);
 
     // 3.5. Signal Client Ready on Course Select Stage
     useEffect(() => {
@@ -649,8 +692,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 {/* STAGE 1: TOC SELECT OR STAGE 2: SECTION CONFIRM (SPLIT MASTER-DETAIL WORKSPACE) */}
                 {/* STAGE 1, 2, and 3: SPLIT MASTER-DETAIL WORKSPACE */}
                 {stage !== 'course_select' && selectedBook && (
-                    <div className="ml-stage-content toc-split-stage">
-                        <div className="ml-toc-split-layout">
+                    <div className={`ml-stage-content toc-split-stage ${stage === 'reading' ? 'reading-stage-active' : ''}`}>
+                        <div className={`ml-toc-split-layout ${stage === 'reading' ? 'is-reading-layout' : ''}`}>
                             
                             {/* Column 1: Prominent Book Showcase (Desktop: Left Column, Mobile: Sleek Header) */}
                             <div className="ml-toc-book-showcase" style={selectedBook.cover_url ? { '--bg-cover': `url("${selectedBook.cover_url}")` } : {}}>
@@ -819,19 +862,25 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                     <p>Loading textbook page...</p>
                                                 </div>
                                             ) : currentPage ? (
-                                                <div className="page-wrapper engine-universal" data-page-number={currentPage.page_number}>
-                                                    <div className="page-canvas">
-                                                        {(currentPage.content_json || []).map((block, idx) => (
-                                                            <div key={idx} className="block-target-wrapper">
-                                                                {renderBookBlock ? (
-                                                                    renderBookBlock(block, idx, { bookTitle: selectedBook?.title })
-                                                                ) : (
-                                                                    <p>{block.body || block.text || block.main || ''}</p>
-                                                                )}
+                                                (() => {
+                                                    const bookPrefix = selectedBook?.course_code ? (COURSE_PREFIX_MAP[selectedBook.course_code.toUpperCase().trim()] || '') : '';
+                                                    const engineClass = bookPrefix ? `engine-${bookPrefix}` : 'engine-universal';
+                                                    return (
+                                                        <div className={`page-wrapper ${engineClass}`} data-page-number={currentPage.page_number}>
+                                                            <div className={`page-canvas ${engineClass}`}>
+                                                                {(currentPage.content_json || []).map((block, idx) => (
+                                                                    <div key={idx} className="block-target-wrapper">
+                                                                        {renderBookBlock ? (
+                                                                            renderBookBlock(block, idx, { bookTitle: selectedBook?.title, courseCode: selectedBook?.course_code })
+                                                                        ) : (
+                                                                            <p>{block.body || block.text || block.main || ''}</p>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                        </div>
+                                                    );
+                                                })()
                                             ) : null}
                                         </div>
                                     </div>
