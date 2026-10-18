@@ -157,6 +157,66 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const isHangingUpRef = useRef(false);
     const hasSentReadyRef = useRef(false);
 
+    // Gesture Matrix State (Ref-based for 120fps direct DOM manipulation)
+    const transformRef = useRef({ scale: 1.0, x: 0, y: 16 });
+    const gestureStateRef = useRef({
+        mode: 'none', // 'pan' | 'pinch'
+        startDist: 0,
+        startScale: 1.0,
+        startMid: { x: 0, y: 0 },
+        startPos: { x: 0, y: 0 },
+        lastPan: { x: 0, y: 0 },
+        lastTapTime: 0,
+        lastTapPos: { x: 0, y: 0 },
+        isMouseDown: false
+    });
+
+    const applyTransform = (smooth = false) => {
+        if (!a4LayerRef.current) return;
+        const { scale, x, y } = transformRef.current;
+        const currentEffective = fitScale * scale;
+        a4LayerRef.current.style.transition = smooth ? 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)' : 'none';
+        a4LayerRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${currentEffective})`;
+    };
+
+    const clampPosition = (x, y, scale) => {
+        if (!pageContainerRef.current) return { x, y };
+        const cW = pageContainerRef.current.clientWidth;
+        const cH = pageContainerRef.current.clientHeight;
+        const pW = 794 * fitScale * scale;
+        const pH = (layerHeight || 1123) * fitScale * scale;
+
+        const clampedX = pW <= cW ? (cW - pW) / 2 : Math.min(16, Math.max(cW - pW - 16, x));
+        const clampedY = pH <= cH ? Math.max(16, (cH - pH) / 2) : Math.min(24, Math.max(cH - pH - 32, y));
+        return { x: clampedX, y: clampedY };
+    };
+
+    const handleToggleZoomFit = () => {
+        if (!pageContainerRef.current) return;
+        const rect = pageContainerRef.current.getBoundingClientRect();
+        if (transformRef.current.scale > 1.1) {
+            const targetScale = 1.0;
+            const pW = 794 * fitScale;
+            const x0 = (rect.width - pW) / 2;
+            transformRef.current = { scale: targetScale, x: x0, y: 16 };
+            applyTransform(true);
+            setZoomMultiplier(1.0);
+        } else {
+            const targetScale = 1.8;
+            const currentScale = transformRef.current.scale;
+            const midX = rect.width / 2;
+            const midY = rect.height / 2;
+            const px = (midX - transformRef.current.x) / (currentScale * fitScale);
+            const py = (midY - transformRef.current.y) / (currentScale * fitScale);
+            const newX = midX - px * (targetScale * fitScale);
+            const newY = midY - py * (targetScale * fitScale);
+            const clamped = clampPosition(newX, newY, targetScale);
+            transformRef.current = { scale: targetScale, x: clamped.x, y: clamped.y };
+            applyTransform(true);
+            setZoomMultiplier(targetScale);
+        }
+    };
+
     const { playAudioChunk } = useGeminiAudio(wsRef, micActive);
     const renderBookBlock = getComponent('book-block-renderer');
 
@@ -242,7 +302,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         return () => ro.disconnect();
     }, [stage, activePageIndex]);
 
-    // 3.3. Unscaled A4 Paper Height Tracker
+    // 3.3. Unscaled A4 Paper Height Tracker & Initial Transform Reset
     useEffect(() => {
         if (stage !== 'reading') return;
         const timer = setTimeout(() => {
@@ -252,7 +312,210 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         }, 80);
         return () => clearTimeout(timer);
-    }, [stage, activePageIndex, sectionPages, fitScale, zoomMultiplier]);
+    }, [stage, activePageIndex, sectionPages, fitScale]);
+
+    // 3.4. Gestures Engine: Focal Pinch-to-Zoom, 2D Pan, and Double Tap
+    useEffect(() => {
+        if (stage !== 'reading' || !pageContainerRef.current) return;
+        const container = pageContainerRef.current;
+
+        // Reset to centered fit on page change or resize
+        const rect = container.getBoundingClientRect();
+        const pW = 794 * fitScale;
+        const x0 = Math.max(0, (rect.width - pW) / 2);
+        transformRef.current = { scale: 1.0, x: x0, y: 16 };
+        applyTransform(false);
+        setZoomMultiplier(1.0);
+
+        const onTouchStart = (e) => {
+            const now = Date.now();
+            const g = gestureStateRef.current;
+            const cRect = container.getBoundingClientRect();
+
+            if (e.touches.length === 2) {
+                if (e.cancelable) e.preventDefault();
+                g.mode = 'pinch';
+                const t0 = e.touches[0];
+                const t1 = e.touches[1];
+                g.startDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+                g.startScale = transformRef.current.scale;
+                g.startMid = {
+                    x: (t0.clientX + t1.clientX) / 2 - cRect.left,
+                    y: (t0.clientY + t1.clientY) / 2 - cRect.top
+                };
+                g.startPos = { x: transformRef.current.x, y: transformRef.current.y };
+            } else if (e.touches.length === 1) {
+                const t = e.touches[0];
+                g.mode = 'pan';
+                g.lastPan = { x: t.clientX, y: t.clientY };
+
+                // Double Tap Detection
+                const dt = now - g.lastTapTime;
+                const distTap = Math.hypot(t.clientX - g.lastTapPos.x, t.clientY - g.lastTapPos.y);
+                if (dt < 300 && distTap < 25) {
+                    if (e.cancelable) e.preventDefault();
+                    g.lastTapTime = 0;
+                    const tapX = t.clientX - cRect.left;
+                    const tapY = t.clientY - cRect.top;
+
+                    if (transformRef.current.scale > 1.2) {
+                        const targetScale = 1.0;
+                        const initialW = 794 * fitScale;
+                        const nx = (cRect.width - initialW) / 2;
+                        transformRef.current = { scale: targetScale, x: nx, y: 16 };
+                        applyTransform(true);
+                        setZoomMultiplier(1.0);
+                    } else {
+                        const targetScale = 2.2;
+                        const currentScale = transformRef.current.scale;
+                        const px = (tapX - transformRef.current.x) / (currentScale * fitScale);
+                        const py = (tapY - transformRef.current.y) / (currentScale * fitScale);
+                        const newX = cRect.width / 2 - px * (targetScale * fitScale);
+                        const newY = cRect.height / 2 - py * (targetScale * fitScale);
+                        const clamped = clampPosition(newX, newY, targetScale);
+                        transformRef.current = { scale: targetScale, x: clamped.x, y: clamped.y };
+                        applyTransform(true);
+                        setZoomMultiplier(targetScale);
+                    }
+                } else {
+                    g.lastTapTime = now;
+                    g.lastTapPos = { x: t.clientX, y: t.clientY };
+                }
+            }
+        };
+
+        const onTouchMove = (e) => {
+            const g = gestureStateRef.current;
+            const cRect = container.getBoundingClientRect();
+
+            if (g.mode === 'pinch' && e.touches.length >= 2) {
+                if (e.cancelable) e.preventDefault();
+                const t0 = e.touches[0];
+                const t1 = e.touches[1];
+                const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+                const midX = (t0.clientX + t1.clientX) / 2 - cRect.left;
+                const midY = (t0.clientY + t1.clientY) / 2 - cRect.top;
+
+                const ratio = dist / (g.startDist || 1);
+                const newScale = Math.min(4.5, Math.max(0.85, g.startScale * ratio));
+
+                const px = (g.startMid.x - g.startPos.x) / (g.startScale * fitScale);
+                const py = (g.startMid.y - g.startPos.y) / (g.startScale * fitScale);
+
+                const newX = midX - px * (newScale * fitScale);
+                const newY = midY - py * (newScale * fitScale);
+
+                transformRef.current = { scale: newScale, x: newX, y: newY };
+                applyTransform(false);
+            } else if (g.mode === 'pan' && e.touches.length === 1) {
+                if (e.cancelable) e.preventDefault();
+                const t = e.touches[0];
+                const dx = t.clientX - g.lastPan.x;
+                const dy = t.clientY - g.lastPan.y;
+                g.lastPan = { x: t.clientX, y: t.clientY };
+
+                const targetScale = transformRef.current.scale;
+                const nextX = transformRef.current.x + dx;
+                const nextY = transformRef.current.y + dy;
+                const clamped = clampPosition(nextX, nextY, targetScale);
+
+                transformRef.current.x = clamped.x;
+                transformRef.current.y = clamped.y;
+                applyTransform(false);
+            }
+        };
+
+        const onTouchEnd = (e) => {
+            const g = gestureStateRef.current;
+            if (e.touches.length === 1) {
+                g.mode = 'pan';
+                g.lastPan = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 0) {
+                g.mode = 'none';
+                const targetScale = Math.min(4.5, Math.max(1.0, transformRef.current.scale));
+                const clamped = clampPosition(transformRef.current.x, transformRef.current.y, targetScale);
+                transformRef.current = { scale: targetScale, x: clamped.x, y: clamped.y };
+                applyTransform(true);
+                setZoomMultiplier(targetScale);
+            }
+        };
+
+        const onWheel = (e) => {
+            e.preventDefault();
+            const cRect = container.getBoundingClientRect();
+            const mouseX = e.clientX - cRect.left;
+            const mouseY = e.clientY - cRect.top;
+
+            if (e.ctrlKey || e.metaKey) {
+                const zoomFactor = -e.deltaY * 0.012;
+                const currentScale = transformRef.current.scale;
+                const newScale = Math.min(4.5, Math.max(1.0, currentScale * (1 + zoomFactor)));
+
+                const px = (mouseX - transformRef.current.x) / (currentScale * fitScale);
+                const py = (mouseY - transformRef.current.y) / (currentScale * fitScale);
+
+                const newX = mouseX - px * (newScale * fitScale);
+                const newY = mouseY - py * (newScale * fitScale);
+                const clamped = clampPosition(newX, newY, newScale);
+
+                transformRef.current = { scale: newScale, x: clamped.x, y: clamped.y };
+                applyTransform(false);
+                setZoomMultiplier(newScale);
+            } else {
+                const nextX = transformRef.current.x - e.deltaX;
+                const nextY = transformRef.current.y - e.deltaY;
+                const clamped = clampPosition(nextX, nextY, transformRef.current.scale);
+                transformRef.current.x = clamped.x;
+                transformRef.current.y = clamped.y;
+                applyTransform(false);
+            }
+        };
+
+        const onMouseDown = (e) => {
+            if (e.button !== 0) return;
+            gestureStateRef.current.isMouseDown = true;
+            gestureStateRef.current.lastPan = { x: e.clientX, y: e.clientY };
+        };
+
+        const onMouseMove = (e) => {
+            if (!gestureStateRef.current.isMouseDown) return;
+            const dx = e.clientX - gestureStateRef.current.lastPan.x;
+            const dy = e.clientY - gestureStateRef.current.lastPan.y;
+            gestureStateRef.current.lastPan = { x: e.clientX, y: e.clientY };
+
+            const targetScale = transformRef.current.scale;
+            const nextX = transformRef.current.x + dx;
+            const nextY = transformRef.current.y + dy;
+            const clamped = clampPosition(nextX, nextY, targetScale);
+            transformRef.current.x = clamped.x;
+            transformRef.current.y = clamped.y;
+            applyTransform(false);
+        };
+
+        const onMouseUp = () => {
+            gestureStateRef.current.isMouseDown = false;
+        };
+
+        container.addEventListener('touchstart', onTouchStart, { passive: false });
+        container.addEventListener('touchmove', onTouchMove, { passive: false });
+        container.addEventListener('touchend', onTouchEnd, { passive: false });
+        container.addEventListener('touchcancel', onTouchEnd, { passive: false });
+        container.addEventListener('wheel', onWheel, { passive: false });
+        container.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+
+        return () => {
+            container.removeEventListener('touchstart', onTouchStart);
+            container.removeEventListener('touchmove', onTouchMove);
+            container.removeEventListener('touchend', onTouchEnd);
+            container.removeEventListener('touchcancel', onTouchEnd);
+            container.removeEventListener('wheel', onWheel);
+            container.removeEventListener('mousedown', onMouseDown);
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+    }, [stage, activePageIndex, fitScale]);
 
     // 3.5. Signal Client Ready on Course Select Stage
     useEffect(() => {
@@ -672,11 +935,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     {stage === 'reading' && (
                         <button 
                             className={`ml-header-zoom-btn ${zoomMultiplier > 1.1 ? 'active' : ''}`}
-                            onClick={() => setZoomMultiplier(prev => prev > 1.1 ? 1 : 1.5)}
-                            title={zoomMultiplier > 1.1 ? "Fit to Viewport" : "Zoom 150%"}
+                            onClick={handleToggleZoomFit}
+                            title={zoomMultiplier > 1.1 ? "Reset Fit" : "Zoom In"}
                         >
                             <i className={`fas ${zoomMultiplier > 1.1 ? 'fa-compress' : 'fa-magnifying-glass-plus'}`}></i>
-                            <span>{zoomMultiplier > 1.1 ? 'Fit' : '150%'}</span>
+                            <span>{zoomMultiplier > 1.1 ? `${Math.round(zoomMultiplier * 100)}%` : 'Fit'}</span>
                         </button>
                     )}
                     <button className="athena-close" onClick={handleHangup} style={{ color: '#ff5f5f' }}>
@@ -938,37 +1201,26 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 (() => {
                                                     const bookPrefix = selectedBook?.course_code ? (COURSE_PREFIX_MAP[selectedBook.course_code.toUpperCase().trim()] || '') : '';
                                                     const engineClass = bookPrefix ? `engine-${bookPrefix}` : 'engine-universal';
-                                                    const effectiveScale = fitScale * zoomMultiplier;
                                                     return (
                                                         <div 
-                                                            className="ml-a4-viewport-sizer"
+                                                            ref={a4LayerRef}
+                                                            className="ml-a4-layer"
                                                             style={{
-                                                                width: `${794 * effectiveScale}px`,
-                                                                height: `${layerHeight * effectiveScale}px`
+                                                                width: '794px',
+                                                                transformOrigin: '0 0'
                                                             }}
-                                                            onDoubleClick={() => setZoomMultiplier(prev => prev > 1.1 ? 1 : 1.5)}
                                                         >
-                                                            <div 
-                                                                ref={a4LayerRef}
-                                                                className="ml-a4-layer"
-                                                                style={{
-                                                                    width: '794px',
-                                                                    transform: `scale(${effectiveScale})`,
-                                                                    transformOrigin: 'top left'
-                                                                }}
-                                                            >
-                                                                <div className={`page-wrapper ${engineClass}`} data-page-number={currentPage.page_number}>
-                                                                    <div className={`page-canvas ${engineClass}`}>
-                                                                        {(currentPage.content_json || []).map((block, idx) => (
-                                                                            <div key={idx} className="block-target-wrapper">
-                                                                                {renderBookBlock ? (
-                                                                                    renderBookBlock(block, idx, { bookTitle: selectedBook?.title, courseCode: selectedBook?.course_code })
-                                                                                ) : (
-                                                                                    <p>{block.body || block.text || block.main || ''}</p>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
+                                                            <div className={`page-wrapper ${engineClass}`} data-page-number={currentPage.page_number}>
+                                                                <div className={`page-canvas ${engineClass}`}>
+                                                                    {(currentPage.content_json || []).map((block, idx) => (
+                                                                        <div key={idx} className="block-target-wrapper">
+                                                                            {renderBookBlock ? (
+                                                                                renderBookBlock(block, idx, { bookTitle: selectedBook?.title, courseCode: selectedBook?.course_code })
+                                                                            ) : (
+                                                                                <p>{block.body || block.text || block.main || ''}</p>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
                                                                 </div>
                                                             </div>
                                                         </div>
