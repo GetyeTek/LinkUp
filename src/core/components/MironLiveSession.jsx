@@ -142,12 +142,18 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [isTocRevealed, setIsTocRevealed] = useState(false);
     const [isConfirmRevealed, setIsConfirmRevealed] = useState(false);
 
+    // A4 PDF-Scale & Zoom Matrix
+    const [fitScale, setFitScale] = useState(1);
+    const [zoomMultiplier, setZoomMultiplier] = useState(1);
+    const [layerHeight, setLayerHeight] = useState(1123);
+
     const wsRef = useRef(null);
     const tocTimeoutRef = useRef(null);
     const confirmTimeoutRef = useRef(null);
     const speakingTimeout = useRef(null);
     const transcriptRef = useRef(null);
     const pageContainerRef = useRef(null);
+    const a4LayerRef = useRef(null);
     const isHangingUpRef = useRef(false);
     const hasSentReadyRef = useRef(false);
 
@@ -217,6 +223,36 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             if (el) el.remove();
         };
     }, [stage, selectedBook]);
+
+    // 3.2. Auto-Fit A4 Scale Calculator
+    useEffect(() => {
+        if (stage !== 'reading' || !pageContainerRef.current) return;
+
+        const updateFitScale = () => {
+            if (!pageContainerRef.current) return;
+            const containerW = pageContainerRef.current.clientWidth;
+            const padding = containerW < 600 ? 16 : 32;
+            const computed = Math.min((containerW - padding) / 794, 1.2);
+            setFitScale(Math.max(0.35, computed));
+        };
+
+        updateFitScale();
+        const ro = new ResizeObserver(updateFitScale);
+        ro.observe(pageContainerRef.current);
+        return () => ro.disconnect();
+    }, [stage, activePageIndex]);
+
+    // 3.3. Unscaled A4 Paper Height Tracker
+    useEffect(() => {
+        if (stage !== 'reading') return;
+        const timer = setTimeout(() => {
+            if (a4LayerRef.current) {
+                const h = a4LayerRef.current.offsetHeight;
+                if (h > 0) setLayerHeight(h);
+            }
+        }, 80);
+        return () => clearTimeout(timer);
+    }, [stage, activePageIndex, sectionPages, fitScale, zoomMultiplier]);
 
     // 3.5. Signal Client Ready on Course Select Stage
     useEffect(() => {
@@ -836,23 +872,36 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 {stage === 'reading' && (
                                     <div className="ml-reader-workspace">
                                         <div className="ml-reader-bar">
-                                            <button 
-                                                className="ml-page-nav-btn" 
-                                                onClick={handlePrevPage} 
-                                                disabled={activePageIndex === 0}
-                                            >
-                                                <i className="fas fa-chevron-left"></i> Prev
-                                            </button>
-                                            <span className="ml-page-indicator">
-                                                Page {activePageIndex + 1} of {sectionPages.length}
-                                            </span>
-                                            <button 
-                                                className="ml-page-nav-btn" 
-                                                onClick={handleNextPage} 
-                                                disabled={activePageIndex >= sectionPages.length - 1}
-                                            >
-                                                Next <i className="fas fa-chevron-right"></i>
-                                            </button>
+                                            <div className="ml-reader-bar-left">
+                                                <button 
+                                                    className="ml-page-nav-btn" 
+                                                    onClick={handlePrevPage} 
+                                                    disabled={activePageIndex === 0}
+                                                >
+                                                    <i className="fas fa-chevron-left"></i> Prev
+                                                </button>
+                                                <span className="ml-page-indicator">
+                                                    p. {currentPage?.page_number || ''} ({activePageIndex + 1}/{sectionPages.length})
+                                                </span>
+                                                <button 
+                                                    className="ml-page-nav-btn" 
+                                                    onClick={handleNextPage} 
+                                                    disabled={activePageIndex >= sectionPages.length - 1}
+                                                >
+                                                    Next <i className="fas fa-chevron-right"></i>
+                                                </button>
+                                            </div>
+
+                                            <div className="ml-reader-bar-right">
+                                                <button 
+                                                    className="ml-zoom-toggle-btn"
+                                                    onClick={() => setZoomMultiplier(prev => prev > 1.1 ? 1 : 1.5)}
+                                                    title={zoomMultiplier > 1.1 ? "Fit to Viewport" : "Zoom 150%"}
+                                                >
+                                                    <i className={`fas ${zoomMultiplier > 1.1 ? 'fa-compress' : 'fa-magnifying-glass-plus'}`}></i>
+                                                    <span>{zoomMultiplier > 1.1 ? 'Fit' : '150%'}</span>
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div className="ml-page-viewport" ref={pageContainerRef}>
@@ -865,18 +914,38 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 (() => {
                                                     const bookPrefix = selectedBook?.course_code ? (COURSE_PREFIX_MAP[selectedBook.course_code.toUpperCase().trim()] || '') : '';
                                                     const engineClass = bookPrefix ? `engine-${bookPrefix}` : 'engine-universal';
+                                                    const effectiveScale = fitScale * zoomMultiplier;
                                                     return (
-                                                        <div className={`page-wrapper ${engineClass}`} data-page-number={currentPage.page_number}>
-                                                            <div className={`page-canvas ${engineClass}`}>
-                                                                {(currentPage.content_json || []).map((block, idx) => (
-                                                                    <div key={idx} className="block-target-wrapper">
-                                                                        {renderBookBlock ? (
-                                                                            renderBookBlock(block, idx, { bookTitle: selectedBook?.title, courseCode: selectedBook?.course_code })
-                                                                        ) : (
-                                                                            <p>{block.body || block.text || block.main || ''}</p>
-                                                                        )}
+                                                        <div 
+                                                            className="ml-a4-viewport-sizer"
+                                                            style={{
+                                                                width: `${794 * effectiveScale}px`,
+                                                                height: `${layerHeight * effectiveScale}px`
+                                                            }}
+                                                            onDoubleClick={() => setZoomMultiplier(prev => prev > 1.1 ? 1 : 1.5)}
+                                                        >
+                                                            <div 
+                                                                ref={a4LayerRef}
+                                                                className="ml-a4-layer"
+                                                                style={{
+                                                                    width: '794px',
+                                                                    transform: `scale(${effectiveScale})`,
+                                                                    transformOrigin: 'top left'
+                                                                }}
+                                                            >
+                                                                <div className={`page-wrapper ${engineClass}`} data-page-number={currentPage.page_number}>
+                                                                    <div className={`page-canvas ${engineClass}`}>
+                                                                        {(currentPage.content_json || []).map((block, idx) => (
+                                                                            <div key={idx} className="block-target-wrapper">
+                                                                                {renderBookBlock ? (
+                                                                                    renderBookBlock(block, idx, { bookTitle: selectedBook?.title, courseCode: selectedBook?.course_code })
+                                                                                ) : (
+                                                                                    <p>{block.body || block.text || block.main || ''}</p>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
                                                                     </div>
-                                                                ))}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     );
