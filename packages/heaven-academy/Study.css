@@ -365,10 +365,29 @@
     color: #0c0c0c;
 }
 
-.library-fullscreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; opacity: 0; pointer-events: none; clip-path: inset(10% 0 65% 0); transition: opacity 0.4s ease-in-out, clip-path 0.4s ease-in-out; }
-.library-fullscreen.is-expanded { opacity: 1; pointer-events: auto; clip-path: inset(0% 0% 0% 0%); }
-.vignette-bg { background-color: #3E2723; background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('https://www.transparenttextures.com/patterns/wood-pattern.png'); position: relative; }
-.vignette-bg::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 100px 30px rgba(0,0,0,0.5); pointer-events: none; }
+.library-fullscreen { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0; 
+    z-index: 50; 
+    background-color: var(--bg-dark, #0c0c0c);
+    opacity: 0; 
+    pointer-events: none; 
+    clip-path: inset(10% 0 65% 0); 
+    transition: opacity 0.4s ease-in-out, clip-path 0.4s ease-in-out; 
+}
+.library-fullscreen.is-expanded { 
+    opacity: 1; 
+    pointer-events: auto; 
+    clip-path: inset(0% 0% 0% 0%); 
+}
+.vignette-bg { 
+    background-color: #3E2723; 
+    background-image: linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.25)), url('https://www.transparenttextures.com/patterns/wood-pattern.png'); 
+    position: relative; 
+}
 .pt-4 { padding-top: 1.5rem; }
 .fullscreen-header { background-color: rgba(12,12,12,0.8); backdrop-filter: blur(4px); z-index: 30; flex-shrink: 0; }
 .header-main-row { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1rem; gap: 8px; }
