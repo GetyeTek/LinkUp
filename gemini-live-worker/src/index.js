@@ -2270,7 +2270,6 @@ CRITICAL OPERATIONAL RULES:
                     this.isGeneratingSectionSummary = false;
                     if (this.chunkWatchdogTimer) clearTimeout(this.chunkWatchdogTimer);
 
-                    const speechChunk = parsed.serverContent.inputTranscription.text;
                     this.pendingUserSpeech = (this.pendingUserSpeech || "") + speechChunk;
 
                     // Pass transcription through to client so student sees their user bubble in real-time
