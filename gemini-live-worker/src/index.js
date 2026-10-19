@@ -351,9 +351,12 @@ export class GeminiLiveAgent {
     this.lastCourseTemplate = null;
     this.pendingTemplateSpeech = null;
     this.isSpeakingTemplate = false;
-    this.isGeneratingSectionSummary = false;
-    this.currentPageNumber = null;
-    this.currentTranslatingChunkIndex = null;
+            this.isGeneratingSectionSummary = false;
+        this.currentPageNumber = null;
+        this.currentTranslatingChunkIndex = null;
+        this.totalExpectedChunks = 0;
+        this.deliveredChunksCount = 0;
+        this.chunkWatchdogTimer = null;
 
     // Diagnostic & Turn Tracking State
     this.activeTurn = null;
@@ -597,8 +600,20 @@ export class GeminiLiveAgent {
   }
 
   processTranslationQueue() {
-    if (!this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN || !this.isGeminiSetupComplete) return;
-    if (this.isGeminiTranslating || this.translationQueue.length === 0) return;
+    if (!this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN || !this.isGeminiSetupComplete) {
+        this.emitLog("GEMINI_WARN", `⚠️ processTranslationQueue halted: Gemini WS readyState=${this.geminiWs?.readyState ?? -1}, setupComplete=${this.isGeminiSetupComplete}`);
+        return;
+    }
+    if (this.isGeminiTranslating) {
+        this.emitLog("GEMINI_WARN", `⏳ processTranslationQueue paused: currently translating chunk #${this.currentTranslatingChunkIndex}. Queue depth: ${this.translationQueue.length}`);
+        return;
+    }
+    if (this.translationQueue.length === 0) {
+        if (this.totalExpectedChunks > 0 && this.deliveredChunksCount >= this.totalExpectedChunks) {
+            this.emitLog("QUEUE_COMPLETE", `🏁 [ALL CHUNKS COMPLETE] Successfully delivered ${this.deliveredChunksCount}/${this.totalExpectedChunks} chunks to student.`);
+        }
+        return;
+    }
 
     const item = this.translationQueue.shift();
     const chunkText = typeof item === 'object' ? item.text : item;
@@ -607,6 +622,16 @@ export class GeminiLiveAgent {
 
     this.isGeminiTranslating = true;
     this.startTurnAudit("reading_chunk_translation", chunkText);
+
+    // Stuck Chunk Watchdog: If Gemini fails to return turnComplete within 14s, force-advance
+    if (this.chunkWatchdogTimer) clearTimeout(this.chunkWatchdogTimer);
+    this.chunkWatchdogTimer = setTimeout(() => {
+        if (this.isGeminiTranslating && this.currentTranslatingChunkIndex === chunkIdx) {
+            this.emitLog("CHUNK_TIMEOUT", `⏰ [WATCHDOG TIMEOUT] Chunk #${chunkIdx + 1} timed out after 14s without turnComplete! Force-clearing gate to unblock remaining ${this.translationQueue.length} chunks.`);
+            this.isGeminiTranslating = false;
+            this.processTranslationQueue();
+        }
+    }, 14000);
     
     const prompt = `Translate and speak the following explanation in natural, authentic Amharic (using the Ge'ez/Fidel alphabet) with a normal, grounded peer tone, blended smoothly with English technical terms to ${this.studentName}. Sound like an authentic university peer studying together in an authentic normal tone. Speak the translation directly:\n\n${chunkText}`;
     
@@ -615,7 +640,11 @@ export class GeminiLiveAgent {
     });
     
     this.geminiWs.send(payload);
-    this.emitLog("GEMINI", `[STAGE 4/5 | TRANSLATE_SENT] 🎙️ Sent chunk #${chunkIdx} to Gemini Live (${chunkText.length} chars). ${this.translationQueue.length} chunks remaining in queue.`);
+    this.emitLog("GEMINI", `[STAGE 4/5 | TRANSLATE_SENT] 🎙️ Dispatched chunk #${chunkIdx + 1}/${this.totalExpectedChunks} to Gemini Live (${chunkText.length} chars). Progress: ${this.deliveredChunksCount}/${this.totalExpectedChunks} delivered. Remaining in queue: ${this.translationQueue.length}.`, {
+        chunk_index: chunkIdx,
+        progress: `${chunkIdx + 1}/${this.totalExpectedChunks}`,
+        queue_remaining: this.translationQueue.length
+    });
   }
 
   async executeTool(name, args) {
@@ -973,6 +1002,13 @@ export class GeminiLiveAgent {
 
       this.groqChatHistory.push({ role: "assistant", content: rawContent });
 
+      // 1. Stream the complete raw Groq output down the inspection line immediately
+      this.emitLog("GROQ_RAW", `📜 [GROQ GENERATION COMPLETE] Full Raw Output (${rawContent.length} chars | ${finalTokens} tokens):\n"""${rawContent}"""`, {
+        finish_reason: finishReason,
+        total_tokens: finalTokens,
+        raw_text: rawContent
+      });
+
       let chunks = [];
       let highlightQueue = [];
       const chunkRegex = /<chunk(?:\s+highlight=["']([\s\S]*?)["'])?[^>]*>([\s\S]*?)<\/chunk>/gi;
@@ -994,9 +1030,24 @@ export class GeminiLiveAgent {
       if (chunks.length === 0) {
           const cleanRaw = rawContent.replace(/<[^>]+>/g, '').trim();
           chunks = cleanRaw.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+          this.emitLog("GROQ_WARN", `⚠️ No <chunk> tags found in Groq output. Split into ${chunks.length} paragraph chunks via fallback.`);
       }
 
       const sanitizedChunks = chunks.map(c => sanitizeForSpeech(c)).filter(Boolean);
+      this.totalExpectedChunks = sanitizedChunks.length;
+      this.deliveredChunksCount = 0;
+
+      // 2. Detailed Per-Chunk Audit Manifest (Expected vs Delivered)
+      sanitizedChunks.forEach((cText, idx) => {
+          const matchingHl = highlightQueue.find(h => h.chunk_index === idx);
+          this.emitLog("CHUNK_AUDIT", `📋 [EXPECTED ${idx + 1}/${sanitizedChunks.length}] Quote: ${matchingHl ? `"${matchingHl.highlight}"` : '(None)'} | Text: "${cText.slice(0, 90)}${cText.length > 90 ? '...' : ''}"`, {
+              chunk_index: idx,
+              has_highlight: Boolean(matchingHl),
+              highlight: matchingHl?.highlight || null,
+              char_count: cText.length,
+              full_chunk_text: cText
+          });
+      });
 
       this.emitLog("GROQ", `[STAGE 3/5 | CHUNKS_PARSED] 📦 Extracted ${sanitizedChunks.length} chunks (${highlightQueue.length} with exact highlights) in ${finalTokens} tokens total.`, {
         finish_reason: finishReason,
@@ -1005,7 +1056,7 @@ export class GeminiLiveAgent {
         preloaded_highlights: highlightQueue.length
       });
 
-      // 1. Instantly preload the highlights manifest into the frontend queue (0ms visual sync preparation)
+      // 3. Instantly preload the highlights manifest into the frontend queue (0ms visual sync preparation)
       if (highlightQueue.length > 0) {
           this.emitLog("HIGHLIGHT", `[STAGE 3/5 | PRELOAD_SENT] 📋 Sent preload_highlights manifest to client (${highlightQueue.length} items).`);
           this.broadcast(JSON.stringify({
@@ -1019,7 +1070,7 @@ export class GeminiLiveAgent {
         text: sanitizedChunks.join(' ')
       }));
 
-      // 2. Queue chunks with indexed markers so Green Light pulses can fire in lockstep
+      // 4. Queue chunks with indexed markers so Green Light pulses can fire in lockstep
       const indexedChunks = sanitizedChunks.map((text, idx) => ({ index: idx, text }));
       this.translationQueue.push(...indexedChunks);
       
@@ -1543,6 +1594,13 @@ OPERATIONAL RULES:
                     this.currentCourseCode = parsed.course_code || this.currentCourseCode;
                     this.currentPageNumber = parsed.page_number || 1;
                     this.translationQueue = [];
+                    this.isSpeakingTemplate = false;
+                    this.isGeneratingSectionSummary = false;
+                    this.isGeminiTranslating = false;
+                    this.currentTranslatingChunkIndex = null;
+                    this.totalExpectedChunks = 0;
+                    this.deliveredChunksCount = 0;
+                    if (this.chunkWatchdogTimer) clearTimeout(this.chunkWatchdogTimer);
 
                     const bookId = this.currentBookId;
                     const pageNum = this.currentPageNumber;
@@ -1864,9 +1922,15 @@ Start our co-study session by directly referencing this page out loud to ${this.
     this.pendingTemplateSpeech = null;
     this.isSpeakingTemplate = false;
     this.isGeneratingSectionSummary = false;
-    this.currentPageNumber = null;
-    this.currentTranslatingChunkIndex = null;
-    if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
+            this.currentPageNumber = null;
+        this.currentTranslatingChunkIndex = null;
+        this.totalExpectedChunks = 0;
+        this.deliveredChunksCount = 0;
+        if (this.chunkWatchdogTimer) {
+          clearTimeout(this.chunkWatchdogTimer);
+          this.chunkWatchdogTimer = null;
+        }
+        if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
     if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
     this.activeTurn = null;
     this.pendingTurnCompletions = 0;
@@ -2192,9 +2256,19 @@ CRITICAL OPERATIONAL RULES:
 
                 // --- 1-ON-1 VOICE INPUT: INTERCEPT STT TRANSCRIPTION FOR GROQ ---
                 if (this.isOneOnOne && parsed.serverContent?.inputTranscription?.text) {
+                    const speechChunk = parsed.serverContent.inputTranscription.text;
+                    if (this.translationQueue.length > 0) {
+                        this.emitLog("INTERRUPT", `🛑 [BARGE-IN / ECHO DETECTED] Reading queue interrupted by incoming audio transcription! Wiped ${this.translationQueue.length} remaining chunks. Heard: "${speechChunk}"`, {
+                            wiped_chunks: this.translationQueue.length,
+                            incoming_text: speechChunk,
+                            delivered_so_far: this.deliveredChunksCount,
+                            total_expected: this.totalExpectedChunks
+                        });
+                    }
                     this.translationQueue = []; // INTERRUPT: Nuke the remaining script if user barges in!
                     this.isSpeakingTemplate = false;
                     this.isGeneratingSectionSummary = false;
+                    if (this.chunkWatchdogTimer) clearTimeout(this.chunkWatchdogTimer);
 
                     const speechChunk = parsed.serverContent.inputTranscription.text;
                     this.pendingUserSpeech = (this.pendingUserSpeech || "") + speechChunk;
@@ -2312,6 +2386,11 @@ CRITICAL OPERATIONAL RULES:
                         this.activeTurn = null;
                     }
 
+                    if (this.chunkWatchdogTimer) {
+                        clearTimeout(this.chunkWatchdogTimer);
+                        this.chunkWatchdogTimer = null;
+                    }
+
                     if (this.isSpeakingTemplate) {
                         this.isSpeakingTemplate = false;
                     } else if (this.isGeneratingSectionSummary) {
@@ -2319,8 +2398,14 @@ CRITICAL OPERATIONAL RULES:
                     } else if (this.isGeminiFallbackActive) {
                         this.isGeminiFallbackActive = false;
                     } else if (this.isGeminiTranslating) {
+                        this.deliveredChunksCount++;
+                        this.emitLog("CHUNK_DELIVERED", `✅ [DELIVERED ${this.deliveredChunksCount}/${this.totalExpectedChunks}] Chunk #${this.currentTranslatingChunkIndex + 1} audio turn completed. Loading next chunk...`, {
+                            delivered_count: this.deliveredChunksCount,
+                            total_expected: this.totalExpectedChunks,
+                            remaining_in_queue: this.translationQueue.length
+                        });
                         this.isGeminiTranslating = false;
-                        this.processTranslationQueue(); // Load next paragraph if available
+                        this.processTranslationQueue(); // Load next chunk
                     }
                 }
                 
