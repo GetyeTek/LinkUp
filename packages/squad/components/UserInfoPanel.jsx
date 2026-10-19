@@ -26,10 +26,10 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                         // Secure RPC access to public fields for peers with fallback
                         const { data, error } = await supabase.rpc('get_user_profile_public', { target_user_id: userId });
                         if (!error && data) {
-                            profileData = data;
+                            profileData = Array.isArray(data) ? data[0] : data;
                         } else {
                             const { data: directData } = await supabase.from('profiles').select('id, full_name, username, avatar_url, department, level, bio, is_pro').eq('id', userId).maybeSingle();
-                            if (directData) profileData = directData;
+                            if (directData) profileData = Array.isArray(directData) ? directData[0] : directData;
                         }
                     }
                 
