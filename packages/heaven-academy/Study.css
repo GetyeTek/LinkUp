@@ -17,19 +17,142 @@
 .expand-prompt { position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--text-secondary-dark); background-color: rgba(0,0,0,0.3); backdrop-filter: blur(4px); padding: 0.25rem 0.75rem; border-radius: 9999px; }
 .expand-prompt .material-symbols-outlined { font-size: 0.875rem; }
 .study-section { padding: 1rem; }
-.compact-trigger { background-color: var(--surface-dark); border-radius: var(--radius-main); padding: 1rem; margin-bottom: 1rem; display: flex; align-items: center; position: relative; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.05); }
-.compact-orb { width: 80px; height: 80px; border-radius: 50%; background-image: linear-gradient(45deg, var(--accent-teal) 0%, #30bda6 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px 0px #42d7b880; animation: pulse-orb-sm 3s infinite ease-in-out; position: absolute; left: 0; top: 50%; transform: translate(-25%, -50%); }
-.compact-orb .material-symbols-outlined { font-size: 2.5rem; color: var(--bg-dark); font-variation-settings: 'FILL' 1, 'wght' 600; }
-@keyframes pulse-orb-sm { 0%, 100% { box-shadow: 0 0 15px 0px #42d7b880; } 50% { box-shadow: 0 0 25px 3px #42d7b880; } }
-.compact-text-content { margin-left: 70px; }
-.compact-title { font-size: 1.2rem; font-weight: 600; }
-.compact-subtitle { margin-top: 0.25rem; font-size: 0.8rem; color: var(--cyber-gold); height: 1.2em; }
-#study-content .typewriter-wrapper { display: inline-flex; align-items: center; }
-#study-content .typewriter-text { display: inline-block; white-space: nowrap; overflow: hidden; letter-spacing: .05em; animation: typing-study 7s steps(50, end) infinite; }
-.blinking-cursor { display: inline-block; width: 2px; height: 1em; background-color: var(--cyber-gold); margin-left: 4px; animation: blink-caret 1s step-end infinite; }
-@keyframes typing-study { from { width: 0 } to { width: 100% } 70% { width: 100% } }
-@keyframes blink-caret { from, to { background-color: transparent } 50% { background-color: var(--cyber-gold); } }
-.action-chevron { margin-left: auto; font-size: 1.5rem; color: var(--text-secondary-dark); }
+
+/* --- MIRON 1-ON-1 VOICE TUTOR DESK CARD --- */
+.miron-voice-card {
+    background: linear-gradient(135deg, rgba(66, 215, 184, 0.12) 0%, rgba(13, 148, 136, 0.04) 50%, var(--surface-dark) 100%);
+    border: 1px solid rgba(66, 215, 184, 0.3);
+    border-radius: 18px;
+    padding: 1.15rem;
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    cursor: pointer;
+    margin-bottom: 1rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.miron-voice-card:hover {
+    border-color: var(--accent-teal);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(66, 215, 184, 0.22);
+}
+
+.miron-voice-card:active {
+    transform: scale(0.985);
+}
+
+.mvc-avatar-wrap {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.mvc-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+    object-fit: cover;
+    border: 2px solid var(--accent-teal);
+    box-shadow: 0 0 15px rgba(66, 215, 184, 0.3);
+}
+
+.mvc-audio-wave {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    background: rgba(12, 12, 14, 0.95);
+    border: 1px solid var(--accent-teal);
+    border-radius: 99px;
+    padding: 2px 5px;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 12px;
+    box-shadow: 0 0 8px rgba(66, 215, 184, 0.5);
+}
+
+.mvc-bar {
+    width: 2px;
+    background: var(--accent-teal);
+    border-radius: 1px;
+    animation: mvcEqualizer 0.8s infinite ease-in-out;
+}
+.mvc-bar.b1 { height: 4px; animation-delay: 0.1s; }
+.mvc-bar.b2 { height: 10px; animation-delay: 0.25s; }
+.mvc-bar.b3 { height: 6px; animation-delay: 0.15s; }
+
+@keyframes mvcEqualizer {
+    0%, 100% { height: 3px; }
+    50% { height: 10px; }
+}
+
+.mvc-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.mvc-tag {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent-teal);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+
+.mvc-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mvc-subtitle {
+    font-size: 0.8rem;
+    color: #aaa;
+    margin: 0;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mvc-mic-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(66, 215, 184, 0.15);
+    border: 1px solid rgba(66, 215, 184, 0.35);
+    color: var(--accent-teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.miron-voice-card:hover .mvc-mic-btn {
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+    color: #0c0c0c;
+    transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(66, 215, 184, 0.4);
+}
 .guidance-path { position: relative; }
 .guidance-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; padding-left: 0.5rem; }
 .timeline { position: relative; padding-bottom: 4rem; }
@@ -403,7 +526,7 @@
         align-items: stretch;
     }
 
-    .compact-trigger,
+    .miron-voice-card,
     .resume-study-card,
     .study-drill-card {
         margin: 0;
