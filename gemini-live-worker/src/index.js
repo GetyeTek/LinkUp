@@ -769,8 +769,12 @@ export class GeminiLiveAgent {
 - Formulate your entire response in clear, concise English. Do NOT generate in Amharic script.
 - CHUNKING & HIGHLIGHT ARCHITECTURE:
   * Wrap each spoken thought unit in <chunk highlight="...">...</chunk> tags.
-  * The 'highlight' attribute MUST be an EXACT, VERBATIM quote copy-pasted directly from the textbook page text provided. It can be a phrase, clause, or entire sentence. Do NOT paraphrase or alter punctuation in the highlight attribute.
-  * If a chunk is purely conversational or an application question without referring to a specific sentence on the page, omit the highlight attribute: <chunk>...</chunk>.
+  * KEY FOCUS SENTENCE RULE (STRICT):
+    - Highlight ONLY the specific key sentence, title/heading, definition, single question raised, or formula that your current spoken chunk revolves around (typically 5 to 25 words).
+    - NEVER highlight an entire paragraph or lump multiple questions/bullet points into one highlight attribute.
+    - If explaining a dense or long concept, break it down one piece at a time across sequential chunks.
+    - The 'highlight' attribute MUST be an EXACT, VERBATIM quote copy-pasted directly from the textbook page text provided. Never paraphrase or alter punctuation.
+  * If a chunk is purely conversational, an encouraging check-in, or an application question that doesn't quote a line on the page, omit the highlight attribute: <chunk>...</chunk>.
   * SINGLE CHUNK RULE: If your response is short (greeting, quick answer, acknowledgment), put it in a single <chunk>.
   * MULTI-CHUNK RULE: For teaching and concept breakdowns, use sequential paced chunks (1-2 sentences each).
 - ADVANCING PAGES & FLUFF HANDLING:
@@ -1647,7 +1651,7 @@ We are now sitting together looking at Page ${pageNum} for "${sectionTitle}" in 
 Here is the raw textbook text on this page:
 """${sliced.text}"""
 
-Start our co-study session by directly referencing this page out loud to ${this.studentName}. Introduce the section briefly, then dissect the very first concept step by step. Remember to tag exact verbatim quotes from the text using <chunk highlight="...">.`;
+Start our co-study session by directly referencing this page out loud to ${this.studentName}. Introduce the section briefly, then dissect the first key concept step by step. Remember to highlight ONLY the specific key sentence, heading, or question being discussed using <chunk highlight="..."> (never whole paragraphs or combined lines).`;
 
                             this.emitLog("GROQ", `[STAGE 1/5 | DIRECTIVE_READY] Dispathing co-study prompt to Groq Brain (${sliced.finalTokens} tokens)...`);
                             await this.executeGroqCognitiveTurn(internalKickoffDirective);
