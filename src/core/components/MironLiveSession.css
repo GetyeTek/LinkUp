@@ -1069,6 +1069,35 @@ mark.miron-live-highlight {
     margin: auto; color: var(--accent-teal); gap: 10px; font-size: 0.85rem;
 }
 
+/* A4 TEXTBOOK SHIMMER SKELETON CANVAS */
+.ml-a4-skeleton-page {
+    width: 794px !important;
+    max-width: calc(100% - 32px) !important;
+    min-height: 860px !important;
+    padding: 55px 60px 50px 60px !important;
+    box-sizing: border-box !important;
+    background: #141416 !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 14px 45px rgba(0, 0, 0, 0.8) !important;
+    margin: 16px auto !important;
+    pointer-events: none !important;
+    display: flex;
+    flex-direction: column;
+    animation: fadeInCard 0.25s ease-out;
+}
+
+.ml-skeleton-formula-box {
+    background: linear-gradient(
+        90deg,
+        rgba(66, 215, 184, 0.03) 25%,
+        rgba(66, 215, 184, 0.12) 50%,
+        rgba(66, 215, 184, 0.03) 75%
+    ) !important;
+    background-size: 200% 100% !important;
+    border: 1px dashed rgba(66, 215, 184, 0.25) !important;
+}
+
 /* FLOATING TRANSCRIPT DRAWER */
 .ml-transcript-floating-drawer {
     position: absolute; bottom: 0; left: 0; right: 0; height: 45%; max-height: 320px;
