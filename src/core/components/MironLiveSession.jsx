@@ -142,6 +142,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [isCatalogRevealed, setIsCatalogRevealed] = useState(false);
     const [isTocRevealed, setIsTocRevealed] = useState(false);
     const [isConfirmRevealed, setIsConfirmRevealed] = useState(false);
+    const [isReadingRevealed, setIsReadingRevealed] = useState(false);
 
     // A4 PDF-Scale & Zoom Matrix
     const [fitScale, setFitScale] = useState(1);
@@ -151,6 +152,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const wsRef = useRef(null);
     const tocTimeoutRef = useRef(null);
     const confirmTimeoutRef = useRef(null);
+    const readingTimeoutRef = useRef(null);
     const speakingTimeout = useRef(null);
     const transcriptRef = useRef(null);
     const pageContainerRef = useRef(null);
@@ -647,7 +649,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
         };
-    }, [stage, activePageIndex, fitScale, viewState, isLoadingPages, sectionPages]);
+    }, [stage, activePageIndex, fitScale, viewState, isLoadingPages, sectionPages, isReadingRevealed]);
 
     // 3.45. Observe Active Page During Vertical Scroll
     useEffect(() => {
@@ -695,6 +697,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             if (stage === 'course_select') setIsCatalogRevealed(true);
             if (stage === 'toc_select') setIsTocRevealed(true);
             if (stage === 'section_confirm') setIsConfirmRevealed(true);
+            if (stage === 'reading') setIsReadingRevealed(true);
         }
     }, [isConnected, isMironSpeaking, stage]);
 
@@ -1018,7 +1021,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             setActivePageNum(validPages[0]?.page_number || null);
             setIsLoadingPages(false);
             setStage('reading');
+            setIsReadingRevealed(false);
             bufferedHighlightsRef.current = [];
+
+            clearTimeout(readingTimeoutRef.current);
+            readingTimeoutRef.current = setTimeout(() => {
+                setIsReadingRevealed(true);
+            }, 6000);
 
             // Semantic handoff: Backend DO takes full ownership of kickoff orchestration
             if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -1063,6 +1072,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         hasSentReadyRef.current = false;
         clearTimeout(tocTimeoutRef.current);
         clearTimeout(confirmTimeoutRef.current);
+        clearTimeout(readingTimeoutRef.current);
         if (wsRef.current) {
             try {
                 if (wsRef.current.readyState === WebSocket.OPEN) {
@@ -1394,10 +1404,20 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 {stage === 'reading' && (
                                     <div className="ml-reader-workspace">
                                         <div className="ml-page-viewport" ref={pageContainerRef}>
-                                            {isLoadingPages ? (
-                                                <div className="ml-page-loader">
-                                                    <i className="fas fa-circle-notch fa-spin fa-2x"></i>
-                                                    <p>Loading textbook page...</p>
+                                            {!isReadingRevealed || isLoadingPages ? (
+                                                <div className="ml-a4-skeleton-page skeleton">
+                                                    <div className="ml-skeleton-box" style={{ width: '28%', height: '14px', marginBottom: '24px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '82%', height: '28px', marginBottom: '14px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '48%', height: '16px', marginBottom: '32px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '98%', height: '13px', marginBottom: '8px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '94%', height: '13px', marginBottom: '8px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '91%', height: '13px', marginBottom: '8px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '65%', height: '13px', marginBottom: '28px' }}></div>
+                                                    <div className="ml-skeleton-box ml-skeleton-formula-box" style={{ width: '100%', height: '96px', marginBottom: '28px', borderRadius: '10px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '97%', height: '13px', marginBottom: '8px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '93%', height: '13px', marginBottom: '8px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '88%', height: '13px', marginBottom: '8px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '42%', height: '13px' }}></div>
                                                 </div>
                                             ) : sectionPages && sectionPages.length > 0 ? (
                                                 (() => {
