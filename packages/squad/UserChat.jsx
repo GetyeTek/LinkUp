@@ -457,8 +457,8 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
             />
             
             {!isSearchActive && (
-                <header className="prism-header" style={{ justifyContent: 'flex-start', gap: '1.5rem' }}>
-                    <button className="icon-button" style={{ color: 'white', opacity: 0.6 }} onClick={onClose}>
+                <header className="prism-header" style={{ justifyContent: 'flex-start', gap: '10px' }}>
+                    <button className="icon-button" style={{ color: 'white', opacity: 0.7, width: '32px', height: '32px', marginLeft: '-4px' }} onClick={onClose}>
                         <i className="fas fa-chevron-left"></i>
                     </button>
                     <div className="contact-profile" onClick={() => !isOtherUserDeleted && onOpenUser(chat.other_user_id)} style={{cursor: !isOtherUserDeleted ? 'pointer' : 'default'}}>
