@@ -667,8 +667,8 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             />
             
             {!isSearchActive && (
-                <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '1.2rem' }}>
-                    <button className="icon-button back-btn" onClick={handleBack}><i className="fas fa-chevron-left"></i></button>
+                <header className="squad-header" style={{ justifyContent: 'flex-start', gap: '10px' }}>
+                    <button className="icon-button back-btn" style={{ width: '32px', height: '32px', marginLeft: '-4px' }} onClick={handleBack}><i className="fas fa-chevron-left"></i></button>
                     <div className="squad-contact-profile" onClick={() => setIsInfoOpen(true)} style={{cursor: 'pointer'}}>
                         {(() => {
                             const isClass = localChatInfo.metadata?.focus === 'Class';
