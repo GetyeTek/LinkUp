@@ -80,39 +80,83 @@ const applyDOMHighlight = (root, searchText) => {
     if (!root || !searchText || searchText.trim().length < 3) return;
     clearDOMHighlights(root);
 
-    const words = searchText.trim().split(/\s+/).filter(w => w.length > 1);
+    const cleanSearch = searchText.trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '');
+    const words = cleanSearch.split(/\s+/).filter(w => w.length > 0);
     if (words.length === 0) return;
 
-    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => '\\' + c);
-    const fullPattern = words.map(escapeRegExp).join('\\s+');
-    const shortPattern = words.slice(0, 5).map(escapeRegExp).join('\\s+');
+    console.groupCollapsed(`🎨 [Miron Highlight Engine] Searching for: "${cleanSearch.slice(0, 80)}${cleanSearch.length > 80 ? '...' : ''}"`);
+    console.log(`Target text (${cleanSearch.length} chars, ${words.length} words):`, cleanSearch);
 
-    const fullRegex = new RegExp(fullPattern, 'i');
-    const shortRegex = words.length > 4 ? new RegExp(shortPattern, 'i') : null;
+    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => '\\' + c);
+
+    // 1. Punctuation-agnostic full sentence match
+    const fullPattern = words.map(w => escapeRegExp(w.replace(/[^\w]/g, ''))).filter(Boolean).join('[\\s\\p{P}]+');
+    const fullRegex = fullPattern ? new RegExp(fullPattern, 'iu') : null;
 
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
     let node;
+    let matched = false;
 
-    while ((node = walker.nextNode())) {
-        const raw = node.nodeValue;
-        let match = fullRegex.exec(raw);
-        if (!match && shortRegex) {
-            match = shortRegex.exec(raw);
-        }
-
-        if (match) {
-            try {
-                const range = document.createRange();
-                range.setStart(node, match.index);
-                range.setEnd(node, Math.min(raw.length, match.index + match[0].length));
-                const mark = document.createElement('mark');
-                mark.className = 'miron-live-highlight';
-                range.surroundContents(mark);
-                mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } catch (e) {}
-            break;
+    if (fullRegex) {
+        while ((node = walker.nextNode())) {
+            const raw = node.nodeValue;
+            const match = fullRegex.exec(raw);
+            if (match) {
+                try {
+                    const range = document.createRange();
+                    range.setStart(node, match.index);
+                    range.setEnd(node, match.index + match[0].length);
+                    const mark = document.createElement('mark');
+                    mark.className = 'miron-live-highlight';
+                    range.surroundContents(mark);
+                    mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    matched = true;
+                    console.log(`✅ [Exact Sentence Match] Highlighted full sentence (${match[0].length} chars): "${match[0]}"`);
+                } catch (e) {
+                    console.warn("DOM Range surroundContents failed:", e);
+                }
+                break;
+            }
         }
     }
+
+    // 2. Adaptive Greedy Match: Progressive degradation (down to 50% of the sentence) if broken across tags
+    if (!matched && words.length >= 3) {
+        console.log("ℹ️ Full regex did not match a single text node. Running adaptive greedy matcher...");
+        for (let len = words.length - 1; len >= Math.max(3, Math.floor(words.length * 0.5)); len--) {
+            const prefixWords = words.slice(0, len);
+            const prefixPattern = prefixWords.map(w => escapeRegExp(w.replace(/[^\w]/g, ''))).filter(Boolean).join('[\\s\\p{P}]+');
+            if (!prefixPattern) continue;
+            const prefixRegex = new RegExp(prefixPattern, 'iu');
+
+            const retryWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+            let pNode;
+            while ((pNode = retryWalker.nextNode())) {
+                const raw = pNode.nodeValue;
+                const pMatch = prefixRegex.exec(raw);
+                if (pMatch) {
+                    try {
+                        const range = document.createRange();
+                        range.setStart(pNode, pMatch.index);
+                        range.setEnd(pNode, pMatch.index + pMatch[0].length);
+                        const mark = document.createElement('mark');
+                        mark.className = 'miron-live-highlight';
+                        range.surroundContents(mark);
+                        mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        matched = true;
+                        console.log(`⚡ [Adaptive Greedy Match] Highlighted ${len}/${words.length} words (${pMatch[0].length} chars): "${pMatch[0]}"`);
+                    } catch (e) {}
+                    break;
+                }
+            }
+            if (matched) break;
+        }
+    }
+
+    if (!matched) {
+        console.warn(`⚠️ [Highlight Mismatch] Could not locate text on active page canvas. Check if quote differs from raw text:`, cleanSearch);
+    }
+    console.groupEnd();
 };
 
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
@@ -818,23 +862,35 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     // E. Live Highlight Preload Queue & Green Light Synchronization
                     if (payload.type === "preload_highlights" && Array.isArray(payload.queue)) {
                         bufferedHighlightsRef.current = payload.queue;
+                        console.groupCollapsed(`📋 [Miron Frontend] Preloaded ${payload.queue.length} Highlight Anchors`);
+                        console.log("Full Anchor Queue:", payload.queue);
+                        console.groupEnd();
                     }
 
                     if (payload.type === "green_light_chunk" && payload.chunk_index !== undefined) {
-                        const match = (bufferedHighlightsRef.current || []).find(h => h.chunk_index === payload.chunk_index);
+                        const chunkIdx = payload.chunk_index;
+                        const match = (bufferedHighlightsRef.current || []).find(h => h.chunk_index === chunkIdx);
+                        console.groupCollapsed(`🟢 [Miron Frontend] Green Light Received for Chunk #${chunkIdx + 1}`);
                         if (match && match.highlight) {
+                            console.log(`🎯 Key Focus Anchor: "${match.highlight}"`);
                             setActiveHighlight(match.highlight);
+                        } else {
+                            console.log(`ℹ️ Chunk #${chunkIdx + 1} has no assigned highlight (conversational / peer explanation).`);
+                            setActiveHighlight(null);
                         }
+                        console.groupEnd();
                     }
 
                     if (payload.type === "page_turn" && payload.page_number) {
                         const targetPageNum = payload.page_number;
+                        console.log(`📖 [Miron Frontend] Page Turn Event: Navigating to Page ${targetPageNum} (reason: ${payload.reason || 'N/A'})`);
                         setActivePageNum(targetPageNum);
                         setActiveHighlight(null);
 
                         setSectionPages(prevPages => {
                             const exists = prevPages.some(p => p.page_number === targetPageNum);
                             if (!exists && selectedBook?.id) {
+                                console.log(`📥 [Miron Frontend] Page ${targetPageNum} not in pre-fetched cache. Querying Supabase...`);
                                 supabase
                                     .from('book_pages')
                                     .select('id, page_number, content_json')
@@ -847,6 +903,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             setSectionPages(current => {
                                                 const existingIds = new Set(current.map(p => p.id));
                                                 const newPages = data.filter(p => !existingIds.has(p.id));
+                                                console.log(`✅ Appended ${newPages.length} new pages to reader cache.`);
                                                 return [...current, ...newPages];
                                             });
                                         }
@@ -866,11 +923,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 const clamped = clampPosition(transformRef.current.x, targetY, currentScale);
                                 transformRef.current.y = clamped.y;
                                 applyTransform(true);
+                                console.log(`📍 Viewport smoothly scrolled to Page ${targetPageNum}.`);
                             }
                         }, 120);
                     }
 
                     if (payload.type === "navigate_stage" && payload.stage) {
+                        console.log(`🧭 [Miron Frontend] Navigating stage to "${payload.stage}"`);
                         setStage(payload.stage);
                         if (payload.stage === 'course_select') {
                             setSelectedBook(null);
