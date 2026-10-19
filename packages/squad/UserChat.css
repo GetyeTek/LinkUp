@@ -174,6 +174,87 @@
 
 
 
+/* --- DM ICEBREAKER --- */
+.dm-icebreaker-card {
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: prismPop 0.4s ease-out forwards;
+    max-width: 280px;
+}
+
+.dm-icebreaker-card:active {
+    transform: scale(0.95);
+}
+
+.wave-sticker-orb {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: rgba(66, 215, 184, 0.1);
+    border: 2px solid rgba(66, 215, 184, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 30px rgba(66, 215, 184, 0.15);
+}
+
+.wave-emoji-animated {
+    display: inline-block;
+    font-size: 3.2rem;
+    transform-origin: 70% 70%;
+    animation: waveTelegram 2.5s infinite ease-in-out;
+}
+
+@keyframes waveTelegram {
+    0% { transform: rotate(0deg); }
+    10% { transform: rotate(14deg); }
+    20% { transform: rotate(-8deg); }
+    30% { transform: rotate(14deg); }
+    40% { transform: rotate(-4deg); }
+    50% { transform: rotate(10deg); }
+    60% { transform: rotate(0deg); }
+    100% { transform: rotate(0deg); }
+}
+
+.dm-icebreaker-card h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 8px 0;
+}
+
+.dm-icebreaker-card p {
+    font-size: 0.85rem;
+    color: #aaa;
+    line-height: 1.4;
+    margin: 0 0 1.5rem 0;
+}
+
+.wave-action-pill {
+    background: var(--accent-teal);
+    color: #0c0c0c;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 99px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 6px 20px rgba(66, 215, 184, 0.3);
+    transition: transform 0.2s ease;
+}
+
 /* --- REPLY QUOTES INSIDE BUBBLES --- */
 .reply-quote {
     background: var(--border-color);
