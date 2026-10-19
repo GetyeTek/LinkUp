@@ -6,7 +6,7 @@ import BookCard from './components/BookCard.jsx';
 import ExamPavilion from './ExamPavilion.jsx';
 import ExamSession from './ExamSession.jsx';
 import FlashcardPavilion from './components/FlashcardPavilion.jsx';
-import { supabase, usePlatform, getCachedBookCover, MIRON_AVATAR_URL } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getCachedBookCover } from '@linkup-platform/sdk-core';
 import './Study.css';
 
 const Study = () => {
@@ -166,32 +166,66 @@ const Study = () => {
                     </div>
 
                     <div className="study-section">
-                        {/* 1-on-1 Miron Voice Tutor Trigger */}
+                        {/* 1-on-1 Miron Voice Tutor Trigger (Distinct Plan My Day Layout) */}
                         <div 
-                            className="miron-voice-card" 
+                            className="compact-trigger" 
                             onClick={() => window.dispatchEvent(new CustomEvent('miron:open-live-session'))}
                         >
-                            <div className="mvc-avatar-wrap">
-                                <img src={MIRON_AVATAR_URL} alt="Miron" className="mvc-avatar-img" />
-                                <div className="mvc-audio-wave">
-                                    <span className="mvc-bar b1"></span>
-                                    <span className="mvc-bar b2"></span>
-                                    <span className="mvc-bar b3"></span>
+                            <div className="compact-orb">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style={{ width: '100%', height: '100%', display: 'block' }}>
+                                    <defs>
+                                        <linearGradient id="study-miron-pulse-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stopColor="#0b0f19" />
+                                            <stop offset="100%" stopColor="#1e293b" />
+                                        </linearGradient>
+
+                                        <linearGradient id="study-neon-cyan-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" stopColor="#00f0ff" />
+                                            <stop offset="100%" stopColor="#0066ff" />
+                                        </linearGradient>
+
+                                        <filter id="study-neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                                            <feGaussianBlur stdDeviation="2.5" result="blur" />
+                                            <feMerge>
+                                                <feMergeNode in="blur" />
+                                                <feMergeNode in="SourceGraphic" />
+                                            </feMerge>
+                                        </filter>
+
+                                        <filter id="study-red-dot-glow" x="-30%" y="-30%" width="160%" height="160%">
+                                            <feGaussianBlur stdDeviation="1.5" result="blur" />
+                                            <feMerge>
+                                                <feMergeNode in="blur" />
+                                                <feMergeNode in="SourceGraphic" />
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
+
+                                    <rect x="2" y="2" width="96" height="96" rx="26" fill="url(#study-miron-pulse-bg)" stroke="#1e293b" strokeWidth="2.5" />
+
+                                    <path d="M 22,50 C 22,34.5 34.5,22 50,22 C 65.5,22 78,34.5 78,50 C 78,65.5 65.5,78 50,78 C 45,78 40,76.5 36,74 L 18,78 L 22,64 C 20.7,60 22,55 22,50 Z" 
+                                          fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+
+                                    <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
+                                          fill="none" stroke="#00f0ff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" filter="url(#study-neon-glow)" />
+
+                                    <path d="M 16,53 L 34,53 L 41,31 L 48,69 L 54,44 L 59,53 L 84,53" 
+                                          fill="none" stroke="url(#study-neon-cyan-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                                    <circle cx="35" cy="37" r="3.5" fill="#ef4444" filter="url(#study-red-dot-glow)" />
+                                    <text x="57" y="41" fill="#ffffff" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="900" fontSize="12" letterSpacing="1" textAnchor="middle">LIVE</text>
+                                </svg>
+                            </div>
+                            <div className="compact-text-content">
+                                <h3 className="compact-title">{t('voice_study_title', 'Voice Study with Miron')}</h3>
+                                <div className="compact-subtitle">
+                                    <div className="typewriter-wrapper">
+                                        <span className="typewriter-text">{t('voice_study_typewriter', '1-on-1 personal tutoring • Tap to talk...')}</span>
+                                        <span className="blinking-cursor"></span>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="mvc-content">
-                                <div className="mvc-tag">
-                                    <i className="fas fa-headphones-simple"></i>
-                                    <span>{t('voice_tutor_badge', '1-on-1 Voice Tutor')}</span>
-                                </div>
-                                <h3 className="mvc-title">{t('voice_study_title', 'Voice Study with Miron')}</h3>
-                                <p className="mvc-subtitle">
-                                    {t('voice_study_desc', 'Tap to talk & review textbooks out loud')}
-                                </p>
-                            </div>
-                            <div className="mvc-mic-btn" title="Start voice study">
-                                <i className="fas fa-microphone"></i>
-                            </div>
+                            <i className="fas fa-chevron-right action-chevron"></i>
                         </div>
 
                         {/* Current Study Desk Anchor */}
