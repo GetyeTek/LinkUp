@@ -383,11 +383,7 @@
     pointer-events: auto; 
     clip-path: inset(0% 0% 0% 0%); 
 }
-.vignette-bg { 
-    background-color: #3E2723; 
-    background-image: linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.25)), url('https://www.transparenttextures.com/patterns/wood-pattern.png'); 
-    position: relative; 
-}
+.vignette-bg { background-color: #3E2723; background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('https://www.transparenttextures.com/patterns/wood-pattern.png'); position: relative; }
 .pt-4 { padding-top: 1.5rem; }
 .fullscreen-header { background-color: rgba(12,12,12,0.8); backdrop-filter: blur(4px); z-index: 30; flex-shrink: 0; }
 .header-main-row { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1rem; gap: 8px; }
