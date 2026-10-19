@@ -76,86 +76,189 @@ const clearDOMHighlights = (root) => {
     });
 };
 
+const calculateLevenshtein = (s1, s2) => {
+    if (s1 === s2) return 0;
+    if (!s1.length) return s2.length;
+    if (!s2.length) return s1.length;
+
+    let v0 = new Array(s2.length + 1);
+    let v1 = new Array(s2.length + 1);
+
+    for (let i = 0; i <= s2.length; i++) v0[i] = i;
+
+    for (let i = 0; i < s1.length; i++) {
+        v1[0] = i + 1;
+        for (let j = 0; j < s2.length; j++) {
+            const cost = s1[i] === s2[j] ? 0 : 1;
+            v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+        }
+        for (let j = 0; j <= s2.length; j++) v0[j] = v1[j];
+    }
+    return v1[s2.length];
+};
+
+const calculateStringSimilarity = (s1, s2) => {
+    const maxLen = Math.max(s1.length, s2.length);
+    if (maxLen === 0) return 1.0;
+    const dist = calculateLevenshtein(s1, s2);
+    return 1.0 - (dist / maxLen);
+};
+
 const applyDOMHighlight = (root, searchText) => {
     if (!root || !searchText || searchText.trim().length < 3) return;
     clearDOMHighlights(root);
 
     const cleanSearch = searchText.trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '');
-    const words = cleanSearch.split(/\s+/).filter(w => w.length > 0);
-    if (words.length === 0) return;
+    if (cleanSearch.length === 0) return;
 
     console.groupCollapsed(`🎨 [Miron Highlight Engine] Searching for: "${cleanSearch.slice(0, 80)}${cleanSearch.length > 80 ? '...' : ''}"`);
-    console.log(`Target text (${cleanSearch.length} chars, ${words.length} words):`, cleanSearch);
+    console.log(`Target Anchor (${cleanSearch.length} chars):`, cleanSearch);
+
+    // 1. Flatten all text nodes in the page canvas into a continuous virtual linear stream
+    const textNodes = [];
+    let fullStream = "";
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    let n;
+
+    while ((n = walker.nextNode())) {
+        if (n.parentNode && (n.parentNode.nodeName === 'SCRIPT' || n.parentNode.nodeName === 'STYLE')) continue;
+        const val = n.nodeValue;
+        const start = fullStream.length;
+        fullStream += val;
+        textNodes.push({ node: n, start, end: fullStream.length });
+    }
+
+    if (textNodes.length === 0 || fullStream.length === 0) {
+        console.warn("⚠️ Page canvas has no readable text nodes.");
+        console.groupEnd();
+        return;
+    }
 
     const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => '\\' + c);
 
-    // 1. Punctuation-agnostic full sentence match
-    const fullPattern = words.map(w => escapeRegExp(w.replace(/[^\w]/g, ''))).filter(Boolean).join('[\\s\\p{P}]+');
-    const fullRegex = fullPattern ? new RegExp(fullPattern, 'iu') : null;
+    let matchStart = -1;
+    let matchEnd = -1;
+    let matchMethod = "";
 
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
-    let node;
-    let matched = false;
+    // 2. Pass A: Direct IndexOf / Exact Match in Stream
+    const exactIndex = fullStream.indexOf(cleanSearch);
+    if (exactIndex !== -1) {
+        matchStart = exactIndex;
+        matchEnd = exactIndex + cleanSearch.length;
+        matchMethod = "Exact Stream Substring";
+    }
 
-    if (fullRegex) {
-        while ((node = walker.nextNode())) {
-            const raw = node.nodeValue;
-            const match = fullRegex.exec(raw);
-            if (match) {
-                try {
-                    const range = document.createRange();
-                    range.setStart(node, match.index);
-                    range.setEnd(node, match.index + match[0].length);
-                    const mark = document.createElement('mark');
-                    mark.className = 'miron-live-highlight';
-                    range.surroundContents(mark);
-                    mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    matched = true;
-                    console.log(`✅ [Exact Sentence Match] Highlighted full sentence (${match[0].length} chars): "${match[0]}"`);
-                } catch (e) {
-                    console.warn("DOM Range surroundContents failed:", e);
+    // 3. Pass B: Flexible Hyphen-Folded & Whitespace-Agnostic Pattern
+    if (matchStart === -1) {
+        // Split on whitespace or slashes, preserving alphanumeric words, section numbers (1.1.1), and punctuation
+        const rawTokens = cleanSearch.split(/[\s—–]+/).filter(Boolean);
+        if (rawTokens.length > 0) {
+            const tokenPatterns = rawTokens.map(tok => {
+                const subWords = tok.split(/[/]+/).filter(Boolean);
+                const subPatterns = subWords.map(sw => {
+                    const cleanWord = sw.replace(/^[^\w\d.]+|[^\w\d.]+$/g, '');
+                    if (!cleanWord) return escapeRegExp(sw);
+                    // Insert optional line-break hyphen between word characters to match line-wraps (ori-gins, com-pound)
+                    const foldedChars = cleanWord.split('').map(escapeRegExp).join('(?:-[\\s\\n]*)?');
+                    return foldedChars;
+                });
+                return subPatterns.join('[\\/\\s]+');
+            });
+
+            const streamRegexPattern = tokenPatterns.join('[\\s\\n\\r—–-]+');
+            try {
+                const streamRegex = new RegExp(streamRegexPattern, 'iu');
+                const streamMatch = streamRegex.exec(fullStream);
+                if (streamMatch) {
+                    matchStart = streamMatch.index;
+                    matchEnd = streamMatch.index + streamMatch[0].length;
+                    matchMethod = "Hyphen-Folded Stream Match";
                 }
-                break;
+            } catch (reErr) {
+                console.warn("Regex compilation failed for pattern:", reErr.message);
             }
         }
     }
 
-    // 2. Adaptive Greedy Match: Progressive degradation (down to 50% of the sentence) if broken across tags
-    if (!matched && words.length >= 3) {
-        console.log("ℹ️ Full regex did not match a single text node. Running adaptive greedy matcher...");
-        for (let len = words.length - 1; len >= Math.max(3, Math.floor(words.length * 0.5)); len--) {
-            const prefixWords = words.slice(0, len);
-            const prefixPattern = prefixWords.map(w => escapeRegExp(w.replace(/[^\w]/g, ''))).filter(Boolean).join('[\\s\\p{P}]+');
-            if (!prefixPattern) continue;
-            const prefixRegex = new RegExp(prefixPattern, 'iu');
+    // 4. Pass C: Whole-String Levenshtein Distance (>= 90% Similarity Threshold)
+    if (matchStart === -1 && cleanSearch.length >= 10) {
+        console.log("ℹ️ Standard pattern missed. Executing holistic 90% Levenshtein scan...");
+        const normTarget = cleanSearch.toLowerCase().replace(/[\s\n\r—–-]+/g, ' ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').trim();
+        
+        // Use the first 2 significant words to identify candidate anchor positions in the stream
+        const anchorWords = cleanSearch.split(/\s+/).filter(w => w.length > 2).slice(0, 2);
+        const anchorQuery = anchorWords.map(escapeRegExp).join('[\\s\\n\\r-]+');
+        
+        try {
+            const anchorRegex = new RegExp(anchorQuery, 'giu');
+            let aMatch;
+            let bestSim = 0;
+            let bestRange = null;
 
-            const retryWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
-            let pNode;
-            while ((pNode = retryWalker.nextNode())) {
-                const raw = pNode.nodeValue;
-                const pMatch = prefixRegex.exec(raw);
-                if (pMatch) {
-                    try {
-                        const range = document.createRange();
-                        range.setStart(pNode, pMatch.index);
-                        range.setEnd(pNode, pMatch.index + pMatch[0].length);
-                        const mark = document.createElement('mark');
-                        mark.className = 'miron-live-highlight';
-                        range.surroundContents(mark);
-                        mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        matched = true;
-                        console.log(`⚡ [Adaptive Greedy Match] Highlighted ${len}/${words.length} words (${pMatch[0].length} chars): "${pMatch[0]}"`);
-                    } catch (e) {}
-                    break;
+            while ((aMatch = anchorRegex.exec(fullStream)) !== null) {
+                const candStart = aMatch.index;
+                const candEnd = Math.min(fullStream.length, candStart + Math.round(cleanSearch.length * 1.15));
+                const rawSlice = fullStream.substring(candStart, candEnd);
+                const normSlice = rawSlice.toLowerCase().replace(/[\s\n\r—–-]+/g, ' ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').trim();
+                
+                // Compare substring of equivalent length
+                const compareSlice = normSlice.substring(0, Math.min(normSlice.length, normTarget.length));
+                const sim = calculateStringSimilarity(normTarget, compareSlice);
+
+                if (sim > bestSim) {
+                    bestSim = sim;
+                    bestRange = {
+                        start: candStart,
+                        end: Math.min(fullStream.length, candStart + cleanSearch.length)
+                    };
                 }
             }
-            if (matched) break;
+
+            if (bestSim >= 0.90 && bestRange) {
+                matchStart = bestRange.start;
+                matchEnd = bestRange.end;
+                matchMethod = `Holistic Levenshtein (${(bestSim * 100).toFixed(1)}% match)`;
+            } else if (bestSim > 0) {
+                console.log(`Closest candidate scored ${(bestSim * 100).toFixed(1)}% (below 90% threshold).`);
+            }
+        } catch (levErr) {
+            console.warn("Levenshtein candidate search failed:", levErr.message);
         }
     }
 
-    if (!matched) {
-        console.warn(`⚠️ [Highlight Mismatch] Could not locate text on active page canvas. Check if quote differs from raw text:`, cleanSearch);
+    // 5. Multi-Node Range Slicing & Visual Strikethrough
+    if (matchStart !== -1 && matchEnd > matchStart) {
+        const matchingNodes = textNodes.filter(tn => tn.end > matchStart && tn.start < matchEnd);
+        let firstMark = null;
+
+        matchingNodes.forEach(tn => {
+            const localStart = Math.max(0, matchStart - tn.start);
+            const localEnd = Math.min(tn.node.nodeValue.length, matchEnd - tn.start);
+            if (localStart >= localEnd) return;
+
+            try {
+                const range = document.createRange();
+                range.setStart(tn.node, localStart);
+                range.setEnd(tn.node, localEnd);
+
+                const mark = document.createElement('mark');
+                mark.className = 'miron-live-highlight';
+                range.surroundContents(mark);
+
+                if (!firstMark) firstMark = mark;
+            } catch (e) {
+                console.warn("Failed to highlight text node slice:", e.message);
+            }
+        });
+
+        if (firstMark) {
+            firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            console.log(`✅ [${matchMethod}] Successfully highlighted across ${matchingNodes.length} DOM text node(s) (${matchEnd - matchStart} chars).`);
+        }
+    } else {
+        console.warn(`⚠️ [Highlight Mismatch] Could not locate anchor on active page canvas:`, cleanSearch);
     }
+
     console.groupEnd();
 };
 
