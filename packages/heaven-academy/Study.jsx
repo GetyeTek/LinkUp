@@ -5,9 +5,8 @@ import BookShelf from './components/BookShelf.jsx';
 import BookCard from './components/BookCard.jsx';
 import ExamPavilion from './ExamPavilion.jsx';
 import ExamSession from './ExamSession.jsx';
-import PlanMyDayModal from './components/PlanMyDayModal.jsx';
 import FlashcardPavilion from './components/FlashcardPavilion.jsx';
-import { supabase, usePlatform, getCachedBookCover } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getCachedBookCover, MIRON_AVATAR_URL } from '@linkup-platform/sdk-core';
 import './Study.css';
 
 const Study = () => {
@@ -27,7 +26,6 @@ const Study = () => {
     const [isSearchActive, setIsSearchActive] = useState(false);
     const [activeCategory, setActiveCategory] = useState('All');
     const [targetPage, setTargetPage] = useState(undefined);
-    const [isPlannerOpen, setIsPlannerOpen] = useState(false);
     const [isFlashcardsOpen, setIsFlashcardsOpen] = useState(false);
     const [lastRead, setLastRead] = useState(null);
     const searchInputRef = useRef(null);
@@ -168,19 +166,32 @@ const Study = () => {
                     </div>
 
                     <div className="study-section">
-                        {/* AI Planner Trigger */}
-                        <div className="compact-trigger" onClick={() => setIsPlannerOpen(true)}>
-                            <div className="compact-orb"><span className="material-symbols-outlined">auto_awesome</span></div>
-                            <div className="compact-text-content">
-                                <h3 className="compact-title">{t('plan_my_day', 'Plan My Day')}</h3>
-                                <div className="compact-subtitle">
-                                    <div className="typewriter-wrapper">
-                                        <span className="typewriter-text">Let Miron structure your session...</span>
-                                        <span className="blinking-cursor"></span>
-                                    </div>
+                        {/* 1-on-1 Miron Voice Tutor Trigger */}
+                        <div 
+                            className="miron-voice-card" 
+                            onClick={() => window.dispatchEvent(new CustomEvent('miron:open-live-session'))}
+                        >
+                            <div className="mvc-avatar-wrap">
+                                <img src={MIRON_AVATAR_URL} alt="Miron" className="mvc-avatar-img" />
+                                <div className="mvc-audio-wave">
+                                    <span className="mvc-bar b1"></span>
+                                    <span className="mvc-bar b2"></span>
+                                    <span className="mvc-bar b3"></span>
                                 </div>
                             </div>
-                            <i className="fas fa-chevron-right action-chevron"></i>
+                            <div className="mvc-content">
+                                <div className="mvc-tag">
+                                    <i className="fas fa-headphones-simple"></i>
+                                    <span>{t('voice_tutor_badge', '1-on-1 Voice Tutor')}</span>
+                                </div>
+                                <h3 className="mvc-title">{t('voice_study_title', 'Voice Study with Miron')}</h3>
+                                <p className="mvc-subtitle">
+                                    {t('voice_study_desc', 'Tap to talk & review textbooks out loud')}
+                                </p>
+                            </div>
+                            <div className="mvc-mic-btn" title="Start voice study">
+                                <i className="fas fa-microphone"></i>
+                            </div>
                         </div>
 
                         {/* Current Study Desk Anchor */}
@@ -377,22 +388,7 @@ const Study = () => {
             )}
             {activeExamFromBook && <ExamSession exam={activeExamFromBook} onClose={() => setActiveExamFromBook(null)} />}
             
-            <PlanMyDayModal 
-                isOpen={isPlannerOpen}
-                onClose={() => setIsPlannerOpen(false)}
-                onExecuteTask={(taskBlock) => {
-                    if (taskBlock?.action?.type === 'open_book' || taskBlock?.task_type === 'read' || taskBlock?.task_type === 'catch_up') {
-                        setTargetPage(taskBlock.action?.page_number || 1);
-                        setActiveBook({
-                            id: taskBlock.action?.book_id || taskBlock.book_id,
-                            title: taskBlock.course_title,
-                            course_code: taskBlock.course_code
-                        });
-                    } else if (taskBlock?.action?.type === 'open_exam' || taskBlock?.task_type === 'drill') {
-                        setIsExamPavilionOpen(true);
-                    }
-                }}
-            />
+
 
             {isFlashcardsOpen && (
                 <FlashcardPavilion onClose={() => setIsFlashcardsOpen(false)} />
