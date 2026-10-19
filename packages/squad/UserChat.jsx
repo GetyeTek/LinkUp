@@ -14,6 +14,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
     const { user: userProfile } = usePlatform();
     const [activeConvId, setActiveConvId] = useState(chat.conversation_id);
     const [messages, setMessages] = useState([]);
+    const [isLoadingMsgs, setIsLoadingMsgs] = useState(!!chat.conversation_id);
     const [otherReadAt, setOtherReadAt] = useState(null);
     const [isOtherTyping, setIsOtherTyping] = useState(false);
     const [activeMenu, setActiveMenu] = useState(null);
@@ -163,13 +164,18 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
 
 
     const fetchMessages = async () => {
-        if (!activeConvId) return;
+        if (!activeConvId) {
+            setIsLoadingMsgs(false);
+            return;
+        }
+        setIsLoadingMsgs(true);
         const { data } = await supabase
             .from('messages')
             .select('*')
             .eq('conversation_id', activeConvId)
             .order('created_at', { ascending: true });
         if (data) setMessages(data.map(m => ({ ...m, status: 'sent' })));
+        setIsLoadingMsgs(false);
     };
 
     const fetchOtherReadReceipt = async () => {
@@ -489,7 +495,25 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                 const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
                 isAutoScrollEnabled.current = scrollHeight - scrollTop - clientHeight < 250;
             }}>
-                {messages.map((m) => {
+                {isLoadingMsgs ? (
+                    <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--accent-teal)' }}>
+                        <i className="fas fa-circle-notch fa-spin fa-2x"></i>
+                    </div>
+                ) : messages.length === 0 ? (
+                    <div className="dm-icebreaker-card" onClick={() => {
+                        if (navigator.vibrate) navigator.vibrate([15, 30]);
+                        handleSend({ text: '👋', attachments: [] });
+                    }}>
+                        <div className="wave-sticker-orb">
+                            <span className="wave-emoji-animated">👋</span>
+                        </div>
+                        <h3>Say hello to {chatTitle.split(' ')[0]}!</h3>
+                        <p>Tap to send a wave and kick off the conversation</p>
+                        <button type="button" className="wave-action-pill">
+                            <span>Send Wave 👋</span>
+                        </button>
+                    </div>
+                ) : messages.map((m) => {
                     const isMine = m.sender_id === currentUser.id;
                     const repliedMsg = m.reply_to_id ? messages.find(msg => msg.id === m.reply_to_id) : null;
                     const isMissingReply = m.reply_to_id && !repliedMsg;
