@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>LinkUp: Visual Notebook Studio</title>
 
-    <!-- Typography & Icons -->
+    <!-- Typography & Icons (Ethiopic & Latin) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Abyssinica+SIL&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- KaTeX Math Rendering -->
@@ -38,13 +38,19 @@
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Noto Sans Ethiopic', 'Poppins', sans-serif;
             background: var(--bg-dark);
             color: var(--text-main);
             height: 100dvh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+        }
+
+        /* Ethiopic typographic optimization */
+        .v-notebook-sheet {
+            font-family: 'Noto Sans Ethiopic', 'Abyssinica SIL', sans-serif;
+            line-height: 1.75;
         }
 
         /* Top Mobile Bar */
@@ -910,9 +916,13 @@
                     log(`Warning: Sheet p.${page} has no body HTML content.`, "warn");
                 }
 
+                // Extract language with Amharic (am) default
+                const langMatch = attrStr.match(/lang\s*=\s*['"]([^'"]+)['"]/i);
+                const rawLang = langMatch ? langMatch[1].toLowerCase().trim() : "am";
+
                 parsedSheets.push({
                     course_code: canonicalCourse,
-                    language: "en",
+                    language: rawLang || "am",
                     page_number: isNaN(page) ? 1 : page,
                     topic_title: title,
                     scoped_css: css,
@@ -1048,7 +1058,7 @@
                     .from('course_visual_notebooks')
                     .upsert({
                         course_code: sheet.course_code,
-                        language: 'en',
+                        language: sheet.language || 'am',
                         page_number: sheet.page_number,
                         topic_title: sheet.topic_title,
                         scoped_css: sheet.scoped_css,
@@ -1083,7 +1093,7 @@
                         .from('course_visual_notebooks')
                         .upsert({
                             course_code: sheet.course_code,
-                            language: 'en',
+                            language: sheet.language || 'am',
                             page_number: sheet.page_number,
                             topic_title: sheet.topic_title,
                             scoped_css: sheet.scoped_css,
