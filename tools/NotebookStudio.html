@@ -288,23 +288,33 @@
             font-family: 'Roboto Mono', monospace;
         }
 
-        /* LIVE SIMULATOR VIEW */
-        .preview-sticky-bar {
-            position: sticky;
-            top: 0;
-            background: rgba(14, 14, 18, 0.95);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
-            padding: 8px 12px;
+        /* LIVE SIMULATOR VIEW (CONTINUOUS FEED) */
+        .preview-content-box {
+            padding: 0.75rem 0.5rem 3rem;
             display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            white-space: nowrap;
-            z-index: 20;
-            -webkit-overflow-scrolling: touch;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            transition: all 0.3s ease;
         }
 
-        .preview-sticky-bar::-webkit-scrollbar { display: none; }
+        /* Desktop Canvas Simulator Mode */
+        .preview-content-box.desktop-mode {
+            padding: 1.5rem 1rem 4rem;
+            overflow-x: auto;
+            align-items: flex-start;
+        }
+
+        .preview-content-box.desktop-mode #preview-viewport {
+            min-width: 860px !important;
+            max-width: 860px !important;
+            margin: 0 auto;
+            background: #0d0d11;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 18px;
+            padding: 1.5rem;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+        }
 
         .pill-chip {
             padding: 6px 14px;
@@ -317,20 +327,6 @@
             cursor: pointer;
             transition: all 0.2s ease;
             white-space: nowrap;
-        }
-
-        .pill-chip.active {
-            background: var(--accent-teal-soft);
-            border-color: var(--accent-teal);
-            color: var(--accent-teal);
-        }
-
-        .preview-content-box {
-            padding: 0.5rem 0.5rem 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
         }
 
         /* Rendered Visual Sheet Wrapping - Unconstrained Canvas */
@@ -533,6 +529,9 @@
             <span>Visual Studio</span>
         </div>
         <div class="header-actions">
+            <button class="icon-btn" id="btn-device-toggle" onclick="toggleDeviceMode()" title="Toggle Desktop Canvas">
+                <i class="fas fa-desktop" id="device-icon"></i>
+            </button>
             <button class="icon-btn" onclick="openModal('modal-terminal')" title="Console Logs">
                 <i class="fas fa-terminal"></i>
                 <span class="badge-dot" id="log-indicator" style="display: none;"></span>
@@ -592,17 +591,15 @@
 
         <!-- VIEW 2: LIVE SIMULATOR -->
         <section class="tab-view" id="view-preview">
-            <div class="preview-sticky-bar" id="preview-pills"></div>
-
-            <div class="preview-content-box">
+            <div class="preview-content-box" id="preview-content-container">
                 <div id="preview-viewport" style="width: 100%;">
-                    <!-- Rendered Sheet Canvas -->
+                    <!-- Rendered Continuous Sheets Canvas -->
                 </div>
 
-                <!-- Single Sheet Action -->
-                <div style="width: 100%; max-width: 620px; margin-top: 1.5rem;" id="single-approve-wrap">
-                    <button class="btn-core btn-primary" style="width: 100%;" onclick="uploadActiveSheet()">
-                        <i class="fas fa-cloud-arrow-up"></i> Publish Active Sheet
+                <!-- Continuous Publish All Action -->
+                <div style="width: 100%; max-width: 680px; margin-top: 2rem;" id="continuous-publish-wrap">
+                    <button class="btn-core btn-primary" style="width: 100%;" id="btn-preview-publish-all" onclick="uploadAllSheets()">
+                        <i class="fas fa-cloud-arrow-up"></i> Publish All Staged Sheets (<span id="preview-batch-count">0</span>)
                     </button>
                 </div>
             </div>
@@ -965,17 +962,42 @@
             `).join('');
         }
 
-        function previewSingleSheet(index) {
-            activeSheetIndex = index;
-            switchTab('preview');
+        let isDesktopView = false;
+        function toggleDeviceMode() {
+            isDesktopView = !isDesktopView;
+            const container = document.getElementById('preview-content-container');
+            const icon = document.getElementById('device-icon');
+            const btn = document.getElementById('btn-device-toggle');
+
+            if (isDesktopView) {
+                container.classList.add('desktop-mode');
+                icon.className = 'fas fa-mobile-screen';
+                btn.style.color = 'var(--accent-teal)';
+                btn.style.borderColor = 'var(--accent-teal)';
+                showToast("Desktop View: 860px Canvas");
+            } else {
+                container.classList.remove('desktop-mode');
+                icon.className = 'fas fa-desktop';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+                showToast("Mobile View: Fluid Width");
+            }
         }
 
-        // SIMULATOR RENDERING
+        function previewSingleSheet(index) {
+            switchTab('preview');
+            setTimeout(() => {
+                const target = document.getElementById(`sheet-block-${index}`);
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        // CONTINUOUS SIMULATOR RENDERING
         function renderPreview() {
             const viewport = document.getElementById('preview-viewport');
-            const pillsBar = document.getElementById('preview-pills');
             const styleTag = document.getElementById('preview-scoped-css');
-            const approveWrap = document.getElementById('single-approve-wrap');
+            const publishWrap = document.getElementById('continuous-publish-wrap');
+            const batchCount = document.getElementById('preview-batch-count');
 
             if (parsedSheets.length === 0) {
                 viewport.innerHTML = `
@@ -983,52 +1005,43 @@
                         <i class="fas fa-layer-group" style="font-size: 2rem; margin-bottom: 12px; display: block; opacity: 0.3;"></i>
                         No sheets staged to preview.<br>Go to <strong>Ingest</strong> tab to parse content.
                     </div>`;
-                pillsBar.innerHTML = '';
                 styleTag.textContent = '';
-                approveWrap.style.display = 'none';
+                if (publishWrap) publishWrap.style.display = 'none';
                 return;
             }
 
-            approveWrap.style.display = 'block';
+            if (publishWrap) publishWrap.style.display = 'block';
+            if (batchCount) batchCount.innerText = parsedSheets.length;
 
-            pillsBar.innerHTML = parsedSheets.map((s, idx) => `
-                <div class="pill-chip ${idx === activeSheetIndex ? 'active' : ''}" onclick="selectPreviewSheet(${idx})">
-                    p.${s.page_number} - ${s.course_code}
-                </div>
-            `).join('');
+            // Concatenate all scoped styles across all sheets
+            styleTag.textContent = parsedSheets.map(s => s.scoped_css || '').join('\n\n');
 
-            const sheet = parsedSheets[activeSheetIndex];
-            styleTag.textContent = sheet.scoped_css || '';
-
-            viewport.innerHTML = `
-                <article class="v-notebook-sheet">
+            // Render all sheets continuously
+            viewport.innerHTML = parsedSheets.map((sheet, idx) => `
+                <article class="v-notebook-sheet" id="sheet-block-${idx}" style="margin-bottom: 2.5rem;">
                     <div class="v-sheet-anchor-bar">
                         <span class="anchor-pill">
                             <i class="fas fa-bookmark"></i> Page ${sheet.page_number}
                         </span>
+                        <span style="font-weight: 600; color: #fff;">${sheet.topic_title}</span>
                         <span>${sheet.course_code}</span>
                     </div>
                     <div class="v-bento-canvas">
                         ${DOMPurify.sanitize(sheet.html_body, { USE_PROFILES: { html: true, svg: true, mathMl: true } })}
                     </div>
                 </article>
-            `;
+            `).join('<div style="height: 1px; background: var(--border); margin: 2rem 0; width: 100%;"></div>');
 
-            // Render LaTeX formulas
+            // Render LaTeX formulas across the entire continuous document
             renderMathInElement(viewport, {
                 delimiters: [
-                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: true },
                     { left: "\\[", right: "\\]", display: true },
                     { left: "$", right: "$", display: false },
                     { left: "\\(", right: "\\)", display: false }
                 ],
                 throwOnError: false
             });
-        }
-
-        function selectPreviewSheet(idx) {
-            activeSheetIndex = idx;
-            renderPreview();
         }
 
         // SUPABASE SYNC
