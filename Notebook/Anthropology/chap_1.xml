@@ -1,0 +1,1211 @@
+<!-- SHEET 1 -->
+<notebook_sheet course="ANTH 1012" lang="am" page="2">
+  <title>1.1 Anthropology ምንድን ነው? (Definition, Scope &amp; Historical Development)</title>
+  <scoped_css>
+    .sheet-canvas {
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Ethiopic", sans-serif;
+      line-height: 1.8;
+      color: #1e293b;
+      background: #fdfdfd;
+      padding: 1.25rem;
+    }
+    .welcome-card {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: #ffffff;
+      padding: 1.5rem;
+      border-radius: 18px;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.25);
+    }
+    .welcome-card h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: clamp(1.4rem, 3.5vw, 1.9rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .welcome-card p {
+      margin: 0;
+      font-size: 1rem;
+      color: #e2e8f0;
+    }
+    .section-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 2rem 0 1rem 0;
+      border-left: 5px solid #2563eb;
+      padding-left: 0.75rem;
+    }
+    .etymology-box {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 1.25rem;
+      margin-bottom: 1.75rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+    }
+    .etymology-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    @media (min-width: 640px) {
+      .etymology-grid {
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+      }
+    }
+    .root-card {
+      background: #f8fafc;
+      border-left: 4px solid #3b82f6;
+      padding: 1rem;
+      border-radius: 0 12px 12px 0;
+    }
+    .root-card.plus-sign {
+      border: none;
+      background: transparent;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: #64748b;
+    }
+    .root-term {
+      font-weight: 800;
+      color: #1e3a8a;
+      font-size: 1.15rem;
+    }
+    .root-def {
+      color: #475569;
+      font-size: 0.95rem;
+      margin-top: 0.2rem;
+    }
+    .equation-result {
+      background: #eff6ff;
+      border: 1px dashed #60a5fa;
+      border-radius: 12px;
+      padding: 1rem;
+      margin-top: 1rem;
+      text-align: center;
+      font-weight: 700;
+      color: #1e40af;
+      font-size: 1.05rem;
+    }
+    .disciplines-contrast {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    @media (min-width: 768px) {
+      .disciplines-contrast {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .disc-card {
+      border-radius: 14px;
+      padding: 1.2rem;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+    .disc-card.others {
+      border-top: 4px solid #94a3b8;
+    }
+    .disc-card.anthro {
+      border-top: 4px solid #2563eb;
+      background: #f8faff;
+    }
+    .scope-matrix {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    @media (min-width: 640px) {
+      .scope-matrix {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .scope-card {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 1.2rem;
+    }
+    .scope-tag {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      margin-bottom: 0.5rem;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .timeline-rail {
+      position: relative;
+      border-left: 3px solid #3b82f6;
+      margin-left: 1rem;
+      padding-left: 1.25rem;
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .timeline-node {
+      position: relative;
+      margin-bottom: 1.5rem;
+    }
+    .timeline-node::before {
+      content: "";
+      position: absolute;
+      left: -1.7rem;
+      top: 0.4rem;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #2563eb;
+      border: 3px solid #ffffff;
+      box-shadow: 0 0 0 2px #3b82f6;
+    }
+    .timeline-year {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #2563eb;
+      text-transform: uppercase;
+    }
+    .timeline-title {
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0.2rem 0;
+      font-size: 1rem;
+    }
+    .timeline-desc {
+      font-size: 0.95rem;
+      color: #475569;
+      margin: 0;
+    }
+    .quote-box {
+      background: #fafaf9;
+      border-left: 4px solid #d97706;
+      border-radius: 0 14px 14px 0;
+      padding: 1.25rem;
+      margin: 1.5rem 0;
+      font-style: italic;
+    }
+    .quote-author {
+      font-style: normal;
+      font-weight: 700;
+      color: #b45309;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .exam-badge {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-left: 5px solid #ef4444;
+      padding: 1rem 1.25rem;
+      border-radius: 0 12px 12px 0;
+      margin-top: 1.5rem;
+    }
+    .exam-badge strong {
+      color: #b91c1c;
+      display: block;
+      margin-bottom: 0.3rem;
+      font-size: 0.95rem;
+    }
+  </scoped_css>
+  <html>
+    <div class="sheet-canvas">
+      <div class="welcome-card">
+        <h1>ሰላም Guys! እንኳን ወደ Anthropology (Anth 101) በሰላም መጣችሁ</h1>
+        <p>ይህ ኮርስ በጣም Interesting እና እጅግ ሰፊ የሆነ academic discipline ነው። የሰው ልጅን (Humankind / Human beings) ከጥንት አፈጣጠሩ እስከ ዛሬው ዘመናዊ ማንነቱ፣ ከአካላዊ አወቃቀሩ እስከ ረቂቅ ባህሉ ድረስ ከጫፍ እስከ ጫፍ በጥልቀት የሚያጠና ሳይንስ ነው። እንደተለመደው "Cheat sheet" ሳይሆን ፅንሰ-ሀሳቦቹ በደንብ ገብቷችሁ በፈተና A+ እንድታመጡ በሚያግዝ መልኩ በጥልቀት እንየው!</p>
+      </div>
+
+      <div class="section-title">1.1.1 Concepts in Anthropology (ትርጓሜና መሠረታዊ ፅንሰ-ሀሳቦች)</div>
+      
+      <div class="etymology-box">
+        <p style="margin-top:0;">ቃሉን ከስረ-መሰረቱ በቀላሉ እንበጥሰው። Anthropology የሚለው ቃል የመጣው ከሁለት ጥንታዊ የግሪክ ቃላት ውህደት ነው፦</p>
+        
+        <div class="etymology-grid">
+          <div class="root-card">
+            <div class="root-term">Anthropos (አንትሮፖስ)</div>
+            <div class="root-def">የሰው ልጅ / ሰው (Human being / Humankind)</div>
+          </div>
+          <div class="root-card plus-sign">+</div>
+          <div class="root-card">
+            <div class="root-term">Logos (ሎጎስ)</div>
+            <div class="root-def">ጥናት / ሳይንስ / ምክንያታዊ ምርምር (Study / Reason / Science)</div>
+          </div>
+        </div>
+
+        <div class="equation-result">
+          Anthropo-logy = "Reason about humans" ወይም "The study or science of humankind or humanity"
+        </div>
+      </div>
+
+      <p>በቃላዊ ፍቺው (Literal definition) ስንወስደው አንትሮፖሎጂ "የሰው ልጆች ጥናት" ነው። ነገር ግን ይህ ፍቺ ብቻውን በቂ ማብራሪያ አይሰጠንም፤ ምክንያቱም በርካታ ሌሎች የሳይንስ ዘርፎች ሰውን ያጠናሉ፦</p>
+
+      <div class="disciplines-contrast">
+        <div class="disc-card others">
+          <div style="font-weight:700; color:#475569; margin-bottom:0.5rem;">ሌሎች ተዛማጅ ሳይንሶች (Single-Focus Disciplines)</div>
+          <ul style="margin:0; padding-left:1.2rem; font-size:0.95rem; color:#475569;">
+            <li><strong>Biology፦</strong> ስለ ሰው አካላዊ እና ህይወታዊ ክፍል ያጠናል</li>
+            <li><strong>History፦</strong> ስለ ሰው ልጅ ያለፈ ታሪክ እና መዛግብት ያጠናል</li>
+            <li><strong>Psychology፦</strong> ስለ ግለሰብ አእምሮ እና ባህሪ ያጠናል</li>
+            <li><strong>Sociology / Economics / Pol. Sci፦</strong> ስለ ማህበረሰብ፣ ሃብት እና አስተዳደር በተናጠል ያጠናሉ</li>
+          </ul>
+        </div>
+        <div class="disc-card anthro">
+          <div style="font-weight:700; color:#1e40af; margin-bottom:0.5rem;">Anthropology በምን ይለያል? (The Differentiator)</div>
+          <p style="margin:0; font-size:0.95rem; color:#1e293b;">
+            አንትሮፖሎጂ ልዩ የሚያደርገው <strong>Holistic (ሁለንተናዊ)</strong> በመሆኑ ነው። የሰው ልጅን <em>In its entirety</em> (በሙሉ አካሉና ሁለንተናዊ ማንነቱ) ነው የሚያጠናው። የሰው ልጅ ሁለት የማይነጣጠሉ ዋና ዋና ባህሪያት አሉት፦ <strong>Biological (ተፈጥሯዊ)</strong> እና <strong>Cultural (ባህላዊ)</strong>። ሁለቱ የማይነጣጠሉ (Inseparable) ናቸው፤ ባህል በሰው አካል ላይ ተፅዕኖ ያሳድራል፤ ሰውነትም በባህል ላይ አሻራውን ያሳርፋል (Culture influences human physical structures and vice-versa)።
+          </p>
+        </div>
+      </div>
+
+      <p>በተለየ እና በጠለቀ አገላለጽ አንትሮፖሎጂ የሚከተሉትን ይመረምራል፦</p>
+      <ul style="color:#334155; padding-left:1.4rem;">
+        <li>የሰው ልጆች በማህበራዊ ቡድን ውስጥ ሆነው አብረው ለመኖር የሚማሯቸውንና የሚጋሯቸውን የህይወት ስልቶች (Strategies for living that are learned and shared) ያጠናል::</li>
+        <li>የሰው ልጆች እንደ አንድ ዝርያ (Homo sapiens) የሚጋሯቸውን የጋራ ባህሪያት እና በተለያዩ አካባቢዎች የሚኖሩበትን ልዩ ልዩ መንገዶች ይመረምራል::</li>
+        <li>የማህበራዊ ቡድኖች ውጤት የሆኑትን ቁሳዊ ባህሎች (Material cultures/objects) እንዲሁም ረቂቅ ፈጠራዎችን (Non-material creations - እምነት፣ እሴት፣ ማህበራዊ ተቋማት) ይተነትናል።</li>
+      </ul>
+
+      <div style="background:#f1f5f9; border-radius:12px; padding:1.2rem; margin:1.5rem 0;">
+        <div style="font-weight:700; color:#0f172a; margin-bottom:0.4rem;">አንትሮፖሎጂ ሁለት ዋና ዋና ግንዛቤዎችን (Two kinds of insight) ይሰጣል፦</div>
+        <ol style="margin:0; padding-left:1.3rem; color:#334155;">
+          <li><strong>እውቀት ማመንጨት፦</strong> በአለም ላይ ስላሉት ትክክለኛ ስነ-ህይወታዊ እና ባህላዊ ልዩነቶች (Actual biological and cultural variations) ጥልቅ እውቀት ማመንጨት።</li>
+          <li><strong>ዘዴና ንድፈ-ሀሳብ ማቅረብ፦</strong> እነዚህን ልዩ ልዩ የሰው ልጅ መገለጫዎች ለመመርመር፣ ለማወዳደር፣ ለመረዳት እና ችግሮችን ለመፍታት የሚያስችሉ የምርምር ዘዴዎችን እና ንድፈ-ሀሳባዊ እይታዎችን (Methods and theoretical perspectives) ማቅረብ።</li>
+        </ol>
+      </div>
+
+      <div class="section-title">1.1.2 The Historical Development of Anthropology (ታሪካዊ እድገት)</div>
+      <p>እንደ ሌሎች የማህበራዊ ሳይንስ ዘርፎች ሁሉ አንትሮፖሎጂም በአንጻራዊነት የቅርብ ጊዜ ሳይንስ (Fairly recent discipline) ነው። አሁን የያዘውን ቅርጽ ያገኘው በ20ኛው ክፍለ ዘመን ቢሆንም፣ ታሪካዊ መነሻዎቹ የሚከተሉትን ምዕራፎች አልፈዋል፦</p>
+
+      <div class="timeline-rail">
+        <div class="timeline-node">
+          <div class="timeline-year">ጥንታዊ ዘመን (Ancient &amp; Medieval)</div>
+          <div class="timeline-title">የግሪክ፣ ሮማን እና ዕብራውያን ፈላስፎች</div>
+          <p class="timeline-desc">ስለ ሰው ልጅ ተፈጥሮ፣ መገኛ፣ እጣ-ፈንታ እና ስለ ሰው ልጆች ስነ-ምግባራዊ ግንኙነቶች (Morality &amp; ethics) መመራመር ጀመሩ።</p>
+        </div>
+        <div class="timeline-node">
+          <div class="timeline-year">19ኛው ክፍለ ዘመን (19th Century)</div>
+          <div class="timeline-title">አካዳሚያዊ ልደት (Birth as Academic Discipline)</div>
+          <p class="timeline-desc">በ18ኛው ክፍለ ዘመን የኢንላይተንመንት ንቅናቄ (Enlightenment - የሰው ልጅ እድገት እና የአእምሮ/ምክንያት ሃይል) እና በዳርዊን የዝግመተ-ለውጥ ንድፈ-ሀሳብ (Darwinian Theory of Evolution) ተመስርቶ ተወለደ።</p>
+        </div>
+        <div class="timeline-node">
+          <div class="timeline-year">Late 1870s – 1880s</div>
+          <div class="timeline-title">እንደ ሙያ መመስረት እና የሙዚየሞች ዘመን</div>
+          <p class="timeline-desc">በ1870ዎቹ ማብቂያ እንደ ሙያ ብቅ አለ። መነሻውም በሙዚየሞች (Museums) ውስጥ ነበር፤ በወቅቱ በአውሮፓ፣ በሰሜንና ደቡብ አሜሪካ ስለ ሰው ልጅ የሚያጠኑ በርካታ ሙዚየሞች ተቋቋሙ። የምዕራባውያን የቅኝ ግዛት መስፋፋት (Colonial expansion) ህዝቦችን በደንብ ለመረዳት ለዲሲፕሊኑ እድገት ትልቅ ግፊት (Major impetus) ሰጠ።</p>
+        </div>
+        <div class="timeline-node">
+          <div class="timeline-year">Early 1900s – Mid 1900s</div>
+          <div class="timeline-title">ከEthnography ወደ Ethnology ሽግግር</div>
+          <p class="timeline-desc">በ1900ዎቹ መጀመሪያ ላይ "ባህላዊ" ወይም "ቀላል" በሚባሉ ጥቃቅን ማህበረሰቦች ውስጥ ማህበራዊና ባህላዊ ልዩነቶችን ዝርዝር መረጃ በመመዝገብ (Ethnography) ተጠምደው የነበረ ሲሆን፣ በ1950ዎቹ አጋማሽ ግን አጠቃላይ የሰው ልጆችን የጋራ ህጎች ወደ ማወዳደር (Ethnology) ተሸጋገሩ።</p>
+        </div>
+        <div class="timeline-node">
+          <div class="timeline-year">Late 1950s</div>
+          <div class="timeline-title">አንትሮፖሎጂ በኢትዮጵያ (Anthropology in Ethiopia)</div>
+          <p class="timeline-desc">በኢትዮጵያ ፕሮፌሽናል አንትሮፖሎጂስቶች ባህልና ማህበረሰብን በጥልቀት እና በተጠናከረ መልኩ ማጥናት የጀመሩት ከ1950ዎቹ ማብቂያ ጀምሮ ሲሆን፣ የመጀመሪያው ትኩረትም የተወሰኑ ማህበረሰቦችን የአኗኗር ዘይቤና ወጎች መግለጽ (Ethnography) ነበር።</p>
+        </div>
+      </div>
+
+      <div class="section-title">1.1.3 Scope and Subject Matter of Anthropology (የጥናቱ ወሰን)</div>
+      <p>የአንትሮፖሎጂ የጥናት አድማስ እና ጥልቀት ወሰን የለውም ማለት ይቻላል (Breadth and depth is immense)፦</p>
+
+      <div class="scope-matrix">
+        <div class="scope-card">
+          <span class="scope-tag">በጊዜ (Temporal Dimension)</span>
+          <p style="margin:0; font-size:0.95rem; color:#334155;">ከሰው ልጅ አፈጣጠር (ከሚሊዮን አመታት በፊት - Past)፣ እስከ ዛሬው ዘመን (Present)፣ አልፎም እስከ ወደፊቱ እጣ-ፈንታ (Future) ድረስ ያለውን ይዳስሳል።</p>
+        </div>
+        <div class="scope-card">
+          <span class="scope-tag">በቦታ (Spatial Dimension)</span>
+          <p style="margin:0; font-size:0.95rem; color:#334155;">ከአርክቲክ በረዶ እስከ አፍሪካ በረሃዎች፣ ከትንንሽ አዳኝና ሰብሳቢ መንደሮች እስከ ግዙፍ ሜትሮፖሊታን ከተሞች (Megapolis) ድረስ ይዘልቃል።</p>
+        </div>
+      </div>
+
+      <div class="quote-box">
+        “Anthropology has humanity as its object of research, but unlike the other human sciences, it tries to grasp its object through its most diverse manifestations.”
+        <div class="quote-author">— Claude Lévi-Strauss (1983, p. 49)</div>
+      </div>
+
+      <p>አንትሮፖሎጂ <em>"ትላልቅ ጥያቄዎችን ይጠይቃል፣ ነገር ግን በጣም ወሳኝ ግንዛቤዎቹን የሚያገኘው ከጥቃቅን ቦታዎች ነው"</em> (Anthropology asks large questions, while at the same time it draws its most important insights from small places)። በአጭሩ ዋና አላማው የሰው ልጅ መሆን ምን ማለት እንደሆነ በሰፊው መግለጽ ነው (To describe, in the broadest sense, what it means to be human)።</p>
+
+      <div class="exam-badge">
+        <strong>📌 Note for Exam:</strong>
+        Anthropology የሰውን ልጅ <em>In its entirety</em> (በሙሉ አካሉና ሁለንተናዊ ማንነቱ) ነው የሚያጠናው። Biological እና Cultural ባህሪያት የማይነጣጠሉ (Inseparable) መሆናቸውን በጽኑ ያምናል።
+      </div>
+    </div>
+  </html>
+</notebook_sheet>
+
+<!-- SHEET 2 -->
+<notebook_sheet course="ANTH 1012" lang="am" page="6">
+  <title>1.2 The Four Sub-fields of Anthropology (አራቱ የአንትሮፖሎጂ ዘርፎች)</title>
+  <scoped_css>
+    .sheet-canvas {
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Ethiopic", sans-serif;
+      line-height: 1.8;
+      color: #1e293b;
+      background: #fdfdfd;
+      padding: 1.25rem;
+    }
+    .header-pill {
+      background: #f1f5f9;
+      border-left: 5px solid #0284c7;
+      padding: 1rem 1.25rem;
+      border-radius: 0 14px 14px 0;
+      margin-bottom: 2rem;
+    }
+    .header-pill h2 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 1.3rem;
+    }
+    .field-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.05);
+    }
+    .field-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 800;
+      padding: 0.35rem 0.8rem;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+    .badge-bio { background: #dcfce7; color: #166534; }
+    .badge-arch { background: #ffedd5; color: #9a3412; }
+    .badge-ling { background: #f3e8ff; color: #6b21a8; }
+    .badge-soc { background: #e0e7ff; color: #3730a3; }
+
+    .sub-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    @media (min-width: 640px) {
+      .sub-grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+      .sub-grid-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+    .mini-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .mini-box h4 {
+      margin: 0 0 0.3rem 0;
+      color: #0f172a;
+      font-size: 1rem;
+    }
+    .remains-card {
+      border-radius: 12px;
+      padding: 1rem;
+      background: #fffaf5;
+      border: 1px solid #fed7aa;
+    }
+    .remains-tag {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #c2410c;
+      text-transform: uppercase;
+      display: inline-block;
+      margin-bottom: 0.3rem;
+    }
+    .table-container {
+      overflow-x: auto;
+      margin: 1.5rem 0;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+    }
+    table.custom-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+    table.custom-table th {
+      background: #f1f5f9;
+      color: #1e293b;
+      padding: 0.85rem 1rem;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    table.custom-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .applied-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .applied-tag {
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.3rem 0.7rem;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+    }
+    .exam-highlight {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-left: 4px solid #d97706;
+      border-radius: 0 10px 10px 0;
+      padding: 0.85rem 1.1rem;
+      margin-top: 1rem;
+      font-size: 0.95rem;
+    }
+  </scoped_css>
+  <html>
+    <div class="sheet-canvas">
+      <div class="header-pill">
+        <h2>1.2 The Four Sub-fields of Anthropology (የአንትሮፖሎጂ ዘርፎች)</h2>
+        <p style="margin:0.3rem 0 0 0; color:#475569; font-size:0.95rem;">አንትሮፖሎጂ እንደ ውቅያኖስ እጅግ ሰፊ በመሆኑ የሰው ልጅን ማንነት በጥልቀት ለመረዳት በአራት ዋና ዋና ክፍሎች (Sub-fields) ይከፈላል።</p>
+      </div>
+
+      <!-- 1. PHYSICAL/BIOLOGICAL -->
+      <div class="field-card">
+        <span class="field-badge badge-bio">Sub-field 1</span>
+        <h3 style="margin:0 0 0.5rem 0; color:#0f172a; font-size:1.25rem;">1. Physical / Biological Anthropology (ስነ-ህይወታዊ አንትሮፖሎጂ)</h3>
+        <p style="margin-top:0;">ይህ ዘርፍ ከተፈጥሮ ሳይንስ በተለይም ከባዮሎጂ ጋር በጣም የተቀራረበ ነው። የሰውን ልጅ እንደ አንድ የህይወት ዘር (Biological organism) ያጠናል፤ ነገር ግን ከተራ ባዮሎጂስቶች የሚለየው <strong>ባህል እና አካባቢ (Culture &amp; Environment)</strong> በሰው ልጅ ዝግመተ-ለውጥ እና በአካላዊ ልዩነቶች ላይ ያሳደሩትን ተፅዕኖ ይመረምራል።</p>
+        <p>የሰው ስነ-ህይወት በማህበራዊ ባህሪያችን (ለምሳሌ በጋብቻ አወቃቀር፣ በስራ ክፍፍል፣ በጾታ አመለካከት) ላይ ተፅዕኖ ሲያሳድር፤ ባህልም በበኩሉ በስነ-ህይወታችን (የቁንጅና መለኪያዎች፣ የምግብ ምርጫዎች) ላይ ተፅዕኖ ያሳድራል።</p>
+        
+        <div style="font-weight:700; color:#1e293b; margin-top:1rem;">ይህ ዘርፍ በሁለት ዋና ዋና የምርምር መስኮች (Two broad areas of investigation) ላይ ያተኩራል፦</div>
+        <div class="sub-grid sub-grid-2">
+          <div class="mini-box">
+            <h4>ሀ) Human Evolution (የሰው ልጅ ዝግመተ-ለውጥ)</h4>
+            <p style="margin:0; font-size:0.92rem; color:#475569;">ቀለል ካሉ አወቃቀሮች ወደ ተወሳሰቡ የሰው አምሳል ዝርያዎች (Hominids) የተደረገውን የለውጥ ሂደት ከቅሪተ-አካላት (Fossils/bones) በመነሳት ያጠናል። በሁለት ንዑሳን ክፍሎች ይከፈላል፦</p>
+            <ul style="margin:0.5rem 0 0 0; padding-left:1.1rem; font-size:0.9rem; color:#334155;">
+              <li><strong>Paleoanthropology (ፓሊዮአንትሮፖሎጂ)፦</strong> "Paleo" ማለት ጥንታዊ/old ማለት ነው። ከቅድመ-ታሪክ ጀምሮ ያሉ የቅሪተ-አካል መረጃዎችን በመተንተን ዘመናዊ ሰውን ከጥንታዊ ቅድመ-አያቶቹ ጋር የሚያገናኘውን የጠፋ ሰንሰለት (Missing link) ያጠናል። (ለምሳሌ፦ ድንቅነሽ/Lucy)።</li>
+              <li><strong>Primatology (ፕራይማቶሎጂ)፦</strong> የቅርብ ዘመዶቻችን የሆኑትን ፕራይሜቶች (Apes, Monkeys, Chimpanzees, Gorillas) አካላዊ አወቃቀር እና ማህበራዊ ባህሪ በማጥናት ስለ ሰው ልጅ የዝግመተ-ለውጥ ባህሪ ፍንጭ (Clue) ያፈላልጋል።</li>
+            </ul>
+          </div>
+          <div class="mini-box">
+            <h4>ለ) Human Genetics / Variation (ዘረ-መል እና ልዩነት)</h4>
+            <p style="margin:0; font-size:0.92rem; color:#475569;">በአለም ዙሪያ ያሉ ህዝቦች አካላዊ ገጽታ ለምን እንደሚለያይ በዘረ-መል (DNA እና RNA) ደረጃ ይመረምራል።</p>
+            <p style="margin:0.5rem 0 0 0; font-size:0.9rem; color:#334155;"><strong>የልዩነቶች ዋና ምንጮች፦</strong> የተፈጥሮ ምርጫ (Natural selection)፣ ጂኦግራፊያዊ መገለል (Geographical isolation) እና የዘረ-መል ሚውቴሽን (Genetic mutations) ናቸው።</p>
+            <p style="margin:0.5rem 0 0 0; font-size:0.9rem; color:#334155;"><strong>ተግባራዊ ፋይዳ፦</strong> ዝግመተ-ለውጥ እንዴት እንደሚሰራ ከማስረዳቱ ባሻገር፣ እንደ ማጭድ-ህዋስ ደም ማነስ (Sickle cell anemia) እና ሲስቲክ ፋይብሮሲስ (Cystic fibrosis) የመሳሰሉ በዘር የሚተላለፉ በሽታዎችን መነሻ ለመለየት ይረዳል።</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. ARCHAEOLOGY -->
+      <div class="field-card">
+        <span class="field-badge badge-arch">Sub-field 2</span>
+        <h3 style="margin:0 0 0.5rem 0; color:#0f172a; font-size:1.25rem;">2. Archaeological Anthropology / Archaeology (አርኪኦሎጂ)</h3>
+        <p style="margin-top:0;">አርኪኦሎጂ ያለፉ ማህበረሰቦችን የአኗኗር ዘይቤ ሰዎች ጥለውት በሄዱት ቁሳዊ ቅሪት (Material culture / Physical remains) በመቆፈር (Excavation) እና በመተንተን ያጠናል። ታሪክ (History) የተጻፉ ሰነዶች ላይ ሲመሰረት፣ አርኪኦሎጂ ግን ጽሁፍ ከመፈጠሩ በፊት የነበሩትንም ጭምር በቁሳቁስ ይመረምራል።</p>
+
+        <div style="font-weight:700; color:#0f172a; margin:1rem 0 0.5rem 0;">አርኪኦሎጂስቶች የሚያጠኗቸው 3ቱ ቅሪቶች (ለፈተና critical ነው)፦</div>
+        <div class="sub-grid sub-grid-3">
+          <div class="remains-card">
+            <span class="remains-tag">Movable &amp; Man-made</span>
+            <div style="font-weight:700; color:#9a3412; font-size:1.05rem;">1. Artifacts (አርቲፋክትስ)</div>
+            <p style="margin:0.3rem 0 0 0; font-size:0.9rem; color:#431407;">በሰው እጅ የተሰሩ እና ከአንድ ቦታ ወደ ሌላ ቦታ በቀላሉ ሊንቀሳቀሱ የሚችሉ። (ለምሳሌ፦ የድንጋይ መሳሪያዎች፣ ሸክላዎች፣ ጌጣጌጦች፣ ሳንቲሞች፣ የቀስት ጫፎች)።</p>
+          </div>
+          <div class="remains-card">
+            <span class="remains-tag">Immovable &amp; Man-made</span>
+            <div style="font-weight:700; color:#9a3412; font-size:1.05rem;">2. Features (ፊቸርስ)</div>
+            <p style="margin:0.3rem 0 0 0; font-size:0.9rem; color:#431407;">በሰው እጅ የተሰሩ ነገር ግን ሳይበላሹ ከቦታቸው ሊነቀሉ የማይችሉ (Immovable)። (ለምሳሌ፦ የቤት መሰረቶች፣ ጥንታዊ ህንፃዎች፣ ምድጃዎች/Fireplaces፣ ሃውልቶች/Steles፣ የቋሚ ምሰሶ ጉድጓዶች/Postholes)።</p>
+          </div>
+          <div class="remains-card">
+            <span class="remains-tag">Natural &amp; Organic</span>
+            <div style="font-weight:700; color:#9a3412; font-size:1.05rem;">3. Eco-facts (ኢኮ-ፋክትስ)</div>
+            <p style="margin:0.3rem 0 0 0; font-size:0.9rem; color:#431407;">በሰው እጅ ያልተሰሩ የተፈጥሮ ቅሪቶች፣ ነገር ግን በሰዎች ጥቅም ላይ የዋሉ። (ለምሳሌ፦ ሰዎች የበሏቸው የእንስሳት አጥንቶች፣ የአፈር ናሙናዎች፣ የእህል ዘሮች)። ድሮ የነበረውን የአየር ንብረት (Environment) ለማወቅ ይጠቅማሉ።</p>
+          </div>
+        </div>
+
+        <div style="background:#f8fafc; border-left:4px solid #ea580c; padding:1rem; border-radius:0 10px 10px 0; margin-top:1.25rem;">
+          <strong>የአርኪኦሎጂ ሁለት ዋና ዋና የጥናት መስኮች፦</strong>
+          <ul style="margin:0.3rem 0 0 0; padding-left:1.2rem; font-size:0.92rem; color:#334155;">
+            <li><strong>Prehistoric Archaeology (የቅድመ-ታሪክ አርኪኦሎጂ)፦</strong> የሰው ልጅ ጽህፈትን ከመፍጠሩ በፊት የነበረውን ረጅም ዘመን (ማለትም የመጀመሪያው የድንጋይ መሳሪያ ከተሰራበት ከ2.5 ሚሊዮን አመት በፊት ጀምሮ እስከ 6,000 አመታት በፊት ያለውን ዘመን) ያጠናል።</li>
+            <li><strong>Historical Archaeology (የታሪክ ዘመን አርኪኦሎጂ)፦</strong> የሰው ልጅ ጽህፈትን ከጀመረበት (ከ6,000 አመታት በፊት) ወዲህ ያሉትን እና የጽሁፍ መረጃ የተተወላቸውን ማህበረሰቦች ቁሳዊ ቅሪት ከጽሁፍ መዛግብት ጋር አገናኝቶ ይመረምራል። (ኢትዮጵያ በሁሉም አቅጣጫዎች ባሏት ግኝቶች የጥንታዊ ስልጣኔ ባለቤት መሆኗ በአርኪኦሎጂ ተረጋግጧል)።</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 3. LINGUISTIC -->
+      <div class="field-card">
+        <span class="field-badge badge-ling">Sub-field 3</span>
+        <h3 style="margin:0 0 0.5rem 0; color:#0f172a; font-size:1.25rem;">3. Linguistic Anthropology (ቋንቋዊ አንትሮፖሎጂ)</h3>
+        <p style="margin-top:0;">ይህ ዘርፍ ቋንቋን እንደ ባህላዊ ሃብት (Cultural resource) እና ንግግርን ደግሞ እንደ ባህላዊ ተግባር (Cultural practice) አድርጎ በማህበራዊና ባህላዊ አውድ ውስጥ ያጠናል። ቋንቋ ልክ የዘረ-መል መረጃን ለልጆች እንደሚያስተላልፉት ጂኖች (Genes) ሁሉ፣ ባህልን ከአንድ ትውልድ ወደ ቀጣዩ የሚያስተላልፍ ቁልፍ ድልድይ ነው። እንስሳት በመልመድ የሰውን ባህሪ ቢመስሉም፣ ያንን እውቀት ለቀጣይ ትውልድ የማስተላለፍ አቅም የላቸውም፤ ይህ የሰው ልጅ መለያ ድንበር ነው።</p>
+        
+        <div style="font-weight:700; color:#0f172a; margin-top:1rem;">አራቱ የሊንግዊስቲክ አንትሮፖሎጂ ቅርንጫፎች፦</div>
+        <div class="sub-grid sub-grid-2">
+          <div class="mini-box">
+            <h4>1. Structural / Descriptive Linguistics</h4>
+            <p style="margin:0; font-size:0.9rem; color:#475569;">የቋንቋውን ድምጾች (Sound systems)፣ ሰዋሰው (Grammar) እና የቃላት ትርጉም ያጠናል። ዋና ስራውም የጽሁፍ ቅርጽ ለሌላቸው ቋንቋዎች መዝገበ-ቃላት እና የሰዋሰው መጽሐፍ ማዘጋጀት ነው።</p>
+          </div>
+          <div class="mini-box">
+            <h4>2. Ethno-linguistics (Cultural Linguistics)</h4>
+            <p style="margin:0; font-size:0.9rem; color:#475569;">ቋንቋ እና ባህል እንዴት እንደሚገናኙ ያያል። ለምሳሌ፦ አንድ ማህበረሰብ ለአንድ ነገር ብዙ ስሞች ካሉት (የኢኑይት/Inuit ህዝቦች ለበረዶ በርካታ ስሞች እንዳሏቸው፣ የፓስቶራል ማሳይ/Maasai ለላም/ከብት ያላቸው የተትረፈረፈ ቃላት፣ በአሜሪካ ለአውቶሞቢል ያላቸው በርካታ ቃላት) ያ ነገር ለዚያ ማህበረሰብ እጅግ አስፈላጊ መሆኑን ያሳያል።</p>
+          </div>
+          <div class="mini-box">
+            <h4>3. Historical Linguistics</h4>
+            <p style="margin:0; font-size:0.9rem; color:#475569;">ቋንቋዎች እንዴት እንደተፈጠሩ፣ በጊዜ ሂደት እንዴት እንደተቀያየሩና እንደተለያዩ፣ እና የቋንቋ ቤተሰቦችን ታሪካዊ ትስስር ያጠናል።</p>
+          </div>
+          <div class="mini-box">
+            <h4>4. Socio-linguistics</h4>
+            <p style="margin:0; font-size:0.9rem; color:#475569;">ቋንቋ በማህበረሰቡ ውስጥ እንዴት ጥቅም ላይ እንደሚውል ያጠናል። (ለምሳሌ፦ በቦታ/በአካባቢ የሚፈጠር የቋንቋ ልዩነት/Dialects፣ በጾታ፣ በማህበራዊ ደረጃ ወይም በሁለት-ቋንቋ ተናጋሪነት/Bilingualism የሚፈጠሩ ልዩነቶች)።</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. SOCIO-CULTURAL -->
+      <div class="field-card">
+        <span class="field-badge badge-soc">Sub-field 4</span>
+        <h3 style="margin:0 0 0.5rem 0; color:#0f172a; font-size:1.25rem;">4. Socio-Cultural Anthropology (ማህበራዊና ባህላዊ አንትሮፖሎጂ)</h3>
+        <p style="margin-top:0;">ይህ ትልቁ ዘርፍ ሲሆን፣ ስለ አሁን ዘመን (Contemporary) የሰው ልጆች ባህል እና ማህበረሰብ ያጠናል።</p>
+        <div style="background:#eef2ff; border-radius:10px; padding:0.9rem 1.1rem; margin-bottom:1rem; font-size:0.95rem; color:#312e81;">
+          <strong>Society vs Culture፦</strong> Society (ማህበረሰብ) ማለት ተመሳሳይ የአኗኗር ዘይቤ ያላቸው የሰዎች ስብስብ ሲሆን፣ Culture (ባህል) ደግሞ የዚያ ማህበረሰብ አጠቃላይ የአኗኗር መንገድ (Way of life) ነው። Society እና Culture የአንድ ሳንቲም ሁለት ገጽታዎች ናቸው (Two sides of the same coin)።
+        </div>
+
+        <div style="font-weight:700; color:#0f172a; margin-top:1.25rem;">ሁለት ወሳኝ የጥናት አሰራሮች (በደንብ ያዟቸው)፦</div>
+        <div class="table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th style="width:50%;">Ethnography (ኢትኖግራፊ)</th>
+                <th style="width:50%;">Ethnology (ኢትኖሎጂ)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Requires field work to collect data</strong><br/>ተመራማሪው አንድን ማህበረሰብ ለረጅም ጊዜ (1-2 አመት) አብሮ በመኖር፣ ቋንቋቸውን በመማር እና በመሳተፍ መረጃ ይሰበስባል።</td>
+                <td><strong>Uses data collected by a series of researchers</strong><br/>በተለያዩ ማህበረሰቦች ውስጥ በኢትኖግራፊ የተሰበሰቡ መረጃዎችን በማሰባሰብ ንጽጽር ይሰራል::</td>
+              </tr>
+              <tr>
+                <td><strong>Often descriptive</strong><br/>የአንድን የተወሰነ ማህበረሰብ ህይወት፣ እምነት እና ወግ በዝርዝር የሚገልጽ መጽሐፍ ወይም ፊልም ነው።</td>
+                <td><strong>Usually synthetic</strong><br/>የተለያዩ ባህሎችን በማወዳደር ስለ ሰው ልጅ አጠቃላይ ባህሪ ድምዳሜ ላይ ለመድረስ ንድፈ-ሀሳብ (Theory) ይገነባል።</td>
+              </tr>
+              <tr>
+                <td><strong>Group/community specific</strong><br/>የአንድን የተወሰነ ቡድን ብቻ በጥልቀት ያጠናል።</td>
+                <td><strong>Comparative / cross-cultural</strong><br/>ባህሎችን እርስ በእርስ በማነጻጸር አጠቃላይ መርሆችን ያወጣል።</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="exam-highlight">
+          <strong>💡 Exam Tip:</strong> Ethnography መረጃ መሰብሰብ እና አንድን ቡድን በጥልቀት ማጥናት ሲሆን፣ Ethnology ደግሞ የተሰበሰበውን መረጃ በማወዳደር ቲዎሪ መስራት ነው።
+        </div>
+
+        <div style="margin-top:1.5rem;">
+          <div style="font-weight:700; color:#0f172a;">የSocio-Cultural Anthropology የተግባር መስኮች (Applied Areas)፦</div>
+          <p style="margin:0.2rem 0; font-size:0.9rem; color:#475569;">በዘመናችን ለሚነሱ ጥያቄዎች ምላሽ ለመስጠት በበርካታ የልዩ ሙያ መስኮች ተከፍሏል፦</p>
+          <div class="applied-tags">
+            <span class="applied-tag">Anthropology of Art</span>
+            <span class="applied-tag">Medical Anthropology</span>
+            <span class="applied-tag">Urban Anthropology</span>
+            <span class="applied-tag">Economic Anthropology</span>
+            <span class="applied-tag">Political Anthropology</span>
+            <span class="applied-tag">Development Anthropology</span>
+            <span class="applied-tag">Anthropology of Religion</span>
+            <span class="applied-tag">Demographic Anthropology</span>
+            <span class="applied-tag">Ecological Anthropology</span>
+            <span class="applied-tag">Psychological Anthropology</span>
+            <span class="applied-tag">Ethnomusicology</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </html>
+</notebook_sheet>
+
+<!-- SHEET 3 -->
+<notebook_sheet course="ANTH 1012" lang="am" page="14">
+  <title>1.3 Unique (Basic) Features of Anthropology (የአንትሮፖሎጂ ልዩ ባህሪያት)</title>
+  <scoped_css>
+    .sheet-canvas {
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Ethiopic", sans-serif;
+      line-height: 1.8;
+      color: #1e293b;
+      background: #fdfdfd;
+      padding: 1.25rem;
+    }
+    .hero-banner {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .hero-banner h2 {
+      margin: 0 0 0.5rem 0;
+      color: #0f172a;
+      font-size: 1.35rem;
+    }
+    .pillars-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .pillar-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 1.25rem;
+      border-left: 5px solid #2563eb;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .pillar-title {
+      font-weight: 800;
+      color: #1e3a8a;
+      font-size: 1.1rem;
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .emic-lens-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+    .method-section {
+      background: #ffffff;
+      border: 2px dashed #93c5fd;
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+    .motto-pill {
+      display: inline-block;
+      background: #1e3a8a;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 0.9rem;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      margin: 0.75rem 0;
+    }
+    .instruments-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .instrument-item {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 0.75rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #1e40af;
+      text-align: center;
+    }
+  </scoped_css>
+  <html>
+    <div class="sheet-canvas">
+      <div class="hero-banner">
+        <h2>1.3 Unique (Basic) Features of Anthropology (የአንትሮፖሎጂ ልዩ ባህሪያት)</h2>
+        <p style="margin:0; color:#475569; font-size:0.95rem;">አንትሮፖሎጂ ከሌሎች የማህበራዊ ሳይንስ ዘርፎች (Sociology, Psychology, ወዘተ) የሚለየው በወሰኑ (Scope)፣ በአቀራረቡ (Approach)፣ በትኩረቱ (Focus) እና በምርምር ዘዴው (Method of study) ነው።</p>
+      </div>
+
+      <div class="pillars-container">
+        <!-- 1. BROAD SCOPE -->
+        <div class="pillar-card" style="border-left-color: #2563eb;">
+          <div class="pillar-title">1. Broad Scope (ሰፊ የጥናት ወሰን)</div>
+          <p style="margin:0; font-size:0.95rem; color:#334155;">
+            አንትሮፖሎጂ የሰው ልጅ እስካለ ድረስ ሁሉንም ያጠናል፦ ጥንታዊም ሆነ ዘመናዊ፣ "Primitive" ተብሎ የተፈረጀም ይሁን "Civilized"። ከአካላዊ ዘረ-መል እና የፊት ገጽታ (Phenotypic characteristics) ጀምሮ እስከ ቤተሰብ፣ ጋብቻ፣ ፖለቲካ፣ ኢኮኖሚ፣ ቴክኖሎጂ፣ ጤና ክብካቤ፣ ስነ-ልቦናዊ ማንነት እና ስነ-ጥበብ ድረስ ይመረምራል። ከአንትሮፖሎጂስቱ እይታ የሚያመልጥ ምንም አይነት የሰው ልጅ ገጽታ የለም።
+          </p>
+        </div>
+
+        <!-- 2. HOLISTIC APPROACH -->
+        <div class="pillar-card" style="border-left-color: #059669;">
+          <div class="pillar-title">2. Holistic Approach (ሁለንተናዊ አቀራረብ)</div>
+          <p style="margin:0; font-size:0.95rem; color:#334155;">
+            ማንኛውንም የሰው ልጅ ጉዳይ "በተናጠል" ሳይሆን "በጥምረት" ነው የሚያየው። የሰውን ልጅ እንደ አንድ ሙሉ ኦርጋኒዝም (Whole organism) አድርጎ በመቁጠር ከአካባቢው ጋር በባህልና ባዮሎጂ ውስብስብ መስተጋብር እንዴት እንደሚላመድ ይመረምራል። ማህበረሰብን በተሟላ ሁኔታ ለመረዳት ባህልን፣ ታሪክን፣ ቋንቋን እና ባዮሎጂን አቀናጅቶ ማየት (Big Picture) ወሳኝ ነው ይላል።
+          </p>
+        </div>
+
+        <!-- 3. CULTURAL RELATIVISM -->
+        <div class="pillar-card" style="border-left-color: #d97706;">
+          <div class="pillar-title">3. Cultural Relativism (ባህላዊ አንጻራዊነት)</div>
+          <p style="margin:0; font-size:0.95rem; color:#334155;">
+            ይህ በጣም ወሳኝ concept ነው! የአንድን ማህበረሰብ ባህል፣ እምነት፣ ድርጊት ወይም ተቋም መመዘን ያለብን <strong>በራሱ በዛው ማህበረሰብ ውስጣዊ አውድና አመክንዮ (In its own context)</strong> እንጂ፣ በእኛ በራሳችን ባህል መነጽር መሆን የለበትም። ባህሎችን "ጥሩ" ወይም "መጥፎ"፣ "ስልጡን" ወይም "ኋላቀር" ብሎ መፍረድ (Value judgment) በአንትሮፖሎጂ በጥብቅ የተወገዘና ክልክል ነው።
+          </p>
+        </div>
+
+        <!-- 4. COMPARATIVE PERSPECTIVE -->
+        <div class="pillar-card" style="border-left-color: #7c3aed;">
+          <div class="pillar-title">4. Comparative Perspective (አነጻጻሪ እይታ)</div>
+          <p style="margin:0; font-size:0.95rem; color:#334155;">
+            የሰውን ልጅ ጠቅላላ ባህሪ ለመረዳት የተለያዩ ማህበረሰቦችን በጊዜ እና በቦታ ማወዳደር ግዴታ ነው። ልዩነቶቻቸውን እና አንድነቶቻቸውን (Differences and similarities across time and place) በማጥናት አጠቃላይ የሰው ልጅ ህግጋትን ይለያል።
+          </p>
+        </div>
+
+        <!-- 5. EMIC PERSPECTIVE -->
+        <div class="pillar-card" style="border-left-color: #db2777;">
+          <div class="pillar-title">5. Focus on Insider's View (Emic Perspective)</div>
+          <p style="margin:0; font-size:0.95rem; color:#334155;">
+            ጥናቱ ትኩረት የሚሰጠው ሰዎች ስለራሳቸው ያላቸውን አመለካከት ነው። ሰዎች ለሚያደርጉት ነገር የሚሰጡትን ውስጣዊ ትርጉም (Meaning)፣ አመክንዮ (Logic) እና ማረጋገጫ (Justification) መረዳት ነው።
+          </p>
+          <div class="emic-lens-box">
+            <strong style="color:#166534;">👁️ Emic Lens፦</strong>
+            ተመራማሪው ከውጭ ሆኖ በራሱ መነጽር የሚፈርደው ሳይሆን፣ የህብረተሰቡ አባላት ባህላቸውንና ድርጊታቸውን ከውስጥ ሆነው እንዴት እንደሚረዱት (How people perceive themselves and understand their world) ማየት ነው።
+          </div>
+        </div>
+      </div>
+
+      <!-- RESEARCH APPROACH -->
+      <div class="method-section">
+        <h3 style="margin:0 0 0.5rem 0; color:#1e3a8a; font-size:1.2rem;">Distinctive Research Approach (ልዩ የምርምር አሰራር)</h3>
+        <p style="margin:0; font-size:0.95rem; color:#334155;">
+          አንትሮፖሎጂ ከማንኛውም የሰው ልጅ ድርጊት ጀርባ ያለውን ትርጉም ለመረዳት በዋነኝነት በ<strong>ጥራት ላይ በተመሰረተ ምርምር (Qualitative research)</strong> ላይ ይደገፋል።
+        </p>
+
+        <div style="text-align:center;">
+          <span class="motto-pill">የአንትሮፖሎጂስቶች መርህ፦ "Tune-in; Hang-out; and Hang-on"</span>
+        </div>
+        <p style="font-size:0.92rem; color:#475569; text-align:center; margin-top:0;">(ተመራማሪው ማህበረሰቡ ውስጥ ሰርጎ ገብቶ፣ ቢያንስ ለአንድ አመት ወይም ከዚያ በላይ አብሮ በመኖር እውነታዎችን በጊዜ ሂደት ይመዘግባል)።</p>
+
+        <div style="font-weight:700; color:#0f172a; margin-top:1rem;">ዋና ዋና የጥራት ምርምር መሳሪያዎች (Qualitative Research Instruments)፦</div>
+        <div class="instruments-grid">
+          <div class="instrument-item">Extended Fieldwork (የረጅም ጊዜ የመስክ ጥናት)</div>
+          <div class="instrument-item">Participant Observation (ተሳታፊ ሆኖ መታዘብ)</div>
+          <div class="instrument-item">In-depth Interviews (ጥልቅ ቃለ-መጠይቆች)</div>
+          <div class="instrument-item">Key Informant Interviews (ቁልፍ መረጃ ሰጪዎች)</div>
+          <div class="instrument-item">Focus-Group Discussions - FGD (የቡድን ውይይት)</div>
+        </div>
+
+        <div style="background:#f8fafc; border-radius:10px; padding:1rem; margin-top:1.25rem; border:1px solid #e2e8f0;">
+          <strong style="color:#0f172a;">Focusing more on the Local than the Big Social Processes፦</strong>
+          <p style="margin:0.3rem 0 0 0; font-size:0.92rem; color:#475569;">አንትሮፖሎጂ በማህበረሰብ ውስጥ የሚከሰቱ ታላላቅ ለውጦችን ለመረዳት መነሻ የሚያደርገው የአካባቢውን ጥቃቅን ማህበራዊ ሂደቶች (Micro-social processes) ነው። በአንድ ማህበረሰብ ውስጥ የሚከሰት ክስተት ዝርዝር መረጃ በርካታ እውነታዎችን (Multiple realities in a community) ፈልፍሎ ያወጣል::</p>
+        </div>
+      </div>
+    </div>
+  </html>
+</notebook_sheet>
+
+<!-- SHEET 4 -->
+<notebook_sheet course="ANTH 1012" lang="am" page="16">
+  <title>1.4 Misconceptions about Anthropology (የተሳሳቱ አመለካከቶች)</title>
+  <scoped_css>
+    .sheet-canvas {
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Ethiopic", sans-serif;
+      line-height: 1.8;
+      color: #1e293b;
+      background: #fdfdfd;
+      padding: 1.25rem;
+    }
+    .intro-box {
+      background: #fef2f2;
+      border: 1px solid #fee2e2;
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .intro-box h2 {
+      margin: 0 0 0.5rem 0;
+      color: #991b1b;
+      font-size: 1.3rem;
+    }
+    .myths-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+    @media (min-width: 640px) {
+      .myths-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .myth-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
+    }
+    .myth-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #dc2626;
+      font-weight: 800;
+      font-size: 0.9rem;
+      margin-bottom: 0.4rem;
+    }
+    .myth-statement {
+      background: #fef2f2;
+      border-left: 3px solid #ef4444;
+      padding: 0.6rem 0.8rem;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.95rem;
+      color: #7f1d1d;
+      font-weight: 600;
+      margin-bottom: 0.85rem;
+    }
+    .fact-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #059669;
+      font-weight: 800;
+      font-size: 0.9rem;
+      margin-bottom: 0.4rem;
+    }
+    .fact-statement {
+      background: #f0fdf4;
+      border-left: 3px solid #10b981;
+      padding: 0.6rem 0.8rem;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.93rem;
+      color: #064e3b;
+      line-height: 1.6;
+    }
+  </scoped_css>
+  <html>
+    <div class="sheet-canvas">
+      <div class="intro-box">
+        <h2>1.4 Misconceptions about Anthropology (የተሳሳቱ አመለካከቶች)</h2>
+        <p style="margin:0; font-size:0.95rem; color:#7f1d1d;">ስለ አንትሮፖሎጂ ባህሪ፣ ወሰን እና የጥናት ርዕሰ-ጉዳይ በቂ ግንዛቤ ካለመኖሩ የተነሳ በህብረተሰቡም ሆነ በተማሪዎች ዘንድ የተሳሳቱ አመለካከቶች ይስተዋላሉ። እነዚህን አመለካከቶች በሳይንሳዊ እውነታዎች ማረም ያስፈልጋል፦</p>
+      </div>
+
+      <div class="myths-grid">
+        <!-- MYTH 1 -->
+        <div class="myth-card">
+          <div class="myth-header">❌ የተሳሳተ አመለካከት 1 (MYTH)</div>
+          <div class="myth-statement">አንትሮፖሎጂ የሚያጠናው "Primitive" (ኋላቀር/ቀደምት) የሚባሉ ማህበረሰቦችን ብቻ ነው።</div>
+          <div class="fact-header">✅ ሳይንሳዊ እውነታው (FACT)</div>
+          <div class="fact-statement">አይደለም! በጥንት ጊዜ የተካሄዱ አብዛኞቹ ጥናቶች ገለልተኛ በሆኑ ጥቃቅን ማህበረሰቦች ላይ ያተኮሩ የነበረ ቢሆንም፣ ዛሬ ግን አንትሮፖሎጂስቶች እጅግ የዘመኑ እና ውስብስብ የሆኑ ማህበረሰቦችንም (Most advanced and complex societies) ያጠናሉ።</div>
+        </div>
+
+        <!-- MYTH 2 -->
+        <div class="myth-card">
+          <div class="myth-header">❌ የተሳሳተ አመለካከት 2 (MYTH)</div>
+          <div class="myth-statement">አንትሮፖሎጂስቶች የሚያጠኑት የገጠር ሰዎችን እና የገጠር አካባቢዎችን ብቻ ነው።</div>
+          <div class="fact-header">✅ ሳይንሳዊ እውነታው (FACT)</div>
+          <div class="fact-statement">ፍጹም አይደለም! ዛሬ <strong>Urban Anthropology (የከተማ አንትሮፖሎጂ)</strong> የተባለ ራሱን የቻለ ትልቅ ዘርፍ አለ፤ የከተማ ነዋሪዎችን አኗኗር እና ውስብስብ የሜትሮፖሊታን ከተሞችን ባህል በጥልቀት ይመረምራል።</div>
+        </div>
+
+        <!-- MYTH 3 -->
+        <div class="myth-card">
+          <div class="myth-header">❌ የተሳሳተ አመለካከት 3 (MYTH)</div>
+          <div class="myth-statement">አንትሮፖሎጂ ማለት ስለ ጥንት አጥንት እና ቅሪተ-አካል (Fossils/Lucy) ብቻ ማጥናት ነው።</div>
+          <div class="fact-header">✅ ሳይንሳዊ እውነታው (FACT)</div>
+          <div class="fact-statement">ይህ የአንዱ ንዑስ ዘርፍ (የBiological/Physical Anthropology) ስራ ብቻ ነው። አንትሮፖሎጂ ሁለቱንም ማለትም ስነ-ህይወታዊ እና ባህላዊ ገጽታዎችን እያጣመረ ህያው የሆነውን የሰው ልጅ ባህል፣ ቋንቋ እና ማህበራዊ አኗኗር ያጠናል።</div>
+        </div>
+
+        <!-- MYTH 4 -->
+        <div class="myth-card">
+          <div class="myth-header">❌ የተሳሳተ አመለካከት 4 (MYTH)</div>
+          <div class="myth-statement">የአንትሮፖሎጂስቶች ስራ ማህበረሰቦች ከልማት ርቀው ባህላቸው ሳይለወጥ እንደ ሙዚየም እቃ (Museum piece) ተጠብቀው እንዲቀሩ ማድረግ ነው።</div>
+          <div class="fact-header">✅ ሳይንሳዊ እውነታው (FACT)</div>
+          <div class="fact-statement">በፍጹም የተሳሳተ ነው! እንዲያውም አንትሮፖሎጂስቶች ማህበረሰቡ በራሱ አቅም በልማት ሂደቶች ውስጥ ራሱን እንዲያጎለብት (Empower themselves)፣ ከውጭ የሚጫኑ ጎጂ ፖሊሲዎችን በመከላከል በህይወታቸው አዎንታዊ ለውጥ እንዲያመጡ ያግዛሉ (Applied Anthropology)።</div>
+        </div>
+      </div>
+    </div>
+  </html>
+</notebook_sheet>
+
+<!-- SHEET 5 -->
+<notebook_sheet course="ANTH 1012" lang="am" page="17">
+  <title>1.5 The Relationship between Anthropology and Other Disciplines</title>
+  <scoped_css>
+    .sheet-canvas {
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Ethiopic", sans-serif;
+      line-height: 1.8;
+      color: #1e293b;
+      background: #fdfdfd;
+      padding: 1.25rem;
+    }
+    .header-box {
+      background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+      color: #ffffff;
+      padding: 1.5rem;
+      border-radius: 16px;
+      margin-bottom: 2rem;
+    }
+    .header-box h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.35rem;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    @media (min-width: 640px) {
+      .comparison-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .diff-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 1.25rem;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
+    }
+    .diff-badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 800;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+    }
+    .badge-scope { background: #dbeafe; color: #1e40af; }
+    .badge-appr { background: #dcfce7; color: #166534; }
+    .badge-pers { background: #fef3c7; color: #92400e; }
+    .badge-meth { background: #ede9fe; color: #5b21b6; }
+
+    .wilk-box {
+      background: #f8fafc;
+      border-left: 4px solid #6366f1;
+      padding: 1.25rem;
+      border-radius: 0 12px 12px 0;
+      margin: 1.5rem 0;
+    }
+    .contrast-pill {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+  </scoped_css>
+  <html>
+    <div class="sheet-canvas">
+      <div class="header-box">
+        <h2>1.5 The Relationship between Anthropology and Other Disciplines</h2>
+        <p style="margin:0; font-size:0.95rem; color:#cbd5e1;">አንትሮፖሎጂ ከሌሎች የማህበራዊ ሳይንስ ዘርፎች (እንደ Sociology, Psychology, Political Science, Economics, History) ጋር የሰው ልጆችን በማጥናት ረገድ ከፍተኛ የሆነ መደራረብ (Overlap) አለው።</p>
+      </div>
+
+      <p>ሆኖም ግን አንትሮፖሎጂ ከሌሎች ማህበራዊ ሳይንሶች እና ከሂውማኒቲስ (Humanities) በሚከተሉት አራት ዋና ዋና መሰረቶች ፍጹም ይለያል፦</p>
+
+      <div class="comparison-grid">
+        <!-- 1. SCOPE -->
+        <div class="diff-card">
+          <span class="diff-badge badge-scope">1. በወሰኑ (Broad Scope)</span>
+          <h4 style="margin:0 0 0.5rem 0; color:#0f172a;">Humankind in its Entirety</h4>
+          <p style="margin:0; font-size:0.92rem; color:#475569;">ሌሎች ዘርፎች የሰውን ልጅ የተወሰነ ገጽታ ብቻ ነጥለው ሲያጠኑ (ለምሳሌ ኢኮኖሚክስ በገበያና ሃብት ላይ፣ ፖለቲካ ሳይንስ በመንግስት ስልጣን ላይ)፣ አንትሮፖሎጂ ግን የሰውን ልጅ ሁለንተናዊ ማንነት በሙሉ (In its entirety) ከጫፍ እስከ ጫፍ ያጠናል።</p>
+        </div>
+
+        <!-- 2. APPROACH -->
+        <div class="diff-card">
+          <span class="diff-badge badge-appr">2. በአቀራረቡ (Unique Approach)</span>
+          <h4 style="margin:0 0 0.5rem 0; color:#0f172a;">Holistic, Comparative &amp; Relativistic</h4>
+          <p style="margin:0; font-size:0.92rem; color:#475569;">የሰው ልጆችን አኗኗር በጥምረት (Holistically)፣ ባህሎችን በማነጻጸር (Comparatively) እና ፍርድ ሳይሰጡ በራሳቸው ውስጣዊ አውድ (Relativistically) ይመረምራል።</p>
+        </div>
+
+        <!-- 3. PERSPECTIVE -->
+        <div class="diff-card">
+          <span class="diff-badge badge-pers">3. በእይታው (Perspective)</span>
+          <h4 style="margin:0 0 0.5rem 0; color:#0f172a;">Idiographic vs Nomothetic</h4>
+          <p style="margin:0; font-size:0.92rem; color:#475569;">አንትሮፖሎጂስት ሪቻርድ ዊልክ (Richard Wilk) እንዳስረዳው፣ አንትሮፖሎጂ የግለሰቦችንና የማህበረሰቡን ልምዶች፣ ሀሳቦችና ስሜቶች እርስ በእርስ የተሳሰሩ መሆናቸውን ይመረምራል። እይታውም ተጨባጭ (Empirical)፣ ተፈጥሯዊ (Naturalistic) እና ለተወሰኑ ማህበረሰቦች ዝርዝር ማንነት ትኩረት የሚሰጥ <span class="contrast-pill">Idiographic [particularising]</span> እንጂ፣ አጠቃላይ ሁለንተናዊ ህጎችን ብቻ የሚፈልግ <span class="contrast-pill">Nomothetic [universalising]</span> አይደለም።</p>
+        </div>
+
+        <!-- 4. METHODS -->
+        <div class="diff-card">
+          <span class="diff-badge badge-meth">4. በምርምር ዘዴው (Methods Used)</span>
+          <h4 style="margin:0 0 0.5rem 0; color:#0f172a;">Extended Fieldwork &amp; Intimate Knowledge</h4>
+          <p style="margin:0; font-size:0.92rem; color:#475569;">በስታቲስቲክስ ወይም በሰርቬይ ከመወሰን ይልቅ፣ በተጠናው ማህበረሰብ ውስጥ ለረጅም ጊዜ በመኖር (Extended fieldwork) ጥልቅና ቅርብ የሆነ ግንዛቤ ያዳብራል። ለዚህም ተሳታፊ ሆኖ መታዘብን (Participant observation)፣ ጥልቅ ቃለ-መጠይቅንና የቡድን ውይይቶችን ይጠቀማል።</p>
+        </div>
+      </div>
+    </div>
+  </html>
+</notebook_sheet>
+
+<!-- SHEET 6 -->
+<notebook_sheet course="ANTH 1012" lang="am" page="18">
+  <title>1.6 The Contributions of Anthropology &amp; Unit Summary</title>
+  <scoped_css>
+    .sheet-canvas {
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Ethiopic", sans-serif;
+      line-height: 1.8;
+      color: #1e293b;
+      background: #fdfdfd;
+      padding: 1.25rem;
+    }
+    .contrib-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    @media (min-width: 640px) {
+      .contrib-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .contrib-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 1.25rem;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
+    }
+    .contrib-card h3 {
+      margin: 0 0 0.4rem 0;
+      color: #1e3a8a;
+      font-size: 1.1rem;
+    }
+    .quote-card {
+      background: #fefce8;
+      border: 1px solid #fef08a;
+      border-left: 4px solid #ca8a04;
+      border-radius: 0 12px 12px 0;
+      padding: 1.25rem;
+      margin: 1.5rem 0;
+      font-style: italic;
+    }
+    .applied-domains-box {
+      background: #f0fdfa;
+      border: 1px solid #ccfbf1;
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-top: 1.5rem;
+    }
+    .domains-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    @media (min-width: 640px) {
+      .domains-list {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .domain-item {
+      background: #ffffff;
+      border: 1px solid #99f6e4;
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #115e59;
+    }
+    .summary-card {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #ffffff;
+      border-radius: 18px;
+      padding: 1.75rem;
+      margin-top: 2.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    .summary-card h2 {
+      margin: 0 0 1rem 0;
+      font-size: 1.35rem;
+      color: #38bdf8;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 0.5rem;
+    }
+  </scoped_css>
+  <html>
+    <div class="sheet-canvas">
+      <div style="border-left:5px solid #059669; padding-left:0.75rem; margin-bottom:1.5rem;">
+        <h2 style="margin:0; font-size:1.35rem; color:#0f172a;">1.6 The Contributions of Anthropology (የአንትሮፖሎጂ ጠቀሜታዎች)</h2>
+        <p style="margin:0.2rem 0 0 0; color:#475569; font-size:0.95rem;">የሰው ልጆች በመሆናችን የራሳችንን ስልጣኔ የማወቅ ፍልስፍናዊ ግዴታ አለብን። አንትሮፖሎጂን መማር የሚከተሉትን ዘርፈ-ብዙ ጥቅሞች ያስገኛል፦</p>
+      </div>
+
+      <div class="contrib-grid">
+        <!-- 1. DIVERSITY -->
+        <div class="contrib-card">
+          <h3>1. Understanding Human Diversity</h3>
+          <p style="margin:0; font-size:0.92rem; color:#475569;">የሰው ልጆች የተለያዩ የአኗኗር ዘይቤዎች እንዳሏቸው እንድንረዳ እና እንድንቀበል ያደርጋል። የራሳችን ባህል በዓለም ካሉት በርካታ የአኗኗር መንገዶች መካከል አንዱ ብቻ እንደሆነ በማስገንዘብ "የእኔ ባህል ብቻ ነው ትክክል" ከሚል ጠባብ አስተሳሰብ ያወጣናል።</p>
+        </div>
+
+        <!-- 2. KNOWING OURSELVES -->
+        <div class="contrib-card">
+          <h3>2. Knowing Ourselves (ራስን በደንብ ማወቅ)</h3>
+          <p style="margin:0; font-size:0.92rem; color:#475569;">ሌሎችን ስናጠና ራሳችንንም በደንብ እንድናውቅ ይረዳናል። የራሳችንን ማህበረሰብ ባህል በሌላ ዓይን እንድናየውና ሂሳዊ እይታ (Critical mind) እንዲኖረን ያደርጋል።</p>
+        </div>
+
+        <!-- 3. FIGHTING ETHNOCENTRISM -->
+        <div class="contrib-card">
+          <h3>3. Fighting Ethnocentrism</h3>
+          <p style="margin:0; font-size:0.92rem; color:#475569;">
+            <strong>Ethnocentrism፦</strong> የራስን ባህል እንደ የበላይ (Superior)፣ የሌሎችን ደግሞ እንደ ኋላቀር እና የበታች (Inferior) አድርጎ የማሰብ አደገኛ አባዜ ነው። ይህ የሚመነጨው ስለ ሌሎች ካለ አለማወቅ (Ignorance) ነው። አንትሮፖሎጂ ይህንን አስተሳሰብ በመዋጋት መቻቻልን እና መከባበርን ያሰፍናል።
+          </p>
+        </div>
+
+        <!-- 4. GLOBALIZATION -->
+        <div class="contrib-card">
+          <h3>4. Engaging with Globalization</h3>
+          <p style="margin:0; font-size:0.92rem; color:#475569;">የእኛ የእለት ተእለት ውሳኔዎች በሌሎች ላይ፣ የሌሎች ውሳኔዎችም በእኛ ላይ እንዴት ተፅዕኖ እንደሚያሳድሩ ያስረዳል። ግሎባላይዜሽን በባለስልጣናት ደረጃ ብቻ ሳይሆን በመሬት ላይ ያሉ የአካባቢው ተወላጆች (Local voices) ህይወት ላይ ምን እያደረሰ እንዳለ ያሳያል።</p>
+        </div>
+      </div>
+
+      <div class="quote-card">
+        “Anthropology holds up a great mirror to man and lets him look at himself in his infinite variety.”
+        <div style="font-weight:700; color:#854d0e; font-style:normal; margin-top:0.4rem; font-size:0.9rem;">— Clyde Kluckhohn</div>
+      </div>
+
+      <!-- DEVELOPMENT & PROBLEM SOLVING -->
+      <div class="applied-domains-box">
+        <h3 style="margin:0; color:#0f766e; font-size:1.15rem;">Tool for Development &amp; Solving Problems (ችግር ፈቺነት)</h3>
+        <p style="margin:0.4rem 0 0 0; font-size:0.93rem; color:#134e4a;">
+          ለማህበረሰብ ችግሮች መፍትሄ ለመስጠት የአካባቢውን ባህል እና የሀገር በቀል እውቀት (Indigenous Knowledge) ማካተት ወሳኝ ነው። ፕሮጀክቶች ስኬታማ እንዲሆኑ የአካባቢው ህዝብ በንድፍ ደረጃ መሳተፍ አለበት። አንትሮፖሎጂ በሚከተሉት 6 ዘርፎች በስፋት ይተገበራል፦
+        </p>
+        <div class="domains-list">
+          <div class="domain-item">1. Environmental Change (የአካባቢና የአየር ንብረት ለውጥ)</div>
+          <div class="domain-item">2. Health and Nutrition (የጤና እና ስነ-ምግብ ጉዳዮች)</div>
+          <div class="domain-item">3. Globalization (ግሎባላይዜሽን እና ተፅዕኖዎቹ)</div>
+          <div class="domain-item">4. Social Justice &amp; Human Rights (ፍትህና ሰብአዊ መብት)</div>
+          <div class="domain-item">5. Cultural Resource Management - CRM (ቅርስ ጥበቃ)</div>
+          <div class="domain-item">6. Cultural Dimensions of Conflicts (የግጭት ባህላዊ መፍትሄዎች)</div>
+        </div>
+      </div>
+
+      <!-- 1.7 UNIT SUMMARY -->
+      <div class="summary-card">
+        <h2>1.7 Unit Summary (የምዕራፉ ወርቃማ ማጠቃለያ)</h2>
+        <ul style="margin:0; padding-left:1.3rem; color:#e2e8f0; font-size:0.95rem;">
+          <li style="margin-bottom:0.5rem;"><strong>የአንትሮፖሎጂ ተፈጥሮ፦</strong> የሰውን ልጅ በሙሉ ማንነቱ (In its entirety) በጊዜና በቦታ ሳይገደብ የሚያጠና ሰፊ ሳይንስ ነው።</li>
+          <li style="margin-bottom:0.5rem;"><strong>Biocultural Duality፦</strong> የሰው ልጅ ስነ-ህይወታዊ እና ባህላዊ ባህሪያት የማይነጣጠሉ (Inseparable) ናቸው፤ አንዱ ሌላውን ይቀርጻል።</li>
+          <li style="margin-bottom:0.5rem;"><strong>አራቱ ንዑሳን ዘርፎች፦</strong> Physical/Biological, Archaeology, Linguistic, እና Socio-Cultural ናቸው።</li>
+          <li style="margin-bottom:0.5rem;"><strong>የአርኪኦሎጂ ቅሪቶች፦</strong> Artifacts (ተንቀሳቃሽ)፣ Features (የማይንቀሳቀሱ)፣ Eco-facts (የተፈጥሮ/ኦርጋኒክ ቅሪቶች)።</li>
+          <li style="margin-bottom:0.5rem;"><strong>Ethnography vs Ethnology፦</strong> Ethnography የመስክ ጥናት (Fieldwork) እና ገላጭ (Descriptive) ሲሆን፤ Ethnology ደግሞ አነጻጻሪ (Comparative) እና አጠቃላይ ህግ ሰሪ (Synthetic) ነው።</li>
+          <li style="margin-bottom:0.5rem;"><strong>የአንትሮፖሎጂ ሦስቱ ወርቃማ ምሰሶዎች፦</strong> የሰውን ልጅ <em>Holistic</em> (ሳይነጣጥሉ በጥምረት)፣ <em>Relativistic</em> (ሳያጣጥሉ በራሱ አውድ) እና <em>Comparative</em> (እያነጻጸሩ) ማጥናት ናቸው!</li>
+        </ul>
+      </div>
+    </div>
+  </html>
+</notebook_sheet>
