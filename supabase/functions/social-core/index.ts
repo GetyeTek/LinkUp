@@ -217,23 +217,37 @@ serve(async (req) => {
         
         if (!botToken) throw new Error("Bot token not configured on server.");
 
-        const { data: profile } = await supabase.from('profiles').select('telegram_id, registered_with_telegram').eq('id', requesterId).single();
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('telegram_id, registered_with_telegram, phone')
+            .eq('id', requesterId)
+            .single();
+
         if (!profile?.registered_with_telegram || !profile?.telegram_id) {
             throw new Error("You must verify your Telegram account first.");
         }
 
         const cleanHandleKey = targetHandle.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
-        const idempotencyKey = `tg_group_join_reward_${cleanHandleKey}_${requesterId}`;
-        const legacyIdempotencyKey = `tg_group_join_reward_${requesterId}`;
+        const cleanPhone = (profile.phone || '').replace(/[^0-9]/g, '');
 
-        // Check if claimed under either specific key or legacy single key
+        const tgidKey = `tg_group_join_reward_${cleanHandleKey}_tgid_${profile.telegram_id}`;
+        const phoneKey = cleanPhone ? `tg_group_join_reward_${cleanHandleKey}_phone_${cleanPhone}` : null;
+        const legacyUserKey = `tg_group_join_reward_${cleanHandleKey}_${requesterId}`;
+        const legacyGlobalKey = `tg_group_join_reward_${requesterId}`;
+
+        // Build composite filter to check Telegram ID, phone number, and user UUID
+        let orFilter = `idempotency_key.eq.${tgidKey},idempotency_key.eq.${legacyUserKey},idempotency_key.eq.${legacyGlobalKey}`;
+        if (phoneKey) {
+            orFilter += `,idempotency_key.eq.${phoneKey}`;
+        }
+
         const { data: tx } = await supabase
             .from('linkoin_transactions')
             .select('id')
-            .or(`idempotency_key.eq.${idempotencyKey},idempotency_key.eq.${legacyIdempotencyKey}`)
+            .or(orFilter)
             .maybeSingle();
 
-        if (tx) throw new Error(`Reward already claimed for ${targetHandle}.`);
+        if (tx) throw new Error(`Reward already claimed for ${targetHandle} by this account, Telegram identity, or phone.`);
 
         // Query Telegram Bot API securely from the backend
         const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(targetHandle)}&user_id=${profile.telegram_id}`);
@@ -249,15 +263,27 @@ serve(async (req) => {
             throw new Error(`You have not joined ${targetHandle} yet, or you left.`);
         }
 
+        // 1. Insert primary reward keyed to permanent Telegram ID
         const { error: insertErr } = await supabase.from('linkoin_transactions').insert({
             user_id: requesterId,
             amount: rewardAmount,
             transaction_type: 'reward',
             description: `Joined Official Telegram Group: ${targetHandle}`,
-            idempotency_key: idempotencyKey
+            idempotency_key: tgidKey
         });
 
         if (insertErr) throw insertErr;
+
+        // 2. Insert zero-amount sentinel to permanently lock phone number from recycled claims
+        if (phoneKey) {
+            await supabase.from('linkoin_transactions').insert({
+                user_id: requesterId,
+                amount: 0,
+                transaction_type: 'sentinel',
+                description: `Phone lock sentinel for ${targetHandle}`,
+                idempotency_key: phoneKey
+            });
+        }
 
         return new Response(JSON.stringify({ success: true, amount: rewardAmount, group_id: matchedGroup.id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
