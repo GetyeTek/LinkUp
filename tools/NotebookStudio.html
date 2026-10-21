@@ -868,52 +868,40 @@
             showToast("Cleared input");
         }
 
-        // STRICT COURSE CODE NORMALIZER
+        // SYNTAX-ONLY NORMALIZER (SLASHES & SPACES ONLY — NO LETTER GUESSWORK)
         function normalizeCourseCode(raw) {
-            if (!raw) return "ANTH 1012";
-            const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (!raw) return null;
 
-            // 1. Direct match check
+            const cleanStr = (s) => s.toUpperCase().trim().replace(/[-_]/g, ' ').replace(/\s+/g, ' ');
+            const targetClean = cleanStr(raw);
+
+            // 1. Direct match check against registered codes
             for (const code of VALID_COURSE_CODES) {
-                if (cleaned === code.replace(/\s+/g, '')) return code;
+                if (targetClean === code || targetClean.replace(/\s+/g, '') === code.replace(/\s+/g, '')) {
+                    return code;
+                }
             }
 
-            const letters = cleaned.replace(/[^A-Z]/g, '');
-            const digits = cleaned.replace(/[^0-9]/g, '');
+            // 2. Slashed and separator inspection (e.g. "MCED 1012 / MCIE 1012")
+            // Inspect individual tokens without mutating the letters
+            const tokens = raw.split(/[\/,|&]+/).map(t => cleanStr(t)).filter(Boolean);
+            const matchedCodes = [];
 
-            // 2. Multi-Semester Courses disambiguation (FLEN & MATH)
-            if (letters.startsWith('FLEN') || letters.startsWith('FLE')) {
-                return (digits.includes('12') || digits.endsWith('2')) ? 'FLEN 1012' : 'FLEN 1011';
-            }
-            if (letters.startsWith('MATH') || letters.startsWith('MAT')) {
-                return (digits.includes('12') || digits.endsWith('2')) ? 'MATH 1012' : 'MATH 1011';
-            }
-
-            // 3. Department Prefix Mapping
-            const prefixMap = {
-                'ANTH': 'ANTH 1012', 'ANT': 'ANTH 1012',
-                'BIOL': 'BIOL 1012', 'BIO': 'BIOL 1012',
-                'CHEM': 'CHEM 1012', 'CHM': 'CHEM 1012',
-                'ECON': 'ECON 1011', 'ECO': 'ECON 1011',
-                'EMTE': 'EMTE 1012', 'EMT': 'EMTE 1012',
-                'GEES': 'GEES 1011', 'GEE': 'GEES 1011', 'GEO': 'GEES 1011',
-                'GLTR': 'GLTR 2012', 'GLT': 'GLTR 2012',
-                'HIST': 'HIST 1012', 'HIS': 'HIST 1012',
-                'INCL': 'INCL 1012', 'INC': 'INCL 1012',
-                'LOCT': 'LOCT 1011', 'LOC': 'LOCT 1011', 'LOG': 'LOCT 1011',
-                'MCIE': 'MCIE 1012', 'MCI': 'MCIE 1012', 'CIV': 'MCIE 1012',
-                'MGMT': 'MGMT 1012', 'MGM': 'MGMT 1012', 'MAN': 'MGMT 1012',
-                'PSYC': 'PSYC 1011', 'PSY': 'PSYC 1011',
-                'SPSC': 'SPSC 1011', 'SPS': 'SPSC 1011', 'SPO': 'SPSC 1011'
-            };
-
-            for (const [prefix, target] of Object.entries(prefixMap)) {
-                if (letters.startsWith(prefix)) return target;
+            for (const token of tokens) {
+                for (const code of VALID_COURSE_CODES) {
+                    if (token === code || token.replace(/\s+/g, '') === code.replace(/\s+/g, '')) {
+                        if (!matchedCodes.includes(code)) matchedCodes.push(code);
+                    }
+                }
             }
 
-            // Fallback substring search
-            const match = VALID_COURSE_CODES.find(c => c.replace(/\s+/g, '').includes(letters));
-            return match || "ANTH 1012";
+            // If exactly one valid code is found among the slashed parts
+            if (matchedCodes.length === 1) {
+                return matchedCodes[0];
+            }
+
+            // If ambiguous or completely unverified, return null (never guess letters!)
+            return null;
         }
 
         // ULTRA-ROBUST XML PARSER
@@ -939,18 +927,24 @@
                 const attrStr = match[1];
                 const inner = match[2];
 
-                // Course Code Extraction & Database Matching
+                // Course Code Extraction (Strict 1-to-1 Match Requirement)
                 const courseMatch = attrStr.match(/course\s*=\s*['"]([^'"]+)['"]/i);
-                const rawCourse = courseMatch ? courseMatch[1].trim() : "ANTH 1012";
+                const rawCourse = courseMatch ? courseMatch[1].trim() : "";
+                const normalized = normalizeCourseCode(rawCourse);
+
+                // Direct 1-to-1 match: Only true if the raw input matches a registered code letter-for-letter
                 const exactBook = findExactBook(rawCourse);
+                const isPure1to1 = Boolean(exactBook);
 
-                const canonicalCourse = exactBook ? exactBook.course_code : normalizeCourseCode(rawCourse);
-                const bookTitle = exactBook ? exactBook.title : null;
+                const candidateCourse = isPure1to1 ? exactBook.course_code : (normalized || rawCourse);
+                const bookTitle = isPure1to1 ? exactBook.title : null;
 
-                if (exactBook) {
+                if (isPure1to1) {
                     log(`Exact 1-1 match: "${rawCourse}" → "${exactBook.title}" (${exactBook.course_code})`);
-                } else if (rawCourse !== canonicalCourse) {
-                    log(`Normalized code: "${rawCourse}" → "${canonicalCourse}"`);
+                } else if (normalized) {
+                    log(`Slashed code: "${rawCourse}" → candidate "${normalized}" (requires manual verification)`);
+                } else {
+                    log(`Unverified course code: "${rawCourse}" (requires manual verification)`, 'warn');
                 }
 
                 // Page Number Extraction
@@ -974,7 +968,6 @@
                 if (bodyMatch) {
                     body = bodyMatch[1].trim();
                 } else if (cssMatch) {
-                    // Fallback: take content after scoped_css tag
                     const postCss = inner.split(/<\/scoped_css>/i)[1];
                     if (postCss) body = postCss.replace(/<\/notebook_sheet>/i, '').trim();
                 }
@@ -989,8 +982,9 @@
 
                 parsedSheets.push({
                     raw_course_code: rawCourse,
-                    course_code: canonicalCourse,
+                    course_code: candidateCourse,
                     book_title: bookTitle,
+                    is_verified: isPure1to1,
                     language: rawLang || "am",
                     page_number: isNaN(page) ? 1 : page,
                     topic_title: title,
@@ -1024,7 +1018,7 @@
             container.innerHTML = parsedSheets.map((sheet, index) => {
                 const bookLabel = sheet.book_title
                     ? `<span style="color: #fff; font-weight: 600;">${sheet.book_title}</span> • <span style="color: var(--accent-teal);">${sheet.course_code}</span>`
-                    : sheet.course_code;
+                    : `<span style="color: #fbbf24;"><i class="fas fa-circle-question"></i> ${sheet.raw_course_code || sheet.course_code} (Unverified)</span>`;
                 return `
                 <div class="staged-tile">
                     <div class="tile-meta">
@@ -1191,10 +1185,11 @@
 
         function findExactBook(rawCourse) {
             if (!rawCourse || registeredBooks.length === 0) return null;
-            const target = rawCourse.trim().toUpperCase().replace(/\s+/g, ' ');
-            return registeredBooks.find(b => 
-                (b.course_code || '').trim().toUpperCase().replace(/\s+/g, ' ') === target
-            ) || null;
+            const target = rawCourse.trim().toUpperCase().replace(/[-_]/g, ' ').replace(/\s+/g, ' ');
+            return registeredBooks.find(b => {
+                const bCode = (b.course_code || '').trim().toUpperCase().replace(/[-_]/g, ' ').replace(/\s+/g, ' ');
+                return bCode === target;
+            }) || null;
         }
 
         function scoreBookMatch(book, rawInput) {
@@ -1310,32 +1305,36 @@
                 await loadBooksFromDatabase();
             }
 
-            // Check if any sheet lacks a verified 1-1 match
+            // Check if any sheet lacks a verified 1-to-1 match against books
             const unresolvedSheet = parsedSheets.find(s => {
-                if (s.book_title) return false;
-                const exact = findExactBook(s.course_code || s.raw_course_code);
+                if (s.is_verified && s.book_title) return false;
+
+                // Strict letter-for-letter match against raw XML code
+                const exact = findExactBook(s.raw_course_code);
                 if (exact) {
                     s.course_code = exact.course_code;
                     s.book_title = exact.title;
+                    s.is_verified = true;
                     return false;
                 }
-                return true;
+                return true; // Slashes or unknown letter inputs trigger the manual modal
             });
 
-            // If an unverified course code exists, open the picker modal
+            // If an unverified course code exists, halt and prompt the verification modal
             if (unresolvedSheet) {
                 const targetCode = unresolvedSheet.raw_course_code || unresolvedSheet.course_code;
                 promptBookPicker(targetCode, (chosenCode, chosenTitle) => {
-                    // Update all matching staged sheets
+                    // Bind selected book to all staged sheets sharing this code
                     parsedSheets.forEach(s => {
                         if ((s.raw_course_code || s.course_code) === targetCode) {
                             s.course_code = chosenCode;
                             s.book_title = chosenTitle;
+                            s.is_verified = true;
                         }
                     });
                     updateStagedList();
                     log(`Target verified: "${targetCode}" → "${chosenTitle}" (${chosenCode})`);
-                    // Automatically resume upload
+                    // Resume upload
                     uploadAllSheets();
                 });
                 return;
