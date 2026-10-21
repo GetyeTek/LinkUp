@@ -5,6 +5,7 @@ import './MissionControlOverlay.css';
 const MissionControlOverlay = ({ isActive, onClose }) => {
     const { sessionUser, user: userProfile } = usePlatform();
     const [activeMissionTab, setActiveMissionTab] = useState('daily');
+    const [noticeModal, setNoticeModal] = useState(null);
     
     // Telegram Mission States: 'loading' | 'unverified' | 'unclaimed' | 'claimed'
     const [tgMissionState, setTgMissionState] = useState('loading');
@@ -139,7 +140,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                 if (error || !data) throw new Error("Could not generate secure link.");
                 window.open(`https://t.me/linkupregistrationbot?start=link_${data}`, '_blank', 'noopener,noreferrer');
             } catch (err) {
-                alert(err.message || "Failed to initiate verification.");
+                setNoticeModal({ title: "Verification Failed", msg: err.message || "Failed to initiate verification.", isSuccess: false });
             } finally {
                 setIsClaiming(false);
             }
@@ -150,13 +151,11 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                 const { data, error } = await supabase.rpc('claim_telegram_verification_reward');
                 if (error) throw error;
                 
-                // Play a tactile success sound/vibration if supported
                 if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-                
                 setTgMissionState('claimed');
+                setNoticeModal({ title: "Reward Claimed!", msg: "You have received +50 LinkUp Credits for verifying your identity.", isSuccess: true });
             } catch (err) {
-                console.error("Claim failed:", err);
-                alert(err.message || "Failed to claim reward.");
+                setNoticeModal({ title: "Claim Failed", msg: err.message || "Failed to claim reward.", isSuccess: false });
             } finally {
                 setIsClaiming(false);
             }
@@ -181,8 +180,9 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
             
             if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
             setGroupMissionStates(prev => ({ ...prev, [group.id]: 'claimed' }));
+            setNoticeModal({ title: "Mission Completed!", msg: `Membership verified in ${group.handle}! +${group.reward || 30} Credits added to your account.`, isSuccess: true });
         } catch (err) {
-            alert(err.message || `Failed to verify membership in ${group.handle}.`);
+            setNoticeModal({ title: "Membership Verification", msg: err.message || `Could not verify membership in ${group.handle}. Make sure you have joined the channel.`, isSuccess: false });
         } finally {
             setVerifyingGroupId(null);
         }
@@ -212,8 +212,9 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
             if (error) throw error;
             if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
             await loadStreakData(); // Instantly pulls the NEXT milestone
+            setNoticeModal({ title: "Milestone Claimed!", msg: `Streak quest completed! +${streakData.reward} Credits awarded.`, isSuccess: true });
         } catch (err) {
-            alert(err.message || "Failed to claim streak milestone.");
+            setNoticeModal({ title: "Claim Failed", msg: err.message || "Failed to claim streak milestone.", isSuccess: false });
         } finally {
             setIsClaimingStreak(false);
         }
@@ -486,6 +487,81 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Custom High-Fidelity Notification Modal */}
+            {noticeModal && (
+                <div 
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 99999,
+                        background: 'rgba(0, 0, 0, 0.75)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '1.5rem',
+                        animation: 'fadeIn 0.2s ease-out'
+                    }}
+                    onClick={() => setNoticeModal(null)}
+                >
+                    <div 
+                        style={{
+                            background: 'var(--surface-dark, #181920)',
+                            border: '1px solid var(--border-color, rgba(255, 255, 255, 0.12))',
+                            borderRadius: '24px',
+                            width: '100%',
+                            maxWidth: '380px',
+                            padding: '1.75rem',
+                            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.6)',
+                            animation: 'popModal 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+                            <div style={{
+                                width: '42px',
+                                height: '42px',
+                                borderRadius: '12px',
+                                background: noticeModal.isSuccess ? 'rgba(66, 215, 184, 0.15)' : 'rgba(255, 95, 95, 0.15)',
+                                color: noticeModal.isSuccess ? 'var(--accent-teal, #42d7b8)' : '#ff5f5f',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '1.25rem',
+                                flexShrink: 0
+                            }}>
+                                <i className={`fas ${noticeModal.isSuccess ? 'fa-circle-check' : 'fa-circle-exclamation'}`}></i>
+                            </div>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#fff', fontWeight: 700 }}>
+                                {noticeModal.title}
+                            </h3>
+                        </div>
+                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#ccc', lineHeight: 1.5 }}>
+                            {noticeModal.msg}
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button 
+                                style={{
+                                    padding: '11px 22px',
+                                    borderRadius: '12px',
+                                    fontWeight: 700,
+                                    fontFamily: 'Poppins, sans-serif',
+                                    cursor: 'pointer',
+                                    border: 'none',
+                                    fontSize: '0.9rem',
+                                    background: 'var(--accent-teal, #42d7b8)',
+                                    color: '#0c0c0c'
+                                }} 
+                                onClick={() => setNoticeModal(null)}
+                            >
+                                Got It
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
