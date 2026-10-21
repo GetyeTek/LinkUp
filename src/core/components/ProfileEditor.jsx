@@ -61,6 +61,20 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
         sureName: '', fatherName: '', username: '', bio: '', email: '', phone: '', sex: '', university_id: '', 
         program: '', department: '', freshman_stream: '', target_department: '', year: ''
     });
+    const [isLinkingPhone, setIsLinkingPhone] = useState(false);
+
+    const handleInitiateBotPhoneChange = async () => {
+        setIsLinkingPhone(true);
+        try {
+            const { data, error } = await supabase.rpc('generate_telegram_link_token');
+            if (error || !data) throw new Error("Could not generate verification token.");
+            window.open(`https://t.me/linkupregistrationbot?start=link_${data}`, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+            setAlertNotice({ title: "Transfer Failed", msg: err.message || "Could not connect to Telegram bot." });
+        } finally {
+            setIsLinkingPhone(false);
+        }
+    };
     
     const usernameStatus = useUsernameCheck(editForm.username, userProfile?.username);
     const { status: phoneStatus } = usePhoneCheck(editForm.phone, userProfile?.phone);
@@ -161,14 +175,15 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
         }
 
         const isFreshman = editForm.department === 'Freshman';
-        const isPhoneChanged = normalizedPhone !== (userProfile?.phone || '');
+        const isVerifiedTelegram = Boolean(userProfile?.registered_with_telegram);
         
         const profileData = {
             full_name: finalFullName,
             username: editForm.username.toLowerCase().trim(),
             bio: editForm.bio.trim(),
             avatar_url: finalAvatarUrl,
-            phone: normalizedPhone || null,
+            // If verified, retain ground-truth phone number; otherwise accept normalized input
+            phone: isVerifiedTelegram ? (userProfile?.phone || null) : (normalizedPhone || null),
             sex: editForm.sex || null,
             university_id: editForm.university_id || null,
             program: editForm.program || null,
@@ -177,12 +192,6 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
             target_department: isFreshman ? (editForm.target_department || null) : null,
             year: !isFreshman ? (editForm.year || null) : null
         };
-
-        if (isPhoneChanged && userProfile?.registered_with_telegram) {
-            profileData.registered_with_telegram = false;
-            profileData.telegram_id = null;
-            profileData.telegram_username = null;
-        }
 
         const { data: updatedProfile, error } = await supabase
             .from('profiles')
@@ -334,35 +343,67 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                             <div className="input-group-sm">
                                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span>Phone Number</span>
-                                    {userProfile?.registered_with_telegram && editForm.phone.replace(/\s+/g, '') === (userProfile?.phone || '').replace(/\s+/g, '') && (
+                                    {userProfile?.registered_with_telegram && (
                                         <span style={{ fontSize: '0.65rem', color: 'var(--accent-teal)', fontWeight: 700, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <i className="fas fa-shield-check"></i> Telegram Verified
+                                            <i className="fas fa-shield-check"></i> Verified with Telegram
                                         </span>
                                     )}
                                 </label>
-                                <input 
-                                    type="tel" 
-                                    value={editForm.phone} 
-                                    onChange={e => setEditForm({...editForm, phone: e.target.value})} 
-                                    disabled={saving}
-                                    placeholder="09... or +251..."
-                                    style={phoneStatus === 'taken' || phoneStatus === 'invalid' ? { borderColor: '#ff5f5f' } : {}}
-                                />
-                                {editForm.phone && phoneStatus !== 'idle' && (
-                                    <div style={{ marginTop: '4px', fontSize: '0.75rem', fontWeight: 500, color: phoneStatus === 'taken' || phoneStatus === 'invalid' ? '#ff5f5f' : 'var(--accent-teal)' }}>
-                                        {phoneStatus === 'checking' && <><i className="fas fa-circle-notch fa-spin"></i> Checking availability...</>}
-                                        {phoneStatus === 'taken' && <><i className="fas fa-times-circle"></i> This phone number is already registered to another account.</>}
-                                        {phoneStatus === 'invalid' && <><i className="fas fa-exclamation-circle"></i> Enter a valid phone number (e.g. 09... or +251...).</>}
-                                        {phoneStatus === 'available' && <><i className="fas fa-check-circle"></i> Phone number available.</>}
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <input 
+                                        type="tel" 
+                                        value={editForm.phone} 
+                                        onChange={e => !userProfile?.registered_with_telegram && setEditForm({...editForm, phone: e.target.value})} 
+                                        disabled={saving || userProfile?.registered_with_telegram}
+                                        readOnly={userProfile?.registered_with_telegram}
+                                        placeholder="09... or +251..."
+                                        style={{
+                                            paddingRight: userProfile?.registered_with_telegram ? '40px' : '16px',
+                                            ...(phoneStatus === 'taken' || phoneStatus === 'invalid' ? { borderColor: '#ff5f5f' } : {})
+                                        }}
+                                    />
+                                    {userProfile?.registered_with_telegram && (
+                                        <span style={{ position: 'absolute', right: '14px', color: 'var(--accent-teal)', fontSize: '0.9rem' }}>
+                                            <i className="fas fa-lock"></i>
+                                        </span>
+                                    )}
+                                </div>
+                                {userProfile?.registered_with_telegram ? (
+                                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                        <span style={{ fontSize: '0.72rem', color: '#888' }}>
+                                            Verified numbers are locked. To transfer to a new SIM, update via bot.
+                                        </span>
+                                        <button
+                                            type="button"
+                                            disabled={isLinkingPhone}
+                                            onClick={handleInitiateBotPhoneChange}
+                                            style={{
+                                                background: 'rgba(41, 169, 234, 0.12)',
+                                                border: '1px solid rgba(41, 169, 234, 0.35)',
+                                                color: '#29A9EA',
+                                                padding: '5px 10px',
+                                                borderRadius: '8px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                        >
+                                            {isLinkingPhone ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fab fa-telegram"></i> Change via Bot</>}
+                                        </button>
                                     </div>
-                                )}
-                                {userProfile?.registered_with_telegram && editForm.phone.replace(/\s+/g, '') !== (userProfile?.phone || '').replace(/\s+/g, '') && (
-                                    <div className="commitment-note" style={{ background: 'rgba(255, 171, 64, 0.08)', borderColor: 'rgba(255, 171, 64, 0.3)', marginTop: '8px', marginBottom: '0' }}>
-                                        <i className="fas fa-triangle-exclamation" style={{ color: '#ffab40', marginTop: '2px' }}></i>
-                                        <p style={{ color: '#e0e0e0', fontSize: '0.75rem', lineHeight: '1.4' }}>
-                                            <strong style={{ color: '#ffab40' }}>Notice:</strong> Changing your number will revoke your Telegram verification. You will need to verify the new number.
-                                        </p>
-                                    </div>
+                                ) : (
+                                    editForm.phone && phoneStatus !== 'idle' && (
+                                        <div style={{ marginTop: '4px', fontSize: '0.75rem', fontWeight: 500, color: phoneStatus === 'taken' || phoneStatus === 'invalid' ? '#ff5f5f' : 'var(--accent-teal)' }}>
+                                            {phoneStatus === 'checking' && <><i className="fas fa-circle-notch fa-spin"></i> Checking availability...</>}
+                                            {phoneStatus === 'taken' && <><i className="fas fa-times-circle"></i> This phone number is already registered to another account.</>}
+                                            {phoneStatus === 'invalid' && <><i className="fas fa-exclamation-circle"></i> Enter a valid phone number (e.g. 09... or +251...).</>}
+                                            {phoneStatus === 'available' && <><i className="fas fa-check-circle"></i> Phone number available.</>}
+                                        </div>
+                                    )
                                 )}
                             </div>
                         </div>
