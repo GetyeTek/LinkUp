@@ -166,13 +166,53 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true, metadata: meta }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (action === 'get_target_tg_group') {
-        const targetGroup = Deno.env.get('TARGET_TG_GROUP') || '@linkup_official_squad';
-        return new Response(JSON.stringify({ success: true, target_group: targetGroup }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const DEFAULT_TARGET_GROUPS = [
+        {
+            id: 'link_up_official',
+            handle: '@link_up_official',
+            title: 'LinkUp Community',
+            url: 'https://t.me/link_up_official',
+            reward: 30
+        },
+        {
+            id: 'heaven_academy',
+            handle: '@heaven_academy',
+            title: 'Heaven Academy',
+            url: 'https://t.me/heaven_academy',
+            reward: 30
+        }
+    ];
+
+    const getTargetGroups = () => {
+        const raw = Deno.env.get('TARGET_TG_GROUPS');
+        if (raw) {
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            } catch (_) {}
+        }
+        return DEFAULT_TARGET_GROUPS;
+    };
+
+    if (action === 'get_target_tg_groups' || action === 'get_target_tg_group') {
+        const groups = getTargetGroups();
+        return new Response(JSON.stringify({ success: true, groups }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === 'verify_tg_group_join') {
-        const targetGroup = Deno.env.get('TARGET_TG_GROUP') || '@linkup_official_squad';
+        const { group_id, handle } = body;
+        const groups = getTargetGroups();
+        const matchedGroup = groups.find((g: any) => 
+            (group_id && g.id === group_id) || 
+            (handle && g.handle?.toLowerCase() === handle?.toLowerCase())
+        );
+
+        if (!matchedGroup) {
+            throw new Error("Invalid or unapproved group target.");
+        }
+
+        const targetHandle = matchedGroup.handle;
+        const rewardAmount = Number(matchedGroup.reward) || 30;
         const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
         
         if (!botToken) throw new Error("Bot token not configured on server.");
@@ -182,35 +222,44 @@ serve(async (req) => {
             throw new Error("You must verify your Telegram account first.");
         }
 
-        const idempotencyKey = `tg_group_join_reward_${requesterId}`;
-        const { data: tx } = await supabase.from('linkoin_transactions').select('id').eq('idempotency_key', idempotencyKey).maybeSingle();
-        if (tx) throw new Error("Reward already claimed.");
+        const cleanHandleKey = targetHandle.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+        const idempotencyKey = `tg_group_join_reward_${cleanHandleKey}_${requesterId}`;
+        const legacyIdempotencyKey = `tg_group_join_reward_${requesterId}`;
+
+        // Check if claimed under either specific key or legacy single key
+        const { data: tx } = await supabase
+            .from('linkoin_transactions')
+            .select('id')
+            .or(`idempotency_key.eq.${idempotencyKey},idempotency_key.eq.${legacyIdempotencyKey}`)
+            .maybeSingle();
+
+        if (tx) throw new Error(`Reward already claimed for ${targetHandle}.`);
 
         // Query Telegram Bot API securely from the backend
-        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${targetGroup}&user_id=${profile.telegram_id}`);
+        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(targetHandle)}&user_id=${profile.telegram_id}`);
         const tgData = await tgRes.json();
 
         if (!tgData.ok) {
             console.error("[Social Core] TG API Error:", tgData);
-            throw new Error("Could not verify membership. Are you sure you joined the correct group?");
+            throw new Error(`Could not verify membership in ${targetHandle}. Make sure you have joined the channel.`);
         }
 
         const status = tgData.result.status;
         if (!['member', 'administrator', 'creator'].includes(status)) {
-            throw new Error("You have not joined the group yet, or you left.");
+            throw new Error(`You have not joined ${targetHandle} yet, or you left.`);
         }
 
         const { error: insertErr } = await supabase.from('linkoin_transactions').insert({
             user_id: requesterId,
-            amount: 30,
+            amount: rewardAmount,
             transaction_type: 'reward',
-            description: `Joined Official Telegram Group: ${targetGroup}`,
+            description: `Joined Official Telegram Group: ${targetHandle}`,
             idempotency_key: idempotencyKey
         });
 
         if (insertErr) throw insertErr;
 
-        return new Response(JSON.stringify({ success: true, amount: 30 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: true, amount: rewardAmount, group_id: matchedGroup.id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     throw new Error(`Unknown action: ${action}`);
