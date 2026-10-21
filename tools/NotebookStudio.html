@@ -688,6 +688,39 @@
         </div>
     </div>
 
+    <!-- DRAWER: TARGET BOOK VERIFICATION / PICKER -->
+    <div class="modal-overlay" id="modal-book-picker" onclick="closeModalOnBackdrop(event, 'modal-book-picker')">
+        <div class="bottom-sheet" style="max-width: 620px;">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title-bar">
+                <div>
+                    <h3 style="font-size: 0.95rem;"><i class="fas fa-book-bookmark"></i> Verify Target Book</h3>
+                    <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                        XML referenced: <code id="picker-raw-code" style="color: var(--accent-teal); font-weight: 700;"></code>
+                    </p>
+                </div>
+                <button class="icon-btn" onclick="closeModal('modal-book-picker')"><i class="fas fa-xmark"></i></button>
+            </div>
+
+            <!-- Search & Filter Bar -->
+            <div style="display: flex; gap: 8px;">
+                <div style="position: relative; flex: 1;">
+                    <input type="text" id="book-picker-search" class="input-dark" style="padding-left: 32px;" placeholder="Search books by title or course code..." oninput="onSearchBookPicker()">
+                    <i class="fas fa-search" style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; color: var(--text-muted);"></i>
+                </div>
+                <button class="pill-chip" onclick="clearBookSearch()"><i class="fas fa-xmark"></i> Clear</button>
+            </div>
+
+            <div id="picker-guide-text" style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-wand-magic-sparkles" style="color: var(--accent-teal);"></i> Nearest matches ranked at top. Tap to confirm target:
+            </div>
+
+            <div class="staged-list-container" id="book-picker-list" style="max-height: 52dvh; overflow-y: auto;">
+                <!-- Populated via renderBookPickerList() -->
+            </div>
+        </div>
+    </div>
+
     <!-- Injected Dynamic CSS -->
     <style id="preview-scoped-css"></style>
 
@@ -722,13 +755,19 @@
 
         let parsedSheets = [];
         let activeSheetIndex = 0;
+        let registeredBooks = [];
+        let currentResolvingRawCode = "";
+        let pendingUploadResolver = null;
 
-        // Auto-load saved credentials
-        window.addEventListener('DOMContentLoaded', () => {
+        // Auto-load saved credentials and fetch live books
+        window.addEventListener('DOMContentLoaded', async () => {
             const savedUrl = sessionStorage.getItem('linkup_sb_url') || localStorage.getItem('linkup_sb_url');
             const savedKey = sessionStorage.getItem('linkup_sb_key') || localStorage.getItem('linkup_sb_key');
             if (savedUrl) document.getElementById('sb-url').value = savedUrl;
             if (savedKey) document.getElementById('sb-key').value = savedKey;
+            if (savedUrl && savedKey) {
+                await loadBooksFromDatabase();
+            }
         });
 
         // Toast Feedback
@@ -793,6 +832,7 @@
             closeModal('modal-settings');
             showToast("Database keys stored");
             log("Supabase credentials configured.");
+            loadBooksFromDatabase(true);
         }
 
         function switchTab(target) {
@@ -899,12 +939,17 @@
                 const attrStr = match[1];
                 const inner = match[2];
 
-                // Course Code Extraction & Normalization
+                // Course Code Extraction & Database Matching
                 const courseMatch = attrStr.match(/course\s*=\s*['"]([^'"]+)['"]/i);
-                const rawCourse = courseMatch ? courseMatch[1] : "ANTH 1012";
-                const canonicalCourse = normalizeCourseCode(rawCourse);
+                const rawCourse = courseMatch ? courseMatch[1].trim() : "ANTH 1012";
+                const exactBook = findExactBook(rawCourse);
 
-                if (rawCourse !== canonicalCourse) {
+                const canonicalCourse = exactBook ? exactBook.course_code : normalizeCourseCode(rawCourse);
+                const bookTitle = exactBook ? exactBook.title : null;
+
+                if (exactBook) {
+                    log(`Exact 1-1 match: "${rawCourse}" → "${exactBook.title}" (${exactBook.course_code})`);
+                } else if (rawCourse !== canonicalCourse) {
                     log(`Normalized code: "${rawCourse}" → "${canonicalCourse}"`);
                 }
 
@@ -943,7 +988,9 @@
                 const rawLang = langMatch ? langMatch[1].toLowerCase().trim() : "am";
 
                 parsedSheets.push({
+                    raw_course_code: rawCourse,
                     course_code: canonicalCourse,
+                    book_title: bookTitle,
                     language: rawLang || "am",
                     page_number: isNaN(page) ? 1 : page,
                     topic_title: title,
@@ -974,17 +1021,22 @@
 
             upsertAllBtn.disabled = false;
 
-            container.innerHTML = parsedSheets.map((sheet, index) => `
+            container.innerHTML = parsedSheets.map((sheet, index) => {
+                const bookLabel = sheet.book_title
+                    ? `<span style="color: #fff; font-weight: 600;">${sheet.book_title}</span> • <span style="color: var(--accent-teal);">${sheet.course_code}</span>`
+                    : sheet.course_code;
+                return `
                 <div class="staged-tile">
                     <div class="tile-meta">
                         <h4>${sheet.topic_title}</h4>
-                        <p>${sheet.course_code} • Page ${sheet.page_number}</p>
+                        <p>${bookLabel} • Page ${sheet.page_number}</p>
                     </div>
                     <button class="pill-chip" onclick="previewSingleSheet(${index})">
                         <i class="fas fa-eye"></i> View
                     </button>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         let isDesktopView = false;
@@ -1113,14 +1165,185 @@
             }
         }
 
+        // LIVE DATABASE BOOKS LOADER & MATCHER
+        async function loadBooksFromDatabase(force = false) {
+            if (registeredBooks.length > 0 && !force) return registeredBooks;
+            const client = getSupabaseClient();
+            if (!client) return [];
+
+            try {
+                const { data, error } = await client
+                    .from('books')
+                    .select('id, title, course_code, category')
+                    .not('course_code', 'is', null)
+                    .order('title', { ascending: true });
+
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    registeredBooks = data.filter(b => b.course_code && b.course_code.trim() !== '');
+                    log(`Loaded ${registeredBooks.length} course book(s) from database.`);
+                }
+            } catch (err) {
+                log(`Failed to fetch books: ${err.message}`, 'warn');
+            }
+            return registeredBooks;
+        }
+
+        function findExactBook(rawCourse) {
+            if (!rawCourse || registeredBooks.length === 0) return null;
+            const target = rawCourse.trim().toUpperCase().replace(/\s+/g, ' ');
+            return registeredBooks.find(b => 
+                (b.course_code || '').trim().toUpperCase().replace(/\s+/g, ' ') === target
+            ) || null;
+        }
+
+        function scoreBookMatch(book, rawInput) {
+            if (!rawInput) return 0;
+            const raw = rawInput.toLowerCase().trim();
+            const rawClean = raw.replace(/[^a-z0-9]/g, '');
+            const code = (book.course_code || '').toLowerCase().trim();
+            const codeClean = code.replace(/[^a-z0-9]/g, '');
+            const title = (book.title || '').toLowerCase().trim();
+            const titleClean = title.replace(/[^a-z0-9]/g, '');
+
+            if (codeClean && codeClean === rawClean) return 1000;
+            if (codeClean && (codeClean.includes(rawClean) || rawClean.includes(codeClean))) return 500;
+            if (titleClean && titleClean === rawClean) return 400;
+            if (title.includes(raw) || raw.includes(title)) return 300;
+
+            let score = 0;
+            const words = raw.split(/\s+/).filter(w => w.length > 2);
+            words.forEach(w => {
+                if (code.includes(w)) score += 60;
+                if (title.includes(w)) score += 40;
+            });
+
+            if (codeClean.length >= 3 && rawClean.length >= 3) {
+                if (codeClean.slice(0, 3) === rawClean.slice(0, 3)) score += 50;
+            }
+            return score;
+        }
+
+        function promptBookPicker(rawCode, onSelect) {
+            pendingUploadResolver = onSelect;
+            currentResolvingRawCode = rawCode;
+            document.getElementById('picker-raw-code').innerText = rawCode;
+            document.getElementById('book-picker-search').value = '';
+            renderBookPickerList(rawCode, '');
+            openModal('modal-book-picker');
+        }
+
+        function onSearchBookPicker() {
+            const query = document.getElementById('book-picker-search').value;
+            renderBookPickerList(currentResolvingRawCode, query);
+        }
+
+        function clearBookSearch() {
+            document.getElementById('book-picker-search').value = '';
+            renderBookPickerList(currentResolvingRawCode, '');
+        }
+
+        function renderBookPickerList(rawCode, searchQuery = '') {
+            const container = document.getElementById('book-picker-list');
+            const term = (searchQuery || '').toLowerCase().trim();
+
+            let list = [...registeredBooks];
+            if (term) {
+                list = list.filter(b => 
+                    (b.title || '').toLowerCase().includes(term) ||
+                    (b.course_code || '').toLowerCase().includes(term) ||
+                    (b.category || '').toLowerCase().includes(term)
+                );
+            }
+
+            list.sort((a, b) => {
+                const sB = scoreBookMatch(b, term || rawCode);
+                const sA = scoreBookMatch(a, term || rawCode);
+                return sB - sA;
+            });
+
+            if (list.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.8rem; font-style: italic;">No matching books found.</div>`;
+                return;
+            }
+
+            container.innerHTML = list.map((b, idx) => {
+                const isTop = idx === 0 && !term;
+                const safeCode = b.course_code.replace(/'/g, "\\'");
+                const safeTitle = b.title.replace(/'/g, "\\'");
+                return `
+                    <div class="staged-tile" style="cursor: pointer;" onclick="confirmBookSelection('${safeCode}', '${safeTitle}')">
+                        <div class="tile-meta" style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <h4>${b.title}</h4>
+                                ${isTop ? '<span style="font-size: 0.65rem; background: var(--accent-teal-soft); color: var(--accent-teal); border: 1px solid var(--accent-teal); padding: 1px 6px; border-radius: 99px; font-weight: 700;">Nearest</span>' : ''}
+                            </div>
+                            <p style="margin-top: 2px;">
+                                <span style="color: var(--accent-teal); font-family: 'Roboto Mono', monospace; font-weight: 600;">${b.course_code}</span>
+                                ${b.category ? ` • ${b.category}` : ''}
+                            </p>
+                        </div>
+                        <button class="pill-chip" style="color: var(--accent-teal); pointer-events: none;">
+                            <i class="fas fa-check"></i> Select
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function confirmBookSelection(courseCode, title) {
+            closeModal('modal-book-picker');
+            if (pendingUploadResolver) {
+                const cb = pendingUploadResolver;
+                pendingUploadResolver = null;
+                cb(courseCode, title);
+            }
+        }
+
         async function uploadAllSheets() {
             const client = getSupabaseClient();
             if (!client || parsedSheets.length === 0) return;
 
+            // Ensure live books are pulled from Supabase
+            if (registeredBooks.length === 0) {
+                showToast("Fetching registered books...");
+                await loadBooksFromDatabase();
+            }
+
+            // Check if any sheet lacks a verified 1-1 match
+            const unresolvedSheet = parsedSheets.find(s => {
+                if (s.book_title) return false;
+                const exact = findExactBook(s.course_code || s.raw_course_code);
+                if (exact) {
+                    s.course_code = exact.course_code;
+                    s.book_title = exact.title;
+                    return false;
+                }
+                return true;
+            });
+
+            // If an unverified course code exists, open the picker modal
+            if (unresolvedSheet) {
+                const targetCode = unresolvedSheet.raw_course_code || unresolvedSheet.course_code;
+                promptBookPicker(targetCode, (chosenCode, chosenTitle) => {
+                    // Update all matching staged sheets
+                    parsedSheets.forEach(s => {
+                        if ((s.raw_course_code || s.course_code) === targetCode) {
+                            s.course_code = chosenCode;
+                            s.book_title = chosenTitle;
+                        }
+                    });
+                    updateStagedList();
+                    log(`Target verified: "${targetCode}" → "${chosenTitle}" (${chosenCode})`);
+                    // Automatically resume upload
+                    uploadAllSheets();
+                });
+                return;
+            }
+
             const btn = document.getElementById('btn-upsert-all');
             btn.disabled = true;
-            log(`Starting batch upload of ${parsedSheets.length} sheet(s)...`);
-            showToast(`Uploading ${parsedSheets.length} sheets...`);
+            log(`Starting upload of ${parsedSheets.length} sheet(s)...`);
 
             try {
                 for (let i = 0; i < parsedSheets.length; i++) {
@@ -1142,8 +1365,12 @@
                     if (error) throw error;
                 }
 
-                log(`✅ Batch complete: All ${parsedSheets.length} sheets published.`);
-                showToast("All sheets uploaded successfully!");
+                // Identify target book name for toast confirmation
+                const uniqueTitles = [...new Set(parsedSheets.map(s => s.book_title).filter(Boolean))];
+                const destinationLabel = uniqueTitles.length === 1 ? ` to "${uniqueTitles[0]}"` : "";
+
+                log(`✅ Batch complete: All ${parsedSheets.length} sheets published${destinationLabel}.`);
+                showToast(`Uploaded ${parsedSheets.length} sheet(s)${destinationLabel}!`);
             } catch (err) {
                 log(`Batch Error: ${err.message}`, 'err');
                 showToast(`Upload failed: ${err.message}`, true);
