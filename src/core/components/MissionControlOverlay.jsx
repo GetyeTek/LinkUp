@@ -10,10 +10,12 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
     const [tgMissionState, setTgMissionState] = useState('loading');
     const [isClaiming, setIsClaiming] = useState(false);
     
-    // Telegram Group Join Mission States: 'loading' | 'locked' | 'join' | 'verify' | 'claimed'
-    const [tgGroupMissionState, setTgGroupMissionState] = useState('loading');
-    const [targetGroupHandle, setTargetGroupHandle] = useState('@linkup_official_squad');
-    const [isVerifyingGroup, setIsVerifyingGroup] = useState(false);
+    // Dynamic Telegram Group Missions (Zero hardcoded fallbacks)
+    const [targetGroups, setTargetGroups] = useState([]);
+    const [groupsLoading, setGroupsLoading] = useState(true);
+    const [groupsError, setGroupsError] = useState(false);
+    const [groupMissionStates, setGroupMissionStates] = useState({});
+    const [verifyingGroupId, setVerifyingGroupId] = useState(null);
 
     // Referral Network States
     const [referrals, setReferrals] = useState([]);
@@ -61,26 +63,49 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
             else if (profile?.registered_with_telegram) setTgMissionState('unclaimed');
             else setTgMissionState('unverified');
 
-            // 2. Check Group Join Mission
-            const idKeyGroup = `tg_group_join_reward_${sessionUser.id}`;
-            const { data: txGroup } = await supabase
-                .from('linkoin_transactions')
-                .select('id')
-                .eq('idempotency_key', idKeyGroup)
-                .maybeSingle();
+            // 2. Fetch Dynamic Groups & Claimed Ledger Status
+            setGroupsLoading(true);
+            setGroupsError(false);
 
-            if (txGroup) {
-                setTgGroupMissionState('claimed');
-            } else if (!profile?.registered_with_telegram) {
-                setTgGroupMissionState('locked');
-            } else {
-                // Fetch dynamic target group handle silently
-                invokePlatformSocial({ action: 'get_target_tg_group' }).then(res => {
-                    if (res.target_group) setTargetGroupHandle(res.target_group);
-                    setTgGroupMissionState(prev => prev === 'verify' ? 'verify' : 'join');
-                }).catch(() => {
-                    setTgGroupMissionState(prev => prev === 'verify' ? 'verify' : 'join');
-                });
+            try {
+                const [groupsRes, txRes] = await Promise.all([
+                    invokePlatformSocial({ action: 'get_target_tg_groups' }),
+                    supabase
+                        .from('linkoin_transactions')
+                        .select('idempotency_key')
+                        .eq('user_id', sessionUser.id)
+                        .like('idempotency_key', 'tg_group_join_reward_%')
+                ]);
+
+                if (!groupsRes?.success || !Array.isArray(groupsRes.groups) || groupsRes.groups.length === 0) {
+                    setGroupsError(true);
+                    setTargetGroups([]);
+                } else {
+                    setTargetGroups(groupsRes.groups);
+                    const claimedKeys = new Set((txRes?.data || []).map(t => t.idempotency_key));
+
+                    setGroupMissionStates(prev => {
+                        const nextStates = { ...prev };
+                        groupsRes.groups.forEach(g => {
+                            const cleanHandleKey = g.handle.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+                            const groupKey = `tg_group_join_reward_${cleanHandleKey}_${sessionUser.id}`;
+                            const legacyKey = `tg_group_join_reward_${sessionUser.id}`;
+
+                            if (claimedKeys.has(groupKey) || claimedKeys.has(legacyKey)) {
+                                nextStates[g.id] = 'claimed';
+                            } else if (!nextStates[g.id]) {
+                                nextStates[g.id] = 'join';
+                            }
+                        });
+                        return nextStates;
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load group missions:", err);
+                setGroupsError(true);
+                setTargetGroups([]);
+            } finally {
+                setGroupsLoading(false);
             }
         } catch (error) {
             console.error("Failed to fetch mission status", error);
@@ -138,23 +163,28 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
         }
     };
 
-    const handleJoinGroupClick = () => {
-        window.open(`https://t.me/${targetGroupHandle.replace('@', '')}`, '_blank', 'noopener,noreferrer');
-        setTgGroupMissionState('verify');
+    const handleJoinGroupClick = (group) => {
+        const targetUrl = group.url || `https://t.me/${group.handle.replace('@', '')}`;
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+        setGroupMissionStates(prev => ({ ...prev, [group.id]: 'verify' }));
     };
 
-    const handleVerifyGroupClick = async () => {
-        setIsVerifyingGroup(true);
+    const handleVerifyGroupClick = async (group) => {
+        setVerifyingGroupId(group.id);
         try {
-            const res = await invokePlatformSocial({ action: 'verify_tg_group_join' });
+            const res = await invokePlatformSocial({
+                action: 'verify_tg_group_join',
+                group_id: group.id,
+                handle: group.handle
+            });
             if (res.error) throw new Error(res.error);
             
             if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-            setTgGroupMissionState('claimed');
+            setGroupMissionStates(prev => ({ ...prev, [group.id]: 'claimed' }));
         } catch (err) {
-            alert(err.message || "Failed to verify membership.");
+            alert(err.message || `Failed to verify membership in ${group.handle}.`);
         } finally {
-            setIsVerifyingGroup(false);
+            setVerifyingGroupId(null);
         }
     };
 
@@ -287,37 +317,69 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                     </div>
                                 </li>
 
-                                {/* The Telegram Group Join Mission */}
-                                <li>
-                                    <div className="task-card" style={{ opacity: tgGroupMissionState === 'locked' ? 0.6 : 1 }}>
-                                        <div className="task-icon" style={{ background: 'rgba(41, 169, 234, 0.1)', color: '#29A9EA' }}>
-                                            <i className="fas fa-users"></i>
+                                {/* Dynamic Telegram Community Missions */}
+                                {groupsLoading ? (
+                                    <li>
+                                        <div className="task-card" style={{ justifyContent: 'center', color: '#888', padding: '1.25rem' }}>
+                                            <i className="fas fa-circle-notch fa-spin" style={{ marginRight: '8px', color: '#29A9EA' }}></i>
+                                            <span>Loading community missions...</span>
                                         </div>
-                                        <div className="task-details">
-                                            <div className="task-title">Join the Squad</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>
-                                                {tgGroupMissionState === 'locked' ? 'Requires Identity Verification' : `Join ${targetGroupHandle}`}
+                                    </li>
+                                ) : groupsError || targetGroups.length === 0 ? (
+                                    <li>
+                                        <div className="task-card" style={{ opacity: 0.7, padding: '1rem' }}>
+                                            <div className="task-icon" style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#888' }}>
+                                                <i className="fas fa-circle-exclamation"></i>
+                                            </div>
+                                            <div className="task-details">
+                                                <div className="task-title" style={{ color: '#aaa' }}>Community Tasks Unavailable</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '2px' }}>
+                                                    Group reward missions are temporarily unavailable. Check back soon.
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="task-action">
-                                            <div className="reward-amount"><i className="fas fa-coins"></i> 30</div>
-                                            {tgGroupMissionState === 'locked' && (
-                                                <button className="claim-btn locked-action" disabled><i className="fas fa-lock"></i></button>
-                                            )}
-                                            {tgGroupMissionState === 'join' && (
-                                                <button className="claim-btn verify-action" onClick={handleJoinGroupClick}>Join</button>
-                                            )}
-                                            {tgGroupMissionState === 'verify' && (
-                                                <button className="claim-btn gold-pulse" onClick={handleVerifyGroupClick} disabled={isVerifyingGroup}>
-                                                    {isVerifyingGroup ? <i className="fas fa-circle-notch fa-spin"></i> : 'Verify'}
-                                                </button>
-                                            )}
-                                            {tgGroupMissionState === 'claimed' && (
-                                                <button className="claim-btn claimed" disabled><i className="fas fa-check"></i></button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </li>
+                                    </li>
+                                ) : (
+                                    targetGroups.map(group => {
+                                        const isLocked = tgMissionState === 'unverified';
+                                        const status = groupMissionStates[group.id] || 'join';
+                                        const isClaimed = status === 'claimed';
+                                        const isVerifying = verifyingGroupId === group.id;
+
+                                        return (
+                                            <li key={group.id}>
+                                                <div className="task-card" style={{ opacity: isLocked ? 0.6 : 1 }}>
+                                                    <div className="task-icon" style={{ background: 'rgba(41, 169, 234, 0.1)', color: '#29A9EA' }}>
+                                                        <i className="fas fa-users"></i>
+                                                    </div>
+                                                    <div className="task-details">
+                                                        <div className="task-title">Join {group.title || group.handle}</div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>
+                                                            {isLocked ? 'Requires Identity Verification' : `Join ${group.handle}`}
+                                                        </div>
+                                                    </div>
+                                                    <div className="task-action">
+                                                        <div className="reward-amount"><i className="fas fa-coins"></i> {group.reward || 30}</div>
+                                                        {isLocked && (
+                                                            <button className="claim-btn locked-action" disabled><i className="fas fa-lock"></i></button>
+                                                        )}
+                                                        {!isLocked && status === 'join' && (
+                                                            <button className="claim-btn verify-action" onClick={() => handleJoinGroupClick(group)}>Join</button>
+                                                        )}
+                                                        {!isLocked && status === 'verify' && (
+                                                            <button className="claim-btn gold-pulse" onClick={() => handleVerifyGroupClick(group)} disabled={isVerifying}>
+                                                                {isVerifying ? <i className="fas fa-circle-notch fa-spin"></i> : 'Verify'}
+                                                            </button>
+                                                        )}
+                                                        {!isLocked && isClaimed && (
+                                                            <button className="claim-btn claimed" disabled><i className="fas fa-check"></i></button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        );
+                                    })
+                                )}
                             </ul>
                         )}
 
