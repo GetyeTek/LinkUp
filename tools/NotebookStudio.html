@@ -529,6 +529,9 @@
             <span>Visual Studio</span>
         </div>
         <div class="header-actions">
+            <button class="icon-btn" onclick="openInspectorModal()" title="Inspect Registered Books">
+                <i class="fas fa-book-open"></i>
+            </button>
             <button class="icon-btn" id="btn-device-toggle" onclick="toggleDeviceMode()" title="Toggle Desktop Canvas">
                 <i class="fas fa-desktop" id="device-icon"></i>
             </button>
@@ -660,6 +663,28 @@
             <button class="btn-core btn-secondary" onclick="closeModal('modal-terminal')">
                 Close Console
             </button>
+        </div>
+    </div>
+
+    <!-- DRAWER: BOOK INSPECTOR -->
+    <div class="modal-overlay" id="modal-inspector" onclick="closeModalOnBackdrop(event, 'modal-inspector')">
+        <div class="bottom-sheet" style="max-width: 680px;">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title-bar">
+                <h3><i class="fas fa-book-open"></i> Registered Books Inspector</h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="icon-btn" onclick="fetchInspectorBooks()" title="Refresh List"><i class="fas fa-rotate"></i></button>
+                    <button class="icon-btn" onclick="closeModal('modal-inspector')"><i class="fas fa-xmark"></i></button>
+                </div>
+            </div>
+
+            <div id="inspector-loading" style="display: none; text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.82rem;">
+                <i class="fas fa-spinner fa-spin"></i> Loading books from database...
+            </div>
+
+            <div class="staged-list-container" id="inspector-books-list" style="max-height: 60dvh; overflow-y: auto;">
+                <!-- Populated via fetchInspectorBooks() -->
+            </div>
         </div>
     </div>
 
@@ -1124,6 +1149,281 @@
                 showToast(`Upload failed: ${err.message}`, true);
             } finally {
                 btn.disabled = false;
+            }
+        }
+
+        // --- BOOK INSPECTOR & CONSOLIDATED EXPORT ---
+        async function openInspectorModal() {
+            openModal('modal-inspector');
+            await fetchInspectorBooks();
+        }
+
+        async function fetchInspectorBooks() {
+            const client = getSupabaseClient();
+            const listContainer = document.getElementById('inspector-books-list');
+            const loading = document.getElementById('inspector-loading');
+
+            if (!client) {
+                listContainer.innerHTML = `
+                    <div style="text-align: center; color: var(--danger); padding: 1.5rem; font-size: 0.8rem;">
+                        Supabase credentials required. Tap the sliders icon in the topbar to configure.
+                    </div>`;
+                return;
+            }
+
+            loading.style.display = 'block';
+            listContainer.innerHTML = '';
+
+            try {
+                const { data, error } = await client
+                    .from('course_visual_notebooks')
+                    .select('course_code, language, page_number, topic_title, updated_at')
+                    .order('course_code', { ascending: true })
+                    .order('page_number', { ascending: true });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    listContainer.innerHTML = `
+                        <div style="text-align: center; color: var(--text-muted); padding: 2rem; font-size: 0.8rem; font-style: italic;">
+                            No sheets registered in course_visual_notebooks.
+                        </div>`;
+                    return;
+                }
+
+                // Group by course_code + language
+                const groups = {};
+                data.forEach(row => {
+                    const key = `${row.course_code}::${row.language || 'am'}`;
+                    if (!groups[key]) {
+                        groups[key] = {
+                            course_code: row.course_code,
+                            language: row.language || 'am',
+                            pages: []
+                        };
+                    }
+                    groups[key].pages.push(row.page_number);
+                });
+
+                listContainer.innerHTML = Object.values(groups).map(grp => {
+                    grp.pages.sort((a, b) => a - b);
+                    const minPage = grp.pages[0];
+                    const maxPage = grp.pages[grp.pages.length - 1];
+                    const pageSet = new Set(grp.pages);
+                    const gaps = [];
+
+                    for (let p = 1; p <= maxPage; p++) {
+                        if (!pageSet.has(p)) gaps.push(p);
+                    }
+
+                    const hasGaps = gaps.length > 0;
+                    const gapMarkup = hasGaps
+                        ? `<div style="color: var(--danger); font-size: 0.74rem; font-family: 'Roboto Mono', monospace; display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                             <i class="fas fa-triangle-exclamation"></i> Missing page(s): ${gaps.slice(0, 10).join(', ')}${gaps.length > 10 ? '...' : ''} (${gaps.length} gap${gaps.length > 1 ? 's' : ''})
+                           </div>`
+                        : `<div style="color: var(--accent-teal); font-size: 0.74rem; font-family: 'Roboto Mono', monospace; display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                             <i class="fas fa-circle-check"></i> Sequential (1 to ${maxPage})
+                           </div>`;
+
+                    return `
+                        <div class="staged-tile" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                                        <h4 style="font-size: 0.92rem; font-weight: 700; color: #fff;">${grp.course_code}</h4>
+                                        <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--surface-elevated); border: 1px solid var(--border); color: var(--accent-teal);">${grp.language.toUpperCase()}</span>
+                                    </div>
+                                    <p style="font-size: 0.72rem; color: var(--text-muted); font-family: 'Roboto Mono', monospace;">
+                                        ${grp.pages.length} sheet${grp.pages.length > 1 ? 's' : ''} • Range: p.${minPage} - p.${maxPage}
+                                    </p>
+                                </div>
+                                <button class="pill-chip" style="color: var(--accent-teal); border-color: var(--accent-teal);" onclick="downloadBookAsHtml('${grp.course_code}', '${grp.language}')">
+                                    <i class="fas fa-file-arrow-down"></i> Export HTML
+                                </button>
+                            </div>
+                            ${gapMarkup}
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                log(`Inspector query error: ${err.message}`, 'err');
+                listContainer.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 1.5rem; font-size: 0.8rem;">Query failed: ${err.message}</div>`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function downloadBookAsHtml(courseCode, language) {
+            const client = getSupabaseClient();
+            if (!client) return;
+
+            showToast(`Fetching ${courseCode} (${language})...`);
+            log(`Fetching sheets for ${courseCode} [${language}]...`);
+
+            try {
+                const { data, error } = await client
+                    .from('course_visual_notebooks')
+                    .select('*')
+                    .eq('course_code', courseCode)
+                    .eq('language', language)
+                    .order('page_number', { ascending: true });
+
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    showToast("No sheets found for download", true);
+                    return;
+                }
+
+                log(`Compiling ${data.length} sheets into standalone document...`);
+
+                const combinedCss = data
+                    .map(s => s.scoped_css ? `/* Page ${s.page_number} - ${s.topic_title} */\n${s.scoped_css}` : '')
+                    .filter(Boolean)
+                    .join('\n\n');
+
+                const sheetsMarkup = data.map(sheet => `
+        <article class="v-notebook-sheet" id="sheet-p${sheet.page_number}">
+            <header class="v-sheet-anchor-bar">
+                <span class="anchor-pill">Page ${sheet.page_number}</span>
+                <span class="sheet-title">${DOMPurify.sanitize(sheet.topic_title)}</span>
+                <span class="sheet-code">${sheet.course_code}</span>
+            </header>
+            <div class="v-bento-canvas">
+                ${sheet.html_body}
+            </div>
+        </article>`).join('\n\n');
+
+                const htmlDocument = `<!DOCTYPE html>
+<html lang="${language}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${courseCode} Visual Notebook - ${language.toUpperCase()}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Abyssinica+SIL&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"><\/script>
+    <style>
+        :root {
+            --bg-dark: #09090b;
+            --surface: #141418;
+            --border: rgba(255, 255, 255, 0.09);
+            --accent-teal: #42d7b8;
+            --text-main: #f4f4f5;
+            --text-muted: #8e8e93;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans Ethiopic', 'Poppins', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.7;
+            padding: 2rem 1rem 5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .notebook-container {
+            width: 100%;
+            max-width: 760px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        .v-notebook-sheet {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            page-break-after: always;
+        }
+        .v-sheet-anchor-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            font-size: 0.74rem;
+            color: var(--text-muted);
+        }
+        .anchor-pill {
+            color: var(--accent-teal);
+            font-family: 'Roboto Mono', monospace;
+            font-weight: 700;
+        }
+        .sheet-title {
+            font-weight: 600;
+            color: #fff;
+        }
+        .sheet-code {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .v-bento-canvas {
+            width: 100%;
+        }
+        .v-bento-canvas table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        .katex-display {
+            overflow-x: auto;
+            padding: 4px 0;
+        }
+        @media print {
+            body { background: #fff; color: #000; }
+            .v-notebook-sheet { border: 1px solid #ccc; background: #fff; color: #000; }
+        }
+        ${combinedCss}
+    </style>
+</head>
+<body>
+    <main class="notebook-container">
+        ${sheetsMarkup}
+    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        { left: "$", right: "$", display: true },
+                        { left: "\\[", right: "\\]", display: true },
+                        { left: "$", right: "$", display: false },
+                        { left: "\\(", right: "\\)", display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+        });
+    <\/script>
+</body>
+</html>`;
+
+                const blob = new Blob([htmlDocument], { type: 'text/html;charset=utf-8' });
+                const cleanCode = courseCode.replace(/[^A-Za-z0-9]/g, '_');
+                const filename = `${cleanCode}_${language}_notebook.html`;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                log(`✅ Export complete: ${filename}`);
+                showToast(`Exported ${filename}`);
+            } catch (err) {
+                log(`Export failed: ${err.message}`, 'err');
+                showToast(`Export failed: ${err.message}`, true);
             }
         }
     </script>
