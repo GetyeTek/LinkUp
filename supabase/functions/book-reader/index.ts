@@ -76,9 +76,9 @@ serve(async (req) => {
         .order('name', { ascending: true });
       if (error) throw error;
 
-      const universityBooks = universities.map(uni => ({
-        id: uni.id, name: uni.name, title: uni.name, cover_url: null 
-      }));
+                const universityBooks = universities.map(uni => ({
+            id: uni.id, name: uni.name, title: uni.name, cover_url: null, icon: uni.icon || 'fa-graduation-cap'
+          }));
       return new Response(JSON.stringify({ universities: universityBooks }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
