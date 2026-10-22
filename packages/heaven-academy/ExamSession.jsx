@@ -137,53 +137,23 @@ const ExamSession = ({ exam, onClose }) => {
         setAnswers(prev => ({ ...prev, [qId]: opt }));
     };
 
-    const logQuestion = (q, ans) => {
+    const logQuestion = async (q, ans) => {
         if (!q || !currentUser || loggedQsRef.current.has(q.id)) return;
         loggedQsRef.current.add(q.id);
 
-        let isCorrect = false;
-        const qType = (q.question_type || '').toLowerCase();
-        
-        if (qType === 'true_false') {
-            const boolAns = ans === 'True' || ans?.text === 'True';
-            isCorrect = boolAns === q.correct_answer;
-        } else if (qType === 'multiple_choice' || qType === 'reading_comprehension') {
-            let selectedIdx = -1;
-            q.options?.forEach((opt, idx) => {
-                if ((opt.text || opt) === (ans?.text || ans)) selectedIdx = idx;
-            });
-            const correctIdx = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
-            isCorrect = selectedIdx === correctIdx;
-        } else if (qType === 'matching') {
-            if (q.correct_answer && typeof q.correct_answer === 'object') {
-                const keys = Object.keys(q.correct_answer);
-                if (keys.length > 0 && ans) {
-                    isCorrect = true;
-                    for (let k of keys) {
-                        if (ans[k] !== q.correct_answer[k]) isCorrect = false;
-                    }
-                }
-            }
-        } else if (qType === 'fill_in_the_blank') {
-            if (Array.isArray(q.correct_answer) && ans) {
-                isCorrect = true;
-                for (let i = 0; i < q.correct_answer.length; i++) {
-                    if ((ans[i] || '').toLowerCase().trim() !== (q.correct_answer[i] || '').toLowerCase().trim()) isCorrect = false;
-                }
-            }
-        }
-
-        logQuestionAttempt({
+        const res = await logQuestionAttempt({
             userId: currentUser.id,
             questionId: q.id,
             courseCode: examMeta.code,
             topicTag: q.topic_tag || q.question_type || 'Exam Topic',
             sourceType: 'exam',
             sourceId: exam.id,
-            questionSnapshot: { text: q.text, options: q.options, type: q.question_type },
-            userAnswer: ans,
-            isCorrect
+            userAnswer: ans
         });
+
+        if (res?.explanation && !q.explanation) {
+            q.explanation = res.explanation;
+        }
     };
 
     const handleEvaluate = (qId) => {
