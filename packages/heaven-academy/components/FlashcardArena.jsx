@@ -141,51 +141,17 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
             setLoadingChapters(true);
             try {
                 let availableChapters = [];
-                const { data: progList } = await supabase
-                    .from('book_flashcard_progress')
-                    .select('chapter_title, start_page')
-                    .eq('course_code', deck.course_code)
-                    .gt('cards_generated', 0)
-                    .order('start_page', { ascending: true });
+                const { data: chaptersData, error } = await supabase.rpc('get_course_flashcard_chapters', { 
+                    p_course_code: deck.course_code 
+                });
 
-                if (progList && progList.length > 0) {
-                    const seen = new Set();
-                    availableChapters = progList.filter(p => {
-                        if (!p.chapter_title || seen.has(p.chapter_title)) return false;
-                        seen.add(p.chapter_title);
-                        return true;
-                    }).map((p, idx) => ({
-                        title: p.chapter_title,
-                        label: formatChapterPillLabel(p.chapter_title, idx)
+                if (!error && chaptersData && chaptersData.length > 0) {
+                    availableChapters = chaptersData.map((ch, idx) => ({
+                        title: ch.title,
+                        label: formatChapterPillLabel(ch.title, idx),
+                        is_pro_gated: ch.is_pro_gated
                     }));
                 }
-
-                if (availableChapters.length === 0) {
-                    const { data: rawSample } = await supabase
-                        .from('course_flashcards')
-                        .select('chapter_title, ref_page')
-                        .eq('course_code', deck.course_code)
-                        .order('ref_page', { ascending: true });
-
-                    if (rawSample) {
-                        const seen = new Set();
-                        availableChapters = rawSample
-                            .filter(c => c.chapter_title && !seen.has(c.chapter_title) && seen.add(c.chapter_title))
-                            .map((c, idx) => ({
-                                title: c.chapter_title,
-                                label: formatChapterPillLabel(c.chapter_title, idx)
-                            }));
-                    }
-                }
-
-                const totalChapters = availableChapters.length;
-                const gatedCount = Math.min(totalChapters - 1, Math.ceil(totalChapters * 0.5));
-                const firstGatedIndex = totalChapters - gatedCount;
-
-                availableChapters = availableChapters.map((ch, idx) => ({
-                    ...ch,
-                    is_pro_gated: idx >= firstGatedIndex
-                }));
 
                 setChapters(availableChapters);
 
