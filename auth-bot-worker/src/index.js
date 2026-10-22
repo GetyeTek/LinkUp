@@ -44,6 +44,76 @@ async function fetchTelegramAvatar(tgUserId, env) {
   return avatarUrl;
 }
 
+const I18N = {
+  am: {
+    welcome_back: "🏛️ *እንኳን ወደ LinkUp በደህና ተመለሱ*\n\nወደ አካውንትዎ ለመግባት ከታች 'ዳሽቦርድ ይክፈቱ' የሚለውን ይጫኑ።",
+    welcome_new: "🏛️ *እንኳን ወደ LinkUp በደህና መጡ*\n\nየትምህርት መገለጫዎን (ፕሮፋይል) ለማዘጋጀት ከታች 'አካውንት ይፍጠሩ' የሚለውን ይጫኑ።",
+    btn_dashboard: "🔓 ዳሽቦርድ ይክፈቱ",
+    btn_create_account: "✨ አካውንት ይፍጠሩ",
+    btn_language: "🌐 ቋንቋ / Lang",
+    btn_help: "ℹ️ እርዳታ",
+    btn_back: "⬅️ ተመለስ",
+    lang_prompt: "🌐 *የቋንቋ ምርጫ*\n\nእባክዎ የሚፈልጉትን ቋንቋ ይምረጡ / Please select your preferred language:",
+    help_text: "ℹ️ *እርዳታ እና ድጋፍ*\n\nLinkUp ለዩኒቨርሲቲ ተማሪዎች የተዘጋጀ የትምህርት መድረክ ነው።\n\n• *ማረጋገጫ (Login)*: የመግቢያ ሊንኩ የሚያገለግለው ለ 5 ደቂቃ ብቻ ሲሆን ለአንድ ጊዜ አገልግሎት ብቻ የሚሰራ ነው።\n• *ድጋፍ ለማግኘት*: እርዳታ ከፈለጉ የክፍል አስተባባሪዎን ወይም ድጋፍ ሰጪ @linkupregistrationbot ያነጋግሩ።",
+    redirecting: "🔄 *ወደ ማረጋገጫ በመቀየር ላይ...*",
+    contact_prompt: "📱 *አካውንት ማረጋገጥ*\n\nአካውንትዎን ለማዘጋጀት እባክዎ ስልክ ቁጥርዎን ያረጋግጡ።\n\nከታች በጽሁፍ መጻፊያው ሳጥን ውስጥ የሚገኘውን አራት ማዕዘን ቁልፍ ይጫኑ:\n👇",
+    btn_share_contact: "📱 ስልክ ቁጥርን በማጋራት አረጋግጥ",
+    contact_mismatch: "❌ *ማረጋገጥ አልተሳካም*\n\nያጋሩት ስልክ ቁጥር የሌላ ሰው ነው። እባክዎ የራስዎን ስልክ ቁጥር ያጋሩ።",
+    phone_collision: "❌ *ስልክ ቁጥሩ ቀድሞ ተመዝግቧል*\n\nይህ ስልክ ቁጥር በሌላ ንቁ አካውንት ላይ ተመዝግቧል። እባክዎ በቀጥታ በኢሜይልዎ እና በይለፍ ቃልዎ ይግቡ።",
+    verification_success: "✅ *ማረጋገጥ ተሳክቷል*\n\nስልክ ቁጥርዎ በተሳካ ሁኔታ ተረጋግጧል።",
+    auth_link_text: "🔗 *የመግቢያ ሊንክ*\n\nየአንድ ጊዜ መግቢያ ሊንክዎ ተዘጋጅቷል። ወደ ስርዓቱ ለመግባት ከታች ያለውን ይጫኑ።\n\nይህ ሊንክ በ 5 ደቂቃ ውስጥ ጊዜው ያልፋል።",
+    btn_login: "ወደ LinkUp ግባ",
+    invalid_link: "❌ *ልክ ያልሆነ ወይም ጊዜው ያለፈበት ሊንክ*\n\nይህ የማረጋገጫ ሊንክ ጊዜው አልፏል ወይም ትክክል አይደለም። እባክዎ ወደ LinkUp ዌብ መተግበሪያ ተመልሰው እንደገና ይሞክሩ።",
+    link_contact_prompt: "🔒 *አካውንት የማገናኘት ጥያቄ*\n\nይህንን የቴሌግራም አካውንት ከዌብ ገጽዎ ጋር ደህንነቱ በተጠበቀ ሁኔታ ለማገናኘት እባክዎ ከታች በጽሁፍ መጻፊያው ሳጥን ውስጥ የሚገኘውን አራት ማዕዘን ቁልፍ ይጫኑ:\n👇",
+    link_collision: "❌ *የስልክ ቁጥር መደራረብ*\n\nይህ ስልክ ቁጥር በሌላ ንቁ አካውንት ላይ ተረጋግጧል። አንድ ስልክ ቁጥር ከበርካታ አካውንቶች ጋር ማገናኘት አይቻልም።",
+    link_target_taken: "❌ *አካውንት ማገናኘት ተቋርጧል*\n\nይህ የዌብ አካውንት ቀድሞውኑ ከሌላ የቴሌግራም መገለጫ ጋር ተገናኝቷል።",
+    link_patch_failed: "❌ *አካውንት ማገናኘት አልተሳካም*\n\nየአካውንትዎን መረጃ ማደስ አልተቻለም። እባክዎ ወደ ብሮውዘርዎ ተመልሰው እንደገና ይሞክሩ።",
+    link_success: "✅ *ማንነትዎ ተረጋግጦ አካውንትዎ ተገናኝቷል!*\n\nቴሌግራምዎ ከዌብ ገጽዎ ጋር በተሳካ ሁኔታ ተገናኝቷል።\n\nእባክዎ ወደ ብሮውዘርዎ ይመለሱ — አሁን በቀጥታ ይከፈታል።"
+  },
+  en: {
+    welcome_back: "🏛️ *Welcome back to LinkUp*\n\nSelect 'Access Dashboard' below to log in.",
+    welcome_new: "🏛️ *Welcome to LinkUp*\n\nSelect 'Create Account' below to set up your academic profile.",
+    btn_dashboard: "🔓 Access Dashboard",
+    btn_create_account: "✨ Create Account",
+    btn_language: "🌐 Language / ቋንቋ",
+    btn_help: "ℹ️ Help & Support",
+    btn_back: "⬅️ Back",
+    lang_prompt: "🌐 *Language Settings*\n\nPlease select your preferred language / እባክዎ የሚፈልጉትን ቋንቋ ይምረጡ:",
+    help_text: "ℹ️ *Help & Support*\n\nLinkUp is an academic platform for university students.\n\n• *Authentication*: Login links are valid for 5 minutes and are single-use.\n• *Support*: If you need help, please contact your class coordinator or support @linkupregistrationbot.",
+    redirecting: "🔄 *Redirecting to verification...*",
+    contact_prompt: "📱 *Account Verification*\n\nTo set up your account, please verify your phone number.\n\nPlease tap the rectangular button located in the message input area below:\n👇",
+    btn_share_contact: "📱 Share Contact to Verify",
+    contact_mismatch: "❌ *Verification Failed*\n\nYou shared a contact card belonging to another user. Please share your own contact to proceed.",
+    phone_collision: "❌ *Phone Number Collision*\n\nThis phone number is already verified on another account. Please sign into that account directly using your email and password.",
+    verification_success: "✅ *Verification Successful*\n\nYour phone number has been verified.",
+    auth_link_text: "🔗 *Authentication Link*\n\nYour single-use login link is ready. Tap below to log in.\n\nThis link will expire in 5 minutes.",
+    btn_login: "Log In to LinkUp",
+    invalid_link: "❌ *Invalid or Expired Link*\n\nThis verification link has expired or is invalid. Please return to the LinkUp web app and tap the verify button again.",
+    link_contact_prompt: "🔒 *Account Link Requested*\n\nTo securely link this Telegram account to your web session, please tap the rectangular button located in the message input area below:\n👇",
+    link_collision: "❌ *Phone Number Collision*\n\nThis phone number is already verified on another active account. An existing phone number cannot be linked to multiple accounts.",
+    link_target_taken: "❌ *Account Link Aborted*\n\nThis web account is already linked to another verified Telegram profile. To protect account integrity, multiple Telegram accounts cannot be bound to the same profile.",
+    link_patch_failed: "❌ *Account Link Failed*\n\nWe could not update your account records. Please return to your browser and try again.",
+    link_success: "✅ *Identity Verified & Accounts Linked!*\n\nYour Telegram has been successfully bound to your active web session.\n\nPlease return to your browser—it will automatically unlock now."
+  }
+};
+
+function getMainMenuMarkup(hasProfile, lang = 'am') {
+  const t = I18N[lang] || I18N.am;
+  const primaryBtn = hasProfile 
+    ? { text: t.btn_dashboard, callback_data: `initiate_auth:${lang}` }
+    : { text: t.btn_create_account, callback_data: `request_contact:${lang}` };
+
+  return {
+    inline_keyboard: [
+      [primaryBtn],
+      [
+        { text: t.btn_language, callback_data: `open_lang:${lang}` },
+        { text: t.btn_help, callback_data: `help_support:${lang}` }
+      ]
+    ]
+  };
+}
+
 // Stateful Session Manager to handle visual expiration reliably (Batched per user)
 export class AuthSessionManager extends DurableObject {
   constructor(ctx, env) {
@@ -96,13 +166,8 @@ export class AuthSessionManager extends DurableObject {
         console.error("[SessionManager] Profile check failed:", e.message);
       }
 
-      const actionText = hasProfile 
-        ? `🏛️ *Welcome back to LinkUp*\n\nSelect 'Access Dashboard' below to log in.`
-        : `🏛️ *Welcome to LinkUp*\n\nSelect 'Create Account' below to set up your academic profile.`;
-
-      const primaryBtn = hasProfile 
-        ? { text: "🔓 Access Dashboard", callback_data: "initiate_auth" }
-        : { text: "✨ Create Account", callback_data: "request_contact" };
+      const t = I18N.am;
+      const actionText = hasProfile ? t.welcome_back : t.welcome_new;
 
       try {
         await fetch(`https://api.telegram.org/bot${this.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
@@ -113,12 +178,7 @@ export class AuthSessionManager extends DurableObject {
             message_id: sess.messageId,
             text: actionText,
             parse_mode: "Markdown",
-            reply_markup: {
-              inline_keyboard: [
-                [primaryBtn],
-                [{ text: "ℹ️ Help & Support", callback_data: "help_support" }]
-              ]
-            }
+            reply_markup: getMainMenuMarkup(hasProfile, 'am')
           })
         });
         console.log(`[SessionManager] Reverted message ID: ${sess.messageId} to dashboard.`);
@@ -216,11 +276,11 @@ export default {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     chat_id: msg.chat.id,
-                    text: `🔒 *Account Link Requested*\n\nTo securely link this Telegram account to your web session, please share your contact card below.`,
+                    text: I18N.am.link_contact_prompt,
                     parse_mode: "Markdown",
                     reply_markup: {
                         keyboard: [
-                            [{ text: "📱 Share Contact to Verify", request_contact: true }]
+                            [{ text: I18N.am.btn_share_contact, request_contact: true }]
                         ],
                         resize_keyboard: true,
                         one_time_keyboard: true
@@ -247,13 +307,8 @@ export default {
               console.error("Profile check failed:", e.message);
             }
 
-            const actionText = hasProfile 
-              ? `🏛️ *Welcome back to LinkUp*\n\nSelect 'Access Dashboard' below to log in.`
-              : `🏛️ *Welcome to LinkUp*\n\nSelect 'Create Account' below to set up your academic profile.`;
-
-            const primaryBtn = hasProfile 
-              ? { text: "🔓 Access Dashboard", callback_data: "initiate_auth" }
-              : { text: "✨ Create Account", callback_data: "request_contact" };
+            const t = I18N.am;
+            const actionText = hasProfile ? t.welcome_back : t.welcome_new;
 
             await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
               method: 'POST',
@@ -262,12 +317,7 @@ export default {
                 chat_id: msg.chat.id,
                 text: actionText,
                 parse_mode: "Markdown",
-                reply_markup: {
-                  inline_keyboard: [
-                    [primaryBtn],
-                    [{ text: "ℹ️ Help & Support", callback_data: "help_support" }]
-                  ]
-                }
+                reply_markup: getMainMenuMarkup(hasProfile, 'am')
               })
             });
           }
@@ -592,24 +642,22 @@ export default {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: msg.chat.id,
-                text: `✅ *Verification Successful*\n\nYour phone number has been verified.`,
+                text: I18N.am.verification_success,
                 parse_mode: "Markdown",
                 reply_markup: { remove_keyboard: true }
               })
             });
-
-            const linkText = `🔗 *Authentication Link*\n\nYour single-use login link is ready. Tap below to log in.\n\nThis link will expire in 5 minutes.`;
 
             const linkRes = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 chat_id: msg.chat.id,
-                text: linkText,
+                text: I18N.am.auth_link_text,
                 parse_mode: "Markdown",
                 reply_markup: {
                   inline_keyboard: [[
-                    { text: "Log In to LinkUp", url: `https://getyetek.github.io/LinkUp/?auth_token=${token}` }
+                    { text: I18N.am.btn_login, url: `https://getyetek.github.io/LinkUp/?auth_token=${token}` }
                   ]]
                 }
               })
@@ -653,7 +701,10 @@ export default {
           body: JSON.stringify({ callback_query_id: cb.id })
         });
 
-        if (cb.data === 'start_journey') {
+        const [action, lang = 'am'] = (cb.data || '').split(':');
+        const t = I18N[lang] || I18N.am;
+
+        if (action === 'start_journey' || action === 'set_lang') {
           let hasProfile = false;
           try {
             const checkRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?telegram_id=eq.${tgUser.id}&select=id`, {
@@ -670,13 +721,7 @@ export default {
             console.error("Profile check failed:", e.message);
           }
 
-          const actionText = hasProfile 
-            ? `🏛️ *Welcome back to LinkUp*\n\nSelect 'Access Dashboard' below to log in.`
-            : `🏛️ *Welcome to LinkUp*\n\nSelect 'Create Account' below to set up your academic profile.`;
-
-          const primaryBtn = hasProfile 
-            ? { text: "🔓 Access Dashboard", callback_data: "initiate_auth" }
-            : { text: "✨ Create Account", callback_data: "request_contact" };
+          const actionText = hasProfile ? t.welcome_back : t.welcome_new;
 
           await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
             method: 'POST',
@@ -686,61 +731,76 @@ export default {
               message_id: messageId,
               text: actionText,
               parse_mode: "Markdown",
+              reply_markup: getMainMenuMarkup(hasProfile, lang)
+            })
+          });
+        }
+
+        else if (action === 'open_lang') {
+          await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: t.lang_prompt,
+              parse_mode: "Markdown",
               reply_markup: {
                 inline_keyboard: [
-                  [primaryBtn],
-                  [{ text: "ℹ️ Help & Support", callback_data: "help_support" }]
+                  [
+                    { text: "🇪🇹 አማርኛ", callback_data: "set_lang:am" },
+                    { text: "🇬🇧 English", callback_data: "set_lang:en" }
+                  ],
+                  [
+                    { text: t.btn_back, callback_data: `start_journey:${lang}` }
+                  ]
                 ]
               }
             })
           });
         }
 
-        else if (cb.data === 'help_support') {
-          const helpText = `ℹ️ *Help & Support*\n\nLinkUp is an academic platform for university students.\n\n• *Authentication*: Login links are valid for 5 minutes and are single-use.\n• *Support*: If you need help, please contact your class coordinator or support @linkupregistrationbot.`;
-          
+        else if (action === 'help_support') {
           await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: helpText,
+              text: t.help_text,
               parse_mode: "Markdown",
               reply_markup: {
                 inline_keyboard: [[
-                  { text: "⬅️ Back", callback_data: "start_journey" }
+                  { text: t.btn_back, callback_data: `start_journey:${lang}` }
                 ]]
               }
             })
           });
         }
 
-        else if (cb.data === 'request_contact') {
+        else if (action === 'request_contact') {
           await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: `🔄 *Redirecting to verification...*`,
+              text: t.redirecting,
               parse_mode: "Markdown",
               reply_markup: { inline_keyboard: [] }
             })
           });
-
-          const promptText = `📱 *Account Verification*\n\nTo set up your account, please verify your phone number.\n\nTap the button below to share your contact card.`;
 
           await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: chatId,
-              text: promptText,
+              text: t.contact_prompt,
               parse_mode: "Markdown",
               reply_markup: {
                 keyboard: [
-                  [{ text: "📱 Share Contact to Verify", request_contact: true }]
+                  [{ text: t.btn_share_contact, request_contact: true }]
                 ],
                 resize_keyboard: true,
                 one_time_keyboard: true
@@ -749,7 +809,7 @@ export default {
           });
         }
 
-        else if (cb.data === 'initiate_auth') {
+        else if (action === 'initiate_auth') {
           const avatarUrl = await fetchTelegramAvatar(tgUser.id, env);
           const token = crypto.randomUUID();
           const expiresAt = new Date(Date.now() + 5 * 60000).toISOString();
@@ -779,19 +839,17 @@ export default {
             return new Response("OK");
           }
 
-          const authText = `🔗 *Authentication Link*\n\nYour single-use login link is ready. Tap below to log in.\n\nThis link will expire in 5 minutes.`;
-
           const authRes = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: chatId,
               message_id: messageId,
-              text: authText,
+              text: t.auth_link_text,
               parse_mode: "Markdown",
               reply_markup: {
                 inline_keyboard: [[
-                  { text: "Log In to LinkUp", url: `https://getyetek.github.io/LinkUp/?auth_token=${token}` }
+                  { text: t.btn_login, url: `https://getyetek.github.io/LinkUp/?auth_token=${token}` }
                 ]]
               }
             })
