@@ -124,7 +124,7 @@ const ExamPavilion = ({
                 map.set(code, {
                     code,
                     name,
-                    icon: COURSE_ICONS[code] || 'fa-book-open',
+                    icon: exam.icon || exam.courses?.icon || COURSE_ICONS[code] || 'fa-book-open',
                     cover_url: getCachedBookCover(code) || getCachedBookCover(name),
                     exams: [],
                     myCampusCount: 0,
