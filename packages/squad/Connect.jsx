@@ -200,27 +200,35 @@ const Connect = () => {
         fetchSuggestedSquads();
         fetchCampusClasses();
         
-        // 1. Subscribe to Realtime Messages, Read Receipts, and Conversation updates
-        let listDebounceTimer;
-        const triggerListUpdate = () => {
-            clearTimeout(listDebounceTimer);
-            listDebounceTimer = setTimeout(() => {
+        // 1. Decoupled Realtime Handlers: Message updates vs Group directory changes
+        let msgDebounceTimer;
+        const triggerMsgUpdate = () => {
+            clearTimeout(msgDebounceTimer);
+            msgDebounceTimer = setTimeout(() => {
+                fetchConversations();
+            }, 500);
+        };
+
+        let directoryDebounceTimer;
+        const triggerDirectoryUpdate = () => {
+            clearTimeout(directoryDebounceTimer);
+            directoryDebounceTimer = setTimeout(() => {
                 fetchConversations();
                 fetchSuggestedSquads();
                 fetchCampusClasses();
-            }, 600); // Bypasses DB transaction race conditions
+            }, 1000);
         };
 
         const msgChannel = supabase.channel(`chat_list_${Date.now()}`)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, triggerListUpdate)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, triggerMsgUpdate)
             .on('postgres_changes', { 
                 event: 'UPDATE', 
                 schema: 'public', 
                 table: 'conversation_members',
                 filter: `user_id=eq.${currentUser.id}` 
-            }, triggerListUpdate)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, triggerListUpdate)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, triggerListUpdate)
+            }, triggerDirectoryUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, triggerDirectoryUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'live_study_sessions' }, triggerMsgUpdate)
             .subscribe();
 
         // 2. Global Presence (Who is Online?)
@@ -247,7 +255,8 @@ const Connect = () => {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
             presenceChannel.untrack(); // Force drop presence
-            if (typeof listDebounceTimer !== 'undefined') clearTimeout(listDebounceTimer);
+            if (typeof msgDebounceTimer !== 'undefined') clearTimeout(msgDebounceTimer);
+            if (typeof directoryDebounceTimer !== 'undefined') clearTimeout(directoryDebounceTimer);
             supabase.removeChannel(msgChannel);
             supabase.removeChannel(presenceChannel);
         };
