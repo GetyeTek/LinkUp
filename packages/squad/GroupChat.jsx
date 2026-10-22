@@ -106,7 +106,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
     const heartBeatTime = localChatInfo.metadata?.live_heartbeat ? new Date(localChatInfo.metadata.live_heartbeat).getTime() : Date.now(); 
     const isHostOnline = localChatInfo.metadata?.ai_hosting || (currentUser.id === localChatInfo.metadata?.live_host_id) || (onlineUsers && onlineUsers.has(localChatInfo.metadata?.live_host_id));
-    const isLiveDead = (Date.now() - heartBeatTime) > 5 * 60 * 1000 || (presenceSynced && !localChatInfo.metadata?.ai_hosting && !isHostOnline);
+    const isLiveDead = (Date.now() - heartBeatTime) > 45 * 1000 || (presenceSynced && !localChatInfo.metadata?.ai_hosting && !isHostOnline);
     const isLiveActive = localChatInfo.metadata?.is_live && !isLiveDead;
     const isMeHost = localChatInfo.metadata?.live_host_id === currentUser.id;
     const showLiveBanner = isLiveActive;
