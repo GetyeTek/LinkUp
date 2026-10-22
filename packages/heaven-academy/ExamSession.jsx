@@ -3,7 +3,7 @@ import { invokeBookReader } from './api.js';
 import BookReader from './BookReader/BookReader.jsx';
 import ReportModal from './components/ReportModal.jsx';
 import ExamQuestionCard from './components/ExamQuestionCard.jsx';
-import { usePlatform, logQuestionAttempt, telemetry } from '@linkup-platform/sdk-core';
+import { usePlatform, logQuestionAttempt, logBatchQuestionAttempts, evaluateQuestionAnswer, telemetry } from '@linkup-platform/sdk-core';
 import './ExamSession.css';
 
 const typeOrder = {
@@ -191,40 +191,8 @@ const ExamSession = ({ exam, onClose }) => {
     const isQuestionWrong = (qId) => {
         if (!evaluatedQs[qId] && !showResultsModal) return false;
         const q = allQuestions.find(x => x.id === qId);
-        if (!q) return false;
-        const ans = answers[qId];
-        const qType = (q.question_type || '').toLowerCase();
-
-        if (qType === 'true_false') {
-            const boolAns = ans === 'True' || ans?.text === 'True';
-            return boolAns !== q.correct_answer;
-        } else if (qType === 'multiple_choice' || qType === 'reading_comprehension') {
-            let selectedIdx = -1;
-            q.options?.forEach((opt, idx) => {
-                if ((opt.text || opt) === (ans?.text || ans)) selectedIdx = idx;
-            });
-            const correctIdx = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
-            return selectedIdx !== correctIdx;
-        } else if (qType === 'matching') {
-            if (q.correct_answer && ans) {
-                for (let k of Object.keys(q.correct_answer)) {
-                    if (ans[k] !== q.correct_answer[k]) return true;
-                }
-            } else if (!ans) {
-                return true;
-            }
-            return false;
-        } else if (qType === 'fill_in_the_blank') {
-            if (Array.isArray(q.correct_answer) && ans) {
-                for (let i = 0; i < q.correct_answer.length; i++) {
-                    if ((ans[i] || '').toLowerCase().trim() !== (q.correct_answer[i] || '').toLowerCase().trim()) return true;
-                }
-            } else {
-                return true;
-            }
-            return false;
-        }
-        return false;
+        if (!q || answers[qId] === undefined) return false;
+        return !evaluateQuestionAnswer(q, answers[qId]).isCorrect;
     };
 
     const toggleHint = async (qId) => {
@@ -260,49 +228,32 @@ const ExamSession = ({ exam, onClose }) => {
     const calculateScore = () => {
         let correctCount = 0;
         allQuestions.forEach(q => {
-            const ans = answers[q.id];
-            const qType = (q.question_type || '').toLowerCase();
-            let isCorrect = false;
-
-            if (qType === 'true_false') {
-                const boolAns = ans === 'True' || ans?.text === 'True';
-                isCorrect = boolAns === q.correct_answer;
-            } else if (qType === 'multiple_choice' || qType === 'reading_comprehension') {
-                let selectedIdx = -1;
-                q.options?.forEach((opt, idx) => {
-                    if ((opt.text || opt) === (ans?.text || ans)) selectedIdx = idx;
-                });
-                const correctIdx = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
-                isCorrect = selectedIdx === correctIdx;
-            } else if (qType === 'matching') {
-                if (q.correct_answer && typeof q.correct_answer === 'object') {
-                    const keys = Object.keys(q.correct_answer);
-                    if (keys.length > 0 && ans) {
-                        isCorrect = true;
-                        for (let k of keys) {
-                            if (ans[k] !== q.correct_answer[k]) isCorrect = false;
-                        }
-                    }
-                }
-            } else if (qType === 'fill_in_the_blank') {
-                if (Array.isArray(q.correct_answer) && ans) {
-                    isCorrect = true;
-                    for (let i = 0; i < q.correct_answer.length; i++) {
-                        if ((ans[i] || '').toLowerCase().trim() !== (q.correct_answer[i] || '').toLowerCase().trim()) isCorrect = false;
-                    }
-                }
+            if (answers[q.id] !== undefined && evaluateQuestionAnswer(q, answers[q.id]).isCorrect) {
+                correctCount++;
             }
-            if (isCorrect) correctCount++;
         });
         return Math.round((correctCount / totalCount) * 100);
     };
 
     const finishExam = () => {
+        const unloggedAttempts = [];
         allQuestions.forEach(q => {
-            if (!evaluatedQs[q.id] && answers[q.id] !== undefined) {
-                logQuestion(q, answers[q.id]);
+            if (!evaluatedQs[q.id] && answers[q.id] !== undefined && currentUser && !loggedQsRef.current.has(q.id)) {
+                loggedQsRef.current.add(q.id);
+                unloggedAttempts.push({
+                    questionId: q.id,
+                    userAnswer: answers[q.id],
+                    courseCode: examMeta.code,
+                    topicTag: q.topic_tag || q.question_type || 'Exam Topic',
+                    sourceType: 'exam',
+                    sourceId: exam.id
+                });
             }
         });
+
+        if (unloggedAttempts.length > 0) {
+            logBatchQuestionAttempts(unloggedAttempts);
+        }
         setShowResultsModal(true);
     };
 
