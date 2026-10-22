@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, FullscreenMediaGallery } from '@linkup-platform/sdk-core';
 import { fetchLiveNewsFeed } from './api.js';
 import TelegramCard from './components/TelegramCard.jsx';
 import AnnouncementCard from './components/AnnouncementCard.jsx';
@@ -19,6 +19,15 @@ const Discover = () => {
     const [hasMore, setHasMore] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [selectedChannel, setSelectedChannel] = useState('all');
+    const [fullscreenGallery, setFullscreenGallery] = useState(null);
+
+    const handleOpenImage = (imageUrl) => {
+        if (!imageUrl) return;
+        setFullscreenGallery({
+            items: [{ url: imageUrl, type: 'image/jpeg' }],
+            index: 0
+        });
+    };
 
     // 1. Unified Single-Stream Fetcher (Edge-Curated)
     useEffect(() => {
@@ -180,11 +189,13 @@ const Discover = () => {
                                             key={item.id} 
                                             event={item.data} 
                                             onAction={handleAnnouncementAction} 
+                                            onImageClick={handleOpenImage}
                                         />
                                     ) : (
                                         <TelegramCard 
                                             key={item.id} 
                                             post={item.data} 
+                                            onImageClick={handleOpenImage}
                                         />
                                     );
 
@@ -330,6 +341,13 @@ const Discover = () => {
                         title="Announcement Detail"
                     />
                 </div>
+            )}
+
+            {fullscreenGallery && (
+                <FullscreenMediaGallery 
+                    fullscreenGallery={fullscreenGallery} 
+                    setFullscreenGallery={setFullscreenGallery} 
+                />
             )}
         </div>
     );
