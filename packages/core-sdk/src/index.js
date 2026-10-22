@@ -6,6 +6,7 @@ export { useGlobalSwipe } from './hooks/useGlobalSwipe.js';
 export { logQuestionAttempt, logBatchQuestionAttempts, evaluateQuestionAnswer } from './tracking.js';
 export { telemetry } from './telemetry.js';
 export { GoldBadge } from './components/GoldBadge.jsx';
+export { default as FullscreenMediaGallery } from './components/FullscreenMediaGallery.jsx';
 export * from './deviceSession.js';
 import translations from './translations.json';
 export { translations };
