@@ -56,106 +56,22 @@ const Profile = () => {
         }
     };
 
-    // Calculate Comprehensive Completion Math across all settings fields
-    const isTelegramVerified = Boolean(userProfile?.registered_with_telegram && userProfile?.phone);
-    const hasUni = Boolean(userProfile?.university_id);
-    const hasDept = Boolean(userProfile?.department);
-    const hasProg = Boolean(userProfile?.program);
-    const isFreshman = userProfile?.department === 'Freshman';
-    const hasAcademicSub = isFreshman 
-        ? Boolean(userProfile?.freshman_stream && userProfile?.target_department)
-        : Boolean(userProfile?.year);
-    const hasBio = Boolean(userProfile?.bio?.trim());
-    const hasSex = Boolean(userProfile?.sex);
-    const hasCustomAvatar = Boolean(userProfile?.avatar_url && !userProfile.avatar_url.includes('ui-avatars.com'));
+    const [completionData, setCompletionData] = useState({ score: 0, next_action: null });
 
-    let completionScore = 0;
-    if (hasUni) completionScore += 15;
-    if (hasDept) completionScore += 15;
-    if (hasProg) completionScore += 10;
-    if (hasAcademicSub) completionScore += 10;
-    if (hasCustomAvatar) completionScore += 10;
-    if (hasBio) completionScore += 10;
-    if (hasSex) completionScore += 10;
-    // Subtotal for Account Settings fields = 80%
-    if (hasPassword) completionScore += 10;
-    if (isTelegramVerified) completionScore += 10;
+    useEffect(() => {
+        if (sessionUser?.id) {
+            supabase.rpc('get_profile_completion_status')
+                .then(({ data, error }) => {
+                    if (!error && data) {
+                        setCompletionData(data);
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [sessionUser?.id, userProfile, overlays.privacy, isEditingProfile]);
 
-    completionScore = Math.min(100, completionScore);
-
-    // Dynamic Priority Action Resolver
-    let nextAction = null;
-    if (!hasPassword) {
-        nextAction = {
-            type: 'password',
-            label: 'Set Password',
-            badge: '+10%',
-            icon: 'fas fa-key'
-        };
-    } else if (!isTelegramVerified) {
-        nextAction = {
-            type: 'telegram',
-            label: 'Verify Telegram',
-            badge: '+10%',
-            icon: 'fab fa-telegram-plane'
-        };
-    } else if (!hasUni) {
-        nextAction = {
-            type: 'editor',
-            target: 'university',
-            label: 'Select University',
-            badge: '+15%',
-            icon: 'fas fa-graduation-cap'
-        };
-    } else if (!hasDept) {
-        nextAction = {
-            type: 'editor',
-            target: 'department',
-            label: 'Choose Department',
-            badge: '+15%',
-            icon: 'fas fa-building-columns'
-        };
-    } else if (!hasProg) {
-        nextAction = {
-            type: 'editor',
-            target: 'program',
-            label: 'Select Program',
-            badge: '+10%',
-            icon: 'fas fa-clock'
-        };
-    } else if (!hasAcademicSub) {
-        nextAction = {
-            type: 'editor',
-            target: 'academic_sub',
-            label: isFreshman ? 'Select Stream' : 'Select Year',
-            badge: '+10%',
-            icon: 'fas fa-book-bookmark'
-        };
-    } else if (!hasBio) {
-        nextAction = {
-            type: 'editor',
-            target: 'bio',
-            label: 'Write Bio',
-            badge: '+10%',
-            icon: 'fas fa-pencil'
-        };
-    } else if (!hasCustomAvatar) {
-        nextAction = {
-            type: 'editor',
-            target: 'avatar',
-            label: 'Add Avatar',
-            badge: '+10%',
-            icon: 'fas fa-camera'
-        };
-    } else if (!hasSex) {
-        nextAction = {
-            type: 'editor',
-            target: 'sex',
-            label: 'Select Gender',
-            badge: '+10%',
-            icon: 'fas fa-venus-mars'
-        };
-    }
+    const completionScore = completionData?.score || 0;
+    const nextAction = completionData?.next_action || null;
 
     const handleExecuteNextAction = () => {
         if (!nextAction) return;
