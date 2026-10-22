@@ -38,3 +38,23 @@ export const getCachedBook = (query) => {
 export const getCachedBookCover = (query) => {
     return getCachedBook(query)?.cover_url || null;
 };
+
+export const getAvailableCourseTags = () => {
+    try {
+        const raw = localStorage.getItem('linkup_books_catalog');
+        if (!raw) return [];
+        const list = JSON.parse(raw);
+        if (!Array.isArray(list)) return [];
+        return list
+            .filter(b => !b.isExamTrigger && !b.isFlashcardTrigger)
+            .map(b => ({
+                code: b.course_code || '',
+                name: b.friendly_name || (b.title || '').replace(/^General\s+/i, ''),
+                title: b.title || '',
+                icon: b.icon || 'fa-book-open'
+            }))
+            .filter((v, idx, arr) => arr.findIndex(t => t.name.toLowerCase() === v.name.toLowerCase()) === idx);
+    } catch (e) {
+        return [];
+    }
+};
