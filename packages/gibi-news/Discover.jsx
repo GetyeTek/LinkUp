@@ -46,6 +46,10 @@ const Discover = () => {
                 const data = await fetchLiveNewsFeed(page, 15);
                 if (!isMounted) return;
 
+                if (data.featured && data.featured.length > 0 && page === 0) {
+                    setFeaturedEvents(data.featured);
+                }
+
                 if (data.news && data.news.length > 0) {
                     setLiveNews(prev => {
                         const existingIds = new Set(prev.map(p => p.id));
@@ -76,14 +80,14 @@ const Discover = () => {
             return liveNews.map(n => ({ type: 'news', data: n, id: `feed-item-${n.id}` }));
         }
 
-        // Shuffle helper: Randomizes posts within the same tier/weight
-        const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+        // Stable priority sorting (prevents Math.random() scroll jitter on pagination)
+        const sortByWeight = (arr) => [...arr].sort((a, b) => (b.weight ?? 10) - (a.weight ?? 10) || String(b.id).localeCompare(String(a.id)));
 
-        // Filter and shuffle each priority tier
-        const tierHigh = shuffle(featuredEvents.filter(e => (e.weight ?? 10) > 80));
-        const tierMid = shuffle(featuredEvents.filter(e => (e.weight ?? 10) >= 50 && (e.weight ?? 10) <= 80));
-        const tierLow = shuffle(featuredEvents.filter(e => (e.weight ?? 10) >= 30 && (e.weight ?? 10) < 50));
-        const tierLowest = shuffle(featuredEvents.filter(e => (e.weight ?? 10) < 30));
+        // Filter and sort each priority tier deterministically
+        const tierHigh = sortByWeight(featuredEvents.filter(e => (e.weight ?? 10) > 80));
+        const tierMid = sortByWeight(featuredEvents.filter(e => (e.weight ?? 10) >= 50 && (e.weight ?? 10) <= 80));
+        const tierLow = sortByWeight(featuredEvents.filter(e => (e.weight ?? 10) >= 30 && (e.weight ?? 10) < 50));
+        const tierLowest = sortByWeight(featuredEvents.filter(e => (e.weight ?? 10) < 30));
 
         const result = [];
         let newsIdx = 0;
