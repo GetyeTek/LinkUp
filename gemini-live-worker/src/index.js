@@ -1389,7 +1389,8 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
     this.isOneOnOne = this.conversationId && this.conversationId.includes('miron-personal');
 
     if (request.headers.get("Upgrade") === "websocket") {
-        if (!verifiedUid || internalSecret !== 'linkup-internal-worker-secret-2026') {
+        const expectedSecret = this.env?.INTERNAL_GATEWAY_SECRET || 'linkup-internal-worker-secret-2026';
+        if (!verifiedUid || internalSecret !== expectedSecret) {
             console.error("[Agent|DO|SECURITY] ⛔ Blocked unauthorized WS access without Gateway verification.");
             return new Response("Unauthorized Gateway Bypass", { status: 401 });
         }
@@ -1663,69 +1664,7 @@ Start our co-study session by directly referencing this page out loud to ${this.
                 return;
             }
 
-            if (parsed.action === "confirm_start_reading") {
-                console.log(`[Agent|DO|STATE] Intercepted confirm_start_reading for ${this.conversationId} (page: ${parsed.page_number}, section: ${parsed.section_title})`);
-                if (this.isOneOnOne) {
-                    this.currentBookId = parsed.book_id || this.currentBookId;
-                    this.currentCourseCode = parsed.course_code || this.currentCourseCode;
-                    this.currentPageNumber = parsed.page_number || 1;
-                    this.translationQueue = [];
 
-                    const bookId = this.currentBookId;
-                    const pageNum = this.currentPageNumber;
-                    const sectionTitle = parsed.section_title || "this section";
-                    const courseCode = this.currentCourseCode || "our course";
-
-                    this.ctx.waitUntil((async () => {
-                        try {
-                            const authHeaders = {
-                                'apikey': this.env.SUPABASE_SERVICE_ROLE_KEY,
-                                'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
-                            };
-
-                            let pageText = "";
-                            if (bookId) {
-                                const pageRes = await fetch(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=eq.${pageNum}&select=content_json`, { headers: authHeaders });
-                                const pages = await pageRes.json();
-                                if (pages && pages.length > 0) {
-                                    const extractTextFromBlockArray = (blocks) => {
-                                        return (blocks || []).map(b => {
-                                            if (!b) return '';
-                                            let text = [];
-                                            if (b.main) text.push(b.main);
-                                            if (b.sub) text.push(b.sub);
-                                            if (b.title) text.push(b.title);
-                                            if (b.body) text.push(b.body);
-                                            if (b.text) text.push(b.text);
-                                            if (b.items && Array.isArray(b.items)) text.push(b.items.join(' '));
-                                            if (b.premises) text.push(b.premises.join(' '));
-                                            if (b.conclusion) text.push(b.conclusion);
-                                            if (b.question) text.push(b.question);
-                                            return text.join(' ').replace(/<[^>]+>/g, '').trim(); 
-                                        }).filter(Boolean).join('\n');
-                                    };
-                                    pageText = extractTextFromBlockArray(pages[0].content_json || []);
-                                }
-                            }
-
-                            const sliced = this.sliceTextToTokenBudget(pageText || `Welcome to ${sectionTitle}.`, 2200);
-
-                            const internalKickoffDirective = `[CO-STUDY COMMENCEMENT]
-We are now sitting together looking at Page ${pageNum} for "${sectionTitle}" in ${courseCode}.
-Here is the raw textbook text on this page:
-"""${sliced.text}"""
-
-Start our co-study session by directly referencing this page out loud to ${this.studentName}. Introduce the section briefly, then dissect the very first concept step by step. Remember to tag exact verbatim quotes from the text using <chunk highlight="...">.`;
-
-                            this.emitLog("GROQ", `🚀 Commencing co-study on Page ${pageNum} for "${sectionTitle}"`);
-                            await this.executeGroqCognitiveTurn(internalKickoffDirective);
-                        } catch (err) {
-                            console.error("[Agent|DO|START_READING] Error commencing reading session:", err.message);
-                        }
-                    })());
-                }
-                return;
-            }
 
             if (parsed.action === "interrupt") {
                 console.log(`[Agent|DO|STATE] Intercepted client interrupt for ${this.conversationId}`);
