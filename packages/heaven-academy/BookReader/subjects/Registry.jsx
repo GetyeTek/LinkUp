@@ -20,6 +20,10 @@ export const resolveBookPrefix = (courseCode, bookTitle, explicitPrefix = null) 
         const cached = getCachedBook(courseCode);
         if (cached?.prefix) return cached.prefix;
     }
+    if (bookTitle) {
+        const cached = getCachedBook(bookTitle);
+        if (cached?.prefix) return cached.prefix;
+    }
     const title = (bookTitle || '').toLowerCase();
     if (title.includes('anthro')) return 'anthro';
     if (title.includes('biol')) return 'biol';
