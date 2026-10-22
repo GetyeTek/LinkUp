@@ -1,29 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { invokeBookReader } from './api.js';
-import { universityIconMap } from './components/BookCard.jsx';
-import { supabase, usePlatform, getCachedBookCover } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getCachedBook, getCachedBookCover } from '@linkup-platform/sdk-core';
 import ExamSession from './ExamSession.jsx';
 import './ExamPavilion.css';
-
-const COURSE_ICONS = {
-    'PHYS 1011': 'fa-bolt',
-    'BIOL 1012': 'fa-dna',
-    'CHEM 1012': 'fa-flask',
-    'MATH 1011': 'fa-square-root-variable',
-    'MATH 1012': 'fa-chart-pie',
-    'LOCT 1011': 'fa-brain',
-    'EMTE 1012': 'fa-robot',
-    'FLEN 1011': 'fa-comments',
-    'ECON 1011': 'fa-chart-line',
-    'GEES 1011': 'fa-earth-africa',
-    'HIST 1012': 'fa-landmark-dome',
-    'INCL 1012': 'fa-hands-holding-circle',
-    'MCIE 1012': 'fa-scale-balanced',
-    'MGMT 1012': 'fa-briefcase',
-    'PSYC 1011': 'fa-head-side-virus',
-    'SPSC 1011': 'fa-person-running',
-    'ANTH 1012': 'fa-people-group'
-};
 
 const ExamPavilion = ({ 
     university: initialUniversity, 
@@ -141,17 +120,18 @@ const ExamPavilion = ({
                 ? exam.course_name
                 : (exam.courses?.name || 'General Assessment');
 
-            if (!map.has(code)) {
-                map.set(code, {
-                    code,
-                    name,
-                    icon: exam.icon || exam.courses?.icon || COURSE_ICONS[code] || 'fa-book-open',
-                    cover_url: getCachedBookCover(code) || getCachedBookCover(name),
-                    exams: [],
-                    myCampusCount: 0,
-                    otherCampusCount: 0
-                });
-            }
+                                if (!map.has(code)) {
+                        const cachedBook = getCachedBook(code) || getCachedBook(name);
+                        map.set(code, {
+                            code,
+                            name: cachedBook?.friendly_name || name,
+                            icon: cachedBook?.icon || exam.icon || exam.courses?.icon || 'fa-book-open',
+                            cover_url: cachedBook?.cover_url || getCachedBookCover(code) || getCachedBookCover(name),
+                            exams: [],
+                            myCampusCount: 0,
+                            otherCampusCount: 0
+                        });
+                    }
 
             const entry = map.get(code);
             entry.exams.push(exam);
@@ -218,11 +198,13 @@ const ExamPavilion = ({
             const uniId = exam.university_id || 'unknown';
             const uniName = exam.university_name || 'University Assessment';
             const isHome = homeUniversityId && exam.university_id === homeUniversityId;
+            const uniObj = allUnis.find(u => u.id === uniId || u.name === uniName);
 
             if (!map.has(uniId)) {
                 map.set(uniId, {
                     university_id: uniId,
                     university_name: uniName,
+                    icon: uniObj?.icon || 'fa-landmark',
                     is_home: isHome,
                     exams: []
                 });
@@ -482,7 +464,7 @@ const ExamPavilion = ({
                             <div className="pav-campus-dossier-list">
                                 {groupedVaultExams.map(group => {
                                     const isExpanded = expandedUnis[group.university_id] ?? (group.is_home || groupedVaultExams.length <= 2);
-                                    const uniIcon = group.is_home ? 'fa-star' : (universityIconMap[group.university_name] || 'fa-landmark');
+                                    const uniIcon = group.is_home ? 'fa-star' : (group.icon || 'fa-landmark');
 
                                     return (
                                         <div 
