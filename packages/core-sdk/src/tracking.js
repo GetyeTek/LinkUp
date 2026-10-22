@@ -5,29 +5,27 @@ export const logQuestionAttempt = async ({
     questionId = null,
     courseCode = 'Unknown',
     topicTag = 'General',
-    sourceType,
+    sourceType = 'exam',
     sourceId = null,
-    questionSnapshot,
-    userAnswer,
-    isCorrect
+    userAnswer
 }) => {
-    if (!userId) return;
+    if (!userId) return null;
     try {
-        // Fire-and-forget non-blocking insert
-        supabase.from('user_question_attempts').insert({
-            user_id: userId,
-            question_id: questionId,
-            course_code: courseCode,
-            topic_tag: topicTag,
-            source_type: sourceType,
-            source_id: sourceId,
-            question_snapshot: questionSnapshot,
-            user_answer: userAnswer,
-            is_correct: isCorrect
-        }).then(({ error }) => {
-            if (error) console.error("Attempt logging failed:", error);
+        const { data, error } = await supabase.rpc('submit_question_attempt', {
+            p_question_id: questionId,
+            p_user_answer: typeof userAnswer === 'object' ? userAnswer : JSON.parse(JSON.stringify(userAnswer || null)),
+            p_source_type: sourceType,
+            p_source_id: sourceId,
+            p_topic_tag: topicTag,
+            p_course_code: courseCode
         });
+        if (error) {
+            console.error("Attempt evaluation failed:", error);
+            return null;
+        }
+        return data;
     } catch (e) {
-        console.error("Attempt logging error:", e);
+        console.error("Attempt evaluation error:", e);
+        return null;
     }
 };
