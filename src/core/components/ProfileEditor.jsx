@@ -174,6 +174,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
             }
         }
 
+        const isPhoneChanged = (normalizedPhone || '') !== (userProfile?.phone || '').replace(/\s+/g, '');
         const isFreshman = editForm.department === 'Freshman';
         const isVerifiedTelegram = Boolean(userProfile?.registered_with_telegram);
         
