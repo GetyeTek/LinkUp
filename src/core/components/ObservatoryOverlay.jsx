@@ -98,7 +98,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
 
     const heatmapCells = data?.heatmap || [];
     const weeklyBars = data?.weekly_velocity || [];
-    const maxWeeklyHours = Math.max(...weeklyBars.map(b => b.hours || 0), 2.0);
+    const maxWeeklyHours = Math.max(...weeklyBars.map(b => Math.min(Number(b.hours) || 0, 16)), 2.0);
 
     return (
         <div className={`fullscreen-overlay ${isActive ? 'is-active' : ''}`}>
@@ -204,7 +204,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                         <h2 className="section-title"><span>Weekly Study Analytics</span></h2>
                         
                         {(() => {
-                            const totalHours = weeklyBars.reduce((acc, b) => acc + (Number(b.hours) || 0), 0);
+                            const totalHours = weeklyBars.reduce((acc, b) => acc + Math.min(Number(b.hours) || 0, 16), 0);
                             const activeDays = weeklyBars.filter(b => (b.active_seconds || 0) > 0).length;
                             const dailyAvg = (totalHours / 7).toFixed(1);
                             const activePct = Math.round((activeDays / 7) * 100);
@@ -260,16 +260,17 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                         
                                         <div className="chart-bars">
                                             {weeklyBars.map((b, i) => {
-                                                const pct = Math.min(100, Math.max(8, (b.hours / maxWeeklyHours) * 100));
+                                                const displayHours = Math.min(Number(b.hours) || 0, 16);
+                                                const pct = Math.min(100, Math.max(8, (displayHours / maxWeeklyHours) * 100));
                                                 return (
                                                     <div key={i} className={`bar-group ${b.is_today ? 'is-today' : ''}`}>
-                                                        {b.hours > 0 && (
-                                                            <span className="bar-val-pill">{b.hours}h</span>
+                                                        {displayHours > 0 && (
+                                                            <span className="bar-val-pill">{displayHours}h</span>
                                                         )}
                                                         <div 
                                                             className="bar" 
                                                             style={{ height: `${pct}%` }}
-                                                            title={`${b.hours} hrs on ${b.day}`}
+                                                            title={`${displayHours} hrs on ${b.day}`}
                                                         ></div>
                                                         <span className="bar-label">{b.day}</span>
                                                     </div>
