@@ -18,17 +18,12 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     
     // View States: 'pricing' | 'methods' | 'verify' | 'pending' | 'active_pro' | 'rejected'
     const [view, setView] = useState('pricing');
-    const [plan, setPlan] = useState('annual'); // 'semester' (199) | 'annual' (299)
+    const [plan, setPlan] = useState('annual');
     const [selectedMethod, setSelectedMethod] = useState('cbe'); // 'cbe' | 'telebirr'
     const [useCredits, setUseCredits] = useState(true); // Auto-applied by default for instant gratification
-    const [quote, setQuote] = useState({
-        base_price: 299,
-        discount_amount: 0,
-        final_price: 299,
-        credits_applied: 0,
-        credits_available: 0,
-        credits_remaining: 0
-    });
+    const [quote, setQuote] = useState(null);
+    const [quoteLoading, setQuoteLoading] = useState(true);
+    const [quoteError, setQuoteError] = useState(null);
     
     // Accounts loaded strictly from backend (Zero hardcoded fallbacks to prevent misrouted funds)
     const [accounts, setAccounts] = useState(null);
@@ -149,13 +144,23 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     // Fetch quote from backend whenever plan or credit toggle changes
     useEffect(() => {
         if (!sessionUser?.id || !isActive) return;
+        setQuoteLoading(true);
+        setQuoteError(null);
         supabase.rpc('calculate_membership_quote', {
             p_plan: plan,
             p_use_credits: useCredits
         }).then(({ data, error }) => {
-            if (!error && data) {
+            if (error) {
+                setQuoteError(error.message || "Failed to retrieve pricing.");
+                setQuote(null);
+            } else if (data) {
                 setQuote(data);
             }
+        }).catch(err => {
+            setQuoteError(err.message || "Pricing information is temporarily unavailable.");
+            setQuote(null);
+        }).finally(() => {
+            setQuoteLoading(false);
         });
     }, [plan, useCredits, sessionUser?.id, isActive]);
 
@@ -239,10 +244,16 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
 
     if (!isActive) return null;
 
-    const discount = (useCredits && quote?.discount_amount) ? quote.discount_amount : 0;
-    const semesterFinal = Math.max(0, 199 - discount);
-    const annualFinal = Math.max(0, 299 - discount);
-    const amountDue = plan === 'semester' ? semesterFinal : annualFinal;
+    const semesterPlan = quote?.plans?.semester;
+    const annualPlan = quote?.plans?.annual;
+    const currentPlanDetails = plan === 'semester' ? semesterPlan : annualPlan;
+
+    const discount = (useCredits && currentPlanDetails?.discount_amount) ? currentPlanDetails.discount_amount : ((useCredits && quote?.discount_amount) ? quote.discount_amount : 0);
+    const semesterBase = semesterPlan?.base_price ?? (plan === 'semester' ? quote?.base_price : null);
+    const annualBase = annualPlan?.base_price ?? (plan === 'annual' ? quote?.base_price : null);
+    const semesterFinal = semesterPlan?.final_price ?? (semesterBase !== null ? Math.max(0, semesterBase - discount) : null);
+    const annualFinal = annualPlan?.final_price ?? (annualBase !== null ? Math.max(0, annualBase - discount) : null);
+    const amountDue = currentPlanDetails?.final_price ?? (plan === 'semester' ? semesterFinal : annualFinal) ?? quote?.final_price;
 
     return (
         <div className={`pu-overlay-wrapper ${isActive ? 'is-active' : ''}`} onClick={onClose}>
@@ -306,6 +317,15 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 </div>
                             </div>
 
+                            {quoteError ? (
+                                <div className="pu-accounts-error" style={{ marginBottom: '1rem', padding: '1rem' }}>
+                                    <i className="fa-solid fa-triangle-exclamation" style={{ color: '#ff5f5f', fontSize: '1.4rem', marginBottom: '6px' }}></i>
+                                    <p style={{ fontSize: '0.82rem', color: '#ccc', margin: 0 }}>
+                                        {quoteError || "Pricing information is temporarily unavailable. Please check your connection or try again later."}
+                                    </p>
+                                </div>
+                            ) : null}
+
                             <div className="pu-plan-switcher">
                                 <div 
                                     className={`pu-plan-card ${plan === 'semester' ? 'active' : ''}`} 
@@ -316,27 +336,29 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                             <i className="fa-solid fa-coins"></i> -{discount} ETB Credits
                                         </div>
                                     )}
-                                    <div className="pu-plan-tag">Semester Pass</div>
+                                    <div className="pu-plan-tag">{semesterPlan?.title || 'Semester Pass'}</div>
                                     
-                                    {discount > 0 ? (
+                                    {quoteLoading ? (
+                                        <div style={{ padding: '1rem 0', color: 'var(--gold-main)', textAlign: 'center' }}><i className="fas fa-circle-notch fa-spin"></i></div>
+                                    ) : discount > 0 ? (
                                         <div className="pu-formula-box">
                                             <div className="pu-math-row">
-                                                <span className="pu-base-struck">199 ETB</span>
+                                                <span className="pu-base-struck">{semesterBase} ETB</span>
                                                 <span className="pu-math-sub">-{discount} ETB</span>
                                             </div>
                                             <div className="pu-plan-price">
                                                 {semesterFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-credits-used-note">
-                                                <i className="fa-solid fa-circle-check"></i> <u>{quote.credits_applied} credits</u> applied from your wallet
+                                                <i className="fa-solid fa-circle-check"></i> <u>{quote?.credits_applied} credits</u> applied from your wallet
                                             </span>
                                         </div>
                                     ) : (
                                         <div className="pu-formula-box">
                                             <div className="pu-plan-price">
-                                                199 <span>ETB</span>
+                                                {semesterBase ?? '---'} <span>ETB</span>
                                             </div>
-                                            <span className="pu-plan-period-note">Single semester</span>
+                                            <span className="pu-plan-period-note">{semesterPlan?.period || 'Single semester'}</span>
                                         </div>
                                     )}
                                 </div>
@@ -347,38 +369,40 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 >
                                     <div className={`pu-plan-ribbon ${discount > 0 ? 'fused-ribbon' : 'annual-ribbon'}`}>
                                         {discount > 0 ? (
-                                            <><i className="fa-solid fa-bolt"></i> -{discount} ETB + 35%</>
+                                            <><i className="fa-solid fa-bolt"></i> -{discount} ETB + {annualPlan?.savings_pct || 35}%</>
                                         ) : (
-                                            'Save 35%'
+                                            `Save ${annualPlan?.savings_pct || 35}%`
                                         )}
                                     </div>
-                                    <div className="pu-plan-tag">Annual Pass</div>
+                                    <div className="pu-plan-tag">{annualPlan?.title || 'Annual Pass'}</div>
 
-                                    {discount > 0 ? (
+                                    {quoteLoading ? (
+                                        <div style={{ padding: '1rem 0', color: 'var(--gold-main)', textAlign: 'center' }}><i className="fas fa-circle-notch fa-spin"></i></div>
+                                    ) : discount > 0 ? (
                                         <div className="pu-formula-box">
                                             <div className="pu-math-row">
-                                                <span className="pu-base-struck">299 ETB</span>
+                                                <span className="pu-base-struck">{annualBase} ETB</span>
                                                 <span className="pu-math-sub">-{discount} ETB</span>
                                             </div>
                                             <div className="pu-plan-price">
                                                 {annualFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-credits-used-note">
-                                                <i className="fa-solid fa-circle-check"></i> <u>{quote.credits_applied} credits</u> applied from your wallet
+                                                <i className="fa-solid fa-circle-check"></i> <u>{quote?.credits_applied} credits</u> applied from your wallet
                                             </span>
                                         </div>
                                     ) : (
                                         <div className="pu-formula-box">
                                             <div className="pu-plan-price">
-                                                299 <span>ETB</span>
+                                                {annualBase ?? '---'} <span>ETB</span>
                                             </div>
-                                            <span className="pu-plan-period-note">Full academic year</span>
+                                            <span className="pu-plan-period-note">{annualPlan?.period || 'Full academic year'}</span>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            {quote.credits_available > 0 && (
+                            {quote && quote.credits_available > 0 && (
                                 <div className="pu-wallet-footnote">
                                     <span className="pu-footnote-text">
                                         <i className="fa-solid fa-coins" style={{ color: 'var(--gold-main)', marginRight: '6px' }}></i>
@@ -396,8 +420,12 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 </div>
                             )}
 
-                            <button className="pu-cta-gold-btn" onClick={() => setView('methods')}>
-                                {discount > 0 ? (
+                            <button className="pu-cta-gold-btn" onClick={() => setView('methods')} disabled={quoteLoading || !amountDue || !!quoteError}>
+                                {quoteLoading ? (
+                                    <><i className="fas fa-circle-notch fa-spin"></i> Calculating Price...</>
+                                ) : !amountDue || quoteError ? (
+                                    <span>Pricing Unavailable</span>
+                                ) : discount > 0 ? (
                                     <>
                                         <span>Proceed • Pay {amountDue} ETB (Saved {discount} ETB)</span>
                                         <i className="fa-solid fa-sparkles"></i>
