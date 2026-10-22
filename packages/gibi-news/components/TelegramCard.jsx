@@ -7,7 +7,7 @@ const formatChannelName = (channel) => {
     return channel.replace(/^@/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 };
 
-const TelegramCard = ({ post }) => {
+const TelegramCard = ({ post, onImageClick }) => {
     const [expanded, setExpanded] = useState(false);
     const [imgError, setImgError] = useState(false);
     const cardRef = useRef(null);
@@ -40,6 +40,11 @@ const TelegramCard = ({ post }) => {
                     className="tc-image" 
                     referrerPolicy="no-referrer" 
                     onError={() => setImgError(true)}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onImageClick?.(proxyImgUrl);
+                    }}
+                    style={{ cursor: 'pointer' }}
                 />
             )}
             <div className="tc-content">
