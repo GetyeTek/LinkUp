@@ -271,6 +271,72 @@ export default {
       targetUrl.searchParams.set('apikey', modifiedHeaders.get('apikey') || REAL_ANON_KEY);
     }
 
+    // --- CLOUDFLARE GLOBAL EDGE CACHING LAYER (FREE TIER DEFENSE) ---
+    const edgeCache = caches.default;
+    const hasBypassParam = url.searchParams.has('nocache') || url.searchParams.has('cb') || url.searchParams.has('purge');
+
+    // 1. Synthetic Cache Key Resolver for Idempotent POST Book Payloads
+    let postCacheKey = null;
+    const isBookReaderPost = request.method === 'POST' && url.pathname === '/functions/v1/book-reader';
+
+    if (isBookReaderPost && !hasBypassParam) {
+      try {
+        const bodyClone = await request.clone().json();
+        const cacheableActions = ['get_book_pages', 'list_books', 'list_universities', 'get_book_mapped_questions', 'get_question_hint'];
+        if (bodyClone.action && cacheableActions.includes(bodyClone.action)) {
+          const sortedParams = Object.keys(bodyClone).sort().map(k => `${k}=${encodeURIComponent(String(bodyClone[k]))}`).join('&');
+          postCacheKey = new Request(`https://cache.linkup.internal/book-reader-cache?${sortedParams}`, { method: 'GET' });
+        }
+      } catch (e) {}
+    }
+
+    // A. Intercept & Serve Cached POST Book Payload (0ms Supabase Egress)
+    if (postCacheKey) {
+      const cachedPostRes = await edgeCache.match(postCacheKey);
+      if (cachedPostRes) {
+        console.log(`[Gateway] ⚡ EDGE CACHE HIT (POST BOOK): ${url.pathname}`);
+        const hitHeaders = new Headers(cachedPostRes.headers);
+        if (isExplicitOrigin && isOriginAllowed) {
+          hitHeaders.set('Access-Control-Allow-Origin', incomingOrigin);
+          hitHeaders.set('Access-Control-Allow-Credentials', 'true');
+        }
+        hitHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range, content-length, x-linkup-cache');
+        hitHeaders.set('X-LinkUp-Cache', 'HIT-EDGE-POST');
+        return new Response(cachedPostRes.body, {
+          status: cachedPostRes.status,
+          statusText: cachedPostRes.statusText,
+          headers: hitHeaders
+        });
+      }
+    }
+
+    // 2. Identify Public Cacheable GET Endpoints (Storage Assets & News Feed)
+    const isPublicStorage = url.pathname.startsWith('/storage/v1/object/public/');
+    const isPublicNewsFeed = request.method === 'GET' && url.pathname === '/functions/v1/news-feed';
+    const isCacheableGet = !hasBypassParam && request.method === 'GET' && (isPublicStorage || isPublicNewsFeed);
+    let getCacheKey = null;
+
+    // B. Intercept & Serve Cached GET Assets
+    if (isCacheableGet) {
+      getCacheKey = new Request(url.toString(), { method: 'GET' });
+      const cachedGetRes = await edgeCache.match(getCacheKey);
+      if (cachedGetRes) {
+        console.log(`[Gateway] ⚡ EDGE CACHE HIT (GET): ${url.pathname}`);
+        const hitHeaders = new Headers(cachedGetRes.headers);
+        if (isExplicitOrigin && isOriginAllowed) {
+          hitHeaders.set('Access-Control-Allow-Origin', incomingOrigin);
+          hitHeaders.set('Access-Control-Allow-Credentials', 'true');
+        }
+        hitHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range, content-length, x-linkup-cache');
+        hitHeaders.set('X-LinkUp-Cache', 'HIT-EDGE-GET');
+        return new Response(cachedGetRes.body, {
+          status: cachedGetRes.status,
+          statusText: cachedGetRes.statusText,
+          headers: hitHeaders
+        });
+      }
+    }
+
     console.log(`[Gateway] 🔀 Proxying ${request.method} to: ${targetUrl.toString()}`);
 
     const init = {
@@ -281,6 +347,16 @@ export default {
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       init.body = request.body;
+    }
+
+    // Direct Cloudflare edge cache directives for subrequests
+    if (isCacheableGet) {
+      const getTtl = isPublicStorage ? 2592000 : 90;
+      init.cf = {
+        cacheEverything: true,
+        cacheTtl: getTtl,
+        cacheTtlByStatus: { "200-299": getTtl, 404: 1, "500-599": 0 }
+      };
     }
 
     try {
@@ -294,15 +370,51 @@ export default {
         responseHeaders.set('Access-Control-Allow-Origin', incomingOrigin);
         responseHeaders.set('Access-Control-Allow-Credentials', 'true');
       }
-      responseHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range, content-length, x-supabase-api-version');
+      responseHeaders.set('Access-Control-Expose-Headers', 'x-supabase-api-version, content-range, content-length, x-linkup-cache');
+      responseHeaders.set('X-LinkUp-Cache', 'MISS-UPSTREAM');
 
-      // High-Performance Immutable Caching with Instant Purge Trigger for Book Assets
-      if (url.pathname.startsWith('/storage/v1/object/public/book-assets/')) {
-        const hasBypassParam = url.searchParams.has('nocache') || url.searchParams.has('cb') || url.searchParams.has('purge');
-        if (hasBypassParam) {
-          responseHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-        } else {
-          responseHeaders.set('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
+      // Populate Edge Cache on successful responses
+      if (response.status === 200) {
+        // Caching for Immutable Public Storage Assets
+        if (isPublicStorage) {
+          if (hasBypassParam) {
+            responseHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+          } else {
+            responseHeaders.set('Cache-Control', 'public, max-age=31536000, s-maxage=2592000, immutable');
+            if (getCacheKey) {
+              const toStore = new Response(response.clone().body, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: responseHeaders
+              });
+              ctx.waitUntil(edgeCache.put(getCacheKey, toStore));
+              console.log(`[Gateway] 💾 Edge Cached Storage Asset: ${url.pathname}`);
+            }
+          }
+        }
+
+        // Caching for Public News Feed (90 seconds edge shield)
+        if (isPublicNewsFeed && getCacheKey && !hasBypassParam) {
+          responseHeaders.set('Cache-Control', 'public, max-age=30, s-maxage=90');
+          const toStore = new Response(response.clone().body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeaders
+          });
+          ctx.waitUntil(edgeCache.put(getCacheKey, toStore));
+          console.log(`[Gateway] 💾 Edge Cached News Feed: ${url.pathname}`);
+        }
+
+        // Caching for Idempotent POST Book Payloads (7 days edge shield)
+        if (postCacheKey && !hasBypassParam) {
+          responseHeaders.set('Cache-Control', 'public, max-age=86400, s-maxage=604800, immutable');
+          const toStore = new Response(response.clone().body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeaders
+          });
+          ctx.waitUntil(edgeCache.put(postCacheKey, toStore));
+          console.log(`[Gateway] 💾 Edge Cached POST Book Payload: ${url.pathname}`);
         }
       }
 
