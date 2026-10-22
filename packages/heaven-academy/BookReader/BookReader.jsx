@@ -28,6 +28,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const [layoutReady, setLayoutReady] = useState(false);
     const [reportQuestionId, setReportQuestionId] = useState(null);
     const [aiExploreEnabled, setAiExploreEnabled] = useState(book?.ai_explore_enabled ?? false);
+    const [bookPrefix, setBookPrefix] = useState(() => book?.prefix || resolveBookPrefix(book?.course_code, book?.title));
 
     // Course Variant Modes: 'text' (standard PDF/JSON) | 'visual_en' | 'visual_am'
     const [viewMode, setViewMode] = useState('text');
@@ -233,6 +234,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                         setPages(data.pages);
                         if (data.toc) setTocData(data.toc);
                         if (data.page_offset) setPageOffset(data.page_offset);
+                        if (data.prefix) setBookPrefix(data.prefix);
 
                         if (data.ai_explore_enabled !== undefined) {
                             setAiExploreEnabled(Boolean(data.ai_explore_enabled));
@@ -581,9 +583,9 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
         }
     }, [loading, pages, targetPageNumber, targetBlockIndex]);
 
-    const bookPrefix = resolveBookPrefix(book?.course_code, book?.title);
-    const engineClass = bookPrefix ? `engine-${bookPrefix}` : '';
-    const watermarkClass = bookPrefix === 'history' ? 'history-watermark' : '';
+    const activeEnginePrefix = bookPrefix || resolveBookPrefix(book?.course_code, book?.title);
+    const engineClass = activeEnginePrefix ? `engine-${activeEnginePrefix}` : '';
+    const watermarkClass = activeEnginePrefix === 'history' ? 'history-watermark' : '';
 
     return (
         <div className={`reader-root theme-${currentTheme}`} style={zIndexOverride ? { zIndex: zIndexOverride } : {}}>
@@ -645,6 +647,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                                                     const blockActions = {
                                                         bookTitle: book?.title || '',
                                                         courseCode: book?.course_code || '',
+                                                        prefix: bookPrefix,
                                                         aiExploreEnabled: aiExploreEnabled,
                                                         onAIExplore: () => handleAIExplore(pageIdx, idx)
                                                     };
