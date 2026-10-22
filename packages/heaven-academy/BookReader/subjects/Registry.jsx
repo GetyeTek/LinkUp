@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import DOMPurify from 'dompurify';
+import { getCachedBook } from '@linkup-platform/sdk-core';
 import { resolveStyles, formatText, renderAIExtension, resolveAssetUrl } from './utils.jsx';
 
 const bulletCharMap = {
@@ -13,28 +14,11 @@ const bulletCharMap = {
     'default': '•'
 };
 
-const COURSE_PREFIX_MAP = {
-    'ANTH 1012': 'anthro',
-    'BIOL 1012': 'biol',
-    'CHEM 1012': 'chem',
-    'ECON 1011': 'econ',
-    'EMTE 1012': 'emte',
-    'GEES 1011': 'geog',
-    'GLTR 1012': 'glaf',
-    'HIST 1012': 'history',
-    'INCL 1012': 'snie',
-    'MATH 1011': 'math',
-    'MATH 1012': 'math',
-    'MCIE 1012': 'mced',
-    'MGMT 1012': 'entre',
-    'PHYS 1011': 'phys',
-    'PSYC 1011': 'psych'
-};
-
 export const resolveBookPrefix = (courseCode, bookTitle, explicitPrefix = null) => {
     if (explicitPrefix) return explicitPrefix;
-    if (courseCode && COURSE_PREFIX_MAP[courseCode.toUpperCase().trim()]) {
-        return COURSE_PREFIX_MAP[courseCode.toUpperCase().trim()];
+    if (courseCode) {
+        const cached = getCachedBook(courseCode);
+        if (cached?.prefix) return cached.prefix;
     }
     const title = (bookTitle || '').toLowerCase();
     if (title.includes('anthro')) return 'anthro';
