@@ -66,7 +66,8 @@ const I18N = {
     invalid_link: "❌ *ልክ ያልሆነ ወይም ጊዜው ያለፈበት ሊንክ*\n\nይህ የማረጋገጫ ሊንክ ጊዜው አልፏል ወይም ትክክል አይደለም። እባክዎ ወደ LinkUp ዌብ መተግበሪያ ተመልሰው እንደገና ይሞክሩ።",
     link_contact_prompt: "🔒 *አካውንት የማገናኘት ጥያቄ*\n\nይህንን የቴሌግራም አካውንት ከዌብ ገጽዎ ጋር ደህንነቱ በተጠበቀ ሁኔታ ለማገናኘት እባክዎ ከታች በጽሁፍ መጻፊያው ሳጥን በቀኝ በኩል የሚገኘውን አራት ማዕዘን (⊞) ምልክት ይጫኑ:\n⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀👇",
     link_collision: "❌ *የስልክ ቁጥር መደራረብ*\n\nይህ ስልክ ቁጥር በሌላ ንቁ አካውንት ላይ ተረጋግጧል። አንድ ስልክ ቁጥር ከበርካታ አካውንቶች ጋር ማገናኘት አይቻልም።",
-    link_target_taken: "❌ *አካውንት ማገናኘት ተቋርጧል*\n\nይህ የዌብ አካውንት ቀድሞውኑ ከሌላ የቴሌግራም መገለጫ ጋር ተገናኝቷል።",
+    link_target_taken: "❌ *አካውንት ማገናኘት ተቋርጧል*\n\nይህ የዌብ አካውንት ቀድሞውኑ ከሌላ የቴሌግራም መገለጫ ጋር ተገናኝቷል። የደህንነት ጥበቃን ለመጠበቅ አንድን አካውንት ከበርካታ የቴሌግራም መገለጫዎች ጋር ማገናኘት አይቻልም።",
+    link_real_account: (email) => `❌ *አካውንት ማገናኘት ተቋርጧል*\n\nየትምህርት መረጃዎን ደህንነት ለመጠበቅ አካውንቶችን ማዋሃድ አይቻልም።\n\nቴሌግራምዎ አስቀድሞ በኢሜይል *${email}* ከተመዘገበ ንቁ አካውንት ጋር ተገናኝቷል።\n\nእባክዎ በኢሜይልዎ ወይም በቴሌግራም መግቢያ ቁልፍ በቀጥታ ወደዚያ አካውንት ይግቡ።`,
     link_patch_failed: "❌ *አካውንት ማገናኘት አልተሳካም*\n\nየአካውንትዎን መረጃ ማደስ አልተቻለም። እባክዎ ወደ ብሮውዘርዎ ተመልሰው እንደገና ይሞክሩ።",
     link_success: "✅ *ማንነትዎ ተረጋግጦ አካውንትዎ ተገናኝቷል!*\n\nቴሌግራምዎ ከዌብ ገጽዎ ጋር በተሳካ ሁኔታ ተገናኝቷል።\n\nእባክዎ ወደ ብሮውዘርዎ ይመለሱ — አሁን በቀጥታ ይከፈታል።"
   },
@@ -92,6 +93,7 @@ const I18N = {
     link_contact_prompt: "🔒 *Account Link Requested*\n\nTo securely link this Telegram account to your web session, please tap the rectangular (⊞) button on the right side of the message input box:\n⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀👇",
     link_collision: "❌ *Phone Number Collision*\n\nThis phone number is already verified on another active account. An existing phone number cannot be linked to multiple accounts.",
     link_target_taken: "❌ *Account Link Aborted*\n\nThis web account is already linked to another verified Telegram profile. To protect account integrity, multiple Telegram accounts cannot be bound to the same profile.",
+    link_real_account: (email) => `❌ *Account Link Aborted*\n\nTo protect your academic records, accounts cannot be merged.\n\nYour Telegram is already linked to an active account with the email *${email}*.\n\nPlease sign into that account directly using your email or the Telegram login button.`,
     link_patch_failed: "❌ *Account Link Failed*\n\nWe could not update your account records. Please return to your browser and try again.",
     link_success: "✅ *Identity Verified & Accounts Linked!*\n\nYour Telegram has been successfully bound to your active web session.\n\nPlease return to your browser—it will automatically unlock now."
   }
@@ -240,7 +242,7 @@ export default {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: msg.chat.id,
-                        text: `❌ *Invalid or Expired Link*\n\nThis verification link has expired or is invalid. Please return to the LinkUp web app and tap the verify button again.`,
+                        text: I18N.am.invalid_link,
                         parse_mode: "Markdown"
                     })
                 });
@@ -331,7 +333,7 @@ export default {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   chat_id: msg.chat.id,
-                  text: `❌ *Verification Failed*\n\nYou shared a contact card belonging to another user. Please share your own contact to proceed.`,
+                  text: I18N.am.contact_mismatch,
                   parse_mode: 'Markdown'
                 })
               });
@@ -378,7 +380,7 @@ export default {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     chat_id: msg.chat.id,
-                                    text: `❌ *Phone Number Collision*\n\nThis phone number is already verified on another active account. An existing phone number cannot be linked to multiple accounts.`,
+                                    text: I18N.am.link_collision,
                                     parse_mode: "Markdown",
                                     reply_markup: { remove_keyboard: true }
                                 })
@@ -405,7 +407,7 @@ export default {
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
                                         chat_id: msg.chat.id,
-                                        text: `❌ *Account Link Aborted*\n\nThis web account is already linked to another verified Telegram profile. To protect account integrity, multiple Telegram accounts cannot be bound to the same profile.`,
+                                        text: I18N.am.link_target_taken,
                                         parse_mode: "Markdown",
                                         reply_markup: { remove_keyboard: true }
                                     })
@@ -486,7 +488,7 @@ export default {
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({
                                             chat_id: msg.chat.id,
-                                            text: `❌ *Account Link Aborted*\n\nTo protect your academic records, accounts cannot be merged.\n\nYour Telegram is already linked to an active account with the email *${maskedEmail}*.\n\nPlease sign into that account directly using your email or the Telegram login button.`,
+                                            text: I18N.am.link_real_account(maskedEmail),
                                             parse_mode: "Markdown",
                                             reply_markup: { remove_keyboard: true }
                                         })
@@ -554,7 +556,7 @@ export default {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             chat_id: msg.chat.id,
-                            text: `❌ *Account Link Failed*\n\nWe could not update your account records. Please return to your browser and try again.`,
+                            text: I18N.am.link_patch_failed,
                             parse_mode: "Markdown",
                             reply_markup: { remove_keyboard: true }
                         })
@@ -567,7 +569,7 @@ export default {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: msg.chat.id,
-                        text: `✅ *Identity Verified & Accounts Linked!*\n\nYour Telegram has been successfully bound to your active web session.\n\nPlease return to your browser—it will automatically unlock now.`,
+                        text: I18N.am.link_success,
                         parse_mode: "Markdown",
                         reply_markup: { remove_keyboard: true }
                     })
@@ -594,7 +596,7 @@ export default {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 chat_id: msg.chat.id,
-                                text: `❌ *Phone Number Collision*\n\nThis phone number is already verified on another account. Please sign into that account directly using your email and password.`,
+                                text: I18N.am.phone_collision,
                                 parse_mode: "Markdown",
                                 reply_markup: { remove_keyboard: true }
                             })
