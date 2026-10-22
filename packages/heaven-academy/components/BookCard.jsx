@@ -1,44 +1,9 @@
 import React from 'react';
 import './BookCard.css';
 
-export const universityIconMap = {
-    "Adama Science and Technology University": "fa-atom",
-    "Addis Ababa Science and Technology University": "fa-microchip",
-    "Addis Ababa University": "fa-landmark",
-    "Ambo University": "fa-bottle-water",
-    "Arba Minch University": "fa-fish-fins",
-    "Arsi University": "fa-person-running",
-    "Assosa University": "fa-gem",
-    "Bahir Dar University": "fa-ship",
-    "Bonga University": "fa-mug-hot",
-    "Bule Hora University": "fa-horse",
-    "Debark University": "fa-mountain-sun",
-    "Debre Birhan University": "fa-lightbulb",
-    "Debre Markos University": "fa-cross",
-    "Debre Tabor University": "fa-gun",
-    "Dilla University": "fa-monument",
-    "Dire Dawa University": "fa-train",
-    "Ethiopian Science and Technology Universities": "fa-vial-virus",
-    "Gambella University": "fa-droplet",
-    "General Collection": "fa-book-atlas",
-    "Haramaya University": "fa-wheat-awn",
-    "Hawassa University": "fa-fish",
-    "Injibara University": "fa-tree",
-    "Jimma University": "fa-leaf",
-    "Madda Walabu University": "fa-scroll",
-    "Mekdela Amba University": "fa-fort-awesome",
-    "Metu University": "fa-coffee",
-    "Mizan Tepi University": "fa-pepper-hot",
-    "Salale University": "fa-music",
-    "Samara University": "fa-hippo",
-    "University of Gondar": "fa-chess-rook",
-    "Wachemo University": "fa-mask",
-    "Wolaita Sodo University": "fa-house",
-    "Woldia University": "fa-shield-heart",
-    "Wolkite University": "fa-plate-wheat",
-    "Wollega University": "fa-coins",
-    "Wollo University": "fa-feather"
-};
+export const universityIconMap = new Proxy({}, {
+    get: (target, prop) => (typeof prop === 'string' && prop ? 'fa-graduation-cap' : undefined)
+});
 
 export const getBookColor = (title) => {
     let hash = 0;
@@ -78,7 +43,7 @@ const BookCard = ({ item, isUniversity, isExamTrigger, isFlashcardTrigger, previ
                 <>
                     <div className="tilet-border-sm"></div>
                     <div className="heritage-emblem">
-                        <i className={`fa-solid ${universityIconMap[item.title] || 'fa-graduation-cap'}`}></i>
+                        <i className={`fa-solid ${item.icon || 'fa-graduation-cap'}`}></i>
                     </div>
                     <div className="heritage-content">
                         <div className="heritage-label">Collection</div>
