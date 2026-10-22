@@ -308,9 +308,6 @@ const App = () => {
     // Sync last seen every 2 minutes while active
     const presenceInterval = setInterval(() => {
       updateLastSeen();
-      supabase.rpc('update_user_streak').then(({ error }) => {
-          if (error) console.error("Streak sync failed:", error);
-      });
     }, 120000);
 
     // Initial streak bump on load
