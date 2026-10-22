@@ -9,59 +9,49 @@ const Discover = () => {
     const { shell, user, unreadCount, routePayload, clearRoutePayload, t } = usePlatform();
     const onOpenActivity = shell.openActivity;
     
-    const [liveNews, setLiveNews] = useState([]);
-    const [featuredEvents, setFeaturedEvents] = useState([]);
+    const [feed, setFeed] = useState([]);
+    const [announcementCount, setAnnouncementCount] = useState(0);
     const [activeHtmlRoom, setActiveHtmlRoom] = useState(null);
     const [newsLoading, setNewsLoading] = useState(true);
 
-    // Pagination Engine States
+    // Pagination & Channel Filtering
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const [selectedChannel, setSelectedChannel] = useState('all');
 
-    // 1. Fetch Featured Announcements (Weighted)
-    const fetchAnnouncements = useCallback(async () => {
-        try {
-            const { data, error } = await supabase.rpc('get_featured_events');
-            if (!error && data) {
-                setFeaturedEvents(data);
-            }
-        } catch (err) {
-            console.warn('[Discover] Failed to fetch featured announcements:', err);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchAnnouncements();
-    }, [fetchAnnouncements]);
-
-    // 2. Fetch Paginated Telegram News Feed
+    // 1. Unified Single-Stream Fetcher (Edge-Curated)
     useEffect(() => {
         let isMounted = true;
-        const loadNews = async () => {
+        const loadFeed = async () => {
             if (page === 0) setNewsLoading(true);
             else setIsFetchingMore(true);
 
             try {
-                const data = await fetchLiveNewsFeed(page, 15);
+                const data = await fetchLiveNewsFeed(page, 15, selectedChannel);
                 if (!isMounted) return;
 
-                if (data.featured && data.featured.length > 0 && page === 0) {
-                    setFeaturedEvents(data.featured);
+                if (page === 0 && data.announcement_count !== undefined) {
+                    setAnnouncementCount(data.announcement_count);
                 }
 
-                if (data.news && data.news.length > 0) {
-                    setLiveNews(prev => {
-                        const existingIds = new Set(prev.map(p => p.id));
-                        const newItems = data.news.filter(p => !existingIds.has(p.id));
-                        return page === 0 ? data.news : [...prev, ...newItems];
+                const newItems = data.feed || [];
+                if (newItems.length > 0) {
+                    setFeed(prev => {
+                        if (page === 0) return newItems;
+                        const existingIds = new Set(prev.map(item => item.id));
+                        const filtered = newItems.filter(item => !existingIds.has(item.id));
+                        return [...prev, ...filtered];
                     });
-                    if (data.news.length < 15) setHasMore(false);
+                    if (data.has_more === false || newItems.length < 15) {
+                        setHasMore(false);
+                    }
                 } else {
+                    if (page === 0) setFeed([]);
                     setHasMore(false);
                 }
             } catch (err) {
-                console.error('[Discover] Failed to load live feed:', err);
+                console.error('[Discover] Failed to load edge-curated feed:', err);
             } finally {
                 if (isMounted) {
                     setNewsLoading(false);
@@ -69,101 +59,20 @@ const Discover = () => {
                 }
             }
         };
-        loadNews();
-        
+
+        loadFeed();
         return () => { isMounted = false; };
-    }, [page]);
+    }, [page, selectedChannel]);
 
-    // 3. Algorithmic Feed Interleaver with Anti-Clumping & Tier Randomization
-    const unifiedFeed = useMemo(() => {
-        if (!featuredEvents || featuredEvents.length === 0) {
-            return liveNews.map(n => ({ type: 'news', data: n, id: `feed-item-${n.id}` }));
-        }
+    const handleSelectChannel = (channelKey) => {
+        if (selectedChannel === channelKey) return;
+        setSelectedChannel(channelKey);
+        setFeed([]);
+        setPage(0);
+        setHasMore(true);
+    };
 
-        // Stable priority sorting (prevents Math.random() scroll jitter on pagination)
-        const sortByWeight = (arr) => [...arr].sort((a, b) => (b.weight ?? 10) - (a.weight ?? 10) || String(b.id).localeCompare(String(a.id)));
-
-        // Filter and sort each priority tier deterministically
-        const tierHigh = sortByWeight(featuredEvents.filter(e => (e.weight ?? 10) > 80));
-        const tierMid = sortByWeight(featuredEvents.filter(e => (e.weight ?? 10) >= 50 && (e.weight ?? 10) <= 80));
-        const tierLow = sortByWeight(featuredEvents.filter(e => (e.weight ?? 10) >= 30 && (e.weight ?? 10) < 50));
-        const tierLowest = sortByWeight(featuredEvents.filter(e => (e.weight ?? 10) < 30));
-
-        const result = [];
-        let newsIdx = 0;
-
-        // Pushes news items up to a specific index
-        const pushNewsUntil = (targetCount) => {
-            while (newsIdx < targetCount && newsIdx < liveNews.length) {
-                result.push({ type: 'news', data: liveNews[newsIdx], id: `feed-item-${liveNews[newsIdx].id}` });
-                newsIdx++;
-            }
-        };
-
-        // Anti-Clumping Helper: Never allows two announcement cards back-to-back
-        const pushAnnouncement = (event) => {
-            if (result.length > 0 && result[result.length - 1].type === 'announcement' && newsIdx < liveNews.length) {
-                result.push({ type: 'news', data: liveNews[newsIdx], id: `feed-item-${liveNews[newsIdx].id}` });
-                newsIdx++;
-            }
-            result.push({ type: 'announcement', data: event, id: `feed-item-${event.id}` });
-        };
-
-        // 1. High Priority (> 80): First item at slot 0; remaining high items spaced by news
-        if (tierHigh.length > 0) {
-            pushAnnouncement(tierHigh.shift());
-        }
-        while (tierHigh.length > 0) {
-            pushNewsUntil(newsIdx + 2);
-            pushAnnouncement(tierHigh.shift());
-        }
-
-        // 2. Advance to News post #3
-        pushNewsUntil(Math.max(newsIdx, 3));
-
-        // 3. Middle Priority (50 - 80): Spaced out by at least 2 news items
-        while (tierMid.length > 0) {
-            pushAnnouncement(tierMid.shift());
-            if (tierMid.length > 0) pushNewsUntil(newsIdx + 2);
-        }
-
-        // 4. Advance to News post #7
-        pushNewsUntil(Math.max(newsIdx, 7));
-
-        // 5. Low Priority (30 - 49): Spaced out by at least 2 news items
-        while (tierLow.length > 0) {
-            pushAnnouncement(tierLow.shift());
-            if (tierLow.length > 0) pushNewsUntil(newsIdx + 2);
-        }
-
-        // 6. Advance to News post #11
-        pushNewsUntil(Math.max(newsIdx, 11));
-
-        // 7. Lowest Priority (< 30): Spaced out so they never flood together
-        while (tierLowest.length > 0) {
-            pushAnnouncement(tierLowest.shift());
-            if (tierLowest.length > 0) pushNewsUntil(newsIdx + 2);
-        }
-
-        // 8. Append remaining news items
-        while (newsIdx < liveNews.length) {
-            result.push({ type: 'news', data: liveNews[newsIdx], id: `feed-item-${liveNews[newsIdx].id}` });
-            newsIdx++;
-        }
-
-        return result;
-    }, [liveNews, featuredEvents]);
-
-    // Concept B: Channel Filtering
-    const [selectedChannel, setSelectedChannel] = useState('all');
-
-    const filteredFeed = useMemo(() => {
-        if (selectedChannel === 'all') return unifiedFeed;
-        if (selectedChannel === 'announcements') return unifiedFeed.filter(item => item.type === 'announcement');
-        return unifiedFeed.filter(item => item.type === 'news' && (item.data?.channel?.toLowerCase() || '').includes(selectedChannel.toLowerCase()));
-    }, [unifiedFeed, selectedChannel]);
-
-    // 4. Deep Link Resolver from Home tab or External routes
+    // 2. Deep Link Resolver from Home tab or External routes
     useEffect(() => {
         if (routePayload?.action === 'open_explore_item') {
             const targetId = routePayload.target_id;
@@ -181,19 +90,18 @@ const Discover = () => {
                 clearRoutePayload?.();
             }
         }
-    }, [routePayload, clearRoutePayload, unifiedFeed]);
+    }, [routePayload, clearRoutePayload, feed]);
 
     const handleRefresh = async () => {
         setNewsLoading(true);
         setHasMore(true);
         try {
-            await fetchAnnouncements();
-            const data = await fetchLiveNewsFeed(0, 15);
-            if (data.news && data.news.length > 0) {
-                setLiveNews(data.news);
-                if (data.news.length < 15) setHasMore(false);
-            } else {
-                setLiveNews([]);
+            const data = await fetchLiveNewsFeed(0, 15, selectedChannel);
+            if (data.announcement_count !== undefined) {
+                setAnnouncementCount(data.announcement_count);
+            }
+            setFeed(data.feed || []);
+            if (data.has_more === false || (data.feed || []).length < 15) {
                 setHasMore(false);
             }
         } catch (err) {
@@ -263,10 +171,10 @@ const Discover = () => {
                             <i className="fas fa-circle-notch fa-spin fa-2x"></i>
                         </div>
                     ) : (
-                        filteredFeed.length > 0 ? (
+                        feed.length > 0 ? (
                             <>
-                                {filteredFeed.map((item, index) => {
-                                    const isLast = filteredFeed.length === index + 1;
+                                {feed.map((item, index) => {
+                                    const isLast = feed.length === index + 1;
                                     const content = item.type === 'announcement' ? (
                                         <AnnouncementCard 
                                             key={item.id} 
@@ -344,29 +252,29 @@ const Discover = () => {
                         <div className="dds-channels-list">
                             <button 
                                 className={`dds-channel-btn ${selectedChannel === 'all' ? 'active' : ''}`}
-                                onClick={() => setSelectedChannel('all')}
+                                onClick={() => handleSelectChannel('all')}
                             >
                                 <div className="dds-ch-left">
                                     <span className="dds-ch-icon all"><i className="fas fa-globe"></i></span>
                                     <span>All Updates</span>
                                 </div>
-                                <span className="dds-ch-count">{unifiedFeed.length}</span>
+                                <span className="dds-ch-count">{selectedChannel === 'all' ? feed.length : 'Feed'}</span>
                             </button>
 
                             <button 
                                 className={`dds-channel-btn ${selectedChannel === 'announcements' ? 'active' : ''}`}
-                                onClick={() => setSelectedChannel('announcements')}
+                                onClick={() => handleSelectChannel('announcements')}
                             >
                                 <div className="dds-ch-left">
                                     <span className="dds-ch-icon ann"><i className="fas fa-bullhorn"></i></span>
                                     <span>Announcements</span>
                                 </div>
-                                <span className="dds-ch-count">{featuredEvents.length}</span>
+                                <span className="dds-ch-count">{announcementCount}</span>
                             </button>
 
                             <button 
-                                className={`dds-channel-btn ${selectedChannel === 'tikvah' ? 'active' : ''}`}
-                                onClick={() => setSelectedChannel('tikvah')}
+                                className={`dds-channel-btn ${selectedChannel === 'tikvahuniversity' ? 'active' : ''}`}
+                                onClick={() => handleSelectChannel('tikvahuniversity')}
                             >
                                 <div className="dds-ch-left">
                                     <span className="dds-ch-icon tg"><i className="fab fa-telegram-plane"></i></span>
