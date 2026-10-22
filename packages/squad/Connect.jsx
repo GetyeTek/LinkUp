@@ -57,9 +57,9 @@ const Connect = () => {
             return false;
         }
 
-        // 2. Fallback network heartbeat check (5 mins) for Edge Workers (Miron) or minor network drops
+        // 2. Fallback network heartbeat check (45s aligned with Postgres get_live_study_sessions)
         const hb = metadata.live_heartbeat ? new Date(metadata.live_heartbeat).getTime() : Date.now();
-        return (Date.now() - hb) <= 5 * 60 * 1000;
+        return (Date.now() - hb) <= 45 * 1000;
     };
 
     useEffect(() => {
