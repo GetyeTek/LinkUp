@@ -3,7 +3,7 @@ export { PlatformProvider, usePlatform } from './PlatformProvider.jsx';
 export { registerComponent, getComponent } from './ComponentRegistry.js';
 export { useGeminiAudio } from './hooks/useGeminiAudio.js';
 export { useGlobalSwipe } from './hooks/useGlobalSwipe.js';
-export { logQuestionAttempt } from './tracking.js';
+export { logQuestionAttempt, logBatchQuestionAttempts, evaluateQuestionAnswer } from './tracking.js';
 export { telemetry } from './telemetry.js';
 export { GoldBadge } from './components/GoldBadge.jsx';
 export * from './deviceSession.js';
