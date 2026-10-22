@@ -18,7 +18,8 @@ serve(async (req) => {
     const page = Math.max(0, parseInt(body.page || url.searchParams.get("page") || "0", 10));
     const limit = Math.min(50, Math.max(1, parseInt(body.limit || url.searchParams.get("limit") || "15", 10)));
     const rawChannel = body.channel || url.searchParams.get("channel") || "";
-    const channel = rawChannel.replace(/^@/, '').trim().toLowerCase();
+    let channel = rawChannel.replace(/^@/, '').trim().toLowerCase();
+    if (channel === 'all') channel = '';
 
     const start = page * limit;
     const end = start + limit - 1;
@@ -137,7 +138,7 @@ serve(async (req) => {
       const { data, error } = await supabase
         .from("news_feed")
         .select("id, channel, telegram_id, title, snippet, full_text, image_url, post_url, telegram_timestamp")
-        .eq("is_ad", false)
+        .or("is_ad.eq.false,is_ad.is.null")
         .ilike("channel", `%${channel}%`)
         .order("telegram_timestamp", { ascending: false })
         .range(start, end);
@@ -162,7 +163,7 @@ serve(async (req) => {
     const { data: newsData, error: newsErr } = await supabase
       .from("news_feed")
       .select("id, channel, telegram_id, title, snippet, full_text, image_url, post_url, telegram_timestamp")
-      .eq("is_ad", false)
+      .or("is_ad.eq.false,is_ad.is.null")
       .order("telegram_timestamp", { ascending: false })
       .range(start, end);
 
