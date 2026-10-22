@@ -1,7 +1,7 @@
 import React from 'react';
 import './AnnouncementCard.css';
 
-const AnnouncementCard = ({ event, onAction }) => {
+const AnnouncementCard = ({ event, onAction, onImageClick }) => {
     const isHigh = (event.weight ?? 10) > 80;
 
     return (
@@ -11,7 +11,19 @@ const AnnouncementCard = ({ event, onAction }) => {
             onClick={() => onAction(event)}
         >
             {event.image_url ? (
-                <img src={event.image_url} alt={event.title} className="ac-image" loading="lazy" />
+                <img 
+                    src={event.image_url} 
+                    alt={event.title} 
+                    className="ac-image" 
+                    loading="lazy" 
+                    onClick={(e) => {
+                        if (onImageClick) {
+                            e.stopPropagation();
+                            onImageClick(event.image_url);
+                        }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                />
             ) : (
                 <div className="ac-fallback-header"></div>
             )}
