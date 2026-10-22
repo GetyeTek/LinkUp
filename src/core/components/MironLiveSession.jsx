@@ -1,68 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { usePlatform, useGeminiAudio, supabase, getComponent } from '@linkup-platform/sdk-core';
+import { usePlatform, useGeminiAudio, supabase, getComponent, getCachedBook } from '@linkup-platform/sdk-core';
 import FloatingMironOrb from './FloatingMironOrb.jsx';
 import MironConnectionRing from './MironConnectionRing.jsx';
 import './MironLiveSession.css';
-
-const COURSE_ICONS = {
-    'PHYS 1011': 'fa-bolt',
-    'BIOL 1012': 'fa-dna',
-    'CHEM 1012': 'fa-flask',
-    'MATH 1011': 'fa-square-root-variable',
-    'MATH 1012': 'fa-chart-pie',
-    'LOCT 1011': 'fa-brain',
-    'EMTE 1012': 'fa-robot',
-    'FLEN 1011': 'fa-comments',
-    'ECON 1011': 'fa-chart-line',
-    'GEES 1011': 'fa-earth-africa',
-    'HIST 1012': 'fa-landmark-dome',
-    'INCL 1012': 'fa-hands-holding-circle',
-    'MCIE 1012': 'fa-scale-balanced',
-    'MGMT 1012': 'fa-briefcase',
-    'PSYC 1011': 'fa-head-side-virus',
-    'SPSC 1011': 'fa-person-running',
-    'ANTH 1012': 'fa-people-group'
-};
-
-const COURSE_NAMES = {
-    'PHYS 1011': 'Physics',
-    'BIOL 1012': 'Biology',
-    'CHEM 1012': 'Chemistry',
-    'MATH 1011': 'Math',
-    'MATH 1012': 'Math',
-    'LOCT 1011': 'Logic',
-    'EMTE 1012': 'Emerging Tech',
-    'FLEN 1011': 'English',
-    'ECON 1011': 'Economics',
-    'GEES 1011': 'Geography',
-    'HIST 1012': 'History',
-    'INCL 1012': 'Inclusiveness',
-    'MCIE 1012': 'Civics',
-    'MGMT 1012': 'Entrepreneurship',
-    'PSYC 1011': 'Psychology',
-    'SPSC 1011': 'Fitness',
-    'ANTH 1012': 'Anthropology'
-};
-
-const COURSE_PREFIX_MAP = {
-    'PHYS 1011': 'phys',
-    'BIOL 1012': 'biol',
-    'CHEM 1012': 'chem',
-    'MATH 1011': 'math',
-    'MATH 1012': 'math',
-    'LOCT 1011': 'logic',
-    'EMTE 1012': 'emte',
-    'FLEN 1011': 'flen',
-    'ECON 1011': 'econ',
-    'GEES 1011': 'geog',
-    'HIST 1012': 'history',
-    'INCL 1012': 'snie',
-    'MCIE 1012': 'mced',
-    'MGMT 1012': 'entre',
-    'PSYC 1011': 'psych',
-    'SPSC 1011': 'spsc',
-    'ANTH 1012': 'anthro'
-};
 
 // DOM Range Highlighter for active textbook page
 const clearDOMHighlights = (root) => {
@@ -435,7 +375,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
         supabase
             .from('books')
-            .select('id, title, course_code, toc, cover_url, page_offset, custom_css')
+            .select('id, title, course_code, toc, cover_url, page_offset, custom_css, icon, friendly_name, prefix')
             .eq('is_published', true)
             .order('title', { ascending: true })
             .then(({ data, error }) => {
@@ -1107,7 +1047,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         }, 5000);
 
-        const friendlyName = book.friendly_name || (book.course_code && COURSE_NAMES[book.course_code]) || (book.title || 'Course').replace(/^General\s+/i, '');
+        const friendlyName = book.friendly_name || getCachedBook(book.course_code)?.friendly_name || (book.title || 'Course').replace(/^General\s+/i, '');
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({
                 action: "course_selected",
@@ -1141,7 +1081,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         }, 5000);
 
-        const friendlyName = (selectedBook?.course_code && COURSE_NAMES[selectedBook.course_code]) || (selectedBook?.title || 'Course').replace(/^General\s+/i, '');
+        const friendlyName = selectedBook?.friendly_name || getCachedBook(selectedBook?.course_code)?.friendly_name || (selectedBook?.title || 'Course').replace(/^General\s+/i, '');
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({
                 action: "section_selected",
@@ -1381,7 +1321,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                     >
                                         <div className="ml-card-top-row">
                                             <div className="ml-card-icon-box">
-                                                <i className={`fa-solid ${b.icon || COURSE_ICONS[b.course_code] || 'fa-book-open'}`}></i>
+                                                <i className={`fa-solid ${b.icon || getCachedBook(b.course_code)?.icon || 'fa-book-open'}`}></i>
                                             </div>
                                             <div className="ml-card-top-tags">
                                                 <span className="ml-voice-cue-chip" title="Voice Guided"><i className="fas fa-volume-high"></i></span>
@@ -1420,7 +1360,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         <img src={selectedBook.cover_url} className="ml-showcase-cover" alt={selectedBook.title} />
                                     ) : (
                                         <div className="ml-showcase-fallback-cover">
-                                            <i className={`fa-solid ${COURSE_ICONS[selectedBook.course_code] || 'fa-book-open'}`}></i>
+                                            <i className={`fa-solid ${selectedBook.icon || getCachedBook(selectedBook.course_code)?.icon || 'fa-book-open'}`}></i>
                                         </div>
                                     )}
                                 </div>
@@ -1583,7 +1523,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 </div>
                                             ) : sectionPages && sectionPages.length > 0 ? (
                                                 (() => {
-                                                    const bookPrefix = selectedBook?.prefix || (selectedBook?.course_code ? (COURSE_PREFIX_MAP[selectedBook.course_code.toUpperCase().trim()] || '') : '');
+                                                    const bookPrefix = selectedBook?.prefix || getCachedBook(selectedBook?.course_code)?.prefix || '';
                                                     const engineClass = bookPrefix ? `engine-${bookPrefix}` : 'engine-universal';
                                                     return (
                                                         <div 
