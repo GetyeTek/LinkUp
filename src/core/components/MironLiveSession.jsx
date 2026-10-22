@@ -1107,7 +1107,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         }, 5000);
 
-        const friendlyName = (book.course_code && COURSE_NAMES[book.course_code]) || (book.title || 'Course').replace(/^General\s+/i, '');
+        const friendlyName = book.friendly_name || (book.course_code && COURSE_NAMES[book.course_code]) || (book.title || 'Course').replace(/^General\s+/i, '');
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({
                 action: "course_selected",
@@ -1381,7 +1381,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                     >
                                         <div className="ml-card-top-row">
                                             <div className="ml-card-icon-box">
-                                                <i className={`fa-solid ${COURSE_ICONS[b.course_code] || 'fa-book-open'}`}></i>
+                                                <i className={`fa-solid ${b.icon || COURSE_ICONS[b.course_code] || 'fa-book-open'}`}></i>
                                             </div>
                                             <div className="ml-card-top-tags">
                                                 <span className="ml-voice-cue-chip" title="Voice Guided"><i className="fas fa-volume-high"></i></span>
@@ -1583,7 +1583,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 </div>
                                             ) : sectionPages && sectionPages.length > 0 ? (
                                                 (() => {
-                                                    const bookPrefix = selectedBook?.course_code ? (COURSE_PREFIX_MAP[selectedBook.course_code.toUpperCase().trim()] || '') : '';
+                                                    const bookPrefix = selectedBook?.prefix || (selectedBook?.course_code ? (COURSE_PREFIX_MAP[selectedBook.course_code.toUpperCase().trim()] || '') : '');
                                                     const engineClass = bookPrefix ? `engine-${bookPrefix}` : 'engine-universal';
                                                     return (
                                                         <div 
