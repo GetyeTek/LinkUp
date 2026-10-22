@@ -68,35 +68,22 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
 
         onSubmit(`[Quiz Submission: ${quiz.title}]\n\n${summary}\n\nPlease evaluate my answers, score them, and explain any mistakes in your informal peer tone.`);
 
-        if (sessionUser?.id) {
-            quiz.questions.forEach(q => {
-                const ans = answers[q.id];
-                let isCorrect = null; // AI will evaluate, but we track the attempt
-                
-                if (q.correct_answer !== undefined) {
-                    const qType = (q.question_type || '').toLowerCase();
-                    if (qType === 'true_false') {
-                        isCorrect = (ans === 'True' && q.correct_answer === true) || (ans === 'False' && q.correct_answer === false) || (ans === q.correct_answer);
-                    } else {
-                        isCorrect = ans === q.correct_answer;
-                    }
+                        if (sessionUser?.id) {
+                    quiz.questions.forEach(q => {
+                        const ans = answers[q.id];
+                        const isUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+                        logQuestionAttempt({
+                            userId: sessionUser.id,
+                            questionId: isUuid(q.id) ? q.id : null,
+                            courseCode: quiz.course_code || 'Miron Chat',
+                            topicTag: quiz.title || 'AI Quiz',
+                            sourceType: 'miron_quiz',
+                            sourceId: null,
+                            userAnswer: ans
+                        });
+                    });
                 }
-
-                const isUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-
-                logQuestionAttempt({
-                    userId: sessionUser.id,
-                    questionId: isUuid(q.id) ? q.id : null,
-                    courseCode: quiz.course_code || 'Miron Chat',
-                    topicTag: quiz.title || 'AI Quiz',
-                    sourceType: 'miron_quiz',
-                    sourceId: null,
-                    questionSnapshot: { text: q.text, options: q.options, type: q.question_type },
-                    userAnswer: ans,
-                    isCorrect: !!isCorrect
-                });
-            });
-        }
     };
 
     return (
