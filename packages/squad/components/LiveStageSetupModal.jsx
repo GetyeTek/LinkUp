@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase, usePlatform } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform, getAvailableCourseTags } from '@linkup-platform/sdk-core';
 import { generateMironLecture } from '../api.js';
 import './LiveStageSetupModal.css';
 
@@ -51,6 +51,27 @@ const LiveStageSetupModal = ({
     const [selectedNode, setSelectedNode] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [genError, setGenError] = useState(null);
+    const [courseOptions, setCourseOptions] = useState(() => getAvailableCourseTags());
+
+    useEffect(() => {
+        if (courseOptions.length === 0) {
+            supabase.from('books')
+                .select('course_code, title, friendly_name, icon')
+                .eq('is_published', true)
+                .order('title')
+                .then(({ data }) => {
+                    if (data && data.length > 0) {
+                        const tags = data.map(b => ({
+                            code: b.course_code || '',
+                            name: b.friendly_name || (b.title || '').replace(/^General\s+/i, ''),
+                            title: b.title,
+                            icon: b.icon || 'fa-book-open'
+                        })).filter((v, idx, arr) => arr.findIndex(t => t.name.toLowerCase() === v.name.toLowerCase()) === idx);
+                        setCourseOptions(tags);
+                    }
+                });
+        }
+    }, [courseOptions.length]);
 
     useEffect(() => {
         if (show) {
@@ -205,23 +226,23 @@ const LiveStageSetupModal = ({
                             <div className="pc-group">
                                 <label className="pc-label">Course</label>
                                 <div className="ls-course-pills-wrap">
-                                    {['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science', 'General'].map(c => (
+                                    {courseOptions.map(c => (
                                         <div 
-                                            key={c} 
-                                            className={`ls-course-pill ${liveSetupData.course === c ? 'active' : ''}`} 
-                                            onClick={() => setLiveSetupData({...liveSetupData, course: c})}
+                                            key={c.name} 
+                                            className={`ls-course-pill ${liveSetupData.course === c.name ? 'active' : ''}`} 
+                                            onClick={() => setLiveSetupData({...liveSetupData, course: c.name})}
                                         >
-                                            <i className={`fas ${
-                                                c === 'Physics' ? 'fa-bolt' :
-                                                c === 'Chemistry' ? 'fa-flask' :
-                                                c === 'Mathematics' ? 'fa-square-root-variable' :
-                                                c === 'Biology' ? 'fa-dna' :
-                                                c === 'Computer Science' ? 'fa-laptop-code' :
-                                                'fa-book-open'
-                                            }`}></i>
-                                            <span>{c}</span>
+                                            <i className={`fas ${c.icon}`}></i>
+                                            <span>{c.name}</span>
                                         </div>
                                     ))}
+                                    <div 
+                                        className={`ls-course-pill ${liveSetupData.course === 'General Study' ? 'active' : ''}`} 
+                                        onClick={() => setLiveSetupData({...liveSetupData, course: 'General Study'})}
+                                    >
+                                        <i className="fas fa-users"></i>
+                                        <span>General</span>
+                                    </div>
                                 </div>
                                 <input type="text" className="pc-input" placeholder="Or type custom course name..." value={liveSetupData.course} onChange={e => setLiveSetupData({...liveSetupData, course: e.target.value})} />
                             </div>
