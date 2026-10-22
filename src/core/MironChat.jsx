@@ -476,12 +476,6 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
         isAutoScrollEnabled.current = true;
         setIsTyping(true);
 
-        // Optimistically update local profile balance to prevent UI layout shift
-        // The backend will firmly reject via HTTP 402 if they are actually broke.
-        if (!userProfile?.is_pro && (userProfile?.linkoin_balance || 0) >= 2) {
-            updateUserProfile({ linkoin_balance: userProfile.linkoin_balance - 2 });
-        }
-
         let currentThread = activeThread;
         const tempId = `temp-${Date.now()}`;
         const userMsg = { id: tempId, side: 'user', text: textToSend };
@@ -695,14 +689,6 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                 }
                 return m;
             }));
-            
-            if (isBroke && !userProfile?.is_pro) {
-                // If they hit the wall, ensure the frontend UI accurately reflects their 0 balance
-                updateUserProfile({ linkoin_balance: 0 });
-            } else if (!isBroke && !userProfile?.is_pro) {
-                // If it failed for a server reason, refund the optimistic frontend deduction
-                updateUserProfile({ linkoin_balance: (userProfile?.linkoin_balance || 0) + 2 });
-            }
             
             setIsTyping(false);
         }
