@@ -40,10 +40,15 @@ serve(async (req) => {
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
 
-    return new Response(JSON.stringify({ news: data || [] }), {
+    let featured: any[] = [];
+    if (page === 0 && !channel) {
+      const { data: eventsData } = await supabase.rpc("get_featured_events");
+      featured = eventsData || [];
+    }
+
+    return new Response(JSON.stringify({ news: data || [], featured }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
