@@ -97,6 +97,27 @@ const ExamPavilion = ({
                 }
 
                 if (isMounted) {
+                    // Canonical Postgres RLS alignment: Partition by university_id + course_id
+                    const partitionMap = new Map();
+                    loaded.forEach(e => {
+                        const key = `${e.university_id || 'u'}_${e.course_id || e.course_code || 'c'}`;
+                        if (!partitionMap.has(key)) partitionMap.set(key, []);
+                        partitionMap.get(key).push(e);
+                    });
+
+                    partitionMap.forEach(partition => {
+                        partition.sort((a, b) => {
+                            const dateA = String(a.date || '').toLowerCase();
+                            const dateB = String(b.date || '').toLowerCase();
+                            return dateB.localeCompare(dateA) || 
+                                   String(a.exam_type || '').localeCompare(String(b.exam_type || '')) || 
+                                   String(a.id).localeCompare(String(b.id));
+                        });
+                        partition.forEach((exam, rk) => {
+                            exam.is_pro_gated = (rk % 4 !== 0);
+                        });
+                    });
+
                     setAllExams(loaded);
                     setLoading(false);
                 }
@@ -217,11 +238,6 @@ const ExamPavilion = ({
                 return dateB.localeCompare(dateA) || 
                        String(a.exam_type || '').localeCompare(String(b.exam_type || '')) || 
                        String(a.id).localeCompare(String(b.id));
-            });
-
-            // Immutable 25% Free / 75% Pro Gating rule applied at catalog root
-            group.exams.forEach((exam, idx) => {
-                exam.is_pro_gated = (isDirectFallback && !isProUser) ? false : (idx % 4 !== 0);
             });
         });
 
