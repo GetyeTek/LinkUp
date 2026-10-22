@@ -31,7 +31,8 @@ const COURSE_PREFIX_MAP = {
     'PSYC 1011': 'psych'
 };
 
-export const resolveBookPrefix = (courseCode, bookTitle) => {
+export const resolveBookPrefix = (courseCode, bookTitle, explicitPrefix = null) => {
+    if (explicitPrefix) return explicitPrefix;
     if (courseCode && COURSE_PREFIX_MAP[courseCode.toUpperCase().trim()]) {
         return COURSE_PREFIX_MAP[courseCode.toUpperCase().trim()];
     }
@@ -85,7 +86,7 @@ export const renderBookBlock = (block, idx, actions) => {
     const bType = (typeof block.type === 'string' ? block.type : '') || 'paragraph';
     const bookTitle = actions?.bookTitle || block.bookTitle || '';
     const courseCode = actions?.courseCode || block.course_code || '';
-    const prefix = resolveBookPrefix(courseCode, bookTitle);
+    const prefix = resolveBookPrefix(courseCode, bookTitle, actions?.prefix || block.prefix);
     const effectiveBookTitle = bookTitle || (prefix === 'anthro' ? 'Anthropology' : '');
     const customClass = block.className || '';
 
