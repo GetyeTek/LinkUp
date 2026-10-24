@@ -56,19 +56,35 @@
         radial-gradient(circle at bottom left, rgba(30, 30, 30, 0.4) 0%, transparent 60%);
 }
 
+/* Responsive Portal Layout Wrapper */
+.auth-portal-frame {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Institutional Side Panel (Desktop Portal Style - Strictly Not a Marketing Page) */
+.auth-institutional-panel {
+    display: none;
+}
+
 /* Premium Frosted Glass Card */
 .auth-card {
     position: relative;
     z-index: 10;
     width: 100%;
-    max-width: 420px;
-    padding: 3rem 2.5rem;
-    background: rgba(18, 18, 18, 0.7);
+    padding: 2.25rem 2rem 1.75rem 2rem;
+    background: rgba(18, 18, 22, 0.85);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.75);
     display: flex;
     flex-direction: column;
     transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -76,21 +92,69 @@
 
 .auth-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.25rem;
 }
 
 .auth-title {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 700;
     color: #fff;
-    margin: 0 0 8px 0;
+    margin: 0 0 4px 0;
     letter-spacing: -0.5px;
+    font-family: 'Newsreader', serif;
 }
 
 .auth-subtitle {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     color: #888;
     font-weight: 400;
+    line-height: 1.35;
+}
+
+/* Segmented Control Auth Tab Switcher */
+.auth-tab-switch {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 1.25rem;
+}
+
+.auth-tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: #888;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-tab-btn:hover:not(.active) {
+    color: #ddd;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.auth-tab-btn.active {
+    background: rgba(66, 215, 184, 0.14);
+    color: var(--accent-teal, #42d7b8);
+    border: 1px solid rgba(66, 215, 184, 0.3);
+    box-shadow: 0 2px 10px rgba(66, 215, 184, 0.2);
+}
+
+.auth-tab-btn i {
+    font-size: 0.78rem;
 }
 
 /* Tactile Input Fields */
@@ -270,10 +334,10 @@
     box-shadow: 0 20px 40px rgba(0,0,0,0.5);
 }
 
-/* Footer Toggle */
+/* Footer Recovery */
 .auth-footer {
     text-align: center;
-    margin-top: 2rem;
+    margin-top: 1.25rem;
     font-size: 0.85rem;
     color: #888;
 }
@@ -281,11 +345,10 @@
 .auth-footer button {
     background: none;
     border: none;
-    color: #fff;
+    color: #ccc;
     font-weight: 500;
     font-family: 'Poppins', sans-serif;
     cursor: pointer;
-    margin-left: 6px;
     padding: 0;
     transition: color 0.2s;
 }
@@ -293,6 +356,209 @@
 .auth-footer button:hover { 
     color: var(--accent-teal, #42d7b8);
     text-decoration: underline; 
+}
+
+/* Institutional Consortium Strip */
+.auth-consortium-footer {
+    margin-top: 1.5rem;
+    padding-top: 1.15rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+}
+
+.consortium-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.consortium-logo-box {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.consortium-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: grayscale(1) brightness(1.1) opacity(0.8);
+    transition: all 0.25s ease;
+}
+
+.consortium-item:hover .consortium-img {
+    filter: none;
+    opacity: 1;
+    transform: scale(1.08);
+}
+
+.consortium-fallback-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    transition: all 0.2s ease;
+}
+
+.consortium-item:hover .consortium-fallback-icon {
+    color: var(--accent-teal, #42d7b8);
+    border-color: var(--accent-teal, #42d7b8);
+}
+
+.consortium-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 100%;
+}
+
+.consortium-name {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #e5e5eb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.consortium-caption {
+    font-size: 0.58rem;
+    color: #777;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.2px;
+}
+
+.consortium-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+/* ==============================================================================
+   DESKTOP INSTITUTIONAL PORTAL WORKSTATION (>= 960px)
+   ============================================================================== */
+@media (min-width: 960px) {
+    .auth-portal-frame {
+        max-width: 900px;
+        flex-direction: row;
+        align-items: stretch;
+        background: rgba(14, 14, 18, 0.85);
+        backdrop-filter: blur(35px);
+        -webkit-backdrop-filter: blur(35px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 28px;
+        overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
+    }
+
+    .auth-institutional-panel {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        flex: 1;
+        padding: 3rem 2.5rem;
+        background: linear-gradient(160deg, rgba(20, 20, 26, 0.95) 0%, rgba(12, 12, 15, 0.98) 100%);
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+        text-align: left;
+    }
+
+    .aip-emblem-wrap {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: rgba(66, 215, 184, 0.12);
+        border: 1px solid rgba(66, 215, 184, 0.3);
+        color: var(--accent-teal, #42d7b8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 0 25px rgba(66, 215, 184, 0.2);
+    }
+
+    .aip-sub-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--accent-teal, #42d7b8);
+        margin-bottom: 4px;
+    }
+
+    .aip-main-title {
+        font-family: 'Newsreader', serif;
+        font-size: 2.2rem;
+        font-weight: 600;
+        color: #fff;
+        line-height: 1.15;
+        margin: 0;
+    }
+
+    .aip-divider {
+        width: 40px;
+        height: 2px;
+        background: var(--accent-teal, #42d7b8);
+        margin: 1.25rem 0;
+        border-radius: 2px;
+    }
+
+    .aip-description {
+        font-size: 0.86rem;
+        color: #aaa;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+        max-width: 340px;
+    }
+
+    .aip-badge-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .aip-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #ddd;
+    }
+
+    .aip-badge i {
+        color: var(--accent-teal, #42d7b8);
+        font-size: 0.8rem;
+    }
+
+    .auth-card {
+        flex: 1.1;
+        max-width: none;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        padding: 3rem 2.5rem;
+    }
 }
 
 /* Commitment Note styling for Auth and Onboarding */
