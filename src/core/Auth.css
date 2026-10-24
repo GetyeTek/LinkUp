@@ -391,78 +391,59 @@
 }
 
 /* Institutional Consortium Strip - Prominent Medallions */
-/* Institutional Consortium Strip - Giant Circular Medallions */
-.auth-consortium-footer {
-    margin-top: 1.15rem;
-    padding-top: 0.85rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+/* --- ECOSYSTEM HUB (Master-Detail Carousel) --- */
+.ecosystem-container {
+    margin-top: 1.25rem;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(66, 215, 184, 0.2);
+    border-radius: 20px;
     display: flex;
-    align-items: flex-start;
-    justify-content: space-around;
-    gap: 8px;
+    flex-direction: column;
     width: 100%;
-    box-sizing: border-box;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
     contain: layout paint;
     will-change: transform;
 }
 
-.consortium-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 6px;
-    flex: 1;
-    min-width: 0;
-    cursor: default;
-}
-
-/* Eye-Catching Grand Circular Medallion (88px on mobile, 104px on desktop) */
-.consortium-medallion-wrap {
-    position: relative;
-    width: 88px;
-    height: 88px;
-    padding: 3.5px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(241, 196, 15, 0.65) 0%, rgba(66, 215, 184, 0.65) 100%);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.75), 0 0 22px rgba(66, 215, 184, 0.35);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
-    flex-shrink: 0;
+/* Main House Header */
+.ecosystem-main-house {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: linear-gradient(90deg, rgba(66, 215, 184, 0.15) 0%, rgba(241, 196, 15, 0.05) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.consortium-item:hover .consortium-medallion-wrap {
-    transform: translateY(-5px) scale(1.06);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.85), 0 0 30px rgba(66, 215, 184, 0.55);
+.mh-left-cluster {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.consortium-medallion-circle {
-    width: 100%;
-    height: 100%;
+.mh-logo {
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: #ffffff;
+    padding: 3px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), inset 0 2px 6px rgba(0, 0, 0, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 4px;
     overflow: hidden;
-    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.25);
-    box-sizing: border-box;
+    border: 1.5px solid rgba(66, 215, 184, 0.5);
 }
 
-.consortium-img {
+.mh-logo img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
-    display: block;
-    user-select: none;
-    -webkit-user-drag: none;
 }
 
-.consortium-fallback-icon {
+.mh-fallback-icon {
     width: 100%;
     height: 100%;
     border-radius: 50%;
@@ -471,67 +452,127 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.1rem;
+    font-size: 1.1rem;
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-.consortium-text-group {
+.mh-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mh-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.1;
+}
+
+.mh-subtitle {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent-teal, #42d7b8);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.mh-core-badge {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ccc;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 1px;
+}
+
+/* Powerers Carousel */
+.powerers-carousel {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Hide scrollbar Firefox */
+}
+
+.powerers-carousel::-webkit-scrollbar {
+    display: none; /* Hide scrollbar Chrome/Safari/Webkit */
+}
+
+.powerer-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
+    flex-shrink: 0;
+    width: 72px; /* Fixed width prevents jitter and aligns text perfectly */
+}
+
+.powerer-medallion {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #ffffff;
+    padding: 3px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 4px 15px rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(66, 215, 184, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    overflow: hidden;
+}
+
+.powerer-card:hover .powerer-medallion {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 8px 25px rgba(66, 215, 184, 0.35);
+    border-color: var(--accent-teal, #42d7b8);
+}
+
+.powerer-medallion img {
     width: 100%;
-    margin-top: 2px;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
-/* Hide long names on mobile to remove clutter */
-.consortium-name {
-    display: none;
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: #f3f4f6;
-    line-height: 1.25;
-    text-align: center;
+.powerer-icon {
+    font-size: 1.4rem;
+    color: var(--accent-teal, #42d7b8);
+    background: #141418;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
-/* Highlighted Collaborative Tag */
-.consortium-caption {
+.powerer-label {
     font-family: 'Roboto Mono', monospace;
     font-size: 0.6rem;
-    color: var(--accent-teal, #42d7b8);
-    background: rgba(66, 215, 184, 0.14);
-    border: 1px solid rgba(66, 215, 184, 0.35);
-    padding: 3px 6px;
-    border-radius: 99px;
-    font-weight: 800;
-    letter-spacing: 0.2px;
-    line-height: 1.2;
-    text-align: center;
-    white-space: nowrap;
+    font-weight: 700;
+    color: #aaa;
     text-transform: uppercase;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    box-sizing: border-box;
+    letter-spacing: 0.3px;
+    text-align: center;
+    line-height: 1.2;
+    word-wrap: break-word;
+    width: 100%;
 }
 
 @media (min-width: 960px) {
-    .consortium-medallion-wrap {
-        width: 104px;
-        height: 104px;
-        padding: 4px;
+    .ecosystem-container {
+        margin-top: 1.5rem;
     }
-    .consortium-fallback-icon {
-        font-size: 2.5rem;
-    }
-    .consortium-name {
-        display: block;
-        margin-top: 4px;
-        font-size: 0.88rem;
-    }
-    .consortium-caption {
-        font-size: 0.68rem;
-        padding: 3.5px 10px;
+    .powerers-carousel {
+        justify-content: center;
     }
 }
 /* ==============================================================================
