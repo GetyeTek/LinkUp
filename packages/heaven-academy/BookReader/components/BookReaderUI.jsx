@@ -72,7 +72,7 @@ const BookReaderUI = ({
                         </div>
 
                         <button className="reader-theme-btn" onClick={toggleTheme} title={`Theme: ${currentTheme || 'Dark'}`}>
-                            <i className={`fa-solid ${currentTheme === 'light' ? 'fa-sun' : currentTheme === 'sepia' ? 'fa-scroll' : 'fa-moon'}`}></i>
+                            <i className={`fa-solid ${currentTheme === 'light' ? 'fa-sun' : 'fa-moon'}`}></i>
                         </button>
                     </div>
 
