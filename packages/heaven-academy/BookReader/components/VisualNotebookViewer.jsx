@@ -82,7 +82,7 @@ const VisualNotebookViewer = ({
     return () => { isMounted = false; };
   }, [courseCode, language, cacheKey]);
 
-  // 2. Inject combined scoped styles dynamically into head
+  // 2. Inject combined scoped styles dynamically into head (with in-flight font sanitization)
   useEffect(() => {
     if (sheets.length > 0) {
       const combinedCss = sheets
@@ -91,13 +91,19 @@ const VisualNotebookViewer = ({
         .join('\n\n');
 
       if (combinedCss) {
+        // Intercept and sanitize any font-family declarations so system-ui never hijacks Windows font-linking
+        const sanitizedCss = combinedCss.replace(
+          /font-family\s*:\s*[^;]+;/gi,
+          "font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, sans-serif !important;"
+        );
+
         if (!styleTagRef.current) {
           const tag = document.createElement('style');
           tag.id = 'v-notebook-dynamic-style';
           document.head.appendChild(tag);
           styleTagRef.current = tag;
         }
-        styleTagRef.current.textContent = combinedCss;
+        styleTagRef.current.textContent = sanitizedCss;
       }
     }
 
@@ -108,6 +114,49 @@ const VisualNotebookViewer = ({
       }
     };
   }, [sheets]);
+
+  // 2b. Verbose Diagnostic Typography Auditor
+  useEffect(() => {
+    if (sheets.length === 0) return;
+
+    const auditTypography = () => {
+      console.groupCollapsed(`%c[VisualNotebook:FontAudit] 🔤 Typography & Font-Family Diagnostic (${courseCode} [${language}])`, 'color: #42d7b8; font-weight: bold;');
+      
+      const isFontLoaded = document.fonts ? document.fonts.check('16px "Noto Sans Ethiopic"') : 'API unsupported';
+      console.log(`📡 'Noto Sans Ethiopic' in document.fonts:`, isFontLoaded ? '✅ LOADED' : '❌ NOT LOADED YET');
+      
+      const rootEl = containerRef.current;
+      if (rootEl) {
+        const rootFont = window.getComputedStyle(rootEl).fontFamily;
+        console.log(`📐 Computed font-family on .v-notebook-root:`, rootFont);
+        
+        const canvasEl = rootEl.querySelector('.sheet-canvas');
+        if (canvasEl) {
+          const canvasFont = window.getComputedStyle(canvasEl).fontFamily;
+          console.log(`📄 Computed font-family on .sheet-canvas:`, canvasFont);
+        }
+
+        const sampleP = rootEl.querySelector('p, h1, h2, h3, .pillar-title, .welcome-card');
+        if (sampleP) {
+          const sampleFont = window.getComputedStyle(sampleP).fontFamily;
+          console.log(`📝 Computed font-family on sample text (${sampleP.tagName.toLowerCase()}):`, sampleFont);
+          console.log(`   Sample text preview: "${sampleP.innerText.slice(0, 50)}..."`);
+        }
+      }
+
+      console.log(`💡 DevTools Tip: To verify the physical font glyph file, inspect any Amharic word in DevTools > Elements > Computed tab, and scroll to the bottom to view 'Rendered Fonts'.`);
+      console.groupEnd();
+    };
+
+    auditTypography();
+
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(() => {
+        console.log(`%c[VisualNotebook:FontAudit] 🚀 document.fonts.ready resolved. Re-verifying...`, 'color: #38bdf8;');
+        auditTypography();
+      });
+    }
+  }, [sheets, courseCode, language]);
 
   // 3. Teleport Snapper: Smoothly navigate to the sheet closest to the active textbook page
   const scrollToAnchorSheet = (targetPage, smooth = true) => {
