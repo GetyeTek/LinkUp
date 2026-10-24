@@ -196,6 +196,7 @@
     display: flex;
     align-items: center;
     position: relative;
+    min-width: 0;
 }
 
 /* YouTube-Style Segmented Scrubber for Visual Notes */
@@ -360,6 +361,7 @@
     align-items: center;
     white-space: nowrap;
     transition: background 0.2s, border-color 0.2s;
+    flex-shrink: 0;
 }
 
 .page-counter-btn:hover { background: rgba(255, 255, 255, 0.15); border-color: var(--accent); }
