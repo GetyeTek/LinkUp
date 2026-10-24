@@ -28,7 +28,10 @@ const BookReaderUI = ({
     onZoomOut,
     onZoomFit,
     onZoomReset,
-    visualLangs = []
+    visualLangs = [],
+    visualSheets = [],
+    activeVisualSheetIndex = 0,
+    onJumpToVisualSheet
 }) => {
     return (
         <>
@@ -138,20 +141,51 @@ const BookReaderUI = ({
                         <i className="fa-solid fa-list"></i>
                     </div>
                     
-                    <div className="scrubber-wrapper">
-                        <input 
-                            type="range" 
-                            min="1" 
-                            max={pages.length || 1} 
-                            defaultValue="1" 
-                            ref={scrubberRef}
-                            className="page-scrubber"
-                            onChange={handleScrubberChange}
-                            onInput={handleScrubberInput}
-                        />
-                    </div>
+                    {viewMode !== 'text' ? (
+                        <div className="visual-segmented-scrubber" title="Jump between Visual Sheets">
+                            {(visualSheets && visualSheets.length > 0 ? visualSheets : Array.from({ length: 4 })).map((sheet, sIdx) => {
+                                const isPast = sIdx < activeVisualSheetIndex;
+                                const isCurrent = sIdx === activeVisualSheetIndex;
+                                const sheetTitle = sheet?.topic_title || `Page ${sheet?.page_number || sIdx + 1}`;
+                                return (
+                                    <div 
+                                        key={sIdx}
+                                        className={`visual-scrubber-segment ${isPast ? 'past' : ''} ${isCurrent ? 'active' : ''}`}
+                                        onClick={() => onJumpToVisualSheet?.(sIdx)}
+                                    >
+                                        <div className="segment-track">
+                                            <div className="segment-fill"></div>
+                                        </div>
+                                        <div className="segment-tooltip">
+                                            <span className="st-num">Sheet {sIdx + 1}</span>
+                                            <span className="st-title">{sheetTitle}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="scrubber-wrapper">
+                            <input 
+                                type="range" 
+                                min="1" 
+                                max={pages.length || 1} 
+                                defaultValue="1" 
+                                ref={scrubberRef}
+                                className="page-scrubber"
+                                onChange={handleScrubberChange}
+                                onInput={handleScrubberInput}
+                            />
+                        </div>
+                    )}
 
-                    {isJumpMode ? (
+                    {viewMode !== 'text' ? (
+                        <div className="page-counter-btn visual-counter-pill" title="Active Visual Sheet">
+                            <i className="fas fa-sparkles" style={{ fontSize: '0.72rem', color: 'var(--accent, #42d7b8)' }}></i>
+                            <span>Sheet {activeVisualSheetIndex + 1}</span>
+                            <span className="counter-divider">/ {visualSheets.length || '--'}</span>
+                        </div>
+                    ) : isJumpMode ? (
                         <form className="jump-form" onSubmit={(e) => { e.preventDefault(); jumpToPage(jumpInput); }}>
                             <input 
                                 type="number" 
