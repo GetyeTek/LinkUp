@@ -133,7 +133,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
             const vw = window.innerWidth;
             const targetWidth = 860;
             const padding = vw < 600 ? 24 : 48;
-            const computedFit = Math.max(0.6, Math.min((vw - padding) / targetWidth, 2.0));
+            const computedFit = Math.max(0.6, Math.min((vw - padding) / targetWidth, 1.8));
             const nextScale = Math.abs(visualScale - computedFit) < 0.05 ? 1.0 : computedFit;
             applyScale(nextScale);
             return;
