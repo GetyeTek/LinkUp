@@ -4,7 +4,7 @@
     inset: 0;
     top: 44px; /* Clear reader header */
     bottom: calc(54px + env(safe-area-inset-bottom, 10px)); /* Clear reader footer */
-    background: var(--bg-dark, #0d0d0d);
+    background: var(--bg-color, #0d0d0d);
     color: var(--text-color, #e0e0e0);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -14,9 +14,114 @@
     flex-direction: column;
     align-items: center;
     padding: 24px 16px 80px;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .v-notebook-root::-webkit-scrollbar { display: none; }
+
+/* Dynamic Theme Adaptations for Embedded Sheets */
+.theme-dark .v-notebook-root .sheet-canvas {
+    background: #141418 !important;
+    color: #f3f4f6 !important;
+}
+
+.theme-dark .v-notebook-root .etymology-box,
+.theme-dark .v-notebook-root .disc-card,
+.theme-dark .v-notebook-root .pillar-card,
+.theme-dark .v-notebook-root .myth-card,
+.theme-dark .v-notebook-root .diff-card,
+.theme-dark .v-notebook-root .contrib-card,
+.theme-dark .v-notebook-root .domain-item,
+.theme-dark .v-notebook-root .field-card {
+    background: #1e1e24 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #f3f4f6 !important;
+}
+
+.theme-dark .v-notebook-root .root-card,
+.theme-dark .v-notebook-root .mini-box,
+.theme-dark .v-notebook-root .scope-card,
+.theme-dark .v-notebook-root .header-pill {
+    background: #191a21 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #e2e8f0 !important;
+}
+
+.theme-dark .v-notebook-root .section-title,
+.theme-dark .v-notebook-root .timeline-title,
+.theme-dark .v-notebook-root h1,
+.theme-dark .v-notebook-root h2,
+.theme-dark .v-notebook-root h3,
+.theme-dark .v-notebook-root h4 {
+    color: #ffffff !important;
+}
+
+.theme-dark .v-notebook-root p,
+.theme-dark .v-notebook-root li,
+.theme-dark .v-notebook-root td,
+.theme-dark .v-notebook-root .timeline-desc {
+    color: #cbd5e1 !important;
+}
+
+.theme-sepia .v-notebook-root .sheet-canvas {
+    background: #f4ecd8 !important;
+    color: #5b4636 !important;
+}
+
+.theme-sepia .v-notebook-root .etymology-box,
+.theme-sepia .v-notebook-root .disc-card,
+.theme-sepia .v-notebook-root .pillar-card,
+.theme-sepia .v-notebook-root .myth-card,
+.theme-sepia .v-notebook-root .diff-card,
+.theme-sepia .v-notebook-root .contrib-card,
+.theme-sepia .v-notebook-root .domain-item,
+.theme-sepia .v-notebook-root .field-card {
+    background: #ede3ca !important;
+    border-color: rgba(91, 70, 54, 0.2) !important;
+    color: #5b4636 !important;
+}
+
+.theme-sepia .v-notebook-root .root-card,
+.theme-sepia .v-notebook-root .mini-box,
+.theme-sepia .v-notebook-root .scope-card,
+.theme-sepia .v-notebook-root .header-pill {
+    background: #e4d8bc !important;
+    border-color: rgba(91, 70, 54, 0.2) !important;
+    color: #5b4636 !important;
+}
+
+.theme-sepia .v-notebook-root h1,
+.theme-sepia .v-notebook-root h2,
+.theme-sepia .v-notebook-root h3,
+.theme-sepia .v-notebook-root h4,
+.theme-sepia .v-notebook-root .section-title,
+.theme-sepia .v-notebook-root .timeline-title {
+    color: #3e2817 !important;
+}
+
+.theme-sepia .v-notebook-root p,
+.theme-sepia .v-notebook-root li,
+.theme-sepia .v-notebook-root td,
+.theme-sepia .v-notebook-root .timeline-desc {
+    color: #5b4636 !important;
+}
+
+.theme-light .v-notebook-root .sheet-canvas {
+    background: #ffffff !important;
+    color: #1e293b !important;
+}
+
+.theme-light .v-notebook-root .v-sheet-anchor-bar {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #64748b;
+}
+
+.theme-sepia .v-notebook-root .v-sheet-anchor-bar {
+    background: rgba(91, 70, 54, 0.08);
+    border-color: rgba(91, 70, 54, 0.2);
+    color: #5b4636;
+}
 
 /* Language-specific Typography */
 .v-notebook-root.lang-am {
@@ -38,6 +143,9 @@
     flex-direction: column;
     gap: 20px;
     animation: vFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform-origin: top center;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
 }
 
 @keyframes vFadeIn {
