@@ -31,7 +31,7 @@
     color: #f1f5f9 !important;
 }
 
-/* 1. All Generic Primary Containers & Cards */
+/* 1. All Generic Primary Containers, Cards, and Inline-Styled Divs */
 .theme-dark .v-notebook-root .sheet-canvas [class*="-card"],
 .theme-dark .v-notebook-root .sheet-canvas [class*="-box"]:not(.hero-banner):not([class*="-icon"]),
 .theme-dark .v-notebook-root .sheet-canvas [class*="-block"]:not(.v-bento-canvas),
@@ -39,7 +39,10 @@
 .theme-dark .v-notebook-root .sheet-canvas [class*="-panel"],
 .theme-dark .v-notebook-root .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
 .theme-dark .v-notebook-root .sheet-canvas [class*="-grid"] > div,
-.theme-dark .v-notebook-root .sheet-canvas [class*="-rail"] > div:not([class*="dot"]) {
+.theme-dark .v-notebook-root .sheet-canvas [class*="-rail"] > div:not([class*="dot"]),
+.theme-dark .v-notebook-root .sheet-canvas > div:not([class*="hero"]):not([class*="banner"]):not([class*="header"]):not(.v-sheet-anchor-bar),
+.theme-dark .v-notebook-root .sheet-canvas div[style*="background"],
+.theme-dark .v-notebook-root .sheet-canvas div[style*="background-color"] {
     background: #1c1c24 !important;
     border-color: rgba(255, 255, 255, 0.09) !important;
     color: #f1f5f9 !important;
@@ -88,7 +91,7 @@
     border-bottom-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* 5. Typography */
+/* 5. Typography and In-Flight Inline Color Inversion */
 .theme-dark .v-notebook-root .sheet-canvas p,
 .theme-dark .v-notebook-root .sheet-canvas li,
 .theme-dark .v-notebook-root .sheet-canvas td,
@@ -98,8 +101,34 @@
 }
 
 .theme-dark .v-notebook-root .sheet-canvas strong,
-.theme-dark .v-notebook-root .sheet-canvas b {
+.theme-dark .v-notebook-root .sheet-canvas b,
+.theme-dark .v-notebook-root .sheet-canvas div[style*="font-weight: 700"],
+.theme-dark .v-notebook-root .sheet-canvas div[style*="font-weight:700"],
+.theme-dark .v-notebook-root .sheet-canvas div[style*="font-weight: bold"],
+.theme-dark .v-notebook-root .sheet-canvas div[style*="font-weight:bold"] {
     color: #38bdf8 !important;
+}
+
+/* Invert hardcoded daylight text colors on dark canvas */
+.theme-dark .v-notebook-root .sheet-canvas [style*="color: #0"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color:#0"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color: #1"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color:#1"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color: #2"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color:#2"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color: #3"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color:#3"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color: #4"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color:#4"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color: #6"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color:#6"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color: #7"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color:#7"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color: #8"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color:#8"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color: black"],
+.theme-dark .v-notebook-root .sheet-canvas [style*="color:#000"] {
+    color: #e2e8f0 !important;
 }
 
 /* 6. Semantic Alerts, Traps & Quotes */
@@ -163,7 +192,10 @@
 .theme-sepia .v-notebook-root .sheet-canvas [class*="-item"]:not([class*="icon"]),
 .theme-sepia .v-notebook-root .sheet-canvas [class*="-panel"],
 .theme-sepia .v-notebook-root .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-grid"] > div {
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-grid"] > div,
+.theme-sepia .v-notebook-root .sheet-canvas > div:not([class*="hero"]):not([class*="banner"]):not([class*="header"]):not(.v-sheet-anchor-bar),
+.theme-sepia .v-notebook-root .sheet-canvas div[style*="background"],
+.theme-sepia .v-notebook-root .sheet-canvas div[style*="background-color"] {
     background: #ede3ca !important;
     border-color: rgba(91, 70, 54, 0.2) !important;
     color: #5b4636 !important;
