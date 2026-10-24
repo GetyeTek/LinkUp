@@ -101,12 +101,38 @@
 }
 
 .auth-title {
-    font-size: 1.6rem;
+    font-size: 1.85rem;
     font-weight: 700;
     color: #fff;
     margin: 0 0 2px 0;
     letter-spacing: -0.5px;
     font-family: 'Newsreader', serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Custom Wordmark Styling */
+.linkup-wordmark {
+    display: inline-flex;
+    align-items: baseline;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.wordmark-cap-letter {
+    position: relative;
+    display: inline-block;
+}
+
+.wordmark-cap {
+    position: absolute;
+    top: -0.45em;
+    left: -0.25em;
+    font-size: 0.65em;
+    color: #f1c40f;
+    transform: rotate(-16deg);
+    filter: drop-shadow(0 2px 8px rgba(241, 196, 15, 0.4));
+    z-index: 2;
 }
 
 .auth-subtitle {
