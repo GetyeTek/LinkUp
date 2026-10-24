@@ -406,7 +406,16 @@ const Auth = () => {
 
                 <div className="auth-card">
                     <header className="auth-header">
-                        <h1 className="auth-title">{isForgotPassword ? 'Reset Password' : 'Student Portal'}</h1>
+                        <h1 className="auth-title">
+                            {isForgotPassword ? 'Reset Password' : (
+                                <span className="linkup-wordmark">
+                                    <span className="wordmark-cap-letter">
+                                        <i className="fa-solid fa-graduation-cap wordmark-cap"></i>
+                                        L
+                                    </span>inkUp
+                                </span>
+                            )}
+                        </h1>
                         <p className="auth-subtitle">
                             {isForgotPassword 
                                 ? 'Enter your email to receive a recovery link.' 
