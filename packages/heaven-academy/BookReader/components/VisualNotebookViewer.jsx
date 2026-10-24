@@ -11,7 +11,11 @@ const VisualNotebookViewer = ({
   language = 'en', 
   currentPage = 1, 
   onCloseVariant, 
-  onSyncTextbookPage 
+  onSyncTextbookPage,
+  zoomScale = 1,
+  onSheetsLoaded,
+  onActiveSheetChange,
+  targetSheetIndex = null
 }) => {
   const cacheKey = `${courseCode}_${language}`;
 
@@ -37,8 +41,10 @@ const VisualNotebookViewer = ({
 
     // Fast-path: Cache hit bypasses Supabase completely
     if (notebookSheetsCache.has(cacheKey)) {
-      setSheets(notebookSheetsCache.get(cacheKey));
+      const cached = notebookSheetsCache.get(cacheKey);
+      setSheets(cached);
       setLoading(false);
+      onSheetsLoaded?.(cached);
       return;
     }
 
@@ -61,6 +67,7 @@ const VisualNotebookViewer = ({
         if (isMounted) {
           setSheets(resultSheets);
           setLoading(false);
+          onSheetsLoaded?.(resultSheets);
         }
       } catch (err) {
         console.error('[VisualNotebook] Backend fetch error:', err);
@@ -141,7 +148,11 @@ const VisualNotebookViewer = ({
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
+          const sheetIdx = parseInt(entry.target.getAttribute('data-sheet-index'), 10);
           const pageNum = parseInt(entry.target.getAttribute('data-page-number'), 10);
+          if (!isNaN(sheetIdx)) {
+            onActiveSheetChange?.(sheetIdx);
+          }
           if (pageNum) {
             onSyncTextbookPage(pageNum);
           }
@@ -157,7 +168,19 @@ const VisualNotebookViewer = ({
     targets.forEach(t => observer.observe(t));
 
     return () => observer.disconnect();
-  }, [loading, sheets, onSyncTextbookPage]);
+  }, [loading, sheets, onSyncTextbookPage, onActiveSheetChange]);
+
+  // Handle direct Segmented Scrubber jumps
+  useEffect(() => {
+    if (targetSheetIndex !== null && targetSheetIndex !== undefined && sheets[targetSheetIndex] && containerRef.current) {
+      const el = containerRef.current.querySelector(`[data-sheet-index="${targetSheetIndex}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add('sheet-landed-glow');
+        setTimeout(() => el.classList.remove('sheet-landed-glow'), 2200);
+      }
+    }
+  }, [targetSheetIndex, sheets]);
 
   if (loading) {
     return (
@@ -195,13 +218,19 @@ const VisualNotebookViewer = ({
 
   return (
     <div className={`v-notebook-root lang-${language}`} ref={containerRef}>
-      <div className="v-bento-canvas">
-        {sheets.map((sheet) => (
+      <div 
+        className="v-bento-canvas"
+        style={{ 
+          transform: zoomScale !== 1 ? `scale(${zoomScale})` : 'none'
+        }}
+      >
+        {sheets.map((sheet, sIdx) => (
           <article 
             key={sheet.id || sheet.page_number}
             className="v-notebook-sheet"
             id={`vn-sheet-page-${sheet.page_number}`}
             data-page-number={sheet.page_number}
+            data-sheet-index={sIdx}
           >
             <div className="v-sheet-anchor-bar">
               <span className="anchor-pill">
