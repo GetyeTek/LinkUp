@@ -15,19 +15,19 @@ const normalizeSheetCss = (rawCss) => {
       /font-family\s*:\s*[^;]+;/gi,
       "font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, sans-serif !important;"
     )
-    // 2. Map all daylight pastels and light backgrounds (f-series and e-series hexes) to dynamic theme variables
+    // 2. Map all daylight pastels to dynamic theme variables (Mathematical Spectrum: Hex E/F, RGB 180-255)
     .replace(
-      /(background(?:-color)?\s*:\s*)(#(?:[fF][0-9a-fA-F]{5}|[eE][0-9a-fA-F]{5}|[fF]{3}|[eE]{3})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:25[0-5]|24\d)\s*,\s*(?:25[0-5]|24\d)\s*,\s*(?:25[0-5]|24\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
+      /(background(?:-color)?\s*:\s*)(#(?:[eEfF][a-fA-F0-9]{5}|[eEfF][a-fA-F0-9]{2})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:8\d%|9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
       '$1var(--vn-card-bg, #1c1c24)'
     )
     // 3. Map light borders to dynamic theme variables
     .replace(
-      /(border(?:-color)?\s*:\s*[^;]*?)(#(?:e2e8f0|cbd5e1|e5e7eb|d1d5db|f1f5f9|cccccc|ccc)\b|rgba?\(\s*226\s*,\s*232\s*,\s*240[^)]*\))/gi,
+      /(border(?:-color)?\s*:\s*[^;]*?)(#(?:[c-fC-F][a-fA-F0-9]{5}|[c-fC-F][a-fA-F0-9]{2})\b|rgba?\(\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)[^)]*\))/gi,
       '$1var(--vn-border, rgba(255, 255, 255, 0.08))'
     )
-    // 4. Map hardcoded daylight dark text colors to dynamic theme text variables
+    // 4. Map hardcoded dark text colors to dynamic theme text variables (Mathematical Spectrum: Hex 0-D, RGB 0-199)
     .replace(
-      /(color\s*:\s*)(#(?:0[0-9a-f]{5}|1[0-9a-f]{5}|2[0-9a-f]{5}|3[0-9a-f]{5}|4[0-9a-f]{5}|6[0-9a-f]{5}|000|111|222|333|000000|111111|222222|333333)\b|black\b)(?:\s*!important)?/gi,
+      /(color\s*:\s*)(#(?:[0-9a-dA-D][a-fA-F0-9]{5}|[0-9a-dA-D][a-fA-F0-9]{2})\b|black\b|rgba?\(\s*(?:1?\d{1,2})\s*,\s*(?:1?\d{1,2})\s*,\s*(?:1?\d{1,2})[^)]*\))(?:\s*!important)?/gi,
       '$1var(--vn-text-main, #f1f5f9)'
     );
 };
@@ -48,21 +48,21 @@ const normalizeSheetHtml = (rawHtml) => {
       if (style) {
         let s = style;
         
-        // Neutralize all daylight pastels and near-white backgrounds on any tag or classless div
+        // Neutralize all daylight pastels and near-white backgrounds (Hex E/F, RGB 180-255)
         s = s.replace(
-          /(background(?:-color)?\s*:\s*)(#(?:[fF][0-9a-fA-F]{5}|[eE][0-9a-fA-F]{5}|[fF]{3}|[eE]{3})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:25[0-5]|24\d)\s*,\s*(?:25[0-5]|24\d)\s*,\s*(?:25[0-5]|24\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
+          /(background(?:-color)?\s*:\s*)(#(?:[eEfF][a-fA-F0-9]{5}|[eEfF][a-fA-F0-9]{2})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:8\d%|9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
           '$1var(--vn-card-bg, #1c1c24)'
         );
 
         // Neutralize light borders
         s = s.replace(
-          /(border(?:-color)?\s*:\s*[^;]*?)(#(?:e2e8f0|cbd5e1|e5e7eb|d1d5db|f1f5f9|cccccc|ccc)\b|rgba?\(\s*226\s*,\s*232\s*,\s*240[^)]*\))/gi,
+          /(border(?:-color)?\s*:\s*[^;]*?)(#(?:[c-fC-F][a-fA-F0-9]{5}|[c-fC-F][a-fA-F0-9]{2})\b|rgba?\(\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)[^)]*\))/gi,
           '$1var(--vn-border, rgba(255, 255, 255, 0.08))'
         );
 
-        // Invert hardcoded dark text colors intended for white paper
+        // Invert hardcoded dark text colors intended for white paper (Hex 0-D, RGB 0-199)
         s = s.replace(
-          /(color\s*:\s*)(#(?:0[0-9a-f]{5}|1[0-9a-f]{5}|2[0-9a-f]{5}|3[0-9a-f]{5}|4[0-9a-f]{5}|6[0-9a-f]{5}|000|111|222|333|000000|111111|222222|333333)\b|black\b)(?:\s*!important)?/gi,
+          /(color\s*:\s*)(#(?:[0-9a-dA-D][a-fA-F0-9]{5}|[0-9a-dA-D][a-fA-F0-9]{2})\b|black\b|rgba?\(\s*(?:1?\d{1,2})\s*,\s*(?:1?\d{1,2})\s*,\s*(?:1?\d{1,2})[^)]*\))(?:\s*!important)?/gi,
           (match, prefix) => {
             const isHeading = el.tagName.match(/^H[1-6]$/) || 
                               s.includes('font-weight: 700') || 
