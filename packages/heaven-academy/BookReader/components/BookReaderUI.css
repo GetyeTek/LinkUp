@@ -3,13 +3,13 @@
 #ui-layer.hidden { opacity: 0; pointer-events: none !important; }
 .ui-bar { pointer-events: auto; }
 
-.reader-header { background-color: rgba(18, 18, 18, 0.95); backdrop-filter: blur(12px); color: #e0e0e0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; height: 44px; border-bottom: 1px solid rgba(255,255,255,0.05); transform: translateY(0); transition: transform 0.3s; }
+.reader-header { background-color: rgba(18, 18, 18, 0.95); backdrop-filter: blur(12px); color: #e0e0e0; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; height: 44px; border-bottom: 1px solid rgba(255,255,255,0.05); transform: translateY(0); transition: transform 0.3s; position: relative; }
 #ui-layer.hidden .reader-header { transform: translateY(-100%); }
 
 .header-left { display: flex; align-items: center; flex: 1; overflow: hidden; min-width: 0; }
 .header-title { font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 12px; font-family: 'Poppins', sans-serif;}
 
-/* 3-Way Mode Switcher (Textbook vs Visual EN vs Visual AM) */
+/* 3-Way Mode Switcher */
 .header-variant-toggle {
     display: flex;
     align-items: center;
@@ -20,6 +20,15 @@
     gap: 2px;
     flex-shrink: 0;
     margin-right: 4px;
+    z-index: 20;
+}
+
+.variant-flag {
+    font-size: 0.95rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .variant-toggle-btn {
@@ -57,8 +66,9 @@
 
 @media (max-width: 580px) {
     .header-title { max-width: 130px; }
-    .variant-toggle-btn { padding: 4px 8px; }
+    .variant-toggle-btn { padding: 4px 9px; }
     .variant-toggle-btn .variant-label { display: none; }
+    .variant-toggle-btn .variant-flag { font-size: 1.15rem; }
 }
 
 /* Desktop Toolbar and Zoom Cluster */
@@ -165,6 +175,12 @@
 @media (min-width: 900px) {
     .reader-desktop-tools {
         display: flex;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        gap: 10px;
+        transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 15;
     }
     .fab-container {
         display: none !important;
