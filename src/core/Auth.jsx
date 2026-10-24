@@ -562,74 +562,93 @@ const Auth = () => {
                     </div>
                 )}
 
-                {/* Accredited Institutional Consortium Strip */}
-                <div className="auth-consortium-footer">
-                    <div className="consortium-item">
-                        <div className="consortium-medallion-wrap">
-                            <div className="consortium-medallion-circle">
-                                <img 
-                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/moe_logo.png" 
-                                    alt="Ministry of Education" 
-                                    className="consortium-img"
-                                    onError={(e) => { 
-                                        e.target.style.display = 'none'; 
-                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
-                                    }}
-                                />
-                                <div className="consortium-fallback-icon" style={{ display: 'none' }}>
-                                    <i className="fa-solid fa-landmark"></i>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="consortium-text-group">
-                            <span className="consortium-name">Ministry of Education</span>
-                            <span className="consortium-caption">MoE Aligned</span>
-                        </div>
-                    </div>
-
-                    <div className="consortium-item">
-                        <div className="consortium-medallion-wrap">
-                            <div className="consortium-medallion-circle">
-                                <img 
-                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/heaven_logo.png" 
-                                    alt="Heaven Academy" 
-                                    className="consortium-img"
-                                    onError={(e) => { 
-                                        e.target.style.display = 'none'; 
-                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
-                                    }}
-                                />
-                                <div className="consortium-fallback-icon" style={{ display: 'none' }}>
-                                    <i className="fa-solid fa-graduation-cap"></i>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="consortium-text-group">
-                            <span className="consortium-name">Heaven Academy</span>
-                            <span className="consortium-caption">Exam Vault</span>
-                        </div>
-                    </div>
-
-                    <div className="consortium-item">
-                        <div className="consortium-medallion-wrap">
-                            <div className="consortium-medallion-circle">
+                {/* The Ecosystem Hub (Master-Detail Powerers Layout) */}
+                <div className="ecosystem-container">
+                    
+                    {/* The Main House Header */}
+                    <div className="ecosystem-main-house">
+                        <div className="mh-left-cluster">
+                            <div className="mh-logo">
                                 <img 
                                     src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/linkup_logo.png" 
-                                    alt="LinkUp" 
-                                    className="consortium-img"
+                                    alt="LinkUp Core"
                                     onError={(e) => { 
                                         e.target.style.display = 'none'; 
                                         if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
                                     }}
                                 />
-                                <div className="consortium-fallback-icon" style={{ display: 'none' }}>
+                                <div className="mh-fallback-icon" style={{ display: 'none' }}>
                                     <i className="fa-solid fa-bolt"></i>
                                 </div>
                             </div>
+                            <div className="mh-text-group">
+                                <span className="mh-title">LinkUp Platform</span>
+                                <span className="mh-subtitle">Unified Academic OS</span>
+                            </div>
                         </div>
-                        <div className="consortium-text-group">
-                            <span className="consortium-name">LinkUp Platform</span>
-                            <span className="consortium-caption">AI Engine</span>
+                        <div className="mh-core-badge">CORE</div>
+                    </div>
+
+                    {/* The Powerers Carousel */}
+                    <div className="powerers-carousel">
+                        <div className="powerer-card">
+                            <div className="powerer-medallion">
+                                <img 
+                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/moe_logo.png" 
+                                    alt="Ministry of Education" 
+                                    onError={(e) => { 
+                                        e.target.style.display = 'none'; 
+                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                    }}
+                                />
+                                <div className="powerer-icon" style={{ display: 'none' }}>
+                                    <i className="fa-solid fa-landmark"></i>
+                                </div>
+                            </div>
+                            <span className="powerer-label">MoE Aligned</span>
+                        </div>
+
+                        <div className="powerer-card">
+                            <div className="powerer-medallion">
+                                <img 
+                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/heaven_logo.png" 
+                                    alt="Heaven Academy" 
+                                    onError={(e) => { 
+                                        e.target.style.display = 'none'; 
+                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                    }}
+                                />
+                                <div className="powerer-icon" style={{ display: 'none' }}>
+                                    <i className="fa-solid fa-graduation-cap"></i>
+                                </div>
+                            </div>
+                            <span className="powerer-label">Exam Vault</span>
+                        </div>
+
+                        <div className="powerer-card">
+                            <div className="powerer-medallion">
+                                <img 
+                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/gibinews_logo.png" 
+                                    alt="Gibi News" 
+                                    onError={(e) => { 
+                                        e.target.style.display = 'none'; 
+                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                    }}
+                                />
+                                <div className="powerer-icon" style={{ display: 'none' }}>
+                                    <i className="fa-solid fa-satellite-dish"></i>
+                                </div>
+                            </div>
+                            <span className="powerer-label">Campus Wire</span>
+                        </div>
+
+                        <div className="powerer-card">
+                            <div className="powerer-medallion">
+                                <div className="powerer-icon">
+                                    <i className="fa-solid fa-users"></i>
+                                </div>
+                            </div>
+                            <span className="powerer-label">Squad Graph</span>
                         </div>
                     </div>
                 </div>
