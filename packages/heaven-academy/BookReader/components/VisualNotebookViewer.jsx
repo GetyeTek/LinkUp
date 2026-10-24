@@ -15,9 +15,9 @@ const normalizeSheetCss = (rawCss) => {
       /font-family\s*:\s*[^;]+;/gi,
       "font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, sans-serif !important;"
     )
-    // 2. Map hardcoded light/white backgrounds to dynamic theme variables
+    // 2. Map all daylight pastels and light backgrounds (f-series and e-series hexes) to dynamic theme variables
     .replace(
-      /(background(?:-color)?\s*:\s*)(#(?:fff|ffffff|fdfdfd|f8fafc|f1f5f9|fafafa|f5f5f5|fefefe|eeeeee)\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*255\s*,\s*255\s*,\s*255[^)]*\)|hsla?\(\s*0\s*,\s*0%\s*,\s*100%[^)]*\))(?:\s*!important)?/gi,
+      /(background(?:-color)?\s*:\s*)(#(?:[fF][0-9a-fA-F]{5}|[eE][0-9a-fA-F]{5}|[fF]{3}|[eE]{3})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:25[0-5]|24\d)\s*,\s*(?:25[0-5]|24\d)\s*,\s*(?:25[0-5]|24\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
       '$1var(--vn-card-bg, #1c1c24)'
     )
     // 3. Map light borders to dynamic theme variables
@@ -48,9 +48,9 @@ const normalizeSheetHtml = (rawHtml) => {
       if (style) {
         let s = style;
         
-        // Neutralize hardcoded near-white/light backgrounds on any tag or classless div
+        // Neutralize all daylight pastels and near-white backgrounds on any tag or classless div
         s = s.replace(
-          /(background(?:-color)?\s*:\s*)(#(?:fff|ffffff|fdfdfd|f8fafc|f1f5f9|fafafa|f5f5f5|fefefe|eeeeee)\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*255\s*,\s*255\s*,\s*255[^)]*\)|hsla?\(\s*0\s*,\s*0%\s*,\s*100%[^)]*\))(?:\s*!important)?/gi,
+          /(background(?:-color)?\s*:\s*)(#(?:[fF][0-9a-fA-F]{5}|[eE][0-9a-fA-F]{5}|[fF]{3}|[eE]{3})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:25[0-5]|24\d)\s*,\s*(?:25[0-5]|24\d)\s*,\s*(?:25[0-5]|24\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
           '$1var(--vn-card-bg, #1c1c24)'
         );
 
