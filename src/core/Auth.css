@@ -358,16 +358,17 @@
     text-decoration: underline; 
 }
 
-/* Institutional Consortium Strip */
+/* Institutional Consortium Strip - Prominent Medallions */
 .auth-consortium-footer {
-    margin-top: 1.5rem;
-    padding-top: 1.15rem;
+    margin-top: 1.75rem;
+    padding-top: 1.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
+    box-sizing: border-box;
 }
 
 .consortium-item {
@@ -375,82 +376,110 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 4px;
+    gap: 8px;
     flex: 1;
     min-width: 0;
+    cursor: default;
 }
 
-.consortium-logo-box {
-    width: 26px;
-    height: 26px;
+/* 3D Floating Dual-Ring Medallion */
+.consortium-medallion-wrap {
+    position: relative;
+    padding: 2.5px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(241, 196, 15, 0.5) 0%, rgba(66, 215, 184, 0.5) 100%);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(66, 215, 184, 0.2);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+    flex-shrink: 0;
+}
+
+.consortium-item:hover .consortium-medallion-wrap {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), 0 0 20px rgba(66, 215, 184, 0.4);
+}
+
+.consortium-medallion-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 8px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+    box-sizing: border-box;
 }
 
 .consortium-img {
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
-    filter: grayscale(1) brightness(1.1) opacity(0.8);
-    transition: all 0.25s ease;
-}
-
-.consortium-item:hover .consortium-img {
-    filter: none;
-    opacity: 1;
-    transform: scale(1.08);
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
 .consortium-fallback-icon {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #aaa;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #141418;
+    color: var(--accent-teal, #42d7b8);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.72rem;
-    transition: all 0.2s ease;
-}
-
-.consortium-item:hover .consortium-fallback-icon {
-    color: var(--accent-teal, #42d7b8);
-    border-color: var(--accent-teal, #42d7b8);
+    font-size: 1.25rem;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .consortium-text-group {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    align-items: center;
+    gap: 4px;
     width: 100%;
 }
 
 .consortium-name {
-    font-size: 0.68rem;
+    font-size: 0.76rem;
     font-weight: 700;
-    color: #e5e5eb;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: #f3f4f6;
+    line-height: 1.25;
+    word-break: normal;
+    text-align: center;
+    display: block;
 }
 
 .consortium-caption {
-    font-size: 0.58rem;
-    color: #777;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--accent-teal, #42d7b8);
+    background: rgba(66, 215, 184, 0.1);
+    border: 1px solid rgba(66, 215, 184, 0.3);
+    padding: 2px 7px;
+    border-radius: 99px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+    text-align: center;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    letter-spacing: 0.2px;
+    text-transform: uppercase;
 }
 
-.consortium-divider {
-    width: 1px;
-    height: 24px;
-    background: rgba(255, 255, 255, 0.08);
-    flex-shrink: 0;
+@media (min-width: 960px) {
+    .consortium-medallion-circle {
+        width: 58px;
+        height: 58px;
+        padding: 9px;
+    }
+    .consortium-name {
+        font-size: 0.82rem;
+    }
+    .consortium-caption {
+        font-size: 0.65rem;
+    }
 }
 
 /* ==============================================================================
