@@ -217,8 +217,9 @@ const BookReaderUI = ({
                     {viewMode !== 'text' ? (
                         <div className="page-counter-btn visual-counter-pill" title="Active Visual Sheet">
                             <i className="fas fa-sparkles" style={{ fontSize: '0.72rem', color: 'var(--accent, #42d7b8)' }}></i>
-                            <span>Sheet {activeVisualSheetIndex + 1}</span>
-                            <span className="counter-divider">/ {visualSheets.length || '--'}</span>
+                            <span className="counter-sheet-word">Sheet </span>
+                            <span>{activeVisualSheetIndex + 1}</span>
+                            <span className="counter-divider">/{visualSheets.length || '--'}</span>
                         </div>
                     ) : isJumpMode ? (
                         <form className="jump-form" onSubmit={(e) => { e.preventDefault(); jumpToPage(jumpInput); }}>
