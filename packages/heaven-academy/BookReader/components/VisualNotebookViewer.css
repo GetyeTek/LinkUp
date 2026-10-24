@@ -125,14 +125,27 @@
 
 /* Language-specific Typography */
 .v-notebook-root.lang-am {
-    font-family: 'Abyssinica SIL', 'Nyala', 'Kefa', serif, sans-serif;
-    line-height: 1.85;
+    font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.7;
+}
+
+.v-notebook-root.lang-am .sheet-canvas {
+    font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+    line-height: 1.7;
 }
 
 .v-notebook-root.lang-am p,
 .v-notebook-root.lang-am span,
-.v-notebook-root.lang-am div {
-    letter-spacing: 0.2px;
+.v-notebook-root.lang-am div,
+.v-notebook-root.lang-am h1,
+.v-notebook-root.lang-am h2,
+.v-notebook-root.lang-am h3,
+.v-notebook-root.lang-am h4,
+.v-notebook-root.lang-am li,
+.v-notebook-root.lang-am td,
+.v-notebook-root.lang-am th {
+    font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: 0.1px;
 }
 
 /* Base Bento Grid Toolkit */
