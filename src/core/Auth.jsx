@@ -386,15 +386,55 @@ const Auth = () => {
                 </div>
             )}
 
-            <div className="auth-card">
-                <header className="auth-header">
-                    <h1 className="auth-title">{isForgotPassword ? 'Reset Password' : 'LinkUp'}</h1>
-                    <p className="auth-subtitle">
-                        {isForgotPassword 
-                            ? 'Enter your email to receive a recovery link.' 
-                            : isSignUp ? 'Create an account to get started' : 'Welcome back, please sign in'}
+            <div className="auth-portal-frame">
+                {/* Desktop Institutional Authority Panel (Portal Style - Not Landing Page) */}
+                <div className="auth-institutional-panel">
+                    <div className="aip-emblem-wrap">
+                        <i className="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <span className="aip-sub-title">Federal Democratic Republic of Ethiopia</span>
+                    <h2 className="aip-main-title">Higher Education Gateway</h2>
+                    <div className="aip-divider"></div>
+                    <p className="aip-description">
+                        Standardized academic portal for university freshman curricula, institutional past examinations, and collaborative study.
                     </p>
-                </header>
+                    <div className="aip-badge-list">
+                        <span className="aip-badge"><i className="fa-solid fa-book-bookmark"></i> MoE Modular Syllabus</span>
+                        <span className="aip-badge"><i className="fa-solid fa-shield-halved"></i> Verified Identity</span>
+                    </div>
+                </div>
+
+                <div className="auth-card">
+                    <header className="auth-header">
+                        <h1 className="auth-title">{isForgotPassword ? 'Reset Password' : 'Student Portal'}</h1>
+                        <p className="auth-subtitle">
+                            {isForgotPassword 
+                                ? 'Enter your email to receive a recovery link.' 
+                                : isSignUp ? 'Set up your academic profile credentials' : 'Sign in to access your courses and exams'}
+                        </p>
+                    </header>
+
+                    {/* Tab-based Auth Selector */}
+                    {!isForgotPassword && (
+                        <div className="auth-tab-switch">
+                            <button 
+                                type="button" 
+                                className={`auth-tab-btn ${!isSignUp ? 'active' : ''}`}
+                                onClick={() => { setIsSignUp(false); setError(null); }}
+                            >
+                                <i className="fa-solid fa-arrow-right-to-bracket"></i>
+                                <span>Sign In</span>
+                            </button>
+                            <button 
+                                type="button" 
+                                className={`auth-tab-btn ${isSignUp ? 'active' : ''}`}
+                                onClick={() => { setIsSignUp(true); setError(null); }}
+                            >
+                                <i className="fa-solid fa-user-plus"></i>
+                                <span>New Student</span>
+                            </button>
+                        </div>
+                    )}
 
                 {error && <div className="auth-error">{error}</div>}
 
@@ -504,13 +544,6 @@ const Auth = () => {
                         }}>
                             <i className="fab fa-telegram"></i> Log in with Telegram
                         </button>
-
-                        <div className="auth-footer">
-                            {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-                            <button type="button" onClick={() => setIsSignUp(!isSignUp)}>
-                                {isSignUp ? 'Sign In' : 'Sign Up'}
-                            </button>
-                        </div>
                     </>
                 ) : (
                     <div className="auth-footer">
@@ -519,8 +552,79 @@ const Auth = () => {
                         </button>
                     </div>
                 )}
+
+                {/* Accredited Institutional Consortium Strip */}
+                <div className="auth-consortium-footer">
+                    <div className="consortium-item">
+                        <div className="consortium-logo-box">
+                            <img 
+                                src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/moe_logo.png" 
+                                alt="Ministry of Education" 
+                                className="consortium-img"
+                                onError={(e) => { 
+                                    e.target.style.display = 'none'; 
+                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                }}
+                            />
+                            <div className="consortium-fallback-icon" style={{ display: 'none' }}>
+                                <i className="fa-solid fa-landmark"></i>
+                            </div>
+                        </div>
+                        <div className="consortium-text-group">
+                            <span className="consortium-name">Ministry of Education</span>
+                            <span className="consortium-caption">Curriculum Standardized</span>
+                        </div>
+                    </div>
+
+                    <div className="consortium-divider"></div>
+
+                    <div className="consortium-item">
+                        <div className="consortium-logo-box">
+                            <img 
+                                src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/heaven_logo.png" 
+                                alt="Heaven Academy" 
+                                className="consortium-img"
+                                onError={(e) => { 
+                                    e.target.style.display = 'none'; 
+                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                }}
+                            />
+                            <div className="consortium-fallback-icon" style={{ display: 'none' }}>
+                                <i className="fa-solid fa-graduation-cap"></i>
+                            </div>
+                        </div>
+                        <div className="consortium-text-group">
+                            <span className="consortium-name">Heaven Academy</span>
+                            <span className="consortium-caption">Academic Archives</span>
+                        </div>
+                    </div>
+
+                    <div className="consortium-divider"></div>
+
+                    <div className="consortium-item">
+                        <div className="consortium-logo-box">
+                            <img 
+                                src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/linkup_logo.png" 
+                                alt="LinkUp" 
+                                className="consortium-img"
+                                onError={(e) => { 
+                                    e.target.style.display = 'none'; 
+                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                }}
+                            />
+                            <div className="consortium-fallback-icon" style={{ display: 'none' }}>
+                                <i className="fa-solid fa-bolt"></i>
+                            </div>
+                        </div>
+                        <div className="consortium-text-group">
+                            <span className="consortium-name">LinkUp Platform</span>
+                            <span className="consortium-caption">Core Engine</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+    </div>
     );
 };
 
