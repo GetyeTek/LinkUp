@@ -22,6 +22,40 @@
 .v-notebook-root::-webkit-scrollbar { display: none; }
 
 /* ==============================================================================
+   THEME DESIGN TOKENS (IN-FLIGHT NORMALIZER CONTRACT)
+   ============================================================================== */
+.v-notebook-root, 
+.theme-dark .v-notebook-root {
+    --vn-canvas-bg: #141418;
+    --vn-card-bg: #1c1c24;
+    --vn-subcard-bg: #14141a;
+    --vn-border: rgba(255, 255, 255, 0.08);
+    --vn-text-main: #f1f5f9;
+    --vn-text-muted: #94a3b8;
+    --vn-heading-color: #38bdf8;
+}
+
+.theme-sepia .v-notebook-root {
+    --vn-canvas-bg: #f4ecd8;
+    --vn-card-bg: #ede3ca;
+    --vn-subcard-bg: #e4d8bc;
+    --vn-border: rgba(91, 70, 54, 0.2);
+    --vn-text-main: #5b4636;
+    --vn-text-muted: #78604d;
+    --vn-heading-color: #3e2817;
+}
+
+.theme-light .v-notebook-root {
+    --vn-canvas-bg: #ffffff;
+    --vn-card-bg: #ffffff;
+    --vn-subcard-bg: #f8fafc;
+    --vn-border: #e2e8f0;
+    --vn-text-main: #1e293b;
+    --vn-text-muted: #64748b;
+    --vn-heading-color: #0f172a;
+}
+
+/* ==============================================================================
    UNIVERSAL THEME ENGINE FOR EMBEDDED VISUAL SHEETS (ZERO HARDCODED SUBJECT CLASSES)
    ============================================================================== */
 
@@ -299,7 +333,7 @@
 .v-notebook-root.lang-am strong,
 .v-notebook-root.lang-am b {
     font-weight: 700 !important;
-    color: #38bdf8 !important;
+    color: var(--vn-heading-color, #38bdf8) !important;
 }
 
 /* Base Bento Grid Toolkit */
