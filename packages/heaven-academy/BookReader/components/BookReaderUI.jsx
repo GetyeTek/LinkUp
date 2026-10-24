@@ -158,28 +158,47 @@ const BookReaderUI = ({
                     </div>
                     
                     {viewMode !== 'text' ? (
-                        <div className="visual-segmented-scrubber" title="Jump between Visual Sheets">
-                            {(visualSheets && visualSheets.length > 0 ? visualSheets : Array.from({ length: 4 })).map((sheet, sIdx) => {
-                                const isPast = sIdx < activeVisualSheetIndex;
-                                const isCurrent = sIdx === activeVisualSheetIndex;
-                                const sheetTitle = sheet?.topic_title || `Page ${sheet?.page_number || sIdx + 1}`;
-                                return (
-                                    <div 
-                                        key={sIdx}
-                                        className={`visual-scrubber-segment ${isPast ? 'past' : ''} ${isCurrent ? 'active' : ''}`}
-                                        onClick={() => onJumpToVisualSheet?.(sIdx)}
-                                    >
-                                        <div className="segment-track">
-                                            <div className="segment-fill"></div>
+                        visualSheets && visualSheets.length > 0 && visualSheets.length <= 6 ? (
+                            <div className="visual-segmented-scrubber" title="Jump between Visual Sheets">
+                                {visualSheets.map((sheet, sIdx) => {
+                                    const isPast = sIdx < activeVisualSheetIndex;
+                                    const isCurrent = sIdx === activeVisualSheetIndex;
+                                    const sheetTitle = sheet?.topic_title || `Sheet ${sIdx + 1}`;
+                                    return (
+                                        <div 
+                                            key={sIdx}
+                                            className={`visual-scrubber-segment ${isPast ? 'past' : ''} ${isCurrent ? 'active' : ''}`}
+                                            onClick={() => onJumpToVisualSheet?.(sIdx)}
+                                        >
+                                            <div className="segment-track">
+                                                <div className="segment-fill"></div>
+                                            </div>
+                                            <div className="segment-tooltip">
+                                                <span className="st-num">Sheet {sIdx + 1}</span>
+                                                <span className="st-title">{sheetTitle}</span>
+                                            </div>
                                         </div>
-                                        <div className="segment-tooltip">
-                                            <span className="st-num">Sheet {sIdx + 1}</span>
-                                            <span className="st-title">{sheetTitle}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="scrubber-wrapper">
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max={Math.max(0, (visualSheets?.length || 1) - 1)} 
+                                    value={activeVisualSheetIndex} 
+                                    className="page-scrubber"
+                                    style={{
+                                        '--scrubber-fill': `${(visualSheets?.length > 1 ? (activeVisualSheetIndex / (visualSheets.length - 1)) * 100 : 0)}%`
+                                    }}
+                                    onChange={(e) => {
+                                        const idx = parseInt(e.target.value, 10);
+                                        onJumpToVisualSheet?.(idx);
+                                    }}
+                                />
+                            </div>
+                        )
                     ) : (
                         <div className="scrubber-wrapper">
                             <input 
