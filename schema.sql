@@ -1,5 +1,5 @@
 -- AUTO-GENERATED SCHEMA DUMP
--- Date: 2026-10-22T15:56:53.319Z
+-- Date: 2026-10-24T14:47:09.591Z
 
 -- ========================
 -- TABLES & COLUMNS
@@ -255,6 +255,12 @@ Table: user_custom_flashcards | Policy: Users own their custom flashcards | Cmd:
 Table: course_visual_notebooks | Policy: Allow public read access to visual course notebooks | Cmd: SELECT | Using: true
 Table: telegram_login_tokens | Policy: Deny all public access to telegram_login_tokens | Cmd: ALL | Using: false
 null
+Table: sections | Policy: Auth read only | Cmd: SELECT | Using: (EXISTS ( SELECT 1
+   FROM exams e
+  WHERE (e.id = sections.exam_id)))
+Table: questions | Policy: Auth read only | Cmd: SELECT | Using: (EXISTS ( SELECT 1
+   FROM sections s
+  WHERE (s.id = questions.section_id)))
 Table: course_flashcards | Policy: Allow authenticated read for course_flashcards | Cmd: SELECT | Using: ((EXISTS ( SELECT 1
    FROM profiles p
   WHERE ((p.id = auth.uid()) AND (p.is_pro = true) AND ((p.pro_expires_at IS NULL) OR (p.pro_expires_at > now()))))) OR (NOT (EXISTS ( SELECT 1
@@ -264,13 +270,7 @@ Table: course_flashcards | Policy: Allow authenticated read for course_flashcard
            FROM book_flashcard_progress bfp
           WHERE ((bfp.course_code = course_flashcards.course_code) AND (bfp.cards_generated > 0))
           GROUP BY bfp.chapter_title) oc
-  WHERE ((oc.ch_title = course_flashcards.chapter_title) AND (oc.ch_idx >= (oc.total_ch - LEAST((oc.total_ch - 1), ((ceil(((oc.total_ch)::numeric * 0.5)))::integer)::bigint))))))))
-Table: sections | Policy: Auth read only | Cmd: SELECT | Using: (EXISTS ( SELECT 1
-   FROM exams e
-  WHERE (e.id = sections.exam_id)))
-Table: questions | Policy: Auth read only | Cmd: SELECT | Using: (EXISTS ( SELECT 1
-   FROM sections s
-  WHERE (s.id = questions.section_id)))
+  WHERE ((oc.ch_title = course_flashcards.chapter_title) AND (oc.ch_idx >= (oc.total_ch - LEAST((oc.total_ch - 1), ((ceil(((oc.total_ch)::numeric * 0.7)))::integer)::bigint))))))))
 
 -- ========================
 -- FUNCTIONS & RPCs
@@ -1507,55 +1507,6 @@ BEGIN
 END;
 
 
--- Function: get_course_flashcard_chapters
-
-DECLARE
-    v_chapters jsonb;
-BEGIN
-    -- Try book_flashcard_progress (official structured pipeline)
-    WITH ordered_chapters AS (
-        SELECT 
-            bfp.chapter_title AS ch_title,
-            (row_number() OVER (ORDER BY MIN(bfp.start_page) ASC) - 1)::int AS ch_idx,
-            count(*) OVER ()::int AS total_ch
-        FROM public.book_flashcard_progress bfp
-        WHERE bfp.course_code = p_course_code AND bfp.cards_generated > 0
-        GROUP BY bfp.chapter_title
-    )
-    SELECT jsonb_agg(
-        jsonb_build_object(
-            'title', ch_title,
-            'is_pro_gated', (ch_idx >= (total_ch - LEAST(total_ch - 1, CEIL(total_ch * 0.5)::int)))
-        ) ORDER BY ch_idx ASC
-    )
-    INTO v_chapters
-    FROM ordered_chapters;
-
-    -- Fallback directly to course_flashcards table if progress records are missing
-    IF v_chapters IS NULL OR jsonb_array_length(v_chapters) = 0 THEN
-        WITH ordered_raw AS (
-            SELECT 
-                cf.chapter_title AS ch_title,
-                (row_number() OVER (ORDER BY MIN(cf.ref_page) ASC) - 1)::int AS ch_idx,
-                count(*) OVER ()::int AS total_ch
-            FROM public.course_flashcards cf
-            WHERE cf.course_code = p_course_code
-            GROUP BY cf.chapter_title
-        )
-        SELECT jsonb_agg(
-            jsonb_build_object(
-                'title', ch_title,
-                'is_pro_gated', (ch_idx >= (total_ch - LEAST(total_ch - 1, CEIL(total_ch * 0.5)::int)))
-            ) ORDER BY ch_idx ASC
-        )
-        INTO v_chapters
-        FROM ordered_raw;
-    END IF;
-
-    RETURN COALESCE(v_chapters, '[]'::jsonb);
-END;
-
-
 -- Function: get_student_academic_pacing
 
 DECLARE
@@ -1856,6 +1807,55 @@ BEGIN
 END;
 
 
+-- Function: get_course_flashcard_chapters
+
+DECLARE
+    v_chapters jsonb;
+BEGIN
+    -- Try book_flashcard_progress (official structured pipeline)
+    WITH ordered_chapters AS (
+        SELECT 
+            bfp.chapter_title AS ch_title,
+            (row_number() OVER (ORDER BY MIN(bfp.start_page) ASC) - 1)::int AS ch_idx,
+            count(*) OVER ()::int AS total_ch
+        FROM public.book_flashcard_progress bfp
+        WHERE bfp.course_code = p_course_code AND bfp.cards_generated > 0
+        GROUP BY bfp.chapter_title
+    )
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'title', ch_title,
+            'is_pro_gated', (ch_idx >= (total_ch - LEAST(total_ch - 1, CEIL(total_ch * 0.7)::int)))
+        ) ORDER BY ch_idx ASC
+    )
+    INTO v_chapters
+    FROM ordered_chapters;
+
+    -- Fallback directly to course_flashcards table if progress records are missing
+    IF v_chapters IS NULL OR jsonb_array_length(v_chapters) = 0 THEN
+        WITH ordered_raw AS (
+            SELECT 
+                cf.chapter_title AS ch_title,
+                (row_number() OVER (ORDER BY MIN(cf.ref_page) ASC) - 1)::int AS ch_idx,
+                count(*) OVER ()::int AS total_ch
+            FROM public.course_flashcards cf
+            WHERE cf.course_code = p_course_code
+            GROUP BY cf.chapter_title
+        )
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'title', ch_title,
+                'is_pro_gated', (ch_idx >= (total_ch - LEAST(total_ch - 1, CEIL(total_ch * 0.7)::int)))
+            ) ORDER BY ch_idx ASC
+        )
+        INTO v_chapters
+        FROM ordered_raw;
+    END IF;
+
+    RETURN COALESCE(v_chapters, '[]'::jsonb);
+END;
+
+
 -- Function: check_self_reply
 
 DECLARE
@@ -1900,6 +1900,125 @@ BEGIN
         RETURN QUERY SELECT TRUE, found_provider;
     ELSE
         RETURN QUERY SELECT FALSE, NULL::TEXT;
+    END IF;
+END;
+
+
+-- Function: get_srs_session_queue
+
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_is_pro BOOLEAN := false;
+    v_pro_expires_at TIMESTAMPTZ;
+    v_is_chapter_gated BOOLEAN := false;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Authentication required';
+    END IF;
+
+    -- Check User Pro / Gold Status
+    SELECT COALESCE(profiles.is_pro, false), profiles.pro_expires_at
+    INTO v_is_pro, v_pro_expires_at
+    FROM public.profiles
+    WHERE profiles.id = v_user_id;
+
+    IF v_is_pro AND (v_pro_expires_at IS NULL OR v_pro_expires_at > NOW()) THEN
+        v_is_pro := true;
+    ELSE
+        v_is_pro := false;
+    END IF;
+
+    IF p_is_vault OR p_course_code = 'VAULT' THEN
+        RETURN QUERY
+        SELECT 
+            card.id, card.front, card.back, card.ref, card.chapter_title, card.is_mistake,
+            card.due_status, card.interval_days, card.ease_factor, card.repetitions
+        FROM (
+            SELECT 
+                umf.id, umf.front, umf.back, COALESCE(umf.reference_info, 'Exam Mistake Review') as ref,
+                COALESCE(umf.course_code, 'Mistake Vault') as chapter_title, true as is_mistake,
+                CASE WHEN srs.card_id IS NULL THEN 'new' WHEN srs.next_review_at <= NOW() THEN 'overdue' ELSE 'future' END as due_status,
+                COALESCE(srs.interval_days, 0) as interval_days, COALESCE(srs.ease_factor, 2.5) as ease_factor,
+                COALESCE(srs.repetitions, 0) as repetitions, COALESCE(srs.next_review_at, umf.created_at) as sort_date,
+                CASE WHEN srs.next_review_at <= NOW() THEN 1 WHEN srs.card_id IS NULL THEN 2 ELSE 3 END as priority_bucket
+            FROM public.user_mistake_flashcards umf
+            LEFT JOIN public.user_flashcard_srs srs ON srs.card_id = umf.id AND srs.user_id = v_user_id
+            WHERE umf.user_id = v_user_id
+
+            UNION ALL
+
+            SELECT 
+                ucf.id, ucf.front, ucf.back, COALESCE(ucf.ref, 'Miron AI • Mistake Review') as ref,
+                COALESCE(ucf.course_code, 'Mistake Vault') as chapter_title, true as is_mistake,
+                CASE WHEN srs.card_id IS NULL THEN 'new' WHEN srs.next_review_at <= NOW() THEN 'overdue' ELSE 'future' END as due_status,
+                COALESCE(srs.interval_days, 0) as interval_days, COALESCE(srs.ease_factor, 2.5) as ease_factor,
+                COALESCE(srs.repetitions, 0) as repetitions, COALESCE(srs.next_review_at, ucf.created_at) as sort_date,
+                CASE WHEN srs.next_review_at <= NOW() THEN 1 WHEN srs.card_id IS NULL THEN 2 ELSE 3 END as priority_bucket
+            FROM public.user_custom_flashcards ucf
+            LEFT JOIN public.user_flashcard_srs srs ON srs.card_id = ucf.id AND srs.user_id = v_user_id
+            WHERE ucf.user_id = v_user_id AND ucf.is_mistake = true
+        ) card
+        ORDER BY card.priority_bucket ASC, card.sort_date ASC
+        LIMIT p_limit;
+    ELSE
+        -- 70% Course Deck Chapter Paywall Enforcement
+        IF NOT v_is_pro AND p_chapter_title IS NOT NULL THEN
+            WITH ordered_chapters AS (
+                SELECT 
+                    bfp.chapter_title AS ch_title,
+                    ROW_NUMBER() OVER (ORDER BY MIN(bfp.start_page) ASC) - 1 AS ch_idx,
+                    COUNT(*) OVER () AS total_ch
+                FROM public.book_flashcard_progress bfp
+                WHERE bfp.course_code = p_course_code AND bfp.cards_generated > 0
+                GROUP BY bfp.chapter_title
+            )
+            SELECT (oc.ch_idx >= (oc.total_ch - LEAST(oc.total_ch - 1, CEIL(oc.total_ch * 0.7)::int)))
+            INTO v_is_chapter_gated
+            FROM ordered_chapters oc
+            WHERE oc.ch_title = p_chapter_title;
+
+            IF COALESCE(v_is_chapter_gated, false) = true THEN
+                RAISE EXCEPTION 'PRO_REQUIRED';
+            END IF;
+        END IF;
+
+        RETURN QUERY
+        SELECT 
+            card.id, card.front, card.back, card.ref, card.chapter_title, card.is_mistake,
+            card.due_status, card.interval_days, card.ease_factor, card.repetitions
+        FROM (
+            SELECT 
+                cf.id, cf.front, cf.back,
+                CASE WHEN cf.ref_page IS NOT NULL THEN 'Page ' || cf.ref_page ELSE COALESCE(cf.section_title, 'Textbook Section') END as ref,
+                COALESCE(cf.chapter_title, cf.course_code) as chapter_title, false as is_mistake,
+                CASE WHEN srs.card_id IS NULL THEN 'new' WHEN srs.next_review_at <= NOW() THEN 'overdue' ELSE 'future' END as due_status,
+                COALESCE(srs.interval_days, 0) as interval_days, COALESCE(srs.ease_factor, 2.5) as ease_factor,
+                COALESCE(srs.repetitions, 0) as repetitions, COALESCE(srs.next_review_at, '9999-12-31'::timestamptz) as sort_date,
+                CASE WHEN srs.next_review_at <= NOW() THEN 1 WHEN srs.card_id IS NULL THEN 2 ELSE 3 END as priority_bucket,
+                cf.ref_page as page_num
+            FROM public.course_flashcards cf
+            LEFT JOIN public.user_flashcard_srs srs ON srs.card_id = cf.id AND srs.user_id = v_user_id
+            WHERE cf.course_code = p_course_code
+              AND (p_chapter_title IS NULL OR cf.chapter_title = p_chapter_title)
+
+            UNION ALL
+
+            SELECT 
+                ucf.id, ucf.front, ucf.back, COALESCE(ucf.ref, 'Miron AI • Synthesis') as ref,
+                COALESCE(ucf.chapter_title, ucf.course_code) as chapter_title, false as is_mistake,
+                CASE WHEN srs.card_id IS NULL THEN 'new' WHEN srs.next_review_at <= NOW() THEN 'overdue' ELSE 'future' END as due_status,
+                COALESCE(srs.interval_days, 0) as interval_days, COALESCE(srs.ease_factor, 2.5) as ease_factor,
+                COALESCE(srs.repetitions, 0) as repetitions, COALESCE(srs.next_review_at, '9999-12-31'::timestamptz) as sort_date,
+                CASE WHEN srs.next_review_at <= NOW() THEN 1 WHEN srs.card_id IS NULL THEN 2 ELSE 3 END as priority_bucket,
+                99999 as page_num
+            FROM public.user_custom_flashcards ucf
+            LEFT JOIN public.user_flashcard_srs srs ON srs.card_id = ucf.id AND srs.user_id = v_user_id
+            WHERE ucf.user_id = v_user_id 
+              AND ucf.course_code = p_course_code
+              AND (p_chapter_title IS NULL OR ucf.chapter_title = p_chapter_title)
+        ) card
+        ORDER BY card.priority_bucket ASC, card.sort_date ASC, card.page_num ASC NULLS LAST
+        LIMIT p_limit;
     END IF;
 END;
 
@@ -2462,190 +2581,6 @@ BEGIN
         END IF;
     ELSE
         INSERT INTO public.poll_votes (message_id, user_id, option_index) VALUES (req_message_id, auth.uid(), req_option_index);
-    END IF;
-END;
-
-
--- Function: get_srs_session_queue
-
-#variable_conflict use_column
-DECLARE
-    v_user_id UUID := auth.uid();
-    v_is_pro BOOLEAN := false;
-    v_pro_expires_at TIMESTAMPTZ;
-    v_is_chapter_gated BOOLEAN := false;
-BEGIN
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Authentication required';
-    END IF;
-
-    -- 1. Check User Pro / Gold Status
-    SELECT COALESCE(profiles.is_pro, false), profiles.pro_expires_at
-    INTO v_is_pro, v_pro_expires_at
-    FROM public.profiles
-    WHERE profiles.id = v_user_id;
-
-    IF v_is_pro AND (v_pro_expires_at IS NULL OR v_pro_expires_at > NOW()) THEN
-        v_is_pro := true;
-    ELSE
-        v_is_pro := false;
-    END IF;
-
-    -- 2. Mistake Vault: Always 100% Free for Everyone
-    IF p_is_vault OR p_course_code = 'VAULT' THEN
-        RETURN QUERY
-        SELECT 
-            card.id, card.front, card.back, card.ref, card.chapter_title, card.is_mistake,
-            card.due_status, card.interval_days, card.ease_factor, card.repetitions
-        FROM (
-            SELECT 
-                umf.id,
-                umf.front,
-                umf.back,
-                COALESCE(umf.reference_info, 'Exam Mistake Review') as ref,
-                COALESCE(umf.course_code, 'Mistake Vault') as chapter_title,
-                true as is_mistake,
-                CASE 
-                    WHEN srs.card_id IS NULL THEN 'new'
-                    WHEN srs.next_review_at <= NOW() THEN 'overdue'
-                    ELSE 'future'
-                END as due_status,
-                COALESCE(srs.interval_days, 0) as interval_days,
-                COALESCE(srs.ease_factor, 2.5) as ease_factor,
-                COALESCE(srs.repetitions, 0) as repetitions,
-                COALESCE(srs.next_review_at, umf.created_at) as sort_date,
-                CASE 
-                    WHEN srs.next_review_at <= NOW() THEN 1
-                    WHEN srs.card_id IS NULL THEN 2
-                    ELSE 3
-                END as priority_bucket
-            FROM public.user_mistake_flashcards umf
-            LEFT JOIN public.user_flashcard_srs srs 
-                   ON srs.card_id = umf.id AND srs.user_id = v_user_id
-            WHERE umf.user_id = v_user_id
-
-            UNION ALL
-
-            SELECT 
-                ucf.id,
-                ucf.front,
-                ucf.back,
-                COALESCE(ucf.ref, 'Miron AI • Mistake Review') as ref,
-                COALESCE(ucf.course_code, 'Mistake Vault') as chapter_title,
-                true as is_mistake,
-                CASE 
-                    WHEN srs.card_id IS NULL THEN 'new'
-                    WHEN srs.next_review_at <= NOW() THEN 'overdue'
-                    ELSE 'future'
-                END as due_status,
-                COALESCE(srs.interval_days, 0) as interval_days,
-                COALESCE(srs.ease_factor, 2.5) as ease_factor,
-                COALESCE(srs.repetitions, 0) as repetitions,
-                COALESCE(srs.next_review_at, ucf.created_at) as sort_date,
-                CASE 
-                    WHEN srs.next_review_at <= NOW() THEN 1
-                    WHEN srs.card_id IS NULL THEN 2
-                    ELSE 3
-                END as priority_bucket
-            FROM public.user_custom_flashcards ucf
-            LEFT JOIN public.user_flashcard_srs srs 
-                   ON srs.card_id = ucf.id AND srs.user_id = v_user_id
-            WHERE ucf.user_id = v_user_id AND ucf.is_mistake = true
-        ) card
-        ORDER BY card.priority_bucket ASC, card.sort_date ASC
-        LIMIT p_limit;
-    ELSE
-        -- 3. Course Deck Chapter Paywall Enforcement (50% Tail-Gated)
-        IF NOT v_is_pro AND p_chapter_title IS NOT NULL THEN
-            WITH ordered_chapters AS (
-                SELECT 
-                    bfp.chapter_title AS ch_title,
-                    ROW_NUMBER() OVER (ORDER BY MIN(bfp.start_page) ASC) - 1 AS ch_idx,
-                    COUNT(*) OVER () AS total_ch
-                FROM public.book_flashcard_progress bfp
-                WHERE bfp.course_code = p_course_code AND bfp.cards_generated > 0
-                GROUP BY bfp.chapter_title
-            )
-            SELECT (oc.ch_idx >= (oc.total_ch - LEAST(oc.total_ch - 1, CEIL(oc.total_ch * 0.5)::int)))
-            INTO v_is_chapter_gated
-            FROM ordered_chapters oc
-            WHERE oc.ch_title = p_chapter_title;
-
-            IF COALESCE(v_is_chapter_gated, false) = true THEN
-                RAISE EXCEPTION 'PRO_REQUIRED';
-            END IF;
-        END IF;
-
-        -- 4. Serve Course Flashcards
-        RETURN QUERY
-        SELECT 
-            card.id, card.front, card.back, card.ref, card.chapter_title, card.is_mistake,
-            card.due_status, card.interval_days, card.ease_factor, card.repetitions
-        FROM (
-            SELECT 
-                cf.id,
-                cf.front,
-                cf.back,
-                CASE 
-                    WHEN cf.ref_page IS NOT NULL THEN 'Page ' || cf.ref_page
-                    ELSE COALESCE(cf.section_title, 'Textbook Section')
-                END as ref,
-                COALESCE(cf.chapter_title, cf.course_code) as chapter_title,
-                false as is_mistake,
-                CASE 
-                    WHEN srs.card_id IS NULL THEN 'new'
-                    WHEN srs.next_review_at <= NOW() THEN 'overdue'
-                    ELSE 'future'
-                END as due_status,
-                COALESCE(srs.interval_days, 0) as interval_days,
-                COALESCE(srs.ease_factor, 2.5) as ease_factor,
-                COALESCE(srs.repetitions, 0) as repetitions,
-                COALESCE(srs.next_review_at, '9999-12-31'::timestamptz) as sort_date,
-                CASE 
-                    WHEN srs.next_review_at <= NOW() THEN 1
-                    WHEN srs.card_id IS NULL THEN 2
-                    ELSE 3
-                END as priority_bucket,
-                cf.ref_page as page_num
-            FROM public.course_flashcards cf
-            LEFT JOIN public.user_flashcard_srs srs 
-                   ON srs.card_id = cf.id AND srs.user_id = v_user_id
-            WHERE cf.course_code = p_course_code
-              AND (p_chapter_title IS NULL OR cf.chapter_title = p_chapter_title)
-
-            UNION ALL
-
-            SELECT 
-                ucf.id,
-                ucf.front,
-                ucf.back,
-                COALESCE(ucf.ref, 'Miron AI • Synthesis') as ref,
-                COALESCE(ucf.chapter_title, ucf.course_code) as chapter_title,
-                false as is_mistake,
-                CASE 
-                    WHEN srs.card_id IS NULL THEN 'new'
-                    WHEN srs.next_review_at <= NOW() THEN 'overdue'
-                    ELSE 'future'
-                END as due_status,
-                COALESCE(srs.interval_days, 0) as interval_days,
-                COALESCE(srs.ease_factor, 2.5) as ease_factor,
-                COALESCE(srs.repetitions, 0) as repetitions,
-                COALESCE(srs.next_review_at, '9999-12-31'::timestamptz) as sort_date,
-                CASE 
-                    WHEN srs.next_review_at <= NOW() THEN 1
-                    WHEN srs.card_id IS NULL THEN 2
-                    ELSE 3
-                END as priority_bucket,
-                99999 as page_num
-            FROM public.user_custom_flashcards ucf
-            LEFT JOIN public.user_flashcard_srs srs 
-                   ON srs.card_id = ucf.id AND srs.user_id = v_user_id
-            WHERE ucf.user_id = v_user_id 
-              AND ucf.course_code = p_course_code
-              AND (p_chapter_title IS NULL OR ucf.chapter_title = p_chapter_title)
-        ) card
-        ORDER BY card.priority_bucket ASC, card.sort_date ASC, card.page_num ASC NULLS LAST
-        LIMIT p_limit;
     END IF;
 END;
 
@@ -4125,12 +4060,45 @@ BEGIN
 END;
 
 
+-- Function: get_user_course_positions
+
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ucp.book_id,
+        b.title AS book_title,
+        COALESCE(ucp.course_code, b.course_code) AS course_code,
+        ucp.current_page,
+        ucp.furthest_page,
+        ucp.chapter_title,
+        ucp.section_title,
+        ucp.reading_seconds,
+        ucp.completion_pct,
+        ucp.last_read_at
+    FROM public.user_course_progress ucp
+    JOIN public.books b ON ucp.book_id = b.id
+    WHERE ucp.user_id = p_user_id
+    ORDER BY ucp.last_read_at DESC;
+END;
+
+
+-- Function: get_payment_methods
+
+DECLARE
+    v_val JSONB;
+BEGIN
+    SELECT value INTO v_val FROM public.system_config WHERE key = 'payment_methods';
+    RETURN COALESCE(v_val, '{}'::jsonb);
+END;
+
+
 -- Function: record_telemetry_flush
 
 DECLARE
     v_user_id UUID := auth.uid();
     v_date DATE := CURRENT_DATE;
-    v_dur INT := GREATEST(p_duration_seconds, 0);
+    -- Clamp single flush to max 60 seconds (prevents wake-up time-warp)
+    v_dur INT := LEAST(GREATEST(p_duration_seconds, 0), 60);
     v_act INT := GREATEST(p_interactions, 0);
     
     v_book_id UUID;
@@ -4145,7 +4113,7 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'reason', 'unauthenticated');
     END IF;
 
-    -- 1. Daily Roll-up Telemetry update
+    -- 1. Daily Roll-up Telemetry update (enforce 16h = 57,600s daily ceiling)
     INSERT INTO public.user_daily_telemetry (
         user_id, date, total_active_seconds,
         time_exam_seconds, time_books_seconds, time_miron_seconds,
@@ -4162,13 +4130,13 @@ BEGIN
         v_act, NOW()
     )
     ON CONFLICT (user_id, date) DO UPDATE SET
-        total_active_seconds = user_daily_telemetry.total_active_seconds + EXCLUDED.total_active_seconds,
-        time_exam_seconds = user_daily_telemetry.time_exam_seconds + EXCLUDED.time_exam_seconds,
-        time_books_seconds = user_daily_telemetry.time_books_seconds + EXCLUDED.time_books_seconds,
-        time_miron_seconds = user_daily_telemetry.time_miron_seconds + EXCLUDED.time_miron_seconds,
-        time_connect_seconds = user_daily_telemetry.time_connect_seconds + EXCLUDED.time_connect_seconds,
-        time_discover_seconds = user_daily_telemetry.time_discover_seconds + EXCLUDED.time_discover_seconds,
-        time_home_seconds = user_daily_telemetry.time_home_seconds + EXCLUDED.time_home_seconds,
+        total_active_seconds = LEAST(57600, user_daily_telemetry.total_active_seconds + EXCLUDED.total_active_seconds),
+        time_exam_seconds = LEAST(57600, user_daily_telemetry.time_exam_seconds + EXCLUDED.time_exam_seconds),
+        time_books_seconds = LEAST(57600, user_daily_telemetry.time_books_seconds + EXCLUDED.time_books_seconds),
+        time_miron_seconds = LEAST(57600, user_daily_telemetry.time_miron_seconds + EXCLUDED.time_miron_seconds),
+        time_connect_seconds = LEAST(57600, user_daily_telemetry.time_connect_seconds + EXCLUDED.time_connect_seconds),
+        time_discover_seconds = LEAST(57600, user_daily_telemetry.time_discover_seconds + EXCLUDED.time_discover_seconds),
+        time_home_seconds = LEAST(57600, user_daily_telemetry.time_home_seconds + EXCLUDED.time_home_seconds),
         total_interactions = user_daily_telemetry.total_interactions + EXCLUDED.total_interactions,
         updated_at = NOW();
 
@@ -4211,38 +4179,6 @@ BEGIN
     END IF;
 
     RETURN jsonb_build_object('success', true);
-END;
-
-
--- Function: get_user_course_positions
-
-BEGIN
-    RETURN QUERY
-    SELECT 
-        ucp.book_id,
-        b.title AS book_title,
-        COALESCE(ucp.course_code, b.course_code) AS course_code,
-        ucp.current_page,
-        ucp.furthest_page,
-        ucp.chapter_title,
-        ucp.section_title,
-        ucp.reading_seconds,
-        ucp.completion_pct,
-        ucp.last_read_at
-    FROM public.user_course_progress ucp
-    JOIN public.books b ON ucp.book_id = b.id
-    WHERE ucp.user_id = p_user_id
-    ORDER BY ucp.last_read_at DESC;
-END;
-
-
--- Function: get_payment_methods
-
-DECLARE
-    v_val JSONB;
-BEGIN
-    SELECT value INTO v_val FROM public.system_config WHERE key = 'payment_methods';
-    RETURN COALESCE(v_val, '{}'::jsonb);
 END;
 
 
