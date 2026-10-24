@@ -597,7 +597,7 @@ const Auth = () => {
                         </div>
                         <div className="consortium-text-group">
                             <span className="consortium-name">Heaven Academy</span>
-                            <span className="consortium-caption">Academic Vault</span>
+                            <span className="consortium-caption">Co-Powered by</span>
                         </div>
                     </div>
 
@@ -620,7 +620,7 @@ const Auth = () => {
                         </div>
                         <div className="consortium-text-group">
                             <span className="consortium-name">LinkUp Platform</span>
-                            <span className="consortium-caption">Core AI Engine</span>
+                            <span className="consortium-caption">Engine Core</span>
                         </div>
                     </div>
                 </div>
