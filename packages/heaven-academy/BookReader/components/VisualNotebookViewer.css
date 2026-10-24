@@ -35,15 +35,7 @@
     --vn-heading-color: #38bdf8;
 }
 
-.theme-sepia .v-notebook-root {
-    --vn-canvas-bg: #f4ecd8;
-    --vn-card-bg: #ede3ca;
-    --vn-subcard-bg: #e4d8bc;
-    --vn-border: rgba(91, 70, 54, 0.2);
-    --vn-text-main: #5b4636;
-    --vn-text-muted: #78604d;
-    --vn-heading-color: #3e2817;
-}
+
 
 .theme-light .v-notebook-root {
     --vn-canvas-bg: #ffffff;
@@ -235,70 +227,7 @@
     box-shadow: none !important;
 }
 
-/* --- SEPIA THEME ADAPTATION --- */
-.theme-sepia .v-notebook-root .sheet-canvas [class*="badge"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="pill"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="tag"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-label"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-num"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="tier"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-step"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-node"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="layer-"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="col-"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="icon"]:not(.hero-icon),
-.theme-sepia .v-notebook-root .sheet-canvas [class*="code"] {
-    background: rgba(91, 70, 54, 0.08) !important;
-    border-color: rgba(91, 70, 54, 0.2) !important;
-    color: var(--vn-heading-color, #3e2817) !important;
-    box-shadow: none !important;
-}
-.theme-sepia .v-notebook-root .sheet-canvas {
-    background: #f4ecd8 !important;
-    color: #5b4636 !important;
-}
 
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-card"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-box"]:not([class*="-icon"]),
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-block"]:not(.v-bento-canvas),
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-item"]:not([class*="icon"]),
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-panel"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-grid"] > div,
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-header"]:not([class*="hero"]):not(.v-sheet-anchor-bar),
-.theme-sepia .v-notebook-root .sheet-canvas > div:not(.v-sheet-anchor-bar),
-.theme-sepia .v-notebook-root .sheet-canvas > header:not(.v-sheet-anchor-bar),
-.theme-sepia .v-notebook-root .sheet-canvas div[style*="background"],
-.theme-sepia .v-notebook-root .sheet-canvas div[style*="background-color"] {
-    background: #ede3ca !important;
-    border-color: rgba(91, 70, 54, 0.2) !important;
-    color: #5b4636 !important;
-}
-
-.theme-sepia .v-notebook-root .sheet-canvas [class*="sub-"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="mini-"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="inner-"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="example"] {
-    background: #e4d8bc !important;
-    border-color: rgba(91, 70, 54, 0.2) !important;
-    color: #5b4636 !important;
-}
-
-.theme-sepia .v-notebook-root .sheet-canvas h1,
-.theme-sepia .v-notebook-root .sheet-canvas h2,
-.theme-sepia .v-notebook-root .sheet-canvas h3,
-.theme-sepia .v-notebook-root .sheet-canvas h4,
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-title"],
-.theme-sepia .v-notebook-root .sheet-canvas [class*="-heading"] {
-    color: #3e2817 !important;
-}
-
-.theme-sepia .v-notebook-root .sheet-canvas p,
-.theme-sepia .v-notebook-root .sheet-canvas li,
-.theme-sepia .v-notebook-root .sheet-canvas td,
-.theme-sepia .v-notebook-root .sheet-canvas th {
-    color: #5b4636 !important;
-}
 
 /* --- LIGHT THEME ADAPTATION --- */
 .theme-light .v-notebook-root .sheet-canvas {
@@ -461,11 +390,7 @@
     box-shadow: none !important;
 }
 
-.theme-sepia .v-notebook-root .v-sheet-anchor-bar {
-    background: rgba(91, 70, 54, 0.08);
-    border-color: rgba(91, 70, 54, 0.2);
-    color: #5b4636;
-}
+
 
 /* Language-specific Typography */
 .v-notebook-root,
@@ -532,10 +457,10 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-    animation: vFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: vFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     transform-origin: top center;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    will-change: transform;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), scale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, scale;
 }
 
 @keyframes vFadeIn {
