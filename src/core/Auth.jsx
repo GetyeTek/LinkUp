@@ -583,7 +583,7 @@ const Auth = () => {
                         </div>
                         <div className="consortium-text-group">
                             <span className="consortium-name">Ministry of Education</span>
-                            <span className="consortium-caption">Curriculum Aligned</span>
+                            <span className="consortium-caption">MoE Aligned</span>
                         </div>
                     </div>
 
@@ -606,7 +606,7 @@ const Auth = () => {
                         </div>
                         <div className="consortium-text-group">
                             <span className="consortium-name">Heaven Academy</span>
-                            <span className="consortium-caption">Academic Vault</span>
+                            <span className="consortium-caption">Exam Vault</span>
                         </div>
                     </div>
 
@@ -629,7 +629,7 @@ const Auth = () => {
                         </div>
                         <div className="consortium-text-group">
                             <span className="consortium-name">LinkUp Platform</span>
-                            <span className="consortium-caption">Platform Core</span>
+                            <span className="consortium-caption">AI Engine</span>
                         </div>
                     </div>
                 </div>
