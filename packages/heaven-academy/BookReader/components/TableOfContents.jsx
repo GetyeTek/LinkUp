@@ -132,7 +132,7 @@ const TableOfContents = ({
                         <i className={`fas ${isSheetMode ? 'fa-layer-group' : 'fa-list'}`} style={isSheetMode ? { color: 'var(--accent-teal, #42d7b8)' } : {}}></i>
                         <span>{isSheetMode ? 'Note Outline' : 'Contents'}</span>
                     </h3>
-                    <button className="icon-btn" style={{color: 'inherit'}} onClick={() => setIsTocOpen(false)}>
+                    <button className="toc-close-btn" onClick={() => setIsTocOpen(false)} title="Close">
                         <i className="fas fa-times"></i>
                     </button>
                 </div>
