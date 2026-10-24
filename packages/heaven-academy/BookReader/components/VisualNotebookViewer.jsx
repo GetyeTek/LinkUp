@@ -346,12 +346,15 @@ const VisualNotebookViewer = ({
 
   return (
     <div className={`v-notebook-root lang-${language}`} ref={containerRef}>
-      <div 
-        className="v-bento-canvas"
-        style={{ 
-          transform: zoomScale !== 1 ? `scale(${zoomScale})` : 'none'
-        }}
-      >
+              <div 
+          className="v-bento-canvas"
+          style={{ 
+            scale: zoomScale !== 1 ? zoomScale : 1,
+            transform: zoomScale !== 1 ? `scale(${zoomScale})` : 'none',
+            transformOrigin: 'top center',
+            transition: 'scale 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}
+        >
         {sheets.map((sheet, sIdx) => (
           <article 
             key={sheet.id || sheet.page_number}
