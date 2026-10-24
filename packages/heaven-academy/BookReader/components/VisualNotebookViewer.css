@@ -65,7 +65,7 @@
     color: #f1f5f9 !important;
 }
 
-/* 1. All Generic Primary Containers, Cards, and Inline-Styled Divs */
+/* 1. All Generic Primary Containers, Cards, Headers, and Inline-Styled Divs */
 .theme-dark .v-notebook-root .sheet-canvas [class*="-card"],
 .theme-dark .v-notebook-root .sheet-canvas [class*="-box"]:not(.hero-banner):not([class*="-icon"]),
 .theme-dark .v-notebook-root .sheet-canvas [class*="-block"]:not(.v-bento-canvas),
@@ -74,7 +74,9 @@
 .theme-dark .v-notebook-root .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
 .theme-dark .v-notebook-root .sheet-canvas [class*="-grid"] > div,
 .theme-dark .v-notebook-root .sheet-canvas [class*="-rail"] > div:not([class*="dot"]),
-.theme-dark .v-notebook-root .sheet-canvas > div:not([class*="hero"]):not([class*="banner"]):not([class*="header"]):not(.v-sheet-anchor-bar),
+.theme-dark .v-notebook-root .sheet-canvas [class*="-header"]:not([class*="hero"]):not(.v-sheet-anchor-bar),
+.theme-dark .v-notebook-root .sheet-canvas > div:not(.v-sheet-anchor-bar),
+.theme-dark .v-notebook-root .sheet-canvas > header:not(.v-sheet-anchor-bar),
 .theme-dark .v-notebook-root .sheet-canvas div[style*="background"],
 .theme-dark .v-notebook-root .sheet-canvas div[style*="background-color"] {
     background: #1c1c24 !important;
@@ -227,7 +229,9 @@
 .theme-sepia .v-notebook-root .sheet-canvas [class*="-panel"],
 .theme-sepia .v-notebook-root .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
 .theme-sepia .v-notebook-root .sheet-canvas [class*="-grid"] > div,
-.theme-sepia .v-notebook-root .sheet-canvas > div:not([class*="hero"]):not([class*="banner"]):not([class*="header"]):not(.v-sheet-anchor-bar),
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-header"]:not([class*="hero"]):not(.v-sheet-anchor-bar),
+.theme-sepia .v-notebook-root .sheet-canvas > div:not(.v-sheet-anchor-bar),
+.theme-sepia .v-notebook-root .sheet-canvas > header:not(.v-sheet-anchor-bar),
 .theme-sepia .v-notebook-root .sheet-canvas div[style*="background"],
 .theme-sepia .v-notebook-root .sheet-canvas div[style*="background-color"] {
     background: #ede3ca !important;
