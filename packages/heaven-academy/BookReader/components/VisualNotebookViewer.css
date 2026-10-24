@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@100..900&display=swap');
+
 /* --- VISUAL NOTEBOOK CANVAS --- */
 .v-notebook-root {
     position: absolute;
@@ -124,19 +126,34 @@
 }
 
 /* Language-specific Typography */
+.v-notebook-root,
 .v-notebook-root.lang-am {
-    font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
     line-height: 1.7;
 }
 
+.v-notebook-root .sheet-canvas,
 .v-notebook-root.lang-am .sheet-canvas {
     font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
     line-height: 1.7;
 }
 
+.v-notebook-root .sheet-canvas p,
+.v-notebook-root .sheet-canvas span:not([class*="fa"]):not([class*="katex"]):not([class*="icon"]),
+.v-notebook-root .sheet-canvas div:not([class*="fa"]):not([class*="katex"]),
+.v-notebook-root .sheet-canvas h1,
+.v-notebook-root .sheet-canvas h2,
+.v-notebook-root .sheet-canvas h3,
+.v-notebook-root .sheet-canvas h4,
+.v-notebook-root .sheet-canvas li,
+.v-notebook-root .sheet-canvas td,
+.v-notebook-root .sheet-canvas th,
+.v-notebook-root .sheet-canvas strong,
+.v-notebook-root .sheet-canvas em,
+.v-notebook-root .sheet-canvas b,
 .v-notebook-root.lang-am p,
-.v-notebook-root.lang-am span,
-.v-notebook-root.lang-am div,
+.v-notebook-root.lang-am span:not([class*="fa"]):not([class*="katex"]):not([class*="icon"]),
+.v-notebook-root.lang-am div:not([class*="fa"]):not([class*="katex"]),
 .v-notebook-root.lang-am h1,
 .v-notebook-root.lang-am h2,
 .v-notebook-root.lang-am h3,
@@ -144,7 +161,7 @@
 .v-notebook-root.lang-am li,
 .v-notebook-root.lang-am td,
 .v-notebook-root.lang-am th {
-    font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
     letter-spacing: 0.1px;
 }
 
