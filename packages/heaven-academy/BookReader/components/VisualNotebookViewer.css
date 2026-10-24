@@ -625,3 +625,20 @@
     animation: sheetLandedPulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     border-radius: 24px;
 }
+
+@media (max-width: 600px) {
+    .v-notebook-root {
+        padding: 10px 8px 70px;
+    }
+    .v-notebook-sheet {
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    .v-sheet-anchor-bar {
+        padding: 4px 10px;
+        font-size: 0.68rem;
+    }
+    .v-sheet-anchor-bar .anchor-title {
+        max-width: 170px;
+    }
+}
