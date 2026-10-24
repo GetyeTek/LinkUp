@@ -269,34 +269,60 @@ const VisualNotebookViewer = ({
     }
   }, [loading, sheets]);
 
-  // 4. Bi-Directional Tracker: Updates the underlying textbook cursor as the student scrolls
+  // Decouple external callbacks from the scroll engine to prevent re-render tearing
+  const callbacksRef = useRef({ onActiveSheetChange, onSyncTextbookPage });
   useEffect(() => {
-    if (loading || sheets.length === 0 || !containerRef.current || !onSyncTextbookPage) return;
+    callbacksRef.current = { onActiveSheetChange, onSyncTextbookPage };
+  }, [onActiveSheetChange, onSyncTextbookPage]);
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const sheetIdx = parseInt(entry.target.getAttribute('data-sheet-index'), 10);
-          const pageNum = parseInt(entry.target.getAttribute('data-page-number'), 10);
-          if (!isNaN(sheetIdx)) {
-            onActiveSheetChange?.(sheetIdx);
+  // 4. Bi-Directional Tracker: High-Frequency Scroll Focal Point Calculator
+  useEffect(() => {
+    if (loading || sheets.length === 0 || !containerRef.current) return;
+
+    const container = containerRef.current;
+    let ticking = false;
+    let activeIdxCache = -1;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // Focal point: 30% down from the top of the scrolling viewport
+          const focalY = container.scrollTop + (container.clientHeight * 0.3);
+          const sheetEls = container.querySelectorAll('.v-notebook-sheet');
+          
+          for (let i = 0; i < sheetEls.length; i++) {
+            const el = sheetEls[i];
+            const elTop = el.offsetTop;
+            const elBottom = elTop + el.offsetHeight;
+            
+            if (focalY >= elTop && focalY < elBottom) {
+              const sheetIdx = parseInt(el.getAttribute('data-sheet-index'), 10);
+              const pageNum = parseInt(el.getAttribute('data-page-number'), 10);
+              
+              if (sheetIdx !== activeIdxCache && !isNaN(sheetIdx)) {
+                activeIdxCache = sheetIdx;
+                if (callbacksRef.current.onActiveSheetChange) {
+                    callbacksRef.current.onActiveSheetChange(sheetIdx);
+                }
+                if (pageNum && callbacksRef.current.onSyncTextbookPage) {
+                    callbacksRef.current.onSyncTextbookPage(pageNum);
+                }
+              }
+              break;
+            }
           }
-          if (pageNum) {
-            onSyncTextbookPage(pageNum);
-          }
-        }
-      });
-    }, {
-      root: containerRef.current,
-      rootMargin: "-15% 0px -55% 0px",
-      threshold: 0.1
-    });
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
 
-    const targets = containerRef.current.querySelectorAll('.v-notebook-sheet');
-    targets.forEach(t => observer.observe(t));
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    // Trigger once on mount to establish baseline
+    handleScroll();
 
-    return () => observer.disconnect();
-  }, [loading, sheets, onSyncTextbookPage, onActiveSheetChange]);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [loading, sheets]);
 
   // Handle direct Segmented Scrubber jumps
   useEffect(() => {
