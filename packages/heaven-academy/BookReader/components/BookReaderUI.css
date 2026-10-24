@@ -182,6 +182,120 @@
     position: relative;
 }
 
+/* YouTube-Style Segmented Scrubber for Visual Notes */
+.visual-segmented-scrubber {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 4px;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.visual-scrubber-segment {
+    flex: 1;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    padding: 8px 0;
+}
+
+.segment-track {
+    width: 100%;
+    height: 5px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.16);
+    overflow: hidden;
+    position: relative;
+    transition: height 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s;
+}
+
+.visual-scrubber-segment:hover .segment-track {
+    height: 9px;
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.visual-scrubber-segment .segment-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent, #42d7b8);
+    border-radius: 99px;
+    transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s;
+}
+
+.visual-scrubber-segment.past .segment-fill {
+    width: 100%;
+    opacity: 0.85;
+}
+
+.visual-scrubber-segment.active .segment-fill {
+    width: 100%;
+    opacity: 1;
+    box-shadow: 0 0 10px var(--accent, #42d7b8);
+}
+
+.visual-scrubber-segment.active .segment-track {
+    height: 7px;
+}
+
+.segment-tooltip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    background: rgba(18, 18, 24, 0.96);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 250;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+    max-width: 220px;
+}
+
+.visual-scrubber-segment:hover .segment-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.segment-tooltip .st-num {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--accent, #42d7b8);
+    text-transform: uppercase;
+}
+
+.segment-tooltip .st-title {
+    font-size: 0.72rem;
+    color: #f1f5f9;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+.visual-counter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: default;
+    border-color: rgba(66, 215, 184, 0.3);
+}
+
 .page-scrubber {
     -webkit-appearance: none;
     width: 100%;
