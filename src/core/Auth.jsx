@@ -409,10 +409,10 @@ const Auth = () => {
                         <h1 className="auth-title">
                             {isForgotPassword ? 'Reset Password' : (
                                 <span className="linkup-wordmark">
-                                    <span className="wordmark-cap-letter">
+                                    Link<span className="wordmark-cap-letter">
                                         <i className="fa-solid fa-graduation-cap wordmark-cap"></i>
-                                        L
-                                    </span>inkUp
+                                        Up
+                                    </span>
                                 </span>
                             )}
                         </h1>
