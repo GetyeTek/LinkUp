@@ -216,7 +216,47 @@
     stroke: rgba(255, 255, 255, 0.12) !important;
 }
 
+/* 8. Nuclear Shield: Neutralize all Rogue Badges, Pills, Tags, and Micro-Components */
+.theme-dark .v-notebook-root .sheet-canvas [class*="-badge"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="badge-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-pill"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="pill-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-tag"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="tag-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-label"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-num"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-tier"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="tier-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-step"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-node"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="layer-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="col-"] {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: var(--vn-heading-color, #38bdf8) !important;
+    box-shadow: none !important;
+}
+
 /* --- SEPIA THEME ADAPTATION --- */
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-badge"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="badge-"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-pill"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="pill-"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-tag"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="tag-"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-label"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-num"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-tier"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="tier-"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-step"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-node"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="layer-"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="col-"] {
+    background: rgba(91, 70, 54, 0.08) !important;
+    border-color: rgba(91, 70, 54, 0.2) !important;
+    color: var(--vn-heading-color, #3e2817) !important;
+    box-shadow: none !important;
+}
 .theme-sepia .v-notebook-root .sheet-canvas {
     background: #f4ecd8 !important;
     color: #5b4636 !important;
