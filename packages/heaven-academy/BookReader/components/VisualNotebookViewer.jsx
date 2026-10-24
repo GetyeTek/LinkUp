@@ -6,6 +6,88 @@ import './VisualNotebookViewer.css';
 // Session-level in-memory cache: key = `${courseCode}_${language}`
 const notebookSheetsCache = new Map();
 
+// --- UNIVERSAL IN-FLIGHT THEME NORMALIZERS (AI CHAOS DEFENSE) ---
+const normalizeSheetCss = (rawCss) => {
+  if (!rawCss) return '';
+  return rawCss
+    // 1. Sanitize font-family declarations so system-ui never hijacks Windows font-linking
+    .replace(
+      /font-family\s*:\s*[^;]+;/gi,
+      "font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, sans-serif !important;"
+    )
+    // 2. Map hardcoded light/white backgrounds to dynamic theme variables
+    .replace(
+      /(background(?:-color)?\s*:\s*)(#(?:fff|ffffff|fdfdfd|f8fafc|f1f5f9|fafafa|f5f5f5|fefefe|eeeeee)\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*255\s*,\s*255\s*,\s*255[^)]*\)|hsla?\(\s*0\s*,\s*0%\s*,\s*100%[^)]*\))(?:\s*!important)?/gi,
+      '$1var(--vn-card-bg, #1c1c24)'
+    )
+    // 3. Map light borders to dynamic theme variables
+    .replace(
+      /(border(?:-color)?\s*:\s*[^;]*?)(#(?:e2e8f0|cbd5e1|e5e7eb|d1d5db|f1f5f9|cccccc|ccc)\b|rgba?\(\s*226\s*,\s*232\s*,\s*240[^)]*\))/gi,
+      '$1var(--vn-border, rgba(255, 255, 255, 0.08))'
+    )
+    // 4. Map hardcoded daylight dark text colors to dynamic theme text variables
+    .replace(
+      /(color\s*:\s*)(#(?:0[0-9a-f]{5}|1[0-9a-f]{5}|2[0-9a-f]{5}|3[0-9a-f]{5}|4[0-9a-f]{5}|6[0-9a-f]{5}|000|111|222|333|000000|111111|222222|333333)\b|black\b)(?:\s*!important)?/gi,
+      '$1var(--vn-text-main, #f1f5f9)'
+    );
+};
+
+const normalizeSheetHtml = (rawHtml) => {
+  if (!rawHtml) return '';
+  try {
+    const clean = DOMPurify.sanitize(rawHtml, {
+      USE_PROFILES: { html: true, svg: true, mathMl: true },
+      ADD_ATTR: ['style', 'class', 'aria-hidden', 'target', 'viewBox', 'fill', 'stroke', 'stroke-width', 'cx', 'cy', 'r', 'd', 'transform']
+    });
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<body>${clean}</body>`, 'text/html');
+
+    doc.body.querySelectorAll('*').forEach(el => {
+      const style = el.getAttribute('style');
+      if (style) {
+        let s = style;
+        
+        // Neutralize hardcoded near-white/light backgrounds on any tag or classless div
+        s = s.replace(
+          /(background(?:-color)?\s*:\s*)(#(?:fff|ffffff|fdfdfd|f8fafc|f1f5f9|fafafa|f5f5f5|fefefe|eeeeee)\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*255\s*,\s*255\s*,\s*255[^)]*\)|hsla?\(\s*0\s*,\s*0%\s*,\s*100%[^)]*\))(?:\s*!important)?/gi,
+          '$1var(--vn-card-bg, #1c1c24)'
+        );
+
+        // Neutralize light borders
+        s = s.replace(
+          /(border(?:-color)?\s*:\s*[^;]*?)(#(?:e2e8f0|cbd5e1|e5e7eb|d1d5db|f1f5f9|cccccc|ccc)\b|rgba?\(\s*226\s*,\s*232\s*,\s*240[^)]*\))/gi,
+          '$1var(--vn-border, rgba(255, 255, 255, 0.08))'
+        );
+
+        // Invert hardcoded dark text colors intended for white paper
+        s = s.replace(
+          /(color\s*:\s*)(#(?:0[0-9a-f]{5}|1[0-9a-f]{5}|2[0-9a-f]{5}|3[0-9a-f]{5}|4[0-9a-f]{5}|6[0-9a-f]{5}|000|111|222|333|000000|111111|222222|333333)\b|black\b)(?:\s*!important)?/gi,
+          (match, prefix) => {
+            const isHeading = el.tagName.match(/^H[1-6]$/) || 
+                              s.includes('font-weight: 700') || 
+                              s.includes('font-weight:700') || 
+                              s.includes('font-weight: bold') ||
+                              el.classList.contains('section-title') ||
+                              el.classList.contains('card-heading') ||
+                              el.classList.contains('card-title');
+            return isHeading 
+              ? `${prefix}var(--vn-heading-color, #38bdf8)` 
+              : `${prefix}var(--vn-text-main, #f1f5f9)`;
+          }
+        );
+
+        el.setAttribute('style', s);
+      }
+    });
+
+    return doc.body.innerHTML;
+  } catch (err) {
+    console.warn('[VisualNotebook] HTML normalizer error:', err);
+    return DOMPurify.sanitize(rawHtml);
+  }
+};
+
 const VisualNotebookViewer = ({ 
   courseCode, 
   language = 'en', 
@@ -61,7 +143,10 @@ const VisualNotebookViewer = ({
 
         if (error) throw error;
 
-        const resultSheets = data || [];
+        const resultSheets = (data || []).map(sheet => ({
+          ...sheet,
+          normalized_html: normalizeSheetHtml(sheet.html_body || '')
+        }));
         notebookSheetsCache.set(cacheKey, resultSheets);
 
         if (isMounted) {
@@ -82,28 +167,22 @@ const VisualNotebookViewer = ({
     return () => { isMounted = false; };
   }, [courseCode, language, cacheKey]);
 
-  // 2. Inject combined scoped styles dynamically into head (with in-flight font sanitization)
+  // 2. Inject combined scoped styles dynamically into head (with in-flight color & font sanitization)
   useEffect(() => {
     if (sheets.length > 0) {
       const combinedCss = sheets
-        .map(s => s.scoped_css)
+        .map(s => s.scoped_css ? normalizeSheetCss(s.scoped_css) : '')
         .filter(Boolean)
         .join('\n\n');
 
       if (combinedCss) {
-        // Intercept and sanitize any font-family declarations so system-ui never hijacks Windows font-linking
-        const sanitizedCss = combinedCss.replace(
-          /font-family\s*:\s*[^;]+;/gi,
-          "font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, sans-serif !important;"
-        );
-
         if (!styleTagRef.current) {
           const tag = document.createElement('style');
           tag.id = 'v-notebook-dynamic-style';
           document.head.appendChild(tag);
           styleTagRef.current = tag;
         }
-        styleTagRef.current.textContent = sanitizedCss;
+        styleTagRef.current.textContent = combinedCss;
       }
     }
 
@@ -293,10 +372,7 @@ const VisualNotebookViewer = ({
             <div 
               className="v-notebook-content-body"
               dangerouslySetInnerHTML={{ 
-                __html: DOMPurify.sanitize(sheet.html_body || '', { 
-                  USE_PROFILES: { html: true, svg: true, mathMl: true },
-                  ADD_ATTR: ['style', 'class', 'aria-hidden', 'target'] 
-                }) 
+                __html: sheet.normalized_html || normalizeSheetHtml(sheet.html_body || '')
               }}
             />
           </article>
