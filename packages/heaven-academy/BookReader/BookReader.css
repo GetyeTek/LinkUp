@@ -33,20 +33,7 @@
     --ctx-btn-bg: rgba(255, 255, 255, 0.05);
     --ctx-btn-text: #a0a0a0;
 }
-.theme-sepia { 
-    --bg-color: #d4c4a8; 
-    --page-bg: #f4ecd8; 
-    --text-color: #5b4636; 
-    --accent: #8a6a4b; 
-    --border: #d3c4b1;
-    
-    /* Theme-aware Context Menu variables */
-    --ctx-bg: rgba(244, 236, 216, 0.96);
-    --ctx-border: rgba(91, 70, 54, 0.15);
-    --ctx-drag: rgba(91, 70, 54, 0.45);
-    --ctx-btn-bg: rgba(91, 70, 54, 0.06);
-    --ctx-btn-text: #5b4636;
-}
+
 
 #viewport { 
     width: 100%; 
@@ -90,7 +77,6 @@
 
 /* Universal ID Shield: Prevents injected book stylesheets from breaking active theme */
 .theme-dark #book-layer .page-canvas { color: var(--text-color) !important; background-color: var(--page-bg) !important; }
-.theme-sepia #book-layer .page-canvas { color: var(--text-color) !important; background-color: var(--page-bg) !important; }
 .theme-light #book-layer .page-canvas { color: var(--text-color) !important; background-color: var(--page-bg) !important; }
 
 .page-wrapper { 
