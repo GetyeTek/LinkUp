@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './BookReaderUI.css';
 
 const BookReaderUI = ({
@@ -33,6 +33,22 @@ const BookReaderUI = ({
     activeVisualSheetIndex = 0,
     onJumpToVisualSheet
 }) => {
+    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const activeScale = (zoomDisplay || 100) / 100;
+    const baseContentWidth = viewMode !== 'text' ? 780 : 794;
+    const effectiveWidth = baseContentWidth * activeScale;
+    const rawDistanceToRight = (windowWidth - effectiveWidth) / 2;
+    const minRightBound = (visualLangs?.length >= 2 ? 260 : 190) + 14;
+    const maxRightBound = Math.max(minRightBound, windowWidth - 340);
+    const dynamicRight = Math.min(maxRightBound, Math.max(minRightBound, rawDistanceToRight));
+
     return (
         <>
             <div id="main-fab" className={`fab-container ${isUiVisible ? 'active' : ''}`}>
@@ -53,8 +69,8 @@ const BookReaderUI = ({
                         <div className="header-title">{book?.title || 'Loading Document'}</div>
                     </div>
 
-                    {/* Desktop Toolbar: Zoom & Theme */}
-                    <div className="reader-desktop-tools">
+                    {/* Desktop Toolbar: Dynamically Hugs Book Right Shoulder */}
+                    <div className="reader-desktop-tools" style={{ right: `${dynamicRight}px` }}>
                         <div className="reader-zoom-cluster">
                             <button className="reader-zoom-btn" onClick={onZoomOut} title="Zoom Out">
                                 <i className="fa-solid fa-minus"></i>
@@ -88,7 +104,7 @@ const BookReaderUI = ({
                                     <button 
                                         className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
                                         onClick={() => setViewMode('text')}
-                                        title="Standard Book"
+                                        title="Book"
                                     >
                                         <i className="fas fa-book-open"></i>
                                         <span className="variant-label">Book</span>
@@ -96,18 +112,18 @@ const BookReaderUI = ({
                                     <button 
                                         className={`variant-toggle-btn ${viewMode === 'visual_en' ? 'active' : ''}`}
                                         onClick={() => setViewMode('visual_en')}
-                                        title="Visual Note (English)"
+                                        title="English Note"
                                     >
-                                        <i className="fas fa-sparkles"></i>
-                                        <span className="variant-label">Visual EN</span>
+                                        <span className="variant-flag">🇬🇧</span>
+                                        <span className="variant-label">English Note</span>
                                     </button>
                                     <button 
                                         className={`variant-toggle-btn ${viewMode === 'visual_am' ? 'am-active' : ''}`}
                                         onClick={() => setViewMode('visual_am')}
-                                        title="Visual Note (Amharic)"
+                                        title="Amharic Note"
                                     >
-                                        <span>🇪🇹</span>
-                                        <span className="variant-label">አማርኛ</span>
+                                        <span className="variant-flag">🇪🇹</span>
+                                        <span className="variant-label">Amharic Note</span>
                                     </button>
                                 </div>
                             );
@@ -118,18 +134,18 @@ const BookReaderUI = ({
                                 <button 
                                     className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
                                     onClick={() => setViewMode('text')}
-                                    title="Standard Book"
+                                    title="Book"
                                 >
                                     <i className="fas fa-book-open"></i>
                                     <span className="variant-label">Book</span>
                                 </button>
                                 <button 
-                                    className={`variant-toggle-btn ${isVisualActive ? 'active' : ''}`}
+                                    className={`variant-toggle-btn ${isVisualActive ? (singleTarget === 'visual_am' ? 'am-active' : 'active') : ''}`}
                                     onClick={() => setViewMode(singleTarget)}
-                                    title="Visual Note"
+                                    title={singleTarget === 'visual_am' ? 'Amharic Note' : 'English Note'}
                                 >
-                                    <i className="fas fa-sparkles"></i>
-                                    <span className="variant-label">Visual Note</span>
+                                    <span className="variant-flag">{singleTarget === 'visual_am' ? '🇪🇹' : '🇬🇧'}</span>
+                                    <span className="variant-label">{singleTarget === 'visual_am' ? 'Amharic Note' : 'English Note'}</span>
                                 </button>
                             </div>
                         );
