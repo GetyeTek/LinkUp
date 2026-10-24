@@ -21,127 +21,180 @@
 
 .v-notebook-root::-webkit-scrollbar { display: none; }
 
-/* Dynamic Theme Adaptations for Embedded Sheets */
+/* ==============================================================================
+   UNIVERSAL THEME ENGINE FOR EMBEDDED VISUAL SHEETS (ZERO HARDCODED SUBJECT CLASSES)
+   ============================================================================== */
+
+/* --- DARK THEME ADAPTATION --- */
 .theme-dark .v-notebook-root .sheet-canvas {
     background: #141418 !important;
-    color: #f3f4f6 !important;
-}
-
-.theme-dark .v-notebook-root .etymology-box,
-.theme-dark .v-notebook-root .disc-card,
-.theme-dark .v-notebook-root .pillar-card,
-.theme-dark .v-notebook-root .myth-card,
-.theme-dark .v-notebook-root .diff-card,
-.theme-dark .v-notebook-root .contrib-card,
-.theme-dark .v-notebook-root .domain-item,
-.theme-dark .v-notebook-root .field-card {
-    background: #1e1e24 !important;
-    border-color: rgba(255, 255, 255, 0.08) !important;
-    color: #f3f4f6 !important;
-}
-
-.theme-dark .v-notebook-root .root-card,
-.theme-dark .v-notebook-root .mini-box,
-.theme-dark .v-notebook-root .scope-card,
-.theme-dark .v-notebook-root .header-pill {
-    background: #191a21 !important;
-    border-color: rgba(255, 255, 255, 0.08) !important;
-    color: #e2e8f0 !important;
-}
-
-.theme-dark .v-notebook-root .section-title,
-.theme-dark .v-notebook-root .timeline-title,
-.theme-dark .v-notebook-root h1,
-.theme-dark .v-notebook-root h2,
-.theme-dark .v-notebook-root h3,
-.theme-dark .v-notebook-root h4 {
-    color: #ffffff !important;
-}
-
-.theme-dark .v-notebook-root .pillar-title,
-.theme-dark .v-notebook-root .root-term,
-.theme-dark .v-notebook-root .timeline-year,
-.theme-dark .v-notebook-root .section-title {
-    color: #60a5fa !important;
-    font-weight: 700 !important;
-    font-size: 1.08rem !important;
-    letter-spacing: 0.3px !important;
-}
-
-.theme-dark .v-notebook-root .hero-banner {
-    background: linear-gradient(135deg, rgba(30, 58, 138, 0.4) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
-    border: 1px solid rgba(96, 165, 250, 0.45) !important;
-    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3) !important;
-    border-radius: 16px !important;
-}
-
-.theme-dark .v-notebook-root .hero-banner h2 {
-    color: #ffffff !important;
-    font-size: 1.35rem !important;
-    font-weight: 800 !important;
-    letter-spacing: 0.4px !important;
-}
-
-.theme-dark .v-notebook-root .hero-banner p {
-    color: #e2e8f0 !important;
-    font-size: 1.02rem !important;
-    font-weight: 500 !important;
-    line-height: 1.7 !important;
-}
-
-.theme-dark .v-notebook-root p,
-.theme-dark .v-notebook-root li,
-.theme-dark .v-notebook-root td,
-.theme-dark .v-notebook-root .timeline-desc {
     color: #f1f5f9 !important;
-    font-weight: 500 !important;
-    font-size: 1.02rem !important;
-    line-height: 1.75 !important;
 }
 
+/* 1. All Generic Primary Containers & Cards */
+.theme-dark .v-notebook-root .sheet-canvas [class*="-card"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-box"]:not(.hero-banner):not([class*="-icon"]),
+.theme-dark .v-notebook-root .sheet-canvas [class*="-block"]:not(.v-bento-canvas),
+.theme-dark .v-notebook-root .sheet-canvas [class*="-item"]:not([class*="timeline"]):not([class*="icon"]),
+.theme-dark .v-notebook-root .sheet-canvas [class*="-panel"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
+.theme-dark .v-notebook-root .sheet-canvas [class*="-grid"] > div,
+.theme-dark .v-notebook-root .sheet-canvas [class*="-rail"] > div:not([class*="dot"]) {
+    background: #1c1c24 !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 2. Secondary Nested Sub-Cards & Examples */
+.theme-dark .v-notebook-root .sheet-canvas [class*="sub-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="mini-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="inner-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="example"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="syllogism"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="rule-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="step-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="ans-"] {
+    background: #14141a !important;
+    border-color: rgba(255, 255, 255, 0.07) !important;
+    color: #e2e8f0 !important;
+}
+
+/* 3. Hero Banners across all subjects */
+.theme-dark .v-notebook-root .sheet-canvas [class*="hero-"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="header-banner"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="welcome-card"] {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 4. Headings & Titles */
+.theme-dark .v-notebook-root .sheet-canvas h1,
+.theme-dark .v-notebook-root .sheet-canvas h2,
+.theme-dark .v-notebook-root .sheet-canvas h3,
+.theme-dark .v-notebook-root .sheet-canvas h4,
+.theme-dark .v-notebook-root .sheet-canvas [class*="-title"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-heading"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="-header"]:not(.v-sheet-anchor-bar) {
+    color: #ffffff !important;
+}
+
+.theme-dark .v-notebook-root .sheet-canvas [class*="-heading"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="section-title"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="card-title"] {
+    color: #38bdf8 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 5. Typography */
+.theme-dark .v-notebook-root .sheet-canvas p,
+.theme-dark .v-notebook-root .sheet-canvas li,
+.theme-dark .v-notebook-root .sheet-canvas td,
+.theme-dark .v-notebook-root .sheet-canvas th,
+.theme-dark .v-notebook-root .sheet-canvas div:not([class*="-badge"]):not([class*="-tag"]):not([class*="-num"]):not([class*="icon"]):not(.anchor-pill) {
+    color: #f1f5f9 !important;
+}
+
+.theme-dark .v-notebook-root .sheet-canvas strong,
+.theme-dark .v-notebook-root .sheet-canvas b {
+    color: #38bdf8 !important;
+}
+
+/* 6. Semantic Alerts, Traps & Quotes */
+.theme-dark .v-notebook-root .sheet-canvas [class*="quote"] {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-left-color: #38bdf8 !important;
+    color: #e2e8f0 !important;
+}
+
+.theme-dark .v-notebook-root .sheet-canvas [class*="callout"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="trap"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="alert"],
+.theme-dark .v-notebook-root .sheet-canvas [class*="caution"] {
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+    color: #fef3c7 !important;
+}
+
+.theme-dark .v-notebook-root .sheet-canvas [class*="myth"] {
+    background: rgba(239, 68, 68, 0.08) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    color: #fecaca !important;
+}
+
+.theme-dark .v-notebook-root .sheet-canvas [class*="fact"] {
+    background: rgba(16, 185, 129, 0.08) !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+    color: #a7f3d0 !important;
+}
+
+/* 7. Tables & SVG Math Diagrams in Dark Mode */
+.theme-dark .v-notebook-root .sheet-canvas .table-container,
+.theme-dark .v-notebook-root .sheet-canvas table {
+    background: #141418 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.theme-dark .v-notebook-root .sheet-canvas th {
+    background: #1e1e26 !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.theme-dark .v-notebook-root .sheet-canvas td {
+    border-color: rgba(255, 255, 255, 0.06) !important;
+    color: #e2e8f0 !important;
+}
+.theme-dark .v-notebook-root .sheet-canvas svg rect[fill="#ffffff"],
+.theme-dark .v-notebook-root .sheet-canvas svg rect[fill="#f8fafc"] {
+    fill: #181920 !important;
+    stroke: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* --- SEPIA THEME ADAPTATION --- */
 .theme-sepia .v-notebook-root .sheet-canvas {
     background: #f4ecd8 !important;
     color: #5b4636 !important;
 }
 
-.theme-sepia .v-notebook-root .etymology-box,
-.theme-sepia .v-notebook-root .disc-card,
-.theme-sepia .v-notebook-root .pillar-card,
-.theme-sepia .v-notebook-root .myth-card,
-.theme-sepia .v-notebook-root .diff-card,
-.theme-sepia .v-notebook-root .contrib-card,
-.theme-sepia .v-notebook-root .domain-item,
-.theme-sepia .v-notebook-root .field-card {
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-card"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-box"]:not([class*="-icon"]),
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-block"]:not(.v-bento-canvas),
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-item"]:not([class*="icon"]),
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-panel"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-grid"] > div {
     background: #ede3ca !important;
     border-color: rgba(91, 70, 54, 0.2) !important;
     color: #5b4636 !important;
 }
 
-.theme-sepia .v-notebook-root .root-card,
-.theme-sepia .v-notebook-root .mini-box,
-.theme-sepia .v-notebook-root .scope-card,
-.theme-sepia .v-notebook-root .header-pill {
+.theme-sepia .v-notebook-root .sheet-canvas [class*="sub-"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="mini-"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="inner-"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="example"] {
     background: #e4d8bc !important;
     border-color: rgba(91, 70, 54, 0.2) !important;
     color: #5b4636 !important;
 }
 
-.theme-sepia .v-notebook-root h1,
-.theme-sepia .v-notebook-root h2,
-.theme-sepia .v-notebook-root h3,
-.theme-sepia .v-notebook-root h4,
-.theme-sepia .v-notebook-root .section-title,
-.theme-sepia .v-notebook-root .timeline-title {
+.theme-sepia .v-notebook-root .sheet-canvas h1,
+.theme-sepia .v-notebook-root .sheet-canvas h2,
+.theme-sepia .v-notebook-root .sheet-canvas h3,
+.theme-sepia .v-notebook-root .sheet-canvas h4,
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-title"],
+.theme-sepia .v-notebook-root .sheet-canvas [class*="-heading"] {
     color: #3e2817 !important;
 }
 
-.theme-sepia .v-notebook-root p,
-.theme-sepia .v-notebook-root li,
-.theme-sepia .v-notebook-root td,
-.theme-sepia .v-notebook-root .timeline-desc {
+.theme-sepia .v-notebook-root .sheet-canvas p,
+.theme-sepia .v-notebook-root .sheet-canvas li,
+.theme-sepia .v-notebook-root .sheet-canvas td,
+.theme-sepia .v-notebook-root .sheet-canvas th {
     color: #5b4636 !important;
 }
 
+/* --- LIGHT THEME ADAPTATION --- */
 .theme-light .v-notebook-root .sheet-canvas {
     background: #ffffff !important;
     color: #1e293b !important;
@@ -179,25 +232,18 @@
 }
 
 .v-notebook-root .sheet-canvas p,
-.v-notebook-root .sheet-canvas span:not([class*="fa"]):not([class*="katex"]):not([class*="icon"]):not(.scope-tag):not(.remains-tag):not(.diff-badge),
-.v-notebook-root .sheet-canvas div:not([class*="fa"]):not([class*="katex"]):not(.pillar-title):not(.section-title):not(.root-term):not(.timeline-title):not(.timeline-year):not(.v-sheet-anchor-bar):not(.anchor-pill),
 .v-notebook-root .sheet-canvas li,
 .v-notebook-root .sheet-canvas td,
 .v-notebook-root .sheet-canvas th,
-.v-notebook-root .sheet-canvas .timeline-desc,
 .v-notebook-root.lang-am p,
-.v-notebook-root.lang-am span:not([class*="fa"]):not([class*="katex"]):not([class*="icon"]):not(.scope-tag):not(.remains-tag):not(.diff-badge),
-.v-notebook-root.lang-am div:not([class*="fa"]):not([class*="katex"]):not(.pillar-title):not(.section-title):not(.root-term):not(.timeline-title):not(.timeline-year):not(.v-sheet-anchor-bar):not(.anchor-pill),
 .v-notebook-root.lang-am li,
 .v-notebook-root.lang-am td,
-.v-notebook-root.lang-am th,
-.v-notebook-root.lang-am .timeline-desc {
+.v-notebook-root.lang-am th {
     font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
     font-weight: 500 !important;
     font-size: 1.02rem !important;
     line-height: 1.75 !important;
     letter-spacing: 0.25px !important;
-    color: #f1f5f9 !important;
     -webkit-font-smoothing: antialiased !important;
     -moz-osx-font-smoothing: grayscale !important;
 }
