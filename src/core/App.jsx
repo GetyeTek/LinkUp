@@ -44,7 +44,13 @@ const App = () => {
 
   const handleDeviceSync = async (forceTransfer = false) => {
       try {
+          console.groupCollapsed(`🔍 [Diagnostic:DeviceGuard] Syncing Device Session`);
+          console.log("Device ID:", getDeviceId());
+          console.log("Auth Session User:", session?.user?.id);
           const syncRes = await syncDeviceSession(forceTransfer);
+          console.log("Sync Response:", syncRes);
+          console.groupEnd();
+
           if (syncRes?.status === 'requires_primary_confirmation') {
               isDeviceSeatedRef.current = false;
               setPrimaryTransferPrompt(syncRes.current_primary_name);
@@ -54,6 +60,7 @@ const App = () => {
           }
       } catch (e) {
           console.warn('[DeviceGuard] Seat sync warning:', e.message);
+          console.groupEnd();
       }
   };
 
@@ -224,38 +231,60 @@ const App = () => {
       }
     } catch (e) {}
 
-            const fetchProfile = async (userId, retries = 3) => {
+        const fetchProfile = async (userId, retries = 3) => {
           if (!navigator.onLine) {
               setTimeout(() => fetchProfile(userId, retries), 2000);
               return;
           }
 
           try {
-              const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+              const { data: { session: currentSession } } = await supabase.auth.getSession();
+              const nowSec = Math.floor(Date.now() / 1000);
+              const expSec = currentSession?.expires_at || 0;
+              const isTokenExpired = expSec > 0 && expSec < nowSec;
+
+              console.group(`🔍 [Diagnostic:Auth] Audit for User: ${userId} (Attempt ${4 - retries}/4)`);
+              console.log("1. Local Clock (ISO):", new Date().toISOString(), "Unix:", Date.now());
+              console.log("2. Window Origin:", window.location.origin, "Href:", window.location.href);
+              console.log("3. Current Session ID:", currentSession?.user?.id);
+              console.log("4. User Email:", currentSession?.user?.email);
+              console.log("5. JWT Expires At:", expSec ? new Date(expSec * 1000).toISOString() : 'None', `(Expired: ${isTokenExpired})`);
+              console.log("6. Bearer Token Snippet:", currentSession?.access_token ? `${currentSession.access_token.slice(0, 16)}...${currentSession.access_token.slice(-12)}` : 'MISSING');
+
+              const profileQuery = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
               
-              if (error) {
-                  // Network drop or database timeout. Do NOT decrement retries. Wait and try again.
-                  console.warn("[Platform] Profile fetch transient error. Pausing...", error.message);
+              console.log("7. PostgREST HTTP Status:", profileQuery.status, profileQuery.statusText);
+              console.log("8. PostgREST Error:", profileQuery.error);
+              console.log("9. PostgREST Data:", profileQuery.data);
+              console.groupEnd();
+
+              if (profileQuery.error) {
+                  console.warn("[Platform] Profile fetch transient error. Pausing...", profileQuery.error.message);
                   setTimeout(() => fetchProfile(userId, retries), 2000);
                   return;
               }
 
-              if (data) {
-                  setUserProfile(data);
-                  if (data.theme && data.theme !== theme) {
-                      setTheme(data.theme);
-                      localStorage.setItem('linkup_theme', data.theme);
+              if (profileQuery.data) {
+                  setUserProfile(profileQuery.data);
+                  if (profileQuery.data.theme && profileQuery.data.theme !== theme) {
+                      setTheme(profileQuery.data.theme);
+                      localStorage.setItem('linkup_theme', profileQuery.data.theme);
                   }
                   setIsProfileLoaded(true);
               } else if (retries > 0) {
-                  // Data is null and Error is null. DB responded successfully but found 0 rows.
-                  // This might be a replication delay. Decrement retries.
-                  setTimeout(() => fetchProfile(userId, retries - 1), 1000);
+                  // Attempt an explicit token refresh if the token was near/past expiry
+                  if (isTokenExpired || retries === 1) {
+                      console.log("[Diagnostic:Auth] 🔄 Refreshing Supabase session before next attempt...");
+                      await supabase.auth.refreshSession();
+                  }
+                  setTimeout(() => fetchProfile(userId, retries - 1), 1200);
               } else {
-                  // GHOST SESSION DETECTED: DB profile is permanently missing, but local JWT exists.
-                  console.warn("[Security] Ghost session detected. Backend user likely deleted. Forcing local logout.");
-                  await supabase.auth.signOut();
-                  setSession(null);
+                  // DIAGNOSTIC SAFETY BRAKE: Do NOT immediately force logout so the developer can inspect the console!
+                  console.error("🚨 [Diagnostic:Auth] CRITICAL: 4 queries returned data: null with error: null!");
+                  console.error("🚨 Probable causes: 1. System clock mismatch causing expired JWT; 2. PostgREST RLS policy on profiles returning empty; 3. Missing profile row.");
+                  console.warn("[Security Safety Brake] Auto-logout bypassed so you can inspect these logs in DevTools/Eruda.");
+                  
+                  // Allow the app to render with placeholder state instead of kicking to Auth screen
                   setUserProfile(null);
                   setIsProfileLoaded(true);
               }
