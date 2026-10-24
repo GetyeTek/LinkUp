@@ -43,7 +43,7 @@ const ensureBlockArray = (raw) => {
     return [];
 };
 
-const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexOverride }) =>;
+const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexOverride }) => {
     const [loading, setLoading] = useState(true);
     const [pages, setPages] = useState([]);
     const [isUiVisible, setIsUiVisible] = useState(true);
@@ -130,8 +130,12 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     };
     const handleZoomFit = () => {
         if (viewMode !== 'text') {
-            setVisualScale(1.0);
-            setZoomDisplay(100);
+            const vw = window.innerWidth;
+            const targetWidth = 860;
+            const padding = vw < 600 ? 24 : 48;
+            const computedFit = Math.max(0.6, Math.min((vw - padding) / targetWidth, 2.0));
+            const nextScale = Math.abs(visualScale - computedFit) < 0.05 ? 1.0 : computedFit;
+            applyScale(nextScale);
             return;
         }
         if (viewportRef.current) {
@@ -142,8 +146,8 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     };
     const handleZoomReset = () => {
         if (viewMode !== 'text') {
-            setVisualScale(1.0);
-            setZoomDisplay(100);
+            const nextScale = Math.abs(visualScale - 1.0) < 0.05 ? 1.25 : 1.0;
+            applyScale(nextScale);
             return;
         }
         applyScale(minScale.current);
@@ -555,8 +559,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const handleDragStart = useDraggable(menuRef);
 
     const toggleTheme = () => {
-        const themes = ['dark', 'sepia', 'light'];
-        setCurrentTheme(themes[(themes.indexOf(currentTheme) + 1) % themes.length]);
+        setCurrentTheme(prev => prev === 'dark' ? 'light' : 'dark');
     };
 
     const handleMenuAction = (action) => {
