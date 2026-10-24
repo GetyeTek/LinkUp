@@ -556,69 +556,71 @@ const Auth = () => {
                 {/* Accredited Institutional Consortium Strip */}
                 <div className="auth-consortium-footer">
                     <div className="consortium-item">
-                        <div className="consortium-logo-box">
-                            <img 
-                                src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/moe_logo.png" 
-                                alt="Ministry of Education" 
-                                className="consortium-img"
-                                onError={(e) => { 
-                                    e.target.style.display = 'none'; 
-                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
-                                }}
-                            />
-                            <div className="consortium-fallback-icon" style={{ display: 'none' }}>
-                                <i className="fa-solid fa-landmark"></i>
+                        <div className="consortium-medallion-wrap">
+                            <div className="consortium-medallion-circle">
+                                <img 
+                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/moe_logo.png" 
+                                    alt="Ministry of Education" 
+                                    className="consortium-img"
+                                    onError={(e) => { 
+                                        e.target.style.display = 'none'; 
+                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                    }}
+                                />
+                                <div className="consortium-fallback-icon" style={{ display: 'none' }}>
+                                    <i className="fa-solid fa-landmark"></i>
+                                </div>
                             </div>
                         </div>
                         <div className="consortium-text-group">
                             <span className="consortium-name">Ministry of Education</span>
-                            <span className="consortium-caption">Curriculum Standardized</span>
+                            <span className="consortium-caption">Curriculum Aligned</span>
                         </div>
                     </div>
 
-                    <div className="consortium-divider"></div>
-
                     <div className="consortium-item">
-                        <div className="consortium-logo-box">
-                            <img 
-                                src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/heaven_logo.png" 
-                                alt="Heaven Academy" 
-                                className="consortium-img"
-                                onError={(e) => { 
-                                    e.target.style.display = 'none'; 
-                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
-                                }}
-                            />
-                            <div className="consortium-fallback-icon" style={{ display: 'none' }}>
-                                <i className="fa-solid fa-graduation-cap"></i>
+                        <div className="consortium-medallion-wrap">
+                            <div className="consortium-medallion-circle">
+                                <img 
+                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/heaven_logo.png" 
+                                    alt="Heaven Academy" 
+                                    className="consortium-img"
+                                    onError={(e) => { 
+                                        e.target.style.display = 'none'; 
+                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                    }}
+                                />
+                                <div className="consortium-fallback-icon" style={{ display: 'none' }}>
+                                    <i className="fa-solid fa-graduation-cap"></i>
+                                </div>
                             </div>
                         </div>
                         <div className="consortium-text-group">
                             <span className="consortium-name">Heaven Academy</span>
-                            <span className="consortium-caption">Academic Archives</span>
+                            <span className="consortium-caption">Academic Vault</span>
                         </div>
                     </div>
 
-                    <div className="consortium-divider"></div>
-
                     <div className="consortium-item">
-                        <div className="consortium-logo-box">
-                            <img 
-                                src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/linkup_logo.png" 
-                                alt="LinkUp" 
-                                className="consortium-img"
-                                onError={(e) => { 
-                                    e.target.style.display = 'none'; 
-                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
-                                }}
-                            />
-                            <div className="consortium-fallback-icon" style={{ display: 'none' }}>
-                                <i className="fa-solid fa-bolt"></i>
+                        <div className="consortium-medallion-wrap">
+                            <div className="consortium-medallion-circle">
+                                <img 
+                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/linkup_logo.png" 
+                                    alt="LinkUp" 
+                                    className="consortium-img"
+                                    onError={(e) => { 
+                                        e.target.style.display = 'none'; 
+                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                    }}
+                                />
+                                <div className="consortium-fallback-icon" style={{ display: 'none' }}>
+                                    <i className="fa-solid fa-bolt"></i>
+                                </div>
                             </div>
                         </div>
                         <div className="consortium-text-group">
                             <span className="consortium-name">LinkUp Platform</span>
-                            <span className="consortium-caption">Core Engine</span>
+                            <span className="consortium-caption">Core AI Engine</span>
                         </div>
                     </div>
                 </div>
