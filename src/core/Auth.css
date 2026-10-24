@@ -406,34 +406,34 @@
     will-change: transform;
 }
 
-/* Main House Header */
+/* Main House Header (GIANT LOGO) */
 .ecosystem-main-house {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 14px 16px;
     background: linear-gradient(90deg, rgba(66, 215, 184, 0.15) 0%, rgba(241, 196, 15, 0.05) 100%);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .mh-left-cluster {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
 }
 
 .mh-logo {
-    width: 44px;
-    height: 44px;
+    width: 76px;
+    height: 76px;
     border-radius: 50%;
     background: #ffffff;
-    padding: 3px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), inset 0 2px 6px rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), inset 0 2px 6px rgba(0, 0, 0, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 1.5px solid rgba(66, 215, 184, 0.5);
+    border: 2px solid var(--accent-teal, #42d7b8);
 }
 
 .mh-logo img {
@@ -452,7 +452,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 1.8rem;
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
@@ -463,7 +463,7 @@
 }
 
 .mh-title {
-    font-size: 0.95rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: #fff;
     line-height: 1.1;
@@ -471,10 +471,10 @@
 
 .mh-subtitle {
     font-family: 'Roboto Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     color: var(--accent-teal, #42d7b8);
     text-transform: uppercase;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.5px;
 }
 
@@ -484,38 +484,80 @@
     font-family: 'Roboto Mono', monospace;
     font-size: 0.65rem;
     font-weight: 800;
-    padding: 3px 8px;
+    padding: 4px 10px;
     border-radius: 6px;
     letter-spacing: 1px;
 }
 
-/* Powerers Carousel */
-.powerers-carousel {
+/* Ecosystem Modules Split Layout */
+.ecosystem-modules {
     display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    padding: 16px 20px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Hide scrollbar Firefox */
+    padding: 12px 16px 16px;
+    gap: 14px;
 }
 
-.powerers-carousel::-webkit-scrollbar {
-    display: none; /* Hide scrollbar Chrome/Safari/Webkit */
+.module-group {
+    display: flex;
+    flex-direction: column;
 }
+
+.compliance-group {
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.powered-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.module-group-label {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.powered-group .module-group-label {
+    color: var(--accent-teal, #42d7b8);
+    opacity: 0.9;
+    text-align: left;
+    padding-left: 2px;
+}
+
+.module-divider {
+    width: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 10px 0;
+    border-radius: 1px;
+    flex-shrink: 0;
+}
+
+.powerers-scroll-track {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.powerers-scroll-track::-webkit-scrollbar { display: none; }
 
 .powerer-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    width: 60px; /* Aligns text correctly */
     flex-shrink: 0;
-    width: 72px; /* Fixed width prevents jitter and aligns text perfectly */
 }
 
 .powerer-medallion {
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background: #ffffff;
     padding: 3px;
@@ -528,10 +570,21 @@
     overflow: hidden;
 }
 
+.powerer-medallion.silver-ring {
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: #f8f9fa;
+}
+
 .powerer-card:hover .powerer-medallion {
     transform: translateY(-3px) scale(1.05);
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 8px 25px rgba(66, 215, 184, 0.35);
     border-color: var(--accent-teal, #42d7b8);
+}
+
+.powerer-card:hover .powerer-medallion.silver-ring {
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .powerer-medallion img {
@@ -542,7 +595,7 @@
 }
 
 .powerer-icon {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     color: var(--accent-teal, #42d7b8);
     background: #141418;
     width: 100%;
@@ -554,15 +607,19 @@
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
+.powerer-icon.silver-icon {
+    color: #ccc;
+}
+
 .powerer-label {
     font-family: 'Roboto Mono', monospace;
-    font-size: 0.6rem;
+    font-size: 0.58rem;
     font-weight: 700;
     color: #aaa;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
     text-align: center;
-    line-height: 1.2;
+    line-height: 1.15;
     word-wrap: break-word;
     width: 100%;
 }
@@ -571,8 +628,8 @@
     .ecosystem-container {
         margin-top: 1.5rem;
     }
-    .powerers-carousel {
-        justify-content: center;
+    .powerers-scroll-track {
+        justify-content: flex-start;
     }
 }
 /* ==============================================================================
