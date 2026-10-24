@@ -17,7 +17,33 @@ import BookReaderUI from './components/BookReaderUI.jsx';
 import VisualNotebookViewer from './components/VisualNotebookViewer.jsx';
 import { usePlatform, telemetry, supabase } from '@linkup-platform/sdk-core';
 
-const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexOverride }) => {
+const ensureBlockArray = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && typeof parsed === 'object') {
+                if (Array.isArray(parsed.content)) return parsed.content;
+                if (Array.isArray(parsed.blocks)) return parsed.blocks;
+                return [parsed];
+            }
+        } catch (e) {
+            return [{ type: 'paragraph', body: raw }];
+        }
+    }
+    if (typeof raw === 'object') {
+        if (Array.isArray(raw.content)) return raw.content;
+        if (Array.isArray(raw.blocks)) return raw.blocks;
+        const values = Object.values(raw);
+        if (values.length > 0 && typeof values[0] === 'object') return values;
+        return [raw];
+    }
+    return [];
+};
+
+const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexOverride }) =>;
     const [loading, setLoading] = useState(true);
     const [pages, setPages] = useState([]);
     const [isUiVisible, setIsUiVisible] = useState(true);
@@ -266,7 +292,11 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                 }
 
                                     if (data.pages && data.pages.length > 0) {
-                        setPages(data.pages);
+                        const sanitizedPages = data.pages.map(p => ({
+                            ...p,
+                            content_json: ensureBlockArray(p.content_json)
+                        }));
+                        setPages(sanitizedPages);
                         if (data.toc) setTocData(data.toc);
                         if (data.page_offset) setPageOffset(data.page_offset);
                         if (data.prefix) setBookPrefix(data.prefix);
@@ -286,12 +316,12 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
                     console.group(`%c[BookReader:Audit] 📚 Opened: ${book.title || data.title} (${data.course_code || 'No Code'})`, 'color: #42d7b8; font-size: 13px; font-weight: bold;');
                     console.log('Book ID:', book.id);
                     console.log('Custom CSS Present:', !!data.custom_css, `(${data.custom_css?.length || 0} chars)`);
-                    console.log('Total Pages Received:', data.pages.length);
+                    console.log('Total Pages Received:', sanitizedPages.length);
                     console.log('Page Offset:', data.page_offset);
 
                     const assetInventory = [];
-                    data.pages.forEach(p => {
-                        (p.content_json || []).forEach((b, bIdx) => {
+                    sanitizedPages.forEach(p => {
+                        p.content_json.forEach((b, bIdx) => {
                             const imgUrl = b?.url || b?.src || b?.imageUrl || b?.iconUrl || b?.img;
                             const isFig = b?.type && typeof b.type === 'string' && (b.type.includes('figure') || b.type.includes('graphic') || b.type.includes('image'));
                             if (imgUrl || isFig) {
@@ -539,7 +569,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
             const sectionInfo = [chapterTitle, sectionTitle].filter(Boolean).join(' > ');
             
             const currentPageObj = pages.find(p => p.page_number === currentDisplayPage);
-            const fullPageText = (currentPageObj?.content_json || [])
+            const fullPageText = ensureBlockArray(currentPageObj?.content_json)
                 .map(extractTextFromBlock)
                 .filter(Boolean)
                 .join('\n\n');
@@ -676,7 +706,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                                 <div className={`page-canvas ${engineClass} ${watermarkClass}`.trim()}>
                                     {page.manual_flag && <div className="manual-flag">{page.manual_flag}</div>}
                                     {(() => {
-                                        const contentBlocks = page.content_json || [];
+                                        const contentBlocks = ensureBlockArray(page.content_json);
                                         const hasFooterBlock = contentBlocks.some(b => Boolean(b.type?.includes('footer') || b.val !== undefined));
                                         const displayFallbackPage = (pageOffset > 0 && page.page_number - pageOffset > 0) ? (page.page_number - pageOffset) : page.page_number;
 
