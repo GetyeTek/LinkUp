@@ -794,6 +794,10 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 isTocOpen={isTocOpen} 
                 setIsTocOpen={setIsTocOpen} 
                 tocData={tocData} 
+                isSheetMode={viewMode !== 'text'}
+                visualSheets={visualSheets}
+                activeSheetIndex={activeVisualSheetIndex}
+                onJumpToSheet={handleJumpToVisualSheet}
                 onNavigate={(tocPage) => {
                     const targetIndex = Math.max(1, tocPage + pageOffset);
                     jumpToPage(targetIndex);
