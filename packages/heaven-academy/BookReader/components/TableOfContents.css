@@ -97,6 +97,18 @@
     border-bottom: 1px solid rgba(128, 128, 128, 0.08);
 }
 
+.toc-item.active-sheet-node {
+    background: rgba(66, 215, 184, 0.1);
+    color: var(--accent, #42d7b8);
+    border-left: 3px solid var(--accent, #42d7b8);
+}
+
+.toc-chapter-badge {
+    font-size: 0.68rem !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #bbb !important;
+}
+
 .toc-item:active {
     background: var(--ctx-btn-bg);
 }
