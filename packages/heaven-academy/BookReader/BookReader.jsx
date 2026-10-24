@@ -33,6 +33,10 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     // Course Variant Modes: 'text' (standard PDF/JSON) | 'visual_en' | 'visual_am'
     const [viewMode, setViewMode] = useState('text');
     const [visualLangs, setVisualLangs] = useState([]);
+    const [visualSheets, setVisualSheets] = useState([]);
+    const [activeVisualSheetIndex, setActiveVisualSheetIndex] = useState(0);
+    const [targetVisualSheetIndex, setTargetVisualSheetIndex] = useState(null);
+    const [visualScale, setVisualScale] = useState(1.0);
     
     // TOC & Scrubber States
     const [tocData, setTocData] = useState([]);
@@ -64,8 +68,15 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const [zoomDisplay, setZoomDisplay] = useState(100);
 
     const applyScale = (newScale) => {
-        if (!layerRef.current || !scrollContainerRef.current || !viewportRef.current) return;
         const clamped = Math.max(0.4, Math.min(newScale, 2.5));
+
+        if (viewMode !== 'text') {
+            setVisualScale(clamped);
+            setZoomDisplay(Math.round(clamped * 100));
+            return;
+        }
+
+        if (!layerRef.current || !scrollContainerRef.current || !viewportRef.current) return;
         const oldScale = currentScale.current;
         const viewport = viewportRef.current;
 
@@ -83,16 +94,40 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
         viewport.scrollLeft = (focusX * clamped) - (viewport.clientWidth / 2);
     };
 
-    const handleZoomIn = () => applyScale(currentScale.current + 0.15);
-    const handleZoomOut = () => applyScale(currentScale.current - 0.15);
+    const handleZoomIn = () => {
+        const cur = viewMode !== 'text' ? visualScale : currentScale.current;
+        applyScale(cur + 0.15);
+    };
+    const handleZoomOut = () => {
+        const cur = viewMode !== 'text' ? visualScale : currentScale.current;
+        applyScale(cur - 0.15);
+    };
     const handleZoomFit = () => {
+        if (viewMode !== 'text') {
+            setVisualScale(1.0);
+            setZoomDisplay(100);
+            return;
+        }
         if (viewportRef.current) {
             const vw = viewportRef.current.clientWidth;
             const fitScale = (vw - 40) / baseCanvasWidth;
             applyScale(Math.min(fitScale, 1.8));
         }
     };
-    const handleZoomReset = () => applyScale(minScale.current);
+    const handleZoomReset = () => {
+        if (viewMode !== 'text') {
+            setVisualScale(1.0);
+            setZoomDisplay(100);
+            return;
+        }
+        applyScale(minScale.current);
+    };
+
+    const handleJumpToVisualSheet = (index) => {
+        setActiveVisualSheetIndex(index);
+        setTargetVisualSheetIndex(index);
+        setTimeout(() => setTargetVisualSheetIndex(null), 300);
+    };
     
     // Gestural Engine Refs
     const swipeRef = useRef({ startX: 0, startY: 0 });
@@ -599,6 +634,10 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                         lastDisplayPage.current = pageNum;
                         setCurrentDisplayPage(pageNum);
                     }}
+                    zoomScale={visualScale}
+                    onSheetsLoaded={(loadedSheets) => setVisualSheets(loadedSheets)}
+                    onActiveSheetChange={(idx) => setActiveVisualSheetIndex(idx)}
+                    targetSheetIndex={targetVisualSheetIndex}
                 />
             )}
 
@@ -807,7 +846,14 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 lastDisplayPage={lastDisplayPage}
                 pageCountRef={pageCountRef}
                 viewMode={viewMode}
-                setViewMode={setViewMode}
+                setViewMode={(mode) => {
+                    setViewMode(mode);
+                    if (mode !== 'text') {
+                        setZoomDisplay(Math.round(visualScale * 100));
+                    } else {
+                        setZoomDisplay(Math.round(currentScale.current * 100));
+                    }
+                }}
                 currentTheme={currentTheme}
                 zoomDisplay={zoomDisplay}
                 onZoomIn={handleZoomIn}
@@ -815,6 +861,9 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 onZoomFit={handleZoomFit}
                 onZoomReset={handleZoomReset}
                 visualLangs={visualLangs}
+                visualSheets={visualSheets}
+                activeVisualSheetIndex={activeVisualSheetIndex}
+                onJumpToVisualSheet={handleJumpToVisualSheet}
             />
         </div>
     );
