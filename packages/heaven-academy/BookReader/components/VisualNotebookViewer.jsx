@@ -15,9 +15,9 @@ const normalizeSheetCss = (rawCss) => {
       /font-family\s*:\s*[^;]+;/gi,
       "font-family: 'Noto Sans Ethiopic', 'Poppins', system-ui, -apple-system, sans-serif !important;"
     )
-    // 2. Map all daylight pastels to dynamic theme variables (Mathematical Spectrum: Hex E/F, RGB 180-255)
+    // 2. Map all daylight pastels to dynamic theme variables (Expanded to catch ALL Hex A-F and RGB 150-255)
     .replace(
-      /(background(?:-color)?\s*:\s*)(#(?:[eEfF][a-fA-F0-9]{5}|[eEfF][a-fA-F0-9]{2})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:8\d%|9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
+      /(background(?:-color)?\s*:\s*)(#(?:[a-fA-F8-9][a-fA-F0-9]{5}|[a-fA-F8-9][a-fA-F0-9]{2})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:25[0-5]|2[0-4]\d|1[5-9]\d)\s*,\s*(?:25[0-5]|2[0-4]\d|1[5-9]\d)\s*,\s*(?:25[0-5]|2[0-4]\d|1[5-9]\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:7\d%|8\d%|9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
       '$1var(--vn-card-bg, #1c1c24)'
     )
     // 3. Map light borders to dynamic theme variables
@@ -48,9 +48,9 @@ const normalizeSheetHtml = (rawHtml) => {
       if (style) {
         let s = style;
         
-        // Neutralize all daylight pastels and near-white backgrounds (Hex E/F, RGB 180-255)
+        // Neutralize all daylight pastels and near-white backgrounds (Expanded to catch ALL Hex A-F and RGB 150-255)
         s = s.replace(
-          /(background(?:-color)?\s*:\s*)(#(?:[eEfF][a-fA-F0-9]{5}|[eEfF][a-fA-F0-9]{2})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)\s*,\s*(?:2[0-5]\d|1[89]\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:8\d%|9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
+          /(background(?:-color)?\s*:\s*)(#(?:[a-fA-F8-9][a-fA-F0-9]{5}|[a-fA-F8-9][a-fA-F0-9]{2})\b|white\b|whitesmoke\b|snow\b|ivory\b|rgba?\(\s*(?:25[0-5]|2[0-4]\d|1[5-9]\d)\s*,\s*(?:25[0-5]|2[0-4]\d|1[5-9]\d)\s*,\s*(?:25[0-5]|2[0-4]\d|1[5-9]\d)[^)]*\)|hsla?\(\s*\d+\s*,\s*(?:\d{1,2}%)\s*,\s*(?:7\d%|8\d%|9\d%|100%)[^)]*\))(?:\s*!important)?/gi,
           '$1var(--vn-card-bg, #1c1c24)'
         );
 
