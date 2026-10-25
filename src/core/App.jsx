@@ -462,7 +462,10 @@ const App = () => {
     const handleGlobalMironRequest = (e) => {
       const text = e.detail?.text || null;
       const autoSend = e.detail?.autoSend ?? true;
-      setMironContext({ text, autoSend });
+      const preloadedHistory = e.detail?.preloadedHistory || null;
+      const title = e.detail?.title || null;
+      const courseCode = e.detail?.courseCode || null;
+      setMironContext({ text, autoSend, preloadedHistory, title, courseCode });
     };
     window.addEventListener('open-full-miron-chat', handleGlobalMironRequest);
     return () => window.removeEventListener('open-full-miron-chat', handleGlobalMironRequest);
@@ -746,6 +749,9 @@ const App = () => {
                       <MironChat 
                         initialContext={mironContext.text} 
                         autoSend={mironContext.autoSend}
+                        preloadedHistory={mironContext.preloadedHistory}
+                        initialTitle={mironContext.title}
+                        initialCourseCode={mironContext.courseCode}
                         onClose={() => setMironContext(null)} 
                       />
                   )}
