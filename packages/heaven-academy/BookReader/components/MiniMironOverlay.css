@@ -54,6 +54,50 @@
     align-items: center;
 }
 
+.mini-lang-toggle-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 99px;
+    padding: 3px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #e0e0e0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+
+.mini-lang-toggle-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+.mini-lang-toggle-btn.am-active {
+    border-color: rgba(241, 196, 15, 0.45);
+    background: rgba(241, 196, 15, 0.12);
+    color: #f1c40f;
+}
+
+.mini-lang-toggle-btn.en-active {
+    border-color: rgba(66, 215, 184, 0.45);
+    background: rgba(66, 215, 184, 0.12);
+    color: var(--accent-teal, #42d7b8);
+}
+
+.mini-lang-toggle-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.mini-lang-flag {
+    font-size: 0.82rem;
+    line-height: 1;
+}
+
 .mini-bubble p {
     margin-bottom: 8px;
     line-height: 1.45;
