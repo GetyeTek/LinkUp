@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './ChatInputDock.css';
 import { getFileIconProps } from './ChatMediaGallery.jsx';
 import PollComposerModal from './PollComposerModal.jsx';
@@ -14,6 +14,14 @@ const ChatInputDock = ({
 }) => {
     const [showAttachMenu, setShowAttachMenu] = useState(false);
     const [showPollComposer, setShowPollComposer] = useState(false);
+    const textareaRef = useRef(null);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 220)}px`;
+        }
+    }, [input]);
 
     const pollAttachment = editingMessage?.attachments?.find(a => a.type === 'poll');
 
@@ -117,13 +125,19 @@ const ChatInputDock = ({
                                 </div>
                             )}
                         </button>
-                        <input 
-                            type="text" 
+                        <textarea 
+                            ref={textareaRef}
+                            rows="1"
                             placeholder="Message..." 
                             disabled={isUploading}
                             value={input}
                             onChange={(e) => handleInputChange(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSend();
+                                }
+                            }}
                         />
                         {isUploading ? (
                             <div className="circular-progress-btn">
