@@ -116,13 +116,26 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
 
     const handleMiniExpand = () => {
         const promptToExpand = ctx?.fullPrompt || ctx?.selectedText || '';
-        if (shell?.openMiron) {
-            shell.openMiron(promptToExpand, true);
-        } else {
-            window.dispatchEvent(new CustomEvent('open-full-miron-chat', {
-                detail: { text: promptToExpand, autoSend: true }
-            }));
-        }
+        const title = ctx?.bookTitle ? `${ctx.bookTitle} Highlight` : 'Passage Study';
+        const courseCode = ctx?.courseCode || null;
+
+        // Filter out any "..." typing placeholders or error notices before handoff
+        const validHistory = miniMessages.filter(m => 
+            m.text && 
+            !m.text.includes('ማብራራት አልቻልኩም') && 
+            !m.text.includes('had trouble analyzing')
+        );
+
+        const payload = { 
+            text: promptToExpand, 
+            autoSend: false, 
+            preloadedHistory: validHistory,
+            title,
+            courseCode
+        };
+
+        // Dispatch globally to ensure App.jsx receives the extended handoff payload
+        window.dispatchEvent(new CustomEvent('open-full-miron-chat', { detail: payload }));
         onClose();
     };
 
