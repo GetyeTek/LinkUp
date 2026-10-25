@@ -59,6 +59,24 @@ const Notes = ({ currentUser, onClose, onForward }) => {
     }, [currentUser.id]);
 
     useEffect(() => {
+        const handleAppend = (e) => {
+            if (e.detail?.conversation_id === conversationId && e.detail?.message) {
+                setMessages(prev => {
+                    const idx = prev.findIndex(m => m.id === e.detail.message.id || (m.id.startsWith('temp-') && m.text === e.detail.message.text));
+                    if (idx !== -1) {
+                        const next = [...prev];
+                        next[idx] = e.detail.message;
+                        return next;
+                    }
+                    return [...prev, e.detail.message];
+                });
+            }
+        };
+        window.addEventListener('linkup:chat-append', handleAppend);
+        return () => window.removeEventListener('linkup:chat-append', handleAppend);
+    }, [conversationId]);
+
+    useEffect(() => {
         if (flowRef.current) flowRef.current.scrollTop = flowRef.current.scrollHeight;
     }, [messages, isUploading]);
 
