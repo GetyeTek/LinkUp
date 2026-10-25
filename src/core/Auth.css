@@ -5,15 +5,74 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #0c0c0c;
-    color: #e0e0e0;
+    background-color: var(--bg-dark, #0c0c0c);
+    color: var(--text-primary-dark, #e0e0e0);
     font-family: 'Poppins', sans-serif;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding: max(1rem, env(safe-area-inset-top, 0.75rem)) 0.75rem max(1.25rem, env(safe-area-inset-bottom, 0.75rem));
+    padding: max(1.5rem, env(safe-area-inset-top, 1rem)) 0.75rem max(1.5rem, env(safe-area-inset-bottom, 1rem));
     box-sizing: border-box;
     z-index: 9999;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Floating Top Utility Bar */
+.auth-top-bar {
+    position: absolute;
+    top: max(14px, env(safe-area-inset-top, 14px));
+    right: 16px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-util-btn {
+    background: rgba(18, 18, 22, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-primary-dark, #fff);
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 99px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.auth-util-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.auth-util-btn:active {
+    transform: scale(0.96);
+}
+
+.auth-util-btn.icon-only {
+    width: 36px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0.9rem;
+}
+
+.auth-lang-flag {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.auth-lang-label {
+    letter-spacing: 0.3px;
 }
 
 /* Referral Welcome Banner */
@@ -1037,4 +1096,139 @@
     transition: transform 0.2s;
 }
 
-.notice-btn:active { transform: scale(0.97); }
+/* --- LIGHT THEME ADAPTATION (AUTH PORTAL) --- */
+.theme-light .auth-root {
+    background-color: var(--bg-dark, #f0f2f5);
+    color: var(--text-primary-dark, #111827);
+}
+
+.theme-light .auth-top-bar .auth-util-btn {
+    background: rgba(255, 255, 255, 0.88);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #111827;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.theme-light .auth-top-bar .auth-util-btn:hover {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.22);
+}
+
+.theme-light .ambient-elegant-bg {
+    background: #f0f2f5;
+    background-image: 
+        radial-gradient(circle at top right, rgba(13, 148, 136, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at bottom left, rgba(200, 200, 200, 0.35) 0%, transparent 60%);
+}
+
+.theme-light .auth-card {
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.08);
+}
+
+.theme-light .auth-title {
+    color: #0f172a;
+}
+
+.theme-light .auth-subtitle {
+    color: #64748b;
+}
+
+.theme-light .auth-tab-switch {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+.theme-light .auth-tab-btn {
+    color: #64748b;
+}
+
+.theme-light .auth-tab-btn:hover:not(.active) {
+    color: #0f172a;
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.theme-light .auth-tab-btn.active {
+    background: rgba(13, 148, 136, 0.12);
+    color: var(--accent-teal, #0d9488);
+    border-color: rgba(13, 148, 136, 0.3);
+}
+
+.theme-light .auth-input {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #0f172a;
+}
+
+.theme-light .auth-input::placeholder {
+    color: #94a3b8;
+}
+
+.theme-light .auth-submit-btn {
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.theme-light .auth-submit-btn:hover {
+    background: #1e293b;
+}
+
+.theme-light .google-btn {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1e293b;
+}
+
+.theme-light .google-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .telegram-btn {
+    background: rgba(41, 169, 234, 0.08);
+    border-color: rgba(41, 169, 234, 0.25);
+    color: #0284c7;
+}
+
+.theme-light .auth-institutional-panel {
+    background: linear-gradient(160deg, #f8fafc 0%, #e2e8f0 100%);
+    border-right-color: rgba(0, 0, 0, 0.08);
+}
+
+.theme-light .aip-main-title {
+    color: #0f172a;
+}
+
+.theme-light .aip-description {
+    color: #475569;
+}
+
+.theme-light .aip-badge {
+    color: #334155;
+}
+
+.theme-light .auth-portal-frame {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .consortium-label {
+    color: #64748b;
+}
+
+.theme-light .consortium-card:hover .consortium-label {
+    color: #0f172a;
+}
+
+.theme-light .consortium-label.moe-label {
+    color: #334155;
+}
+
+.theme-light .bridge-line {
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.theme-light .bridge-text {
+    color: var(--accent-teal, #0d9488);
+}
