@@ -43,6 +43,7 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
         setIsMiniTyping(true);
 
         invokeMiron({
+            mode: 'passage_explain',
             prompt: userPrompt,
             history: [],
             context: ctx.surroundingText || null
@@ -82,6 +83,7 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
 
         try {
             const data = await invokeMiron({
+                mode: 'passage_explain',
                 prompt: queryText,
                 history: miniMessages.slice(-8),
                 context: ctx?.surroundingText || null
