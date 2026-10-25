@@ -13,6 +13,7 @@ const Auth = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [notice, setNotice] = useState(null); // { title, message, type, actionLabel }
+    const [showMoeDisclaimer, setShowMoeDisclaimer] = useState(false);
     const [verifyingToken, setVerifyingToken] = useState(false);
     const [referrerSlug, setReferrerSlug] = useState(null);
 
@@ -375,6 +376,68 @@ const Auth = () => {
                     </div>
                 </div>
             )}
+
+            {showMoeDisclaimer && (
+                <div className="moe-disclaimer-overlay" onClick={() => setShowMoeDisclaimer(false)}>
+                    <div className="moe-disclaimer-card" onClick={e => e.stopPropagation()}>
+                        <header className="moe-disclaimer-header">
+                            <div>
+                                <span className="moe-doc-ref">LEGAL DISCLOSURE // FDRE-MOE-HEI-2026-DISC</span>
+                                <h3>Curriculum Alignment & Institutional Disclosure</h3>
+                            </div>
+                            <button className="moe-close-icon-btn" onClick={() => setShowMoeDisclaimer(false)} aria-label="Close">
+                                <i className="fa-solid fa-xmark"></i>
+                            </button>
+                        </header>
+
+                        <div className="moe-disclaimer-body">
+                            <section className="moe-disc-section">
+                                <h4>1. Purpose of Standardized Alignment</h4>
+                                <p>
+                                    LinkUp has been engineered in accordance with the national Higher Education Modular Curriculum framework established for undergraduate freshman studies across Ethiopian universities (including Addis Ababa University, Jimma, Bahir Dar, Hawassa, Mekelle, Arba Minch, and sister public higher education institutions).
+                                </p>
+                                <p>
+                                    All pedagogical indexing, textbook chapters, section numbering schemas, and course codes (such as ANTH 1012, BIOL 1012, CHEM 1012, ECON 1011, EMTE 1012, FLEN 1011, GEES 1011, GLTR 2012, HIST 1012, INCL 1012, LOCT 1011, MATH 1011, MATH 1012, MCIE 1012, MGMT 1012, and PSYC 1011) strictly mirror the competency benchmarks and syllabus learning objectives prescribed in official national course modules.
+                                </p>
+                            </section>
+
+                            <section className="moe-disc-section">
+                                <h4>2. Institutional Archival & Pedagogical Integrity</h4>
+                                <p>
+                                    Our historical examination pavilion, active recall flashcard systems, and automated reading aids operate under rigorous archival methodologies. Past examination questions are indexed strictly for academic review, cognitive reinforcement, and self-testing preparation to advance university scholarship.
+                                </p>
+                            </section>
+
+                            <section className="moe-disc-section legal-warning-box">
+                                <div className="warning-heading">
+                                    <i className="fa-solid fa-shield-halved"></i>
+                                    <span>STATUTORY NOTICE OF NON-AFFILIATION</span>
+                                </div>
+                                <p>
+                                    LinkUp is an independent educational platform developed by students, for students. LinkUp is <strong>NOT</strong> affiliated with, associated with, authorized by, sponsored by, endorsed by, or in any way officially connected with the <strong>Ministry of Education (MoE) of the Federal Democratic Republic of Ethiopia</strong>, or any of its subordinate directorates, regional educational bureaus, or statutory commissions.
+                                </p>
+                                <p>
+                                    The inclusion of the Ministry of Education seal and course identifiers is for nominative academic alignment, curriculum verification, and contextual identification purposes only. The Ministry of Education does not oversee, approve, audit, or assume liability for the operations, software services, user discussions, or digital materials provided on this platform.
+                                </p>
+                            </section>
+
+                            <section className="moe-disc-section">
+                                <h4>4. Intellectual Property & Educational Attribution</h4>
+                                <p>
+                                    All official course syllabus titles, departmental module outlines, and statutory academic guidelines referenced within the platform remain the intellectual and administrative property of their respective governing authorities. LinkUp maintains an independent educational infrastructure designed solely to promote collaborative university learning.
+                                </p>
+                            </section>
+                        </div>
+
+                        <footer className="moe-disclaimer-footer">
+                            <span className="moe-footer-note">Reviewed for Compliance • Academic Year 2026/27</span>
+                            <button className="moe-acknowledge-btn" onClick={() => setShowMoeDisclaimer(false)}>
+                                Close & Return
+                            </button>
+                        </footer>
+                    </div>
+                </div>
+            )}
             
             {referrerSlug && (
                 <div className="welcome-banner-ref">
@@ -574,7 +637,8 @@ const Auth = () => {
                 {/* The Academic Consortium & Engine Network */}
                 <div className="ecosystem-container">
                     <div className="ecosystem-consortium-grid">
-                        <div className="consortium-card">
+                        {/* 1. Independent Curriculum Alignment */}
+                        <div className="consortium-card moe-card" onClick={() => setShowMoeDisclaimer(true)} title="Tap to read curriculum alignment disclosure">
                             <div className="consortium-medallion silver-ring">
                                 <img 
                                     src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/moe_logo.png" 
@@ -588,50 +652,63 @@ const Auth = () => {
                                     <i className="fa-solid fa-landmark"></i>
                                 </div>
                             </div>
-                            <span className="consortium-label">MoE Std.</span>
+                            <span className="consortium-label moe-label">
+                                MoE Aligned <i className="fa-solid fa-circle-info"></i>
+                            </span>
                         </div>
 
-                        <div className="consortium-card">
-                            <div className="consortium-medallion">
-                                <img 
-                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/heaven_logo.png" 
-                                    alt="Heaven Academy" 
-                                    onError={(e) => { 
-                                        e.target.style.display = 'none'; 
-                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
-                                    }}
-                                />
-                                <div className="consortium-icon" style={{ display: 'none' }}>
-                                    <i className="fa-solid fa-graduation-cap"></i>
+                        {/* 2. Platform Technology & Content Engines (Underline Bridge) */}
+                        <div className="consortium-engines-wrapper">
+                            <div className="engines-row">
+                                <div className="consortium-card">
+                                    <div className="consortium-medallion">
+                                        <img 
+                                            src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/heaven_logo.png" 
+                                            alt="Heaven Academy" 
+                                            onError={(e) => { 
+                                                e.target.style.display = 'none'; 
+                                                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                            }}
+                                        />
+                                        <div className="consortium-icon" style={{ display: 'none' }}>
+                                            <i className="fa-solid fa-graduation-cap"></i>
+                                        </div>
+                                    </div>
+                                    <span className="consortium-label">Exam Vault</span>
                                 </div>
-                            </div>
-                            <span className="consortium-label">Exam Vault</span>
-                        </div>
 
-                        <div className="consortium-card">
-                            <div className="consortium-medallion">
-                                <img 
-                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/gibinews_logo.png" 
-                                    alt="Gibi News" 
-                                    onError={(e) => { 
-                                        e.target.style.display = 'none'; 
-                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
-                                    }}
-                                />
-                                <div className="consortium-icon" style={{ display: 'none' }}>
-                                    <i className="fa-solid fa-satellite-dish"></i>
+                                <div className="consortium-card">
+                                    <div className="consortium-medallion">
+                                        <img 
+                                            src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/gibinews_logo.png" 
+                                            alt="Gibi News" 
+                                            onError={(e) => { 
+                                                e.target.style.display = 'none'; 
+                                                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+                                            }}
+                                        />
+                                        <div className="consortium-icon" style={{ display: 'none' }}>
+                                            <i className="fa-solid fa-satellite-dish"></i>
+                                        </div>
+                                    </div>
+                                    <span className="consortium-label">Campus Wire</span>
                                 </div>
-                            </div>
-                            <span className="consortium-label">Campus Wire</span>
-                        </div>
 
-                        <div className="consortium-card">
-                            <div className="consortium-medallion">
-                                <div className="consortium-icon">
-                                    <i className="fa-solid fa-users"></i>
+                                <div className="consortium-card">
+                                    <div className="consortium-medallion">
+                                        <div className="consortium-icon">
+                                            <i className="fa-solid fa-users"></i>
+                                        </div>
+                                    </div>
+                                    <span className="consortium-label">Squad Graph</span>
                                 </div>
                             </div>
-                            <span className="consortium-label">Squad Graph</span>
+
+                            <div className="engines-underline-bridge">
+                                <span className="bridge-line"></span>
+                                <span className="bridge-text">POWERED BY</span>
+                                <span className="bridge-line"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
