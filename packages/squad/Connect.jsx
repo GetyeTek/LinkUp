@@ -742,7 +742,17 @@ const Connect = () => {
                     return null;
                 })}
                 
-                {isNotesOpen && <Notes currentUser={currentUser} onClose={() => setIsNotesOpen(false)} />}
+                {isNotesOpen && (
+    <Notes 
+        currentUser={currentUser} 
+        onClose={() => setIsNotesOpen(false)} 
+        onForward={(msg) => {
+            setForwardTargetMsg(msg);
+            setForwardSourceChat({ type: 'notes', title: 'My Notes' });
+            setIsNotesOpen(false);
+        }}
+    />
+)}
 
                 {showDiscovery && (
                     <DiscoveryScreen 
