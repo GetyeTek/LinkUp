@@ -11,6 +11,16 @@ const GROQ_MODEL = "qwen/qwen3.8-27b";
 const GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
 const EMBEDDING_DIMENSIONS = 768;
 
+const MINI_MIRON_SYSTEM_PROMPT = `You are Miron, an articulate, brilliant, and supportive university peer study partner.
+The student is actively reading their course textbook and highlighted a specific sentence or concept.
+
+INSTRUCTIONS:
+- Explain this passage concisely, intuitively, and with depth in 2-3 short, clear paragraphs.
+- Skip generic greetings or robotic introductions ("Sure!", "Hello!"). Jump directly into unpacking the concept.
+- Break down the underlying intuition: WHY does this work, and what is the core takeaway for an exam?
+- If mathematical formulas or scientific variables are involved, format them strictly in standard LaTeX ($...$ inline, $...$ display).
+- Do NOT generate quizzes, flashcards, snapshots, or bracketed commands. Keep your response strictly explanatory.`;
+
 const MIRON_SYSTEM_PROMPT = `You are Miron Athena, an exceptional, articulate, and supportive academic study companion for university students.
 You communicate naturally, with warmth, clarity, and genuine conversational intelligence. You explain complex ideas with intuitive depth, adapt seamlessly to the student's learning pace, and never sound robotic, scripted, or overly formal.
 
@@ -437,7 +447,7 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    const { history, prompt, context } = await req.json();
+    const { history, prompt, context, mode } = await req.json();
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Prompt text is required." }), { 
@@ -988,6 +998,128 @@ serve(async (req) => {
         };
 
         try {
+          // --- FAST PATH: MINI MIRON PASSAGE EXPLANATION (DIRECT GROQ STREAM) ---
+          if (mode === 'passage_explain') {
+            console.log(`⚡ [MINI MIRON FAST-PATH] Routing directly to Groq (${GROQ_MODEL})`);
+            sendEvent('status', { message: 'Explaining passage...' });
+
+            const groqMessages: any[] = [
+              { role: "system", content: MINI_MIRON_SYSTEM_PROMPT }
+            ];
+
+            if (context) {
+              groqMessages.push({
+                role: "system",
+                content: `Textbook Surrounding Context:\n"""\n${context}\n"""`
+              });
+            }
+
+            const trimmed = (history || []).slice(-6);
+            trimmed.forEach((m: any) => {
+              groqMessages.push({
+                role: m.side === 'user' ? 'user' : 'assistant',
+                content: m.text
+              });
+            });
+
+            groqMessages.push({ role: "user", content: prompt });
+
+            try {
+              const keyRecord = await getApiKey('groq');
+              const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${keyRecord.api_key}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  model: GROQ_MODEL,
+                  messages: groqMessages,
+                  temperature: 0.5,
+                  stream: true
+                })
+              });
+
+              if (!groqRes.ok) {
+                if (groqRes.status === 429) await flagKeyCooldown(keyRecord.id);
+                throw new Error(`Groq stream failed with HTTP ${groqRes.status}`);
+              }
+
+              if (!groqRes.body) throw new Error("Groq stream body missing.");
+
+              const reader = groqRes.body.getReader();
+              const decoder = new TextDecoder();
+              let sseBuf = '';
+              while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                sseBuf += decoder.decode(value, { stream: true });
+                const lines = sseBuf.split('\n');
+                sseBuf = lines.pop() || '';
+                for (const l of lines) {
+                  const tr = l.trim();
+                  if (!tr.startsWith('data:')) continue;
+                  const jsonStr = tr.slice(5).trim();
+                  if (jsonStr === '[DONE]') break;
+                  try {
+                    const parsed = JSON.parse(jsonStr);
+                    const delta = parsed.choices?.[0]?.delta?.content || '';
+                    if (delta) {
+                      finalText += delta;
+                      sendEvent('chunk', { delta });
+                    }
+                  } catch (_) {}
+                }
+              }
+
+              sendEvent('done', {
+                snapshots: [],
+                quizzes: [],
+                flashcards: [],
+                ui_command: null,
+                thoughts: []
+              });
+              controller.close();
+              return;
+            } catch (groqFastErr) {
+              console.warn("[MINI MIRON] Groq fast-path failed, falling back to lightweight Gemini:", groqFastErr);
+              sendEvent('status', { message: 'Consulting backup engine...' });
+
+              const geminiContents: any[] = [];
+              if (context) {
+                geminiContents.push({ role: "user", parts: [{ text: `Textbook Context:\n${context}` }] });
+                geminiContents.push({ role: "model", parts: [{ text: "Context received." }] });
+              }
+              (history || []).slice(-6).forEach((m: any) => {
+                geminiContents.push({
+                  role: m.side === 'user' ? 'user' : 'model',
+                  parts: [{ text: m.text }]
+                });
+              });
+              geminiContents.push({ role: "user", parts: [{ text: prompt }] });
+
+              await streamGeminiTurn(
+                geminiContents,
+                null,
+                MINI_MIRON_SYSTEM_PROMPT,
+                (chunkText) => {
+                  finalText += chunkText;
+                  sendEvent('chunk', { delta: chunkText });
+                }
+              );
+
+              sendEvent('done', {
+                snapshots: [],
+                quizzes: [],
+                flashcards: [],
+                ui_command: null,
+                thoughts: []
+              });
+              controller.close();
+              return;
+            }
+          }
+
           console.log(`[MIRON STREAM] Initiating real-time turn with primary model: Gemini (${GEMINI_MODEL})`);
 
           let geminiMessages: any[] = [];
