@@ -256,6 +256,23 @@ body.library-open { overflow: hidden; }
     background: rgba(66, 215, 184, 0.15);
 }
 
+.miron-voice-mini-beta {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #0c0805;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.48rem;
+    font-weight: 900;
+    padding: 1px 3px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+    pointer-events: none;
+    line-height: 1;
+}
+
 .home-miron-dock-right {
     display: flex;
     align-items: center;
