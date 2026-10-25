@@ -1,11 +1,16 @@
 import React from 'react';
 import './NoteContextMenu.css';
 
-const NoteContextMenu = ({ activeMenu, handleCopy, handleDownload, deleteNote }) => {
+const NoteContextMenu = ({ activeMenu, handleCopy, handleDownload, deleteNote, onForward }) => {
     if (!activeMenu) return null;
     
     return (
         <div className="notes-ctx-menu" style={{ left: activeMenu.x, top: activeMenu.y }}>
+            {onForward && (
+                <button className="notes-ctx-btn" onClick={() => onForward(activeMenu.msg)}>
+                    <i className="fa-solid fa-share"></i> Forward Note
+                </button>
+            )}
             {activeMenu.msg.text && (
                 <button className="notes-ctx-btn" onClick={() => handleCopy(activeMenu.msg.text)}>
                     <i className="fa-solid fa-copy"></i> Copy Text
