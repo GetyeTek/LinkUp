@@ -524,16 +524,17 @@ const Auth = () => {
                                     onError={(e) => { e.target.style.display = 'none'; }}
                                 />
                             </div>
-                        <h1 className="auth-title">
-                            {isForgotPassword ? (isAm ? 'የይለፍ ቃል ቀይር' : 'Reset Password') : (
-                                <span className="linkup-wordmark">
-                                    Link<span className="wordmark-cap-letter">
-                                        <i className="fa-solid fa-graduation-cap wordmark-cap"></i>
-                                        Up
+                            <h1 className="auth-title">
+                                {isForgotPassword ? (isAm ? 'የይለፍ ቃል ቀይር' : 'Reset Password') : (
+                                    <span className="linkup-wordmark">
+                                        Link<span className="wordmark-cap-letter">
+                                            <i className="fa-solid fa-graduation-cap wordmark-cap"></i>
+                                            Up
+                                        </span>
                                     </span>
-                                </span>
-                            )}
-                        </h1>
+                                )}
+                            </h1>
+                        </div>
                         <p className="auth-subtitle">
                             {isForgotPassword 
                                 ? (isAm ? 'የይለፍ ቃል ማደሻ ሊንክ ለመቀበል ኢሜይልዎን ያስገቡ።' : 'Enter your email to receive a recovery link.') 
