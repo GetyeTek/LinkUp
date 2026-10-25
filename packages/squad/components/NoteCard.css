@@ -11,6 +11,35 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
+.note-forward-indicator {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 2px 0;
+    border-left: 3px solid var(--accent-teal);
+    padding-left: 8px;
+}
+.note-forward-info {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.72rem;
+    line-height: 1.25;
+}
+.note-forward-label {
+    color: #888;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.note-forward-from {
+    color: var(--accent-teal);
+    font-weight: 600;
+}
+.note-forward-origin {
+    color: #aaa;
+    font-weight: 400;
+}
+
 .note-card:active {
     transform: scale(0.97);
     background: var(--bg-dark);
