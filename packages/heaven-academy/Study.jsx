@@ -217,7 +217,10 @@ const Study = () => {
                                 </svg>
                             </div>
                             <div className="compact-text-content">
-                                <h3 className="compact-title">{t('voice_study_title', 'Voice Study with Miron')}</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <h3 className="compact-title">{t('voice_study_title', 'Voice Study with Miron')}</h3>
+                                    <span className="study-miron-beta-pill">BETA</span>
+                                </div>
                                 <div className="compact-subtitle">
                                     <div className="typewriter-wrapper">
                                         <span className="typewriter-text">{t('voice_study_typewriter', '1-on-1 personal tutoring • Tap to talk...')}</span>
