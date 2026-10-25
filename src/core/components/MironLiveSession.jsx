@@ -242,6 +242,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const readingTimeoutRef = useRef(null);
     const speakingTimeout = useRef(null);
     const transcriptRef = useRef(null);
+    const liveTextareaRef = useRef(null);
+
+    useEffect(() => {
+        if (liveTextareaRef.current) {
+            liveTextareaRef.current.style.height = 'auto';
+            liveTextareaRef.current.style.height = `${Math.min(liveTextareaRef.current.scrollHeight, 220)}px`;
+        }
+    }, [textInput]);
     const pageContainerRef = useRef(null);
     const a4LayerRef = useRef(null);
     const isHangingUpRef = useRef(false);
@@ -1608,12 +1616,18 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             {/* Bottom Microphone / Chat Capsule */}
             <footer className="ml-dock-container">
                 <div className="ml-dock">
-                    <input 
-                        type="text" 
+                    <textarea 
+                        ref={liveTextareaRef}
+                        rows="1"
                         placeholder={stage === 'reading' ? "Ask Miron about this page..." : "Type to Miron..."} 
                         value={textInput}
                         onChange={e => setTextInput(e.target.value)}
-                        onKeyPress={e => e.key === 'Enter' && handleSendText()}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.shiftKey) {
+                                e.preventDefault();
+                                handleSendText();
+                            }
+                        }}
                     />
                     {textInput.trim() ? (
                         <button className="ml-action-btn ml-send-btn" onClick={handleSendText}>
