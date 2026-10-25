@@ -529,6 +529,7 @@ const Connect = () => {
                         return;
                     }
 
+                    let newNotePayload = {};
                     if (forwardTargetMsg.is_quote) {
                         const q = forwardTargetMsg.quote;
                         const attachment = {
@@ -539,26 +540,53 @@ const Connect = () => {
                             page_number: q.page_number,
                             text: q.text
                         };
-
-                        await supabase.from('messages').insert({
+                        newNotePayload = {
                             conversation_id: notesConvId,
                             sender_id: currentUser.id,
                             text: `📖 Quote: ${q.book_title || q.course_code || 'Textbook'} (p. ${q.page_number})`,
                             attachments: [attachment]
-                        });
+                        };
                     } else {
-                        await supabase.from('messages').insert({
+                        let meta = forwardTargetMsg.forward_meta;
+                        if (!meta && forwardSourceChat) {
+                            meta = {
+                                original_sender_id: forwardTargetMsg.sender_id,
+                                original_sender_name: forwardTargetMsg.resolved_sender_name || 'Classmate',
+                                original_sender_avatar: forwardTargetMsg.resolved_sender_avatar || '',
+                                original_conversation_id: forwardSourceChat.conversation_id,
+                                original_conversation_title: forwardSourceChat.type === 'dm' ? 'Direct Message' : forwardSourceChat.title
+                            };
+                        }
+                        newNotePayload = {
                             conversation_id: notesConvId,
                             sender_id: currentUser.id,
                             text: forwardTargetMsg.text,
                             attachments: forwardTargetMsg.attachments || [],
-                            forward_meta: forwardTargetMsg.forward_meta || null
-                        });
+                            forward_meta: meta || null
+                        };
                     }
 
+                    const optimisticNote = {
+                        ...newNotePayload,
+                        id: `temp-${Date.now()}`,
+                        created_at: new Date().toISOString()
+                    };
+
+                    setIsNotesOpen(true);
                     setForwardTargetMsg(null);
                     setToastNotice("Saved to My Notes");
-                    setIsNotesOpen(true);
+
+                    window.dispatchEvent(new CustomEvent('linkup:chat-append', {
+                        detail: { conversation_id: notesConvId, message: optimisticNote }
+                    }));
+
+                    const { data: savedNote, error: insertErr } = await supabase.from('messages').insert(newNotePayload).select().maybeSingle();
+                    if (!insertErr && savedNote) {
+                        window.dispatchEvent(new CustomEvent('linkup:chat-append', {
+                            detail: { conversation_id: notesConvId, message: savedNote }
+                        }));
+                    }
+                    fetchConversations();
                 });
             } else {
                 setIsNotesOpen(true);
@@ -617,6 +645,9 @@ const Connect = () => {
                     <div className="large-title-row">
                         <h2 className="large-title">{t('social_hub', 'Social Hub')}</h2>
                         <div className="header-actions">
+                            <button className="connect-desktop-newchat-btn" onClick={() => setShowDiscovery(true)} title="Find Classmates / Start Chat">
+                                <i className="fas fa-comment-medical"></i> <span>Start Chat</span>
+                            </button>
                             <button className="icon-button" onClick={() => setIsGlobalSearchOpen(true)}>
                                 <i className="fas fa-search"></i>
                             </button>
