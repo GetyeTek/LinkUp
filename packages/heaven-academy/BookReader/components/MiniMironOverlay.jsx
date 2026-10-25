@@ -22,19 +22,16 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
     const { shell } = usePlatform();
     const ctx = context || (typeof textContext === 'string' ? { selectedText: textContext, fullPrompt: textContext } : textContext);
 
+    const [lang, setLang] = useState('am'); // Default Amharic
     const [miniMessages, setMiniMessages] = useState([]);
     const [isMiniTyping, setIsMiniTyping] = useState(false);
     const [miniInput, setMiniInput] = useState('');
     const miniFlowRef = useRef(null);
     const initializedRef = useRef(false);
 
-    // Initial Live Inquiry to Miron with Textbook Context
-    useEffect(() => {
-        if (!ctx || initializedRef.current) return;
-        initializedRef.current = true;
-
-        const displayQuote = ctx.selectedText || ctx.fullPrompt || 'Selected excerpt';
-        const userPrompt = ctx.fullPrompt || displayQuote;
+    const queryPassage = (targetLang) => {
+        const displayQuote = ctx?.selectedText || ctx?.fullPrompt || 'Selected excerpt';
+        const userPrompt = ctx?.fullPrompt || displayQuote;
 
         setMiniMessages([
             { id: 1, side: 'user', text: displayQuote }
@@ -44,26 +41,41 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
 
         invokeMiron({
             mode: 'passage_explain',
+            lang: targetLang,
             prompt: userPrompt,
             history: [],
-            context: ctx.surroundingText || null
+            context: ctx?.surroundingText || null
         }).then(data => {
             if (data?.response) {
                 setMiniMessages(prev => [
                     ...prev,
-                    { id: 2, side: 'miron', text: data.response }
+                    { id: Date.now(), side: 'miron', text: data.response }
                 ]);
             }
         }).catch(err => {
             console.error('[MiniMiron] Live query failed:', err);
             setMiniMessages(prev => [
                 ...prev,
-                { id: 2, side: 'miron', text: 'I had trouble analyzing this passage right now. Please tap the expand button to retry in full chat.' }
+                { id: Date.now(), side: 'miron', text: targetLang === 'am' ? 'ይቅርታ፣ ይህንን ጽሁፍ አሁን ማብራራት አልቻልኩም። እባክዎ እንደገና ይሞክሩ ወይም በትልቁ ቻት ይክፈቱት።' : 'I had trouble analyzing this passage right now. Please tap the expand button to retry in full chat.' }
             ]);
         }).finally(() => {
             setIsMiniTyping(false);
         });
+    };
+
+    // Initial Live Inquiry to Miron (Amharic by Default)
+    useEffect(() => {
+        if (!ctx || initializedRef.current) return;
+        initializedRef.current = true;
+        queryPassage(lang);
     }, [ctx]);
+
+    const handleToggleLang = () => {
+        if (isMiniTyping) return;
+        const nextLang = lang === 'am' ? 'en' : 'am';
+        setLang(nextLang);
+        queryPassage(nextLang);
+    };
 
     // Keep thread scrolled to bottom
     useEffect(() => {
@@ -84,6 +96,7 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
         try {
             const data = await invokeMiron({
                 mode: 'passage_explain',
+                lang,
                 prompt: queryText,
                 history: miniMessages.slice(-8),
                 context: ctx?.surroundingText || null
@@ -123,6 +136,16 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
                     {headerSub && <div className="mini-miron-meta-sub">{headerSub}</div>}
                 </div>
                 <div className="mini-miron-actions">
+                    <button 
+                        type="button" 
+                        className={`mini-lang-toggle-btn ${lang === 'am' ? 'am-active' : 'en-active'}`}
+                        onClick={handleToggleLang}
+                        disabled={isMiniTyping}
+                        title={lang === 'am' ? "Switch to English (Groq Fast-Path)" : "Switch to Amharic (Gemini Flash-Lite)"}
+                    >
+                        <span className="mini-lang-flag">{lang === 'am' ? '🇪🇹' : '🇬🇧'}</span>
+                        <span className="mini-lang-label">{lang === 'am' ? 'አማርኛ' : 'EN'}</span>
+                    </button>
                     <button className="icon-button" style={{color: 'white', opacity: 0.8, width: '34px', height: '34px', fontSize: '1rem'}} onClick={handleMiniExpand} title="Expand to Fullscreen Miron">
                         <i className="fa-solid fa-expand"></i>
                     </button>
@@ -159,7 +182,7 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
                 <div className="mini-dock">
                     <input 
                         type="text" 
-                        placeholder="Ask follow-up about this passage..." 
+                        placeholder={lang === 'am' ? "ስለዚህ ጽሁፍ ተጨማሪ ጥያቄ ይጠይቁ..." : "Ask follow-up about this passage..."} 
                         value={miniInput}
                         onChange={(e) => setMiniInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleMiniSend()}
