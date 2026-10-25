@@ -184,7 +184,7 @@ const MironMessageNode = React.memo(({ m, copiedId, handleCopyMessage, handleInl
     );
 });
 
-const MironChat = ({ onClose, initialContext, autoSend = false }) => {
+const MironChat = ({ onClose, initialContext, autoSend = false, preloadedHistory = null, initialTitle = null, initialCourseCode = null }) => {
     const autoSentRef = useRef(false);
     const { sessionUser, user: userProfile, updateUserProfile } = usePlatform();
     const [avatarError, setAvatarError] = useState(false);
@@ -214,15 +214,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
     const [copiedId, setCopiedId] = useState(null);
     const [isThreadCopied, setIsThreadCopied] = useState(false);
 
-    // Auto-Send query from Home Dock
-    useEffect(() => {
-        if (autoSend && initialContext && !autoSentRef.current && !isTyping) {
-            autoSentRef.current = true;
-            sendMessage(initialContext);
-        }
-    }, [autoSend, initialContext, isTyping]);
-
-    // 1. Fetch Threads on Mount (Greets on Clean Canvas by Default)
+    // 1. Fetch Threads on Mount & Handle Conversation Handoffs
     useEffect(() => {
         if (!sessionUser?.id) return;
 
@@ -246,12 +238,49 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
                     setThreads(sortedData);
                 }
 
-                if (initialContext) {
-                    const titleMatch = initialContext.match(/\[Textbook Inquiry:\s*([^\|\]]+)/i);
-                    const threadTitle = titleMatch ? titleMatch[1].trim() : "Textbook Study";
+                if (preloadedHistory && preloadedHistory.length > 0) {
+                    // Handoff from Mini Miron: Persist the pre-existing history instantly
+                    const threadTitle = initialTitle || "Passage Study";
+                    const { data: newThread, error: tErr } = await supabase
+                        .from('miron_threads')
+                        .insert({
+                            user_id: sessionUser.id,
+                            title: threadTitle,
+                            course_code: initialCourseCode || null
+                        })
+                        .select()
+                        .single();
+
+                    if (!tErr && newThread) {
+                        setActiveThread(newThread);
+                        setThreads(prev => [newThread, ...prev]);
+
+                        const dbMessages = preloadedHistory.map(m => ({
+                            thread_id: newThread.id,
+                            user_id: sessionUser.id,
+                            role: m.side === 'miron' ? 'miron' : 'user',
+                            text: m.text
+                        }));
+                        
+                        await supabase.from('miron_messages').insert(dbMessages);
+                        
+                        setMessages(preloadedHistory.map((m, i) => ({
+                            id: m.id || (Date.now() + i),
+                            side: m.side === 'miron' ? 'miron' : 'user',
+                            text: m.text
+                        })));
+                        setIsLoadingMessages(false);
+                    }
+                } else if (initialContext) {
+                    // Kills the Twin Thread Race Condition:
+                    // If autoSend is true, do NOT create a thread here. Let sendMessage lazily create exactly one.
                     if (autoSend) {
-                        await createNewThread(threadTitle, null, null);
+                        setActiveThread(null);
+                        setMessages([]);
+                        setIsLoadingMessages(false);
                     } else {
+                        const titleMatch = initialContext.match(/\[Textbook Inquiry:\s*([^\|\]]+)/i);
+                        const threadTitle = titleMatch ? titleMatch[1].trim() : "Textbook Study";
                         await createNewThread(threadTitle, null, initialContext);
                     }
                 } else {
@@ -268,6 +297,14 @@ const MironChat = ({ onClose, initialContext, autoSend = false }) => {
 
         initThreads();
     }, [sessionUser?.id]);
+
+    // Auto-Send query from Home Dock (Waits for initialization to finish)
+    useEffect(() => {
+        if (autoSend && initialContext && !autoSentRef.current && !isTyping && !isLoadingMessages && !preloadedHistory) {
+            autoSentRef.current = true;
+            sendMessage(initialContext);
+        }
+    }, [autoSend, initialContext, isTyping, isLoadingMessages, preloadedHistory]);
 
     const handleCopyMessage = (msgId, rawText) => {
         if (!rawText) return;
