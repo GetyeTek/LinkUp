@@ -259,8 +259,41 @@ const App = () => {
               console.groupEnd();
 
               if (profileQuery.error) {
-                  console.warn("[Platform] Profile fetch transient error. Pausing...", profileQuery.error.message);
-                  setTimeout(() => fetchProfile(userId, retries), 2000);
+                  const errorMsg = profileQuery.error.message || '';
+                  const isAuthRejection = profileQuery.status === 401 ||
+                      profileQuery.error.code === 'PGRST301' ||
+                      /jwt|token|unauthorized|expired|invalid/i.test(errorMsg);
+
+                  if (isAuthRejection) {
+                      console.warn("[Platform] ⚠️ Auth token expired or rejected. Attempting single refresh...");
+                      try {
+                          const { data: refreshRes, error: refreshErr } = await supabase.auth.refreshSession();
+                          if (!refreshErr && refreshRes?.session) {
+                              console.log("[Platform] ✅ Session refreshed successfully. Retrying profile fetch...");
+                              return fetchProfile(userId, retries - 1);
+                          }
+                      } catch (e) {}
+
+                      console.warn("[Platform] 🚪 Session expired and cannot be restored. Ejecting to login screen.");
+                      await supabase.auth.signOut();
+                      setSession(null);
+                      setUserProfile(null);
+                      setIsProfileLoaded(false);
+                      setIsCheckingAuth(false);
+                      return;
+                  }
+
+                  if (retries > 0) {
+                      console.warn(`[Platform] Transient error fetching profile. Retrying (${retries} left)...`, errorMsg);
+                      setTimeout(() => fetchProfile(userId, retries - 1), 2000);
+                  } else {
+                      console.error("[Platform] Profile fetch retries exhausted. Ejecting to Auth.");
+                      await supabase.auth.signOut();
+                      setSession(null);
+                      setUserProfile(null);
+                      setIsProfileLoaded(false);
+                      setIsCheckingAuth(false);
+                  }
                   return;
               }
 
@@ -272,25 +305,39 @@ const App = () => {
                   }
                   setIsProfileLoaded(true);
               } else if (retries > 0) {
-                  // Attempt an explicit token refresh if the token was near/past expiry
                   if (isTokenExpired || retries === 1) {
                       console.log("[Diagnostic:Auth] 🔄 Refreshing Supabase session before next attempt...");
-                      await supabase.auth.refreshSession();
+                      const { error: refreshErr } = await supabase.auth.refreshSession();
+                      if (refreshErr) {
+                          console.warn("[Platform] Refresh failed. Session invalid, logging out.", refreshErr.message);
+                          await supabase.auth.signOut();
+                          setSession(null);
+                          setUserProfile(null);
+                          setIsProfileLoaded(false);
+                          setIsCheckingAuth(false);
+                          return;
+                      }
                   }
                   setTimeout(() => fetchProfile(userId, retries - 1), 1200);
               } else {
-                  // DIAGNOSTIC SAFETY BRAKE: Do NOT immediately force logout so the developer can inspect the console!
-                  console.error("🚨 [Diagnostic:Auth] CRITICAL: 4 queries returned data: null with error: null!");
-                  console.error("🚨 Probable causes: 1. System clock mismatch causing expired JWT; 2. PostgREST RLS policy on profiles returning empty; 3. Missing profile row.");
-                  console.warn("[Security Safety Brake] Auto-logout bypassed so you can inspect these logs in DevTools/Eruda.");
-                  
-                  // Allow the app to render with placeholder state instead of kicking to Auth screen
+                  console.error("🚨 [Platform] User profile not found after retries. Ejecting to Auth.");
+                  await supabase.auth.signOut();
+                  setSession(null);
                   setUserProfile(null);
-                  setIsProfileLoaded(true);
+                  setIsProfileLoaded(false);
+                  setIsCheckingAuth(false);
               }
           } catch (err) {
               console.error("[Platform] Critical fetch error", err);
-              setTimeout(() => fetchProfile(userId, retries), 2000);
+              if (retries > 0) {
+                  setTimeout(() => fetchProfile(userId, retries - 1), 2000);
+              } else {
+                  await supabase.auth.signOut();
+                  setSession(null);
+                  setUserProfile(null);
+                  setIsProfileLoaded(false);
+                  setIsCheckingAuth(false);
+              }
           }
         };
 
