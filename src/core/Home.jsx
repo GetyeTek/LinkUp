@@ -322,9 +322,11 @@ const Home = () => {
                                             e.stopPropagation();
                                             window.dispatchEvent(new CustomEvent('miron:open-live-session'));
                                         }}
-                                        title="Start Voice Session with Miron"
+                                        title="Start Voice Session with Miron (Beta)"
+                                        style={{ position: 'relative' }}
                                     >
                                         <i className="fas fa-microphone"></i>
+                                        <span className="miron-voice-mini-beta">BETA</span>
                                     </button>
                                 )}
                             </div>
