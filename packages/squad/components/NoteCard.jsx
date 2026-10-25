@@ -34,6 +34,20 @@ const NoteCard = ({ m, activeMenu, setActiveMenu, handleDownload, formatTime }) 
                 setActiveMenu({ msg: m, x, y });
             }}
         >
+            {m.forward_meta && (
+                <div className="note-forward-indicator">
+                    <div className="note-forward-bar"></div>
+                    <div className="note-forward-info">
+                        <span className="note-forward-label">Forwarded message</span>
+                        <span className="note-forward-from">
+                            {m.forward_meta.original_sender_name || 'Classmate'}
+                            {m.forward_meta.original_conversation_title && (
+                                <span className="note-forward-origin"> • {m.forward_meta.original_conversation_title}</span>
+                            )}
+                        </span>
+                    </div>
+                </div>
+            )}
             {m.text && <div className="note-text">{m.text}</div>}
     
             {m.attachments?.map((att, i) => (
