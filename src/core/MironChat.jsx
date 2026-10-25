@@ -204,6 +204,14 @@ const MironChat = ({ onClose, initialContext, autoSend = false, preloadedHistory
     const scrollAnchorRef = useRef(null);
     const isAutoScrollEnabled = useRef(true);
     const touchStartY = useRef(0);
+    const mironTextareaRef = useRef(null);
+
+    useEffect(() => {
+        if (mironTextareaRef.current) {
+            mironTextareaRef.current.style.height = 'auto';
+            mironTextareaRef.current.style.height = `${Math.min(mironTextareaRef.current.scrollHeight, 220)}px`;
+        }
+    }, [input]);
 
     // Track Dwell Time in Telemetry
     useEffect(() => {
@@ -898,12 +906,18 @@ const MironChat = ({ onClose, initialContext, autoSend = false, preloadedHistory
 
             <footer className="athena-input-area">
                 <div className="capsule-dock">
-                    <input 
-                        type="text" 
+                    <textarea 
+                        ref={mironTextareaRef}
+                        rows="1"
                         placeholder="Message Miron..." 
                         value={input} 
                         onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                            }
+                        }}
                     />
                     <button className="capsule-send" onClick={handleSend}>
                         <i className="fa-solid fa-arrow-up"></i>
