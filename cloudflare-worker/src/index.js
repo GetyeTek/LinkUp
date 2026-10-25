@@ -9,6 +9,7 @@ export default {
 
     // Security: Strict Origin Whitelist
     const ALLOWED_ORIGINS = [
+      'https://linkup.linkupdigitaltech.workers.dev',
       'https://getyetek.github.io',
       'https://getyeteklu2.github.io',
       'http://localhost:8080',
