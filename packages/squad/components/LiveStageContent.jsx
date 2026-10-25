@@ -40,6 +40,14 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
     const isHostPaused = !isMeHost && !hostParticipant;
 
     const questionsEndRef = useRef(null);
+    const stageQInputRef = useRef(null);
+
+    useEffect(() => {
+        if (stageQInputRef.current) {
+            stageQInputRef.current.style.height = 'auto';
+            stageQInputRef.current.style.height = `${Math.min(stageQInputRef.current.scrollHeight, 220)}px`;
+        }
+    }, [qInput]);
 
     useEffect(() => {
         if (devBoardPayload) setBoardMode(true);
@@ -675,12 +683,18 @@ const LiveStageContent = ({ conversationId, chatInfo, members, liveState, setLiv
             {!isMeHost && (
                 <footer className="immersive-input-area">
                     <div className="immersive-dock">
-                        <input 
-                            type="text" 
+                        <textarea 
+                            ref={stageQInputRef}
+                            rows="1"
                             placeholder={`Shoot a question to ${hostInfo.name.split(' ')[0]}...`} 
                             value={qInput} 
                             onChange={e => setQInput(e.target.value)} 
-                            onKeyPress={e => { if (e.key === 'Enter') handleSendQuestion(); }} 
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSendQuestion();
+                                }
+                            }} 
                             disabled={isSending}
                         />
                         <button className="question-send-btn" onClick={handleSendQuestion} disabled={!qInput.trim() || isSending}>
