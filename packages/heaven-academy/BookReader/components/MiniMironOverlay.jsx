@@ -27,7 +27,15 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
     const [isMiniTyping, setIsMiniTyping] = useState(false);
     const [miniInput, setMiniInput] = useState('');
     const miniFlowRef = useRef(null);
+    const miniInputRef = useRef(null);
     const initializedRef = useRef(false);
+
+    useEffect(() => {
+        if (miniInputRef.current) {
+            miniInputRef.current.style.height = 'auto';
+            miniInputRef.current.style.height = `${Math.min(miniInputRef.current.scrollHeight, 220)}px`;
+        }
+    }, [miniInput]);
 
     const queryPassage = (targetLang) => {
         const displayQuote = ctx?.selectedText || ctx?.fullPrompt || 'Selected excerpt';
@@ -193,12 +201,18 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
 
             <footer className="mini-miron-input-wrapper">
                 <div className="mini-dock">
-                    <input 
-                        type="text" 
+                    <textarea 
+                        ref={miniInputRef}
+                        rows="1"
                         placeholder={lang === 'am' ? "ስለዚህ ጽሁፍ ተጨማሪ ጥያቄ ይጠይቁ..." : "Ask follow-up about this passage..."} 
                         value={miniInput}
                         onChange={(e) => setMiniInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleMiniSend()}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.shiftKey) {
+                                e.preventDefault();
+                                handleMiniSend();
+                            }
+                        }}
                         disabled={isMiniTyping}
                     />
                     <button className="mini-send-btn" onClick={handleMiniSend} disabled={!miniInput.trim() || isMiniTyping}>
