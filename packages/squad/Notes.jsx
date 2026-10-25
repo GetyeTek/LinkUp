@@ -6,7 +6,7 @@ import NoteInputDock from './components/NoteInputDock.jsx';
 import GenericConfirmModal from './components/GenericConfirmModal.jsx';
 import './Notes.css';
 
-const Notes = ({ currentUser, onClose }) => {
+const Notes = ({ currentUser, onClose, onForward }) => {
     const [conversationId, setConversationId] = useState(null);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -285,6 +285,10 @@ const Notes = ({ currentUser, onClose }) => {
                 handleCopy={handleCopy} 
                 handleDownload={handleDownload} 
                 deleteNote={(id) => setDeleteConfirm(id)} 
+                onForward={(msg) => {
+                    if (onForward) onForward(msg);
+                    setActiveMenu(null);
+                }}
             />
 
             {deleteConfirm && (
