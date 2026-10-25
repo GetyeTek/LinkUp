@@ -17,6 +17,31 @@ const Auth = () => {
     const [verifyingToken, setVerifyingToken] = useState(false);
     const [referrerSlug, setReferrerSlug] = useState(null);
 
+    // Theme & Language State (Synced with localStorage)
+    const [theme, setTheme] = useState(() => localStorage.getItem('linkup_theme') || 'dark');
+    const [language, setLanguage] = useState(() => localStorage.getItem('linkup_language') || 'en');
+
+    useEffect(() => {
+        document.documentElement.className = `theme-${theme}`;
+        localStorage.setItem('linkup_theme', theme);
+    }, [theme]);
+
+    useEffect(() => {
+        document.documentElement.lang = language;
+        document.body.classList.toggle('lang-am', language === 'am');
+        localStorage.setItem('linkup_language', language);
+    }, [language]);
+
+    const isAm = language === 'am';
+
+    const toggleTheme = () => {
+        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    };
+
+    const toggleLanguage = () => {
+        setLanguage(prev => prev === 'am' ? 'en' : 'am');
+    };
+
     const { status: phoneStatus } = usePhoneCheck(phone, '');
 
     // Intercept Telegram Token and Referral Links
@@ -355,6 +380,28 @@ const Auth = () => {
         <div className="auth-root">
             <div className="ambient-elegant-bg"></div>
 
+            {/* Top Utility Controls (Language & Theme) */}
+            <div className="auth-top-bar">
+                <button 
+                    type="button" 
+                    className="auth-util-btn icon-only" 
+                    onClick={toggleTheme} 
+                    title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    aria-label="Toggle Theme"
+                >
+                    <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
+                </button>
+                <button 
+                    type="button" 
+                    className="auth-util-btn lang-toggle" 
+                    onClick={toggleLanguage} 
+                    title="Change Display Language"
+                >
+                    <span className="auth-lang-flag">{isAm ? '🇬🇧' : '🇪🇹'}</span>
+                    <span className="auth-lang-label">{isAm ? 'English' : 'አማርኛ'}</span>
+                </button>
+            </div>
+
             {notice && (
                 <div className="auth-notice-overlay" onClick={() => setNotice(null)}>
                     <div className="auth-notice-card" onClick={e => e.stopPropagation()}>
@@ -477,21 +524,21 @@ const Auth = () => {
                                     onError={(e) => { e.target.style.display = 'none'; }}
                                 />
                             </div>
-                            <h1 className="auth-title">
-                                {isForgotPassword ? 'Reset Password' : (
-                                    <span className="linkup-wordmark">
-                                        Link<span className="wordmark-cap-letter">
-                                            <i className="fa-solid fa-graduation-cap wordmark-cap"></i>
-                                            Up
-                                        </span>
+                        <h1 className="auth-title">
+                            {isForgotPassword ? (isAm ? 'የይለፍ ቃል ቀይር' : 'Reset Password') : (
+                                <span className="linkup-wordmark">
+                                    Link<span className="wordmark-cap-letter">
+                                        <i className="fa-solid fa-graduation-cap wordmark-cap"></i>
+                                        Up
                                     </span>
-                                )}
-                            </h1>
-                        </div>
+                                </span>
+                            )}
+                        </h1>
                         <p className="auth-subtitle">
                             {isForgotPassword 
-                                ? 'Enter your email to receive a recovery link.' 
-                                : isSignUp ? 'Set up your academic profile credentials' : 'Sign in to access your courses and exams'}
+                                ? (isAm ? 'የይለፍ ቃል ማደሻ ሊንክ ለመቀበል ኢሜይልዎን ያስገቡ።' : 'Enter your email to receive a recovery link.') 
+                                : isSignUp ? (isAm ? 'የትምህርት መገለጫዎን መረጃዎች ያዘጋጁ' : 'Set up your academic profile credentials') 
+                                           : (isAm ? 'የትምህርት መጻሕፍትን እና ፈተናዎችን ለማግኘት ይግቡ' : 'Sign in to access your courses and exams')}
                         </p>
                     </header>
 
@@ -504,7 +551,7 @@ const Auth = () => {
                                 onClick={() => { setIsSignUp(false); setError(null); }}
                             >
                                 <i className="fa-solid fa-arrow-right-to-bracket"></i>
-                                <span>Sign In</span>
+                                <span>{isAm ? 'ግባ' : 'Sign In'}</span>
                             </button>
                             <button 
                                 type="button" 
@@ -512,7 +559,7 @@ const Auth = () => {
                                 onClick={() => { setIsSignUp(true); setError(null); }}
                             >
                                 <i className="fa-solid fa-user-plus"></i>
-                                <span>New Student</span>
+                                <span>{isAm ? 'አዲስ ተማሪ' : 'New Student'}</span>
                             </button>
                         </div>
                     )}
@@ -525,7 +572,7 @@ const Auth = () => {
                             <input 
                                 type="text" 
                                 className="auth-input" 
-                                placeholder="Full Name" 
+                                placeholder={isAm ? "ሙሉ ስም" : "Full Name"} 
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
                                 required={isSignUp}
@@ -538,7 +585,7 @@ const Auth = () => {
                         <input 
                             type={isSignUp || isForgotPassword ? "email" : "text"} 
                             className="auth-input" 
-                            placeholder={isSignUp ? "Email address" : (isForgotPassword ? "Email address for recovery" : "Email or Phone (e.g. 09...)")} 
+                            placeholder={isSignUp ? (isAm ? "የኢሜይል አድራሻ" : "Email address") : (isForgotPassword ? (isAm ? "የማረጋገጫ ኢሜይል አድራሻ" : "Email address for recovery") : (isAm ? "ኢሜይል ወይም ስልክ (ለምሳሌ 09...)" : "Email or Phone (e.g. 09...)"))} 
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
@@ -552,7 +599,7 @@ const Auth = () => {
                                 <input 
                                     type="tel" 
                                     className="auth-input" 
-                                    placeholder="Phone (e.g. 0912...)" 
+                                    placeholder={isAm ? "ስልክ (ለምሳሌ 0912...)" : "Phone (e.g. 0912...)"} 
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
                                     required
@@ -561,17 +608,17 @@ const Auth = () => {
                                 <i className="fas fa-phone input-icon" style={phoneStatus === 'taken' || phoneStatus === 'invalid' ? { color: '#ff5f5f' } : (phoneStatus === 'available' ? { color: 'var(--accent-teal)' } : {})}></i>
                                 {phone !== '' && phoneStatus !== 'idle' && (
                                     <div style={{marginTop: '6px', fontSize: '0.75rem', fontWeight: 500, color: (phoneStatus === 'taken' || phoneStatus === 'invalid') ? '#ff5f5f' : 'var(--accent-teal)', display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '4px'}}>
-                                        {phoneStatus === 'checking' && <><i className="fas fa-circle-notch fa-spin"></i> Checking availability...</>}
-                                        {phoneStatus === 'invalid' && <><i className="fas fa-exclamation-circle"></i> Enter a valid Ethiopian phone number.</>}
-                                        {phoneStatus === 'taken' && <><i className="fas fa-times-circle"></i> This phone number is already registered.</>}
-                                        {phoneStatus === 'error' && <><i className="fas fa-exclamation-triangle"></i> Connection error.</>}
-                                        {phoneStatus === 'available' && <><i className="fas fa-check-circle"></i> Phone number available.</>}
+                                        {phoneStatus === 'checking' && <><i className="fas fa-circle-notch fa-spin"></i> {isAm ? 'ይዘቱን በማረጋገጥ ላይ...' : 'Checking availability...'}</>}
+                                        {phoneStatus === 'invalid' && <><i className="fas fa-exclamation-circle"></i> {isAm ? 'ትክክለኛ የኢትዮጵያ ስልክ ቁጥር ያስገቡ።' : 'Enter a valid Ethiopian phone number.'}</>}
+                                        {phoneStatus === 'taken' && <><i className="fas fa-times-circle"></i> {isAm ? 'ይህ ስልክ ቁጥር ቀድሞ ተመዝግቧል።' : 'This phone number is already registered.'}</>}
+                                        {phoneStatus === 'error' && <><i className="fas fa-exclamation-triangle"></i> {isAm ? 'የኔትወርክ ችግር።' : 'Connection error.'}</>}
+                                        {phoneStatus === 'available' && <><i className="fas fa-check-circle"></i> {isAm ? 'ስልክ ቁጥሩ ዝግጁ ነው።' : 'Phone number available.'}</>}
                                     </div>
                                 )}
                             </div>
                             <div className="commitment-note">
                                 <i className="fas fa-shield-halved"></i>
-                                <p><strong>Secure Identity:</strong> Please provide an accurate number. It is used for <strong>rewards</strong>, account recovery, and regional study groups.</p>
+                                <p><strong>{isAm ? 'ደህንነቱ የተጠበቀ መለያ፦' : 'Secure Identity:'}</strong> {isAm ? 'እባክዎ ትክክለኛ ስልክ ቁጥር ያስገቡ። ለሽልማት፣ ለመለያ ማግኛ እና ለግቢ ግሩፖች ይጠቅማል።' : 'Please provide an accurate number. It is used for rewards, account recovery, and regional study groups.'}</p>
                             </div>
                         </>
                     )}
@@ -582,7 +629,7 @@ const Auth = () => {
                                 <input 
                                     type="password" 
                                     className="auth-input" 
-                                    placeholder="Password" 
+                                    placeholder={isAm ? "የይለፍ ቃል" : "Password"} 
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
@@ -592,7 +639,7 @@ const Auth = () => {
                             {!isSignUp && (
                                 <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
                                     <button type="button" style={{ background: 'none', border: 'none', color: '#888', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'Poppins', fontWeight: '500' }} onClick={() => setIsForgotPassword(true)}>
-                                        Forgot Password?
+                                        {isAm ? 'የይለፍ ቃል ረሱ?' : 'Forgot Password?'}
                                     </button>
                                 </div>
                             )}
@@ -600,14 +647,14 @@ const Auth = () => {
                     )}
 
                     <button type="submit" className="auth-submit-btn" disabled={loading || (isSignUp && !isForgotPassword && (phoneStatus === 'taken' || phoneStatus === 'invalid' || phoneStatus === 'checking'))}>
-                        {loading ? <i className="fas fa-circle-notch fa-spin"></i> : (isForgotPassword ? 'Send Link' : isSignUp ? 'Sign Up' : 'Sign In')}
+                        {loading ? <i className="fas fa-circle-notch fa-spin"></i> : (isForgotPassword ? (isAm ? 'ሊንክ ላክ' : 'Send Link') : isSignUp ? (isAm ? 'ይመዝገቡ' : 'Sign Up') : (isAm ? 'ይግቡ' : 'Sign In'))}
                     </button>
                 </form>
 
                 {!isForgotPassword ? (
                     <>
                         <div className="auth-divider">
-                            <span>Or continue with</span>
+                            <span>{isAm ? 'ወይም በዚህ ይቀጥሉ' : 'Or continue with'}</span>
                         </div>
 
                         <button className="google-btn" onClick={handleGoogleAuth} type="button">
@@ -623,13 +670,13 @@ const Auth = () => {
                         <button className="telegram-btn" type="button" onClick={() => {
                             window.open('https://t.me/linkupregistrationbot', '_blank', 'noopener,noreferrer');
                         }}>
-                            <i className="fab fa-telegram"></i> Log in with Telegram
+                            <i className="fab fa-telegram"></i> {isAm ? 'በTelegram ይግቡ' : 'Log in with Telegram'}
                         </button>
                     </>
                 ) : (
                     <div className="auth-footer">
                         <button type="button" onClick={() => setIsForgotPassword(false)}>
-                            <i className="fas fa-arrow-left"></i> Back to Sign In
+                            <i className="fas fa-arrow-left"></i> {isAm ? 'ወደ መግቢያ ተመለስ' : 'Back to Sign In'}
                         </button>
                     </div>
                 )}
