@@ -176,19 +176,20 @@
 
 .mini-dock {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     background: rgba(20, 20, 20, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 99px;
+    border-radius: 24px;
     padding: 6px 6px 6px 18px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    transition: border-color 0.3s;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 .mini-dock:focus-within {
-    border-color: rgba(66, 215, 184, 0.4);
+    border-color: var(--accent-teal);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(66, 215, 184, 0.25);
 }
 
-.mini-dock input {
+.mini-dock textarea {
     flex: 1;
     background: transparent;
     border: none;
@@ -196,7 +197,16 @@
     color: white;
     font-size: 0.95rem;
     font-family: 'Poppins', sans-serif;
+    line-height: 1.45;
+    resize: none;
+    max-height: 220px;
+    overflow-y: auto;
+    height: 38px;
+    padding: 8px 0;
 }
+.mini-dock textarea::placeholder { color: #888; }
+.mini-dock textarea::-webkit-scrollbar { width: 4px; }
+.mini-dock textarea::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
 
 .mini-send-btn {
     width: 38px;
