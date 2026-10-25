@@ -406,23 +406,25 @@ const Auth = () => {
 
                 <div className="auth-card">
                     <header className="auth-header">
-                        <div className="auth-header-crest">
-                            <img 
-                                src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/linkup_logo.png" 
-                                alt="LinkUp"
-                                onError={(e) => { e.target.style.display = 'none'; }}
-                            />
-                        </div>
-                        <h1 className="auth-title">
-                            {isForgotPassword ? 'Reset Password' : (
-                                <span className="linkup-wordmark">
-                                    Link<span className="wordmark-cap-letter">
-                                        <i className="fa-solid fa-graduation-cap wordmark-cap"></i>
-                                        Up
+                        <div className="auth-brand-row">
+                            <div className="auth-header-crest">
+                                <img 
+                                    src="https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/public_assets/linkup_logo.png" 
+                                    alt="LinkUp"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                            </div>
+                            <h1 className="auth-title">
+                                {isForgotPassword ? 'Reset Password' : (
+                                    <span className="linkup-wordmark">
+                                        Link<span className="wordmark-cap-letter">
+                                            <i className="fa-solid fa-graduation-cap wordmark-cap"></i>
+                                            Up
+                                        </span>
                                     </span>
-                                </span>
-                            )}
-                        </h1>
+                                )}
+                            </h1>
+                        </div>
                         <p className="auth-subtitle">
                             {isForgotPassword 
                                 ? 'Enter your email to receive a recovery link.' 
