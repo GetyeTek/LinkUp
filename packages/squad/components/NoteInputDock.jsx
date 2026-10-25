@@ -1,10 +1,19 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import './NoteInputDock.css';
 
 const NoteInputDock = ({ 
     fileInputRef, handleFileUpload, isUploading, 
     input, setInput, handleSend 
 }) => {
+    const noteTextareaRef = useRef(null);
+
+    useEffect(() => {
+        if (noteTextareaRef.current) {
+            noteTextareaRef.current.style.height = 'auto';
+            noteTextareaRef.current.style.height = `${Math.min(noteTextareaRef.current.scrollHeight, 220)}px`;
+        }
+    }, [input]);
+
     return (
         <footer className="notes-dock-wrap">
             <div className="notes-dock">
@@ -18,12 +27,13 @@ const NoteInputDock = ({
                     <i className="fas fa-paperclip"></i>
                 </button>
                 <textarea 
+                    ref={noteTextareaRef}
                     className="notes-input" 
                     placeholder="Save a note or link..." 
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
+                        if (e.key === 'Enter' && e.shiftKey) {
                             e.preventDefault();
                             handleSend();
                         }
