@@ -32,7 +32,7 @@ const MessagesFeed = ({
                     <div className="message-info">
                         <div className="name">Miron</div>
                         <div className="typewriter-wrapper">
-                            <span className="typewriter-text">Ask me anything about your courses...</span>
+                            <span className="typewriter-text">{t('connect_miron_typewriter', 'Ask me anything about your courses...')}</span>
                             <span className="blinking-cursor"></span>
                         </div>
                     </div>
@@ -115,7 +115,7 @@ const MessagesFeed = ({
                                     <div className="last-message">
                                         {chat.last_message_text?.trim() 
                                             ? chat.last_message_text 
-                                            : (isDm ? 'No messages yet' : 'Group established')
+                                            : (isDm ? t('connect_no_messages_yet', 'No messages yet') : t('connect_group_established', 'Group established'))
                                         }
                                     </div>
                                 </div>
