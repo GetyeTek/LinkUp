@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback, GoldBadge, usePlatform } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from '../../../src/core/components/AvatarCropperModal.jsx';
 import './UserInfoPanel.css';
 
 const UserInfoPanel = ({ userId, currentUser, onClose }) => {
+    const { t } = usePlatform();
     const isMe = userId === currentUser.id;
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -152,7 +153,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                 {isMe && (
                     <>
                         <div className="ui-input-group">
-                            <label>Full Name</label>
+                            <label>{t('user_info_full_name', 'Full Name')}</label>
                             <input 
                                 type="text" 
                                 className="ui-input" 
@@ -162,7 +163,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                             />
                         </div>
                         <div className="ui-input-group">
-                            <label>Username</label>
+                            <label>{t('user_info_username', 'Username')}</label>
                             <div className="handle-input-wrapper status-idle">
                                 <span className="handle-prefix">@</span>
                                 <input 
@@ -178,12 +179,12 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                 )}
 
                 <div className="ui-input-group">
-                    <label>About</label>
+                    <label>{t('user_info_about', 'About')}</label>
                     {isMe ? (
                         <>
                             <textarea 
                                 className="ui-textarea" 
-                                placeholder="Write a short bio..."
+                                placeholder={t('editor_bio_placeholder', 'Write a short bio...')}
                                 value={editForm.bio}
                                 onChange={e => setEditForm({...editForm, bio: e.target.value})}
                                 disabled={isSaving}
@@ -194,7 +195,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                         </>
                     ) : (
                         <div className="ui-bio-text">
-                            {profile.bio ? profile.bio : <span style={{color: '#666', fontStyle: 'italic'}}>No bio provided.</span>}
+                            {profile.bio ? profile.bio : <span style={{color: '#666', fontStyle: 'italic'}}>{t('user_info_no_bio', 'No bio provided.')}</span>}
                         </div>
                     )}
                 </div>
@@ -203,7 +204,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
 
                 {isMe && hasChanges && (
                     <button className="ui-save-btn" onClick={handleSave} disabled={isSaving || !editForm.name.trim() || !editForm.username.trim()}>
-                        {isSaving ? <i className="fas fa-circle-notch fa-spin"></i> : "Save Changes"}
+                        {isSaving ? <i className="fas fa-circle-notch fa-spin"></i> : t('user_info_save_changes', 'Save Changes')}
                     </button>
                 )}
 
@@ -212,7 +213,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
                         <div className="ui-meta-card">
                             <div className="ui-meta-icon"><i className="fas fa-graduation-cap"></i></div>
                             <div className="ui-meta-info">
-                                <h4>Academic Program</h4>
+                                <h4>{t('user_info_academic_program', 'Academic Program')}</h4>
                                 <p>{profile.department}</p>
                             </div>
                         </div>
@@ -221,7 +222,7 @@ const UserInfoPanel = ({ userId, currentUser, onClose }) => {
 
                 {isMe && (
                     <button className="ui-full-settings-btn" onClick={navigateToSettings}>
-                        <i className="fas fa-sliders-h"></i> Full Account & Registry Settings
+                        <i className="fas fa-sliders-h"></i> {t('user_info_full_settings', 'Full Account & Registry Settings')}
                     </button>
                 )}
             </div>
