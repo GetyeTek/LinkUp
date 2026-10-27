@@ -26,7 +26,7 @@ import ChatBubble from './components/ChatBubble.jsx';
 
 
 const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMinimize, onJoin, isJoining, onForward, onOriginClick, onOpenUser, onlineUsers, presenceSynced }) => {
-    const { user: userProfile } = usePlatform();
+    const { user: userProfile, t } = usePlatform();
     const [messages, setMessages] = useState([]);
     const [members, setMembers] = useState({});
     const [myRole, setMyRole] = useState('member');
