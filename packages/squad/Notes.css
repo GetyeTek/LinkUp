@@ -21,7 +21,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 1.5rem;
+    padding: 0.6rem 1rem;
+    min-height: 52px;
     background: var(--surface-dark);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border-color);
