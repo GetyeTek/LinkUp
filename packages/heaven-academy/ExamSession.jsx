@@ -45,7 +45,7 @@ const getNormalizedType = (q) => {
 };
 
 const ExamSession = ({ exam, onClose }) => {
-    const { sessionUser, user: userProfile } = usePlatform();
+    const { sessionUser, user: userProfile, t } = usePlatform();
     const isProUser = Boolean(userProfile?.is_pro);
     const currentUser = sessionUser;
     const loggedQsRef = useRef(new Set());
@@ -262,22 +262,22 @@ const ExamSession = ({ exam, onClose }) => {
             {showModeModal && (
                 <div className="exam-mode-modal-overlay">
                     <div className="exam-mode-card">
-                        <h2>How do you want to practice?</h2>
-                        <p>You can adjust this preference later in your settings.</p>
+                        <h2>{t('exam_mode_prompt_title', 'How do you want to practice?')}</h2>
+                        <p>{t('exam_mode_prompt_subtitle', 'You can adjust this preference later in your settings.')}</p>
                         <div className="mode-options">
                             <div className="mode-card" onClick={() => selectMode('on_the_go')}>
                                 <i className="fas fa-bolt"></i>
-                                <h3>Grade as I go</h3>
-                                <p>Immediate feedback after every question.</p>
+                                <h3>{t('exam_mode_instant_title', 'Grade as I go')}</h3>
+                                <p>{t('exam_mode_instant_desc', 'Immediate feedback after every question.')}</p>
                             </div>
                             <div className="mode-card" onClick={() => selectMode('at_end')}>
                                 <i className="fas fa-flag-checkered"></i>
-                                <h3>Grade at the end</h3>
-                                <p>Simulate a real exam environment.</p>
+                                <h3>{t('exam_mode_end_title', 'Grade at the end')}</h3>
+                                <p>{t('exam_mode_end_desc', 'Simulate a real exam environment.')}</p>
                             </div>
                         </div>
                         <label className="dont-show-again">
-                            <input type="checkbox" checked={dontShowAgain} onChange={e => setDontShowAgain(e.target.checked)} /> Don't show this again
+                            <input type="checkbox" checked={dontShowAgain} onChange={e => setDontShowAgain(e.target.checked)} /> {t('exam_mode_dont_show', "Don't show this again")}
                         </label>
                     </div>
                 </div>
@@ -286,12 +286,12 @@ const ExamSession = ({ exam, onClose }) => {
             {showResultsModal && (
                 <div className="exam-results-overlay">
                     <div className="exam-results-card">
-                        <h2>Exam Completed!</h2>
+                        <h2>{t('exam_completed_title', 'Exam Completed!')}</h2>
                         <div className="score-circle">
                             {calculateScore()}%
                         </div>
-                        <p>Time Remaining: {formatTime(timeLeft)}</p>
-                        <button className="results-close-btn" onClick={onClose}>Return to Pavilion</button>
+                        <p>{t('exam_time_left', 'Time Remaining: {time}').replace('{time}', formatTime(timeLeft))}</p>
+                        <button className="results-close-btn" onClick={onClose}>{t('exam_return_btn', 'Return to Pavilion')}</button>
                     </div>
                 </div>
             )}
@@ -366,15 +366,15 @@ const ExamSession = ({ exam, onClose }) => {
             <footer className="session-footer">
                 <div className="session-progress-block">
                     <div className="p-text">
-                        <span>{Object.keys(answers).length} / {totalCount} Answered</span>
-                        <span>{Math.round(progress)}% Complete</span>
+                        <span>{Object.keys(answers).length} / {totalCount} {t('common_completed', 'Answered')}</span>
+                        <span>{Math.round(progress)}% {t('common_completed', 'Complete')}</span>
                     </div>
                     <div className="p-track">
                         <div className="p-bar-fill" style={{ width: `${progress}%` }}></div>
                         <div className="p-bar-flagged" style={{ width: `${flaggedProgress}%`, left: `${progress}%` }}></div>
                     </div>
                 </div>
-                <button className="finish-exam-btn" onClick={finishExam}>Finish Exam</button>
+                <button className="finish-exam-btn" onClick={finishExam}>{t('exam_finish_btn', 'Finish Exam')}</button>
             </footer>
             
             {activeReferenceBook && (
