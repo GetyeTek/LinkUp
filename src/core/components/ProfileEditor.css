@@ -24,7 +24,8 @@
 }
 
 .pe-header { 
-    padding: 1.25rem 1.5rem; 
+    padding: 0.6rem 1rem; 
+    min-height: 52px;
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
@@ -39,7 +40,7 @@
 }
 
 .pe-header h2 { 
-    font-size: 1.3rem; 
+    font-size: 1.15rem; 
     font-weight: 600; 
     margin: 0; 
     color: var(--text-primary-dark);
