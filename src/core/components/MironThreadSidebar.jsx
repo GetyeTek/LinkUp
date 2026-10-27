@@ -73,24 +73,24 @@ const MironThreadSidebar = ({
                     {threads.length === 0 ? (
                         <div className="mts-empty">{t('miron_no_threads', 'No previous study threads.')}</div>
                     ) : (
-                        threads.map(t => (
+                        threads.map(thread => (
                             <div 
-                                key={t.id} 
-                                className={`mts-item ${t.id === activeThreadId ? 'active' : ''}`}
-                                onClick={() => handleSelect(t)}
+                                key={thread.id} 
+                                className={`mts-item ${thread.id === activeThreadId ? 'active' : ''}`}
+                                onClick={() => handleSelect(thread)}
                             >
                                 <div className="mts-info">
-                                    <span className="mts-title">{cleanThreadTitle(t.title)}</span>
+                                    <span className="mts-title">{cleanThreadTitle(thread.title)}</span>
                                     <div className="mts-meta">
-                                        {t.course_code && <span className="mts-badge">{t.course_code}</span>}
-                                        <span>{formatThreadTime(t.last_message_at || t.created_at)}</span>
+                                        {thread.course_code && <span className="mts-badge">{thread.course_code}</span>}
+                                        <span>{formatThreadTime(thread.last_message_at || thread.created_at)}</span>
                                     </div>
                                 </div>
                                 <button 
                                     className="mts-delete-btn"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onDeleteThread(t.id);
+                                        onDeleteThread(thread.id);
                                     }}
                                     title={t('miron_delete_thread', 'Delete Thread')}
                                 >
