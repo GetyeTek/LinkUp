@@ -645,8 +645,8 @@ const Connect = () => {
                     <div className="large-title-row">
                         <h2 className="large-title">{t('social_hub', 'Social Hub')}</h2>
                         <div className="header-actions">
-                            <button className="connect-desktop-newchat-btn" onClick={() => setShowDiscovery(true)} title="Find Classmates / Start Chat">
-                                <i className="fas fa-comment-medical"></i> <span>Start Chat</span>
+                            <button className="connect-desktop-newchat-btn" onClick={() => setShowDiscovery(true)} title={t('find_classmates', 'Find Classmates')}>
+                                <i className="fas fa-comment-medical"></i> <span>{t('connect_start_chat', 'Start Chat')}</span>
                             </button>
                             <button className="icon-button" onClick={() => setIsGlobalSearchOpen(true)}>
                                 <i className="fas fa-search"></i>
@@ -747,16 +747,16 @@ const Connect = () => {
                         <div className="ces-graphic-orb">
                             <i className="fas fa-comments"></i>
                         </div>
-                        <h3 className="ces-title">Select a Conversation</h3>
+                        <h3 className="ces-title">{t('select_conversation', 'Select a Conversation')}</h3>
                         <p className="ces-subtitle">
-                            Choose a direct message, campus class, study squad, or open My Notes to collaborate.
+                            {t('select_conversation_desc', 'Choose a direct message, campus class, study squad, or open My Notes to collaborate.')}
                         </p>
                         <div className="ces-actions-row">
                             <button className="ces-action-btn" onClick={() => setShowDiscovery(true)}>
-                                <i className="fas fa-user-plus"></i> Find Classmates
+                                <i className="fas fa-user-plus"></i> {t('find_classmates', 'Find Classmates')}
                             </button>
                             <button className="ces-action-btn" onClick={() => setGroupCreatorMode('academic')}>
-                                <i className="fas fa-layer-group"></i> Create Study Squad
+                                <i className="fas fa-layer-group"></i> {t('create_study_squad', 'Create Study Squad')}
                             </button>
                         </div>
                     </div>
@@ -830,16 +830,16 @@ const Connect = () => {
                                 <i className="fas fa-users"></i> {privateInviteData.info.member_count} Members
                             </span>
                         </div>
-                        <p style={{color: '#aaa', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: 1.5}}>You've been invited to join this private group.</p>
+                        <p style={{color: '#aaa', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: 1.5}}>{t('connect_invited_private', "You've been invited to join this private group.")}</p>
                         
                         <div style={{display: 'flex', gap: '10px'}}>
-                            <button className="cm-btn-cancel" style={{flex: 1, padding: '12px'}} onClick={() => setPrivateInviteData(null)} disabled={joiningSquadId === privateInviteData.info.id}>Cancel</button>
+                            <button className="cm-btn-cancel" style={{flex: 1, padding: '12px'}} onClick={() => setPrivateInviteData(null)} disabled={joiningSquadId === privateInviteData.info.id}>{t('common_cancel', 'Cancel')}</button>
                             <button className="cm-btn-primary" style={{flex: 2, padding: '12px'}} onClick={() => {
                                 handleJoinSquad(privateInviteData.info.id, null, privateInviteData.token).then(() => {
                                     setPrivateInviteData(null);
                                 });
                             }} disabled={joiningSquadId === privateInviteData.info.id}>
-                                {joiningSquadId === privateInviteData.info.id ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Squad'}
+                                {joiningSquadId === privateInviteData.info.id ? <i className="fas fa-circle-notch fa-spin"></i> : t('connect_join_squad', 'Join Squad')}
                             </button>
                         </div>
                     </div>
