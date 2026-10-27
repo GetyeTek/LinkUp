@@ -195,7 +195,7 @@ const MironChat = ({
     initialTitle = null, 
     initialCourseCode = null 
 }) => {
-    const { sessionUser, user: userProfile } = usePlatform();
+    const { sessionUser, user: userProfile, t } = usePlatform();
     const [avatarError, setAvatarError] = useState(false);
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
@@ -861,7 +861,7 @@ const MironChat = ({
                     <button
                         className={`athena-dev-copy-btn ${isThreadCopied ? 'copied' : ''}`}
                         onClick={handleCopyFullThread}
-                        title={isThreadCopied ? "Thread Copied!" : "Copy Full Thread"}
+                        title={isThreadCopied ? t('miron_thread_copied', 'Thread Copied!') : t('miron_copy_thread', 'Copy Full Thread')}
                         disabled={messages.length === 0}
                     >
                         <i className={`fa-${isThreadCopied ? 'solid fa-check' : 'regular fa-clipboard'}`}></i>
@@ -945,8 +945,8 @@ const MironChat = ({
                         <div className="athena-welcome-logo">
                             <i className="fa-solid fa-sparkles"></i>
                         </div>
-                        <h2>How can I help you with your courses?</h2>
-                        <p>Ask Miron about formulas, textbook concepts, or assignments.</p>
+                        <h2>{t('miron_welcome_title', 'How can I help you with your courses?')}</h2>
+                        <p>{t('miron_welcome_subtitle', 'Ask Miron about formulas, textbook concepts, or assignments.')}</p>
                     </div>
                 ) : (
                     messages.filter(m => !m.text?.startsWith('[Quiz Submission:')).map(m => (
@@ -979,7 +979,7 @@ const MironChat = ({
                     <textarea 
                         ref={mironTextareaRef}
                         rows="1"
-                        placeholder="Message Miron..." 
+                        placeholder={t('miron_input_placeholder', 'Message Miron...')} 
                         value={input} 
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
