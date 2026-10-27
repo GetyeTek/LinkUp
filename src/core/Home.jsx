@@ -271,8 +271,8 @@ const Home = () => {
                     >
                         <div className="overlay"></div>
                         <div className="hero-summary">
-                            <h2>{streak > 0 ? `${streak} Day Streak 🔥` : 'Start Your Streak 🔥'}</h2>
-                            <p>{streak > 0 ? 'Your daily learning consistency is on fire.' : 'Complete a study session today to start your streak.'}</p>
+                            <h2>{streak > 0 ? t('streak_active', userProfile?.sex, '{streak} Day Streak').replace('{streak}', streak) + ' 🔥' : t('streak_zero', userProfile?.sex, 'Start Your Streak') + ' 🔥'}</h2>
+                            <p>{streak > 0 ? t('streak_sub_active', userProfile?.sex, 'Your daily learning consistency is on fire.') : t('streak_sub_zero', userProfile?.sex, 'Complete a study session today to start your streak.')}</p>
                         </div>
                     </section>
                 </div>
@@ -290,7 +290,7 @@ const Home = () => {
                             </div>
                             <input 
                                 type="text"
-                                placeholder={t('miron_dock_placeholder', 'Ask Miron a formula, concept, or question...')}
+                                placeholder={t('miron_dock_placeholder', userProfile?.sex, 'Ask Miron a formula, concept, or question...')}
                                 value={mironQuery}
                                 onChange={(e) => setMironQuery(e.target.value)}
                                 onKeyDown={(e) => {
@@ -338,7 +338,7 @@ const Home = () => {
                                 onClick={() => shell.openMiron("Explain the key concepts of our current course chapters", true)}
                             >
                                 <i className="fas fa-sparkles"></i>
-                                <span>Summarize Chapter</span>
+                                <span>{t('home_summarize_chapter', userProfile?.sex, 'Summarize Chapter')}</span>
                             </button>
                             <button 
                                 type="button"
@@ -346,7 +346,7 @@ const Home = () => {
                                 onClick={() => shell.openMiron("Generate 3 practice quiz questions from my textbooks", true)}
                             >
                                 <i className="fas fa-brain"></i>
-                                <span>Quiz Me</span>
+                                <span>{t('home_quiz_me', userProfile?.sex, 'Quiz Me')}</span>
                             </button>
                             <button 
                                 type="button"
@@ -354,17 +354,17 @@ const Home = () => {
                                 onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'study' } }))}
                             >
                                 <i className="fas fa-bullseye"></i>
-                                <span>Recall Training</span>
+                                <span>{t('home_recall_training', userProfile?.sex, 'Recall Training')}</span>
                             </button>
                         </div>
                     </section>
 
                     <section className="priority-section">
                         <div className="section-label-row" style={{ padding: 0, marginBottom: '0.75rem' }}>
-                            <h2 className="section-label" style={{ margin: 0 }}>{t('coming_up', 'Coming Up')}</h2>
+                            <h2 className="section-label" style={{ margin: 0 }}>{t('coming_up', userProfile?.sex, 'Coming Up')}</h2>
                             {deadlines.length > 0 && (
                                 <span style={{ fontSize: '0.75rem', color: 'var(--accent-teal)', fontFamily: 'Roboto Mono, monospace', fontWeight: 600 }}>
-                                    {deadlines.length} {deadlines.length === 1 ? 'Deadline Due' : 'Deadlines Due'}
+                                    {deadlines.length === 1 ? t('home_deadline_due', userProfile?.sex, '1 Deadline Due') : t('home_deadlines_due', userProfile?.sex, '{count} Deadlines Due').replace('{count}', deadlines.length)}
                                 </span>
                             )}
                         </div>
@@ -406,16 +406,16 @@ const Home = () => {
                                                     <i className="fas fa-users-rectangle"></i>
                                                 </div>
                                                 <div>
-                                                    <h3 className="promo-title">{t('link_class_title', 'Link Your Class')}</h3>
-                                                    <div className="promo-desc">{t('link_class_desc', 'Connect your section to receive automated assignment deadlines and exam countdowns.')}</div>
+                                                    <h3 className="promo-title">{t('link_class_title', userProfile?.sex, 'Link Your Class')}</h3>
+                                                    <div className="promo-desc">{t('link_class_desc', userProfile?.sex, 'Connect your section to receive automated assignment deadlines and exam countdowns.')}</div>
                                                 </div>
                                             </div>
                                         )}
                                         <div className="promo-card video-tour" onClick={() => window.dispatchEvent(new CustomEvent('tour:play-video'))}>
                                             <div className="promo-icon-wrap"><i className="fas fa-play"></i></div>
                                             <div>
-                                                <h3 className="promo-title">{t('learn_linkup', 'Learn LinkUp')}</h3>
-                                                <div className="promo-desc">{t('learn_linkup_desc', "Watch a quick guided tour of the platform's features.")}</div>
+                                                <h3 className="promo-title">{t('learn_linkup', userProfile?.sex, 'Learn LinkUp')}</h3>
+                                                <div className="promo-desc">{t('learn_linkup_desc', userProfile?.sex, "Watch a quick guided tour of the platform's features.")}</div>
                                             </div>
                                         </div>
                                         <div
@@ -439,9 +439,9 @@ const Home = () => {
                                               <i className="fas fa-coins"></i>
                                             </div>
                                             <div>
-                                              <h3 className="promo-title">{t('earn_credits', 'Earn Credits')}</h3>
+                                              <h3 className="promo-title">{t('earn_credits', userProfile?.sex, 'Earn Credits')}</h3>
                                               <div className="promo-desc">
-                                                {t('earn_credits_desc', 'Complete daily missions to collect Credits and unlock perks.')}
+                                                {t('earn_credits_desc', userProfile?.sex, 'Complete daily missions to collect Credits and unlock perks.')}
                                               </div>
                                             </div>
                                           </div>
@@ -455,9 +455,9 @@ const Home = () => {
                                               <i className="fas fa-crown"></i>
                                             </div>
                                             <div>
-                                              <h3 className="promo-title">{t('linkup_premium', 'LinkUp Premium')}</h3>
+                                              <h3 className="promo-title">{t('linkup_premium', userProfile?.sex, 'LinkUp Premium')}</h3>
                                               <div className="promo-desc">
-                                                {t('linkup_premium_desc', 'Unlock unlimited Miron AI, complete Exam Archives, & priority Audio Stages.')}
+                                                {t('linkup_premium_desc', userProfile?.sex, 'Unlock unlimited Miron AI, complete Exam Archives, & priority Audio Stages.')}
                                               </div>
                                             </div>
                                           </div>
@@ -470,9 +470,9 @@ const Home = () => {
                                               <i className="fas fa-shield-heart"></i>
                                             </div>
                                             <div>
-                                              <h3 className="promo-title">{t('about_us', 'Learn About Us')}</h3>
+                                              <h3 className="promo-title">{t('about_us', userProfile?.sex, 'Learn About Us')}</h3>
                                               <div className="promo-desc">
-                                                {t('about_us_desc', 'Built by students, for students. Discover the team & mission behind LinkUp.')}
+                                                {t('about_us_desc', userProfile?.sex, 'Built by students, for students. Discover the team & mission behind LinkUp.')}
                                               </div>
                                             </div>
                                           </div>
@@ -483,15 +483,16 @@ const Home = () => {
                     </section>
 
                     {/* CONDITIONAL LIVE STAGES CAROUSEL */}
+                    {/* CONDITIONAL LIVE STAGES CAROUSEL */}
                     {(!whatsNextData.loading && whatsNextData.live.length > 0) && (
                         <section className="discovery-section">
                             <div className="section-label-row">
                                 <h2 className="section-label" style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px'}}>
                                     <span style={{width: '8px', height: '8px', borderRadius: '50%', background: '#ff4757', display: 'inline-block', boxShadow: '0 0 8px #ff4757'}}></span>
-                                    {t('live_now', 'Live Now')}
+                                    {t('live_now', userProfile?.sex, 'Live Now')}
                                 </h2>
                                 <span style={{fontSize: '0.75rem', color: 'var(--accent-teal)', fontFamily: 'Roboto Mono, monospace', fontWeight: 600}}>
-                                    {whatsNextData.live.length === 1 ? '1 Active Room' : `${whatsNextData.live.length} Active Rooms`}
+                                    {whatsNextData.live.length === 1 ? t('home_active_room_single', userProfile?.sex, '1 Active Room') : t('home_active_rooms_plural', userProfile?.sex, '{count} Active Rooms').replace('{count}', whatsNextData.live.length)}
                                 </span>
                             </div>
 
@@ -525,7 +526,7 @@ const Home = () => {
                                         </div>
                                         <div className="orb-label-title">{session.course_name || 'Study Room'}</div>
                                         <div className="orb-label-meta">
-                                            {session.participant_count ? `${session.participant_count} attending` : 'Join Stage'}
+                                            {session.participant_count ? `${session.participant_count} ${t('home_attending', userProfile?.sex, 'attending')}` : t('home_join_stage', userProfile?.sex, 'Join Stage')}
                                         </div>
                                     </div>
                                 ))}
@@ -552,7 +553,7 @@ const Home = () => {
                         </div>
                         <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary-dark)', margin: '0 0 10px 0', lineHeight: 1.3 }}>{selectedDeadline.title}</h3>
                         <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary-dark)', lineHeight: 1.6, margin: '0 0 1.5rem 0', whiteSpace: 'pre-wrap' }}>
-                            {selectedDeadline.description || 'No additional details provided.'}
+                            {selectedDeadline.description || t('home_no_details', userProfile?.sex, 'No additional details provided.')}
                         </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
                             <i className="far fa-clock" style={{ color: 'var(--accent-teal)' }}></i>
@@ -564,7 +565,7 @@ const Home = () => {
                             style={{ width: '100%', background: 'var(--accent-teal)', color: '#0c0c0c', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: 700, fontSize: '0.92rem', cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}
                             onClick={() => setSelectedDeadline(null)}
                         >
-                            Got It
+                            {t('btn_got_it', userProfile?.sex, 'Got It')}
                         </button>
                     </div>
                 </div>
