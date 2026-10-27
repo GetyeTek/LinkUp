@@ -238,8 +238,12 @@ const Study = () => {
                                 onClick={handleResumeReading}
                                 style={(() => {
                                     const resumeCover = lastRead.cover_url || getCachedBookCover(lastRead.id) || getCachedBookCover(lastRead.course_code);
+                                    const isLight = document.documentElement.classList.contains('theme-light');
+                                    const overlayGrad = isLight 
+                                        ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(240, 242, 245, 0.94) 100%)'
+                                        : 'linear-gradient(135deg, rgba(14, 14, 18, 0.70) 0%, rgba(10, 10, 14, 0.85) 100%)';
                                     return resumeCover ? {
-                                        backgroundImage: `linear-gradient(135deg, rgba(14, 14, 18, 0.70) 0%, rgba(10, 10, 14, 0.85) 100%), url("${resumeCover}")`,
+                                        backgroundImage: `${overlayGrad}, url("${resumeCover}")`,
                                         backgroundSize: 'cover',
                                         backgroundPosition: 'center'
                                     } : {};
