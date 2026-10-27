@@ -225,13 +225,31 @@
     .mts-drawer {
         width: 300px !important;
         max-width: 320px !important;
-        background: rgba(14, 14, 18, 0.98) !important;
+        background: var(--surface-dark) !important;
         border-right: 1px solid var(--border-color) !important;
         box-shadow: none !important;
         animation: none !important;
+        transition: background-color 0.3s ease, border-color 0.3s ease;
     }
 
     .mts-close-btn {
         display: none !important;
     }
+}
+
+.theme-light .mts-item {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.theme-light .mts-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+.theme-light .mts-item.active {
+    background: rgba(13, 148, 136, 0.12);
+}
+
+.theme-light .mts-item.active .mts-title {
+    color: var(--text-primary-dark);
 }
