@@ -70,7 +70,7 @@ const SquadsFeed = ({
                     <>
                         {myClasses.length === 0 ? (
                             <div style={{ textAlign: 'center', color: '#666', padding: '2rem 1rem', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                                You haven't joined any official classes yet.
+                                {t('connect_no_classes_joined', "You haven't joined any official classes yet.")}
                             </div>
                         ) : (
                             myClasses.map(chat => (
@@ -89,7 +89,7 @@ const SquadsFeed = ({
                                             {chat.title} 
                                             <span className="squad-type-pill class-pill"><i className="fas fa-graduation-cap"></i> CLASS</span>
                                         </div>
-                                        <div className="last-message">{chat.last_message_text || 'Class established'}</div>
+                                        <div className="last-message">{chat.last_message_text || t('connect_class_established', 'Class established')}</div>
                                     </div>
                                     <div className="message-meta">
                                         <span>{formatTime(chat.last_message_at)}</span>
@@ -123,7 +123,7 @@ const SquadsFeed = ({
                                             ) : null}
                                         </div>
                                         <div className="last-message" style={{color: '#888'}}>
-                                            <i className="fas fa-user-circle" style={{marginRight: '4px'}}></i> By {chat.owner_name}
+                                            <i className="fas fa-user-circle" style={{marginRight: '4px'}}></i> {t('connect_by_owner', 'By {owner}').replace('{owner}', chat.owner_name)}
                                         </div>
                                     </div>
                                     <button className="squad-join-btn" style={{ minWidth: '70px', textAlign: 'center' }} onClick={(e) => handleJoinSquad(chat.conversation_id, e)} disabled={joiningSquadId === chat.conversation_id}>
@@ -133,14 +133,14 @@ const SquadsFeed = ({
                             ))
                         ) : (
                             <div style={{ textAlign: 'center', color: '#666', padding: '1rem', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                                No new classes available on your campus right now.
+                                {t('connect_no_campus_classes', 'No new classes available on your campus right now.')}
                             </div>
                         )}
                         
                         <div style={{ marginTop: '2rem', textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                            <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#aaa' }}>Can't find your class section?</p>
+                            <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#aaa' }}>{t('connect_cant_find_class', "Can't find your class section?")}</p>
                             <button style={{ background: 'transparent', color: 'var(--accent-teal)', border: '1px solid var(--accent-teal)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }} onClick={() => setIsGroupCreatorOpen('class')}>
-                                Create it and invite your batchmates
+                                {t('connect_create_class_prompt', 'Create it and invite your batchmates')}
                             </button>
                         </div>
                     </>
@@ -149,7 +149,7 @@ const SquadsFeed = ({
                     <>
                         {mySquads.length === 0 ? (
                             <div style={{ textAlign: 'center', color: '#666', padding: '2rem 1rem', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                                You haven't joined any academic groups yet.
+                                {t('connect_no_groups_joined', "You haven't joined any academic groups yet.")}
                             </div>
                         ) : (
                             mySquads.map(chat => (
@@ -168,7 +168,7 @@ const SquadsFeed = ({
                                             {chat.title} 
                                             <span className="squad-type-pill squad-pill"><i className="fas fa-layer-group"></i> {chat.metadata?.focus || 'SQUAD'}</span>
                                         </div>
-                                        <div className="last-message">{chat.last_message_text || 'Group established'}</div>
+                                        <div className="last-message">{chat.last_message_text || t('connect_group_established', 'Group established')}</div>
                                     </div>
                                     <div className="message-meta">
                                         <span>{formatTime(chat.last_message_at)}</span>
@@ -197,7 +197,7 @@ const SquadsFeed = ({
                                             <span className="squad-type-pill squad-pill"><i className="fas fa-layer-group"></i> {chat.metadata?.focus || 'SQUAD'}</span>
                                         </div>
                                         <div className="last-message" style={{color: '#888'}}>
-                                            <i className="fas fa-user" style={{marginRight: '4px'}}></i> {chat.member_count} Members
+                                            <i className="fas fa-user" style={{marginRight: '4px'}}></i> {t('members_count', '{count} Members').replace('{count}', String(chat.member_count))}
                                         </div>
                                     </div>
                                     <button className="squad-join-btn" style={{ minWidth: '70px', textAlign: 'center' }} onClick={(e) => handleJoinSquad(chat.conversation_id, e)} disabled={joiningSquadId === chat.conversation_id}>
@@ -207,7 +207,7 @@ const SquadsFeed = ({
                             ))
                         ) : (
                             <div style={{ textAlign: 'center', color: '#666', padding: '1rem', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                                No public study groups available right now. Be the first to create one!
+                                {t('connect_no_suggested_groups', 'No public study groups available right now. Be the first to create one!')}
                             </div>
                         )}
                     </>
