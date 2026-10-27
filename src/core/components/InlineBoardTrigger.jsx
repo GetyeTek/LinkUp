@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 
 const InlineBoardTrigger = ({ boardId, onOpen }) => {
+    const { t } = usePlatform();
     const [loading, setLoading] = useState(false);
 
     const handleOpen = async () => {
@@ -37,7 +38,7 @@ const InlineBoardTrigger = ({ boardId, onOpen }) => {
             }}
         >
             {loading ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-project-diagram"></i>}
-            {loading ? 'Fetching Asset...' : 'View Diagram / Board'}
+            {loading ? t('board_fetch_asset', null, 'Fetching Asset...') : t('board_view_diag', null, 'View Diagram / Board')}
         </button>
     );
 };
