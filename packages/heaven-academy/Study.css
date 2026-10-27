@@ -76,7 +76,7 @@
 .compact-title { 
     font-size: 1.15rem; 
     font-weight: 600; 
-    color: #fff;
+    color: var(--text-primary-dark);
     margin: 0;
     line-height: 1.25;
     white-space: nowrap;
@@ -228,7 +228,7 @@
 .resume-title {
     font-size: 1.05rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-primary-dark);
     margin: 0 0 2px 0;
     white-space: nowrap;
     overflow: hidden;
@@ -237,7 +237,7 @@
 
 .resume-subtitle {
     font-size: 0.8rem;
-    color: #aaa;
+    color: var(--text-secondary-dark);
     margin: 0;
     line-height: 1.35;
     white-space: nowrap;
@@ -338,7 +338,7 @@
 .drill-title {
     font-size: 1rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-primary-dark);
     margin: 0 0 2px 0;
     white-space: nowrap;
     overflow: hidden;
@@ -347,7 +347,7 @@
 
 .drill-subtitle {
     font-size: 0.8rem;
-    color: #aaa;
+    color: var(--text-secondary-dark);
     margin: 0;
     line-height: 1.35;
     display: -webkit-box;
@@ -413,13 +413,42 @@
     transition: all 0.2s ease; 
     user-select: none; 
     padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(128, 128, 128, 0.08);
     border: 1px solid var(--border-color);
     border-radius: 99px;
     font-size: 0.85rem;
-    color: #aaa;
+    color: var(--text-secondary-dark);
     font-weight: 500;
     white-space: nowrap;
+}
+
+.theme-light .resume-study-card {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, var(--surface-dark) 100%);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .study-drill-card {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, var(--surface-dark) 100%);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .compact-trigger {
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .library-search-dock {
+    background: var(--surface-dark);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.theme-light .library-search-dock input {
+    color: var(--text-primary-dark);
+}
+
+.theme-light .resume-arrow-box {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: var(--text-secondary-dark);
 }
 .library-filters .chip:hover {
     background: rgba(255, 255, 255, 0.1);
