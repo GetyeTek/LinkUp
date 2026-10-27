@@ -190,10 +190,10 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                         {showOptions && (
                             <div className="si-dropdown-menu" style={{top: '40px', right: '0'}}>
                                 {(myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.members_can_add !== false) && (
-                                    <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> Add Members</button>
+                                    <button onClick={() => { setShowOptions(false); setShowAddMember(true); }}><i className="fas fa-user-plus"></i> {t('invite_friends', 'Add Members')}</button>
                                 )}
                                 {myRole !== 'owner' && (
-                                    <button className="danger" onClick={() => { setShowOptions(false); setConfirmLeave(true); }}><i className="fas fa-sign-out-alt"></i> Leave Group</button>
+                                    <button className="danger" onClick={() => { setShowOptions(false); setConfirmLeave(true); }}><i className="fas fa-sign-out-alt"></i> {t('leave_group', 'Leave Group')}</button>
                                 )}
                             </div>
                         )}
@@ -271,7 +271,7 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                                 </div>
                             ) : (
                                 <button className="si-save-slug-btn" style={{width: '100%', maxWidth: '340px', marginTop: '10px', justifyContent: 'center'}} onClick={generatePrivateLink} disabled={isProcessing}>
-                                    {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fas fa-link"></i> Create Secret Invite Link</>}
+                                    {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fas fa-link"></i> {t('secret_invite_link', 'Create Secret Invite Link')}</>}
                                 </button>
                             )}
                         </>
@@ -280,8 +280,8 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                     {isMember && chatInfo.metadata?.focus === 'Class' && (
                         <div className="si-invite-box" style={{ marginTop: '10px', background: 'transparent', border: '1px solid rgba(66, 215, 184, 0.3)' }}>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600 }}>Official Class</div>
-                                <div style={{ fontSize: '0.7rem', color: '#aaa' }}>Sync deadlines to dashboard</div>
+                                <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600 }}>{t('official_class_toggle', 'Official Class')}</div>
+                                <div style={{ fontSize: '0.7rem', color: '#aaa' }}>{t('sync_deadlines_toggle', 'Sync deadlines to dashboard')}</div>
                             </div>
                             <div className={`toggle-switch ${userProfile?.class_id === conversationId ? 'on' : 'off'}`} onClick={() => {
                                 if (userProfile?.class_id === conversationId) {
@@ -335,9 +335,9 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
                 )}
 
                 <div className="si-tabs">
-                    {canSeeMembers && <div className={`si-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>Members</div>}
-                    <div className={`si-tab ${activeTab === 'media' ? 'active' : ''}`} onClick={() => setActiveTab('media')}>Media</div>
-                    {myRole === 'owner' && <div className={`si-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Control Panel</div>}
+                    {canSeeMembers && <div className={`si-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>{t('groups_tab_members', 'Members')}</div>}
+                    <div className={`si-tab ${activeTab === 'media' ? 'active' : ''}`} onClick={() => setActiveTab('media')}>{t('groups_tab_media', 'Media')}</div>
+                    {myRole === 'owner' && <div className={`si-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>{t('groups_tab_control_panel', 'Control Panel')}</div>}
                 </div>
 
                 <div className="si-body">
