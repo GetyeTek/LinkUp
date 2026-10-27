@@ -42,14 +42,14 @@
 .fca-counter {
     font-family: 'Roboto Mono', monospace;
     font-size: 0.85rem;
-    color: #ccc;
+    color: var(--text-secondary-dark);
     font-weight: 600;
 }
 
 .fca-progress-track {
     height: 3px;
     width: 100%;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--border-color);
     position: relative;
 }
 
@@ -147,7 +147,7 @@
 
 .fca-tap-hint {
     font-size: 0.75rem;
-    color: #777;
+    color: var(--text-secondary-dark);
     text-align: center;
     display: flex;
     align-items: center;
@@ -157,7 +157,7 @@
 
 .fca-back-label {
     font-size: 0.72rem;
-    color: #aaa;
+    color: var(--text-secondary-dark);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -177,7 +177,7 @@
 
 .fca-source-ref {
     font-size: 0.72rem;
-    color: #777;
+    color: var(--text-secondary-dark);
     font-style: italic;
     display: flex;
     align-items: center;
@@ -187,7 +187,7 @@
 
 .fca-footer {
     padding: 16px 20px calc(24px + env(safe-area-inset-bottom, 10px));
-    background: linear-gradient(180deg, transparent 0%, rgba(9, 9, 11, 0.95) 40%, #09090b 100%);
+    background: linear-gradient(180deg, transparent 0%, var(--bg-dark) 40%, var(--bg-dark) 100%);
     display: flex;
     gap: 10px;
     max-width: 520px;
@@ -198,10 +198,10 @@
 .fca-btn-flip {
     width: 100%;
     padding: 15px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
     border-radius: 16px;
-    color: #fff;
+    color: var(--text-primary-dark);
     font-family: 'Poppins', sans-serif;
     font-weight: 600;
     font-size: 0.95rem;
@@ -212,6 +212,11 @@
     gap: 8px;
     touch-action: manipulation;
     transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .fca-btn-flip {
+    background: #ffffff;
 }
 .fca-btn-flip:active { transform: scale(0.98); }
 
@@ -329,14 +334,14 @@
 .fca-chapter-strip::-webkit-scrollbar { display: none; }
 
 .fca-chapter-pill {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
     border-radius: 99px;
     padding: 6px 14px;
     font-size: 0.78rem;
     font-weight: 600;
     font-family: 'Poppins', sans-serif;
-    color: #aaa;
+    color: var(--text-secondary-dark);
     cursor: pointer;
     white-space: nowrap;
     touch-action: manipulation;
@@ -348,8 +353,12 @@
 }
 
 .fca-chapter-pill:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    background: rgba(128, 128, 128, 0.08);
+    color: var(--text-primary-dark);
+}
+
+.theme-light .fca-chapter-pill {
+    background: #ffffff;
 }
 
 .fca-chapter-pill.active {
