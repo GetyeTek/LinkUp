@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import NoteCard from './components/NoteCard.jsx';
 import NoteContextMenu from './components/NoteContextMenu.jsx';
 import NoteInputDock from './components/NoteInputDock.jsx';
@@ -7,6 +7,7 @@ import GenericConfirmModal from './components/GenericConfirmModal.jsx';
 import './Notes.css';
 
 const Notes = ({ currentUser, onClose, onForward }) => {
+    const { t } = usePlatform();
     const [conversationId, setConversationId] = useState(null);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -244,8 +245,8 @@ const Notes = ({ currentUser, onClose, onForward }) => {
                 <div className="notes-title-box">
                     <div className="notes-icon"><i className="fas fa-bookmark"></i></div>
                     <div>
-                        <h2>My Notes</h2>
-                        <p>Personal cloud & quick clips</p>
+                        <h2>{t('my_notes', 'My Notes')}</h2>
+                        <p>{t('notes_cloud_clips', 'Personal cloud & quick clips')}</p>
                     </div>
                 </div>
             </header>
@@ -254,12 +255,12 @@ const Notes = ({ currentUser, onClose, onForward }) => {
                 {isLoading ? (
                     <div className="notes-loader-container">
                         <i className="fas fa-circle-notch fa-spin"></i>
-                        <p>Opening your notes...</p>
+                        <p>{t('notes_opening', 'Opening your notes...')}</p>
                     </div>
                 ) : messages.length === 0 && !isUploading ? (
                     <div className="notes-empty-state">
                         <i className="fas fa-cloud-arrow-up"></i>
-                        <p>Your secure space for links, files, and thoughts.</p>
+                        <p>{t('my_notes_desc', 'Your secure space for links, files, and thoughts.')}</p>
                     </div>
                 ) : (
                     messages.map(m => (
@@ -278,7 +279,7 @@ const Notes = ({ currentUser, onClose, onForward }) => {
                     <div className="note-card" style={{opacity: 0.7}}>
                         <div className="note-file-box" style={{background: 'transparent', border: 'none'}}>
                             <i className="fas fa-circle-notch fa-spin note-file-icon"></i>
-                            <div className="note-file-info"><span className="note-file-name">Uploading file...</span></div>
+                            <div className="note-file-info"><span className="note-file-name">{t('notes_uploading', 'Uploading file...')}</span></div>
                         </div>
                     </div>
                 )}
@@ -311,11 +312,11 @@ const Notes = ({ currentUser, onClose, onForward }) => {
 
             {deleteConfirm && (
                 <GenericConfirmModal
-                    title="Delete Note"
-                    description="Are you sure you want to permanently delete this note and its attachments?"
+                    title={t('notes_delete_note', 'Delete Note')}
+                    description={t('notes_delete_desc', 'Are you sure you want to permanently delete this note and its attachments?')}
                     onConfirm={confirmAndDeleteNote}
                     onCancel={() => setDeleteConfirm(null)}
-                    confirmText="Delete Note"
+                    confirmText={t('notes_delete_note', 'Delete Note')}
                     isDanger={true}
                 />
             )}
