@@ -183,6 +183,7 @@ const App = () => {
         setActiveTab(e.detail.tab);
         telemetry.switchFeature(e.detail.tab);
         if (e.detail.payload) setRoutePayload(e.detail.payload);
+        setIsMironOpen(false);
     };
     window.addEventListener('navigate-tab', handleNav);
     return () => window.removeEventListener('navigate-tab', handleNav);
@@ -490,7 +491,8 @@ const App = () => {
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
-  const [mironContext, setMironContext] = useState(null); // null means closed, object holds selection context
+  const [isMironOpen, setIsMironOpen] = useState(false);
+  const [mironContext, setMironContext] = useState(null);
 
   useEffect(() => {
     const handleOpenPremium = () => setIsPremiumOpen(true);
@@ -512,11 +514,17 @@ const App = () => {
       const preloadedHistory = e.detail?.preloadedHistory || null;
       const title = e.detail?.title || null;
       const courseCode = e.detail?.courseCode || null;
-      setMironContext({ text, autoSend, preloadedHistory, title, courseCode });
+      setMironContext({ text, autoSend, preloadedHistory, title, courseCode, key: Date.now() });
+      setIsMironOpen(true);
     };
     window.addEventListener('open-full-miron-chat', handleGlobalMironRequest);
     return () => window.removeEventListener('open-full-miron-chat', handleGlobalMironRequest);
   }, []);
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setIsMironOpen(false);
+  };
   
   const Fallback = () => (
     <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#42d7b8', flexDirection: 'column', gap: '1rem' }}>
@@ -774,7 +782,13 @@ const App = () => {
           updateUserProfile: (updates) => setUserProfile(prev => ({ ...prev, ...updates })),
           shell: { 
               openActivity: () => setIsActivityOpen(true), 
-              openMiron: (text, autoSend = false) => setMironContext({ text, autoSend }),
+              openMiron: (text, autoSend = false) => {
+                  if (text) {
+                      setMironContext({ text, autoSend, key: Date.now() });
+                  }
+                  setIsMironOpen(true);
+              },
+              closeMiron: () => setIsMironOpen(false),
               markNotificationsRead: async () => {
                   setUnreadCount(0); // Optimistic UI
                   await supabase.from('notifications').update({ is_read: true }).eq('user_id', session?.user?.id).eq('is_read', false);
@@ -792,16 +806,12 @@ const App = () => {
       {isActivityOpen && <ActivityHub onClose={() => setIsActivityOpen(false)} />}
       {isPremiumOpen && <PremiumUpgradeOverlay isActive={isPremiumOpen} onClose={() => setIsPremiumOpen(false)} />}
       {isSupportOpen && <SupportAboutOverlay isActive={isSupportOpen} onClose={() => setIsSupportOpen(false)} />}
-                                  {mironContext && (
-                      <MironChat 
-                        initialContext={mironContext.text} 
-                        autoSend={mironContext.autoSend}
-                        preloadedHistory={mironContext.preloadedHistory}
-                        initialTitle={mironContext.title}
-                        initialCourseCode={mironContext.courseCode}
-                        onClose={() => setMironContext(null)} 
-                      />
-                  )}
+                                  <MironChat 
+                    isOpen={isMironOpen}
+                    contextPayload={mironContext}
+                    onClearContext={() => setMironContext(null)}
+                    onClose={() => setIsMironOpen(false)} 
+                  />
 
                   {isMironLive && (
                       <MironLiveSession 
@@ -810,7 +820,7 @@ const App = () => {
                       />
                   )}
 
-                  <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} hasActiveLive={hasActiveLive} />
+                  <BottomNavigation activeTab={activeTab} setActiveTab={handleTabChange} hasActiveLive={hasActiveLive} />
           </PlatformProvider>
         </div>
       );
