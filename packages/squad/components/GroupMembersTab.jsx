@@ -181,11 +181,11 @@ const GroupMembersTab = ({
 
             {confirmAddUser && (
                 <GenericConfirmModal
-                    title="Add to Squad"
-                    description={<>Add <strong>{confirmAddUser.other_user_name}</strong> to the squad?</>}
+                    title={t('confirm_add_title', null, 'Add to Squad')}
+                    description={t('confirm_add_desc', null, 'Add {name} to the squad?').replace('{name}', confirmAddUser.other_user_name)}
                     onConfirm={executeAddMember}
                     onCancel={() => setConfirmAddUser(null)}
-                    confirmText="Confirm Add"
+                    confirmText={t('confirm_add_btn', null, 'Confirm Add')}
                     isProcessing={isProcessing}
                     isDanger={false}
                 />
@@ -193,11 +193,11 @@ const GroupMembersTab = ({
 
             {confirmModal && (
                 <GenericConfirmModal
-                    title="Kick Member"
-                    description={<>Are you sure you want to remove <strong>{confirmModal.name}</strong> from the squad? They can rejoin if the group is public.</>}
+                    title={t('confirm_kick_title', null, 'Kick Member')}
+                    description={t('confirm_kick_desc', null, 'Are you sure you want to remove {name} from the squad? They can rejoin if the group is public.').replace('{name}', confirmModal.name)}
                     onConfirm={() => executeKick(confirmModal.uid)}
                     onCancel={() => setConfirmModal(null)}
-                    confirmText="Kick User"
+                    confirmText={t('confirm_kick_btn', null, 'Kick User')}
                     isProcessing={isProcessing}
                     isDanger={true}
                 />
