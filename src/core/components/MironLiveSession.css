@@ -255,8 +255,8 @@
 .ml-stage-header {
     text-align: center; margin-bottom: 0.85rem;
 }
-.ml-stage-header h2 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
-.ml-stage-header p { font-size: 0.78rem; color: #aaa; margin: 0; }
+.ml-stage-header h2 { font-size: 1.2rem; font-weight: 700; color: var(--text-primary-dark); margin-bottom: 2px; }
+.ml-stage-header p { font-size: 0.78rem; color: var(--text-secondary-dark); margin: 0; }
 
 /* YOUTUBE-STYLE SKELETON SHIMMER ANIMATION */
 @keyframes shimmerWave {
@@ -689,6 +689,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--text-primary-dark);
 }
 
 .ml-toc-page-pill {
@@ -1047,6 +1048,122 @@
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.55;
     user-select: text;
+}
+
+/* Light Theme Adaptations for Miron Live Reading View */
+.theme-light .ml-overlay {
+    background: var(--bg-dark);
+}
+
+.theme-light .ml-header {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+}
+
+.theme-light .ml-status {
+    color: var(--text-primary-dark);
+}
+
+.theme-light .ml-back-btn,
+.theme-light .athena-close {
+    color: var(--text-primary-dark);
+}
+
+.theme-light .ml-reading-header-controls {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+}
+
+.theme-light .ml-hdr-page-title {
+    color: var(--text-primary-dark);
+}
+
+.theme-light .ml-page-viewport {
+    background: var(--bg-dark);
+}
+
+.theme-light .ml-page-viewport .page-canvas {
+    --page-bg: #ffffff !important;
+    --text-color: #111827 !important;
+    --border: rgba(0, 0, 0, 0.08) !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.theme-light .ml-page-number-strip {
+    background: var(--surface-dark);
+    color: var(--text-secondary-dark);
+    border-color: var(--border-color);
+}
+
+.theme-light .ml-dock-container {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+}
+
+.theme-light .ml-course-card {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .ml-card-name {
+    color: var(--text-primary-dark);
+}
+
+.theme-light .ml-card-count {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .ml-confirm-card {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .ml-confirm-title {
+    color: var(--text-primary-dark);
+}
+
+.theme-light .ml-confirm-blurb {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .ml-confirm-parent {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .ml-toc-chapter-card {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+
+.theme-light .ml-toc-ch-header:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.theme-light .ml-toc-sections-list {
+    background: rgba(0, 0, 0, 0.02);
+    border-top-color: var(--border-color);
+}
+
+.theme-light .ml-toc-section-item {
+    color: var(--text-primary-dark);
+    border-bottom-color: var(--border-color);
+}
+
+.theme-light .ml-toc-section-item:hover {
+    background: rgba(66, 215, 184, 0.12);
+    color: var(--text-primary-dark);
+}
+
+.theme-light .ml-btn-back-toc {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+    color: var(--text-primary-dark);
 }
 
 /* REAL-TIME DYNAMIC HIGHLIGHT GLOW */
