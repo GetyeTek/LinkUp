@@ -295,25 +295,25 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 <i className="fa-solid fa-leaf pu-leaf-icon" style={{ transform: 'scaleX(-1)' }}></i>
                             </div>
 
-                            <h1 className="pu-modal-title">LinkUp Premium Pass</h1>
-                            <p className="pu-modal-subtitle">Unrestricted AI reasoning, complete multi-year exam pavilion archives, and live audio co-hosting.</p>
+                            <h1 className="pu-modal-title">{t('premium_title', userProfile?.sex, 'LinkUp Premium Pass')}</h1>
+                            <p className="pu-modal-subtitle">{t('premium_subtitle', userProfile?.sex, 'Unrestricted AI reasoning, complete multi-year exam pavilion archives, and live audio co-hosting.')}</p>
 
                             <div className="pu-perks-list">
                                 <div className="pu-perk-item">
                                     <div className="pu-perk-check-green"><i className="fa-solid fa-check"></i></div>
-                                    <div className="pu-perk-text"><strong>Unlimited Miron AI:</strong> 24/7 Deep Reasoning & Tutoring</div>
+                                    <div className="pu-perk-text" dangerouslySetInnerHTML={{ __html: t('premium_perk_1', userProfile?.sex, '<strong>Unlimited Miron AI:</strong> 24/7 Deep Reasoning & Tutoring') }}></div>
                                 </div>
                                 <div className="pu-perk-item">
                                     <div className="pu-perk-check-green"><i className="fa-solid fa-check"></i></div>
-                                    <div className="pu-perk-text"><strong>Exam Pavilion:</strong> Full Multi-Year University Archives</div>
+                                    <div className="pu-perk-text" dangerouslySetInnerHTML={{ __html: t('premium_perk_2', userProfile?.sex, '<strong>Exam Pavilion:</strong> Full Multi-Year University Archives') }}></div>
                                 </div>
                                 <div className="pu-perk-item">
                                     <div className="pu-perk-check-green"><i className="fa-solid fa-check"></i></div>
-                                    <div className="pu-perk-text"><strong>Live Audio Stages:</strong> AI Co-Hosting & Lecture Sync</div>
+                                    <div className="pu-perk-text" dangerouslySetInnerHTML={{ __html: t('premium_perk_3', userProfile?.sex, '<strong>Live Audio Stages:</strong> AI Co-Hosting & Lecture Sync') }}></div>
                                 </div>
                                 <div className="pu-perk-item">
                                     <div className="pu-perk-check-green"><i className="fa-solid fa-check"></i></div>
-                                    <div className="pu-perk-text"><strong>Scholar Distinction:</strong> Verified Gold Crown & Priority Network</div>
+                                    <div className="pu-perk-text" dangerouslySetInnerHTML={{ __html: t('premium_perk_4', userProfile?.sex, '<strong>Scholar Distinction:</strong> Verified Gold Crown & Priority Network') }}></div>
                                 </div>
                             </div>
 
@@ -336,7 +336,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                             <i className="fa-solid fa-coins"></i> -{discount} ETB Credits
                                         </div>
                                     )}
-                                    <div className="pu-plan-tag">{semesterPlan?.title || 'Semester Pass'}</div>
+                                    <div className="pu-plan-tag">{semesterPlan?.title || t('premium_plan_sem', userProfile?.sex, 'Semester Pass')}</div>
                                     
                                     {quoteLoading ? (
                                         <div style={{ padding: '1rem 0', color: 'var(--gold-main)', textAlign: 'center' }}><i className="fas fa-circle-notch fa-spin"></i></div>
@@ -350,7 +350,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                                 {semesterFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-credits-used-note">
-                                                <i className="fa-solid fa-circle-check"></i> <u>{quote?.credits_applied} credits</u> applied from your wallet
+                                                <i className="fa-solid fa-circle-check"></i> <span dangerouslySetInnerHTML={{ __html: t('premium_credits_used', userProfile?.sex, '<u>{credits} credits</u> applied from your wallet').replace('{credits}', `<u>${quote?.credits_applied}</u>`) }}></span>
                                             </span>
                                         </div>
                                     ) : (
@@ -371,10 +371,10 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                         {discount > 0 ? (
                                             <><i className="fa-solid fa-bolt"></i> -{discount} ETB + {annualPlan?.savings_pct || 35}%</>
                                         ) : (
-                                            `Save ${annualPlan?.savings_pct || 35}%`
+                                            t('premium_save_pct', userProfile?.sex, 'Save {pct}%').replace('{pct}', String(annualPlan?.savings_pct || 35))
                                         )}
                                     </div>
-                                    <div className="pu-plan-tag">{annualPlan?.title || 'Annual Pass'}</div>
+                                    <div className="pu-plan-tag">{annualPlan?.title || t('premium_plan_ann', userProfile?.sex, 'Annual Pass')}</div>
 
                                     {quoteLoading ? (
                                         <div style={{ padding: '1rem 0', color: 'var(--gold-main)', textAlign: 'center' }}><i className="fas fa-circle-notch fa-spin"></i></div>
@@ -388,7 +388,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                                 {annualFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-credits-used-note">
-                                                <i className="fa-solid fa-circle-check"></i> <u>{quote?.credits_applied} credits</u> applied from your wallet
+                                                <i className="fa-solid fa-circle-check"></i> <span dangerouslySetInnerHTML={{ __html: t('premium_credits_used', userProfile?.sex, '<u>{credits} credits</u> applied from your wallet').replace('{credits}', `<u>${quote?.credits_applied}</u>`) }}></span>
                                             </span>
                                         </div>
                                     ) : (
@@ -407,32 +407,32 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     <span className="pu-footnote-text">
                                         <i className="fa-solid fa-coins" style={{ color: 'var(--gold-main)', marginRight: '6px' }}></i>
                                         {useCredits && quote.credits_applied > 0
-                                            ? `Your earned credits applied (${quote.credits_remaining} saved for later)`
-                                            : `${quote.credits_available} credits saved in your wallet`}
+                                            ? `${t('premium_credits_used', userProfile?.sex, '{credits} credits applied from your wallet').replace('{credits}', quote.credits_applied)} (${quote.credits_remaining} saved)`
+                                            : t('premium_credits_saved', userProfile?.sex, '{credits} credits saved in your wallet').replace('{credits}', quote.credits_available)}
                                     </span>
                                     <button 
                                         type="button" 
                                         className="pu-footnote-toggle-btn"
                                         onClick={() => setUseCredits(!useCredits)}
                                     >
-                                        {useCredits ? 'Save for later' : 'Apply credits'}
+                                        {useCredits ? t('premium_btn_save', userProfile?.sex, 'Save for later') : t('premium_btn_apply', userProfile?.sex, 'Apply credits')}
                                     </button>
                                 </div>
                             )}
 
                             <button className="pu-cta-gold-btn" onClick={() => setView('methods')} disabled={quoteLoading || !amountDue || !!quoteError}>
                                 {quoteLoading ? (
-                                    <><i className="fas fa-circle-notch fa-spin"></i> Calculating Price...</>
+                                    <><i className="fas fa-circle-notch fa-spin"></i> {t('premium_calc', userProfile?.sex, 'Calculating Price...')}</>
                                 ) : !amountDue || quoteError ? (
-                                    <span>Pricing Unavailable</span>
+                                    <span>{t('premium_unavail', userProfile?.sex, 'Pricing Unavailable')}</span>
                                 ) : discount > 0 ? (
                                     <>
-                                        <span>Proceed • Pay {amountDue} ETB (Saved {discount} ETB)</span>
+                                        <span>{t('premium_proceed_saved', userProfile?.sex, 'Proceed • Pay {amount} ETB (Saved {discount} ETB)').replace('{amount}', amountDue).replace('{discount}', discount)}</span>
                                         <i className="fa-solid fa-sparkles"></i>
                                     </>
                                 ) : (
                                     <>
-                                        <span>Proceed to Payment • {amountDue} ETB</span>
+                                        <span>{t('premium_proceed', userProfile?.sex, 'Proceed to Payment • {amount} ETB').replace('{amount}', amountDue)}</span>
                                         <i className="fa-solid fa-arrow-right"></i>
                                     </>
                                 )}
@@ -440,13 +440,13 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
 
                             <button className="pu-secondary-btn" onClick={() => setView('verify')}>
                                 <i className="fa-solid fa-receipt" style={{ color: 'var(--gold-main)' }}></i>
-                                <span>Already Transferred? Verify Payment</span>
+                                <span>{t('premium_already_paid', userProfile?.sex, 'Already Transferred? Verify Payment')}</span>
                                 <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.8rem', marginLeft: 'auto', opacity: 0.8 }}></i>
                             </button>
 
                             <div className="pu-trust-footer">
                                 <i className="fa-solid fa-shield-check"></i>
-                                <span>Instant activation via Telebirr & CBE Birr</span>
+                                <span>{t('premium_instant', userProfile?.sex, 'Instant activation via Telebirr & CBE Birr')}</span>
                             </div>
                         </>
                     )}
@@ -460,23 +460,23 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 <span>Select Payment Channel</span>
                             </div>
 
-                            <h1 className="pu-modal-title" style={{ fontSize: '1.9rem' }}>Pay {amountDue} ETB</h1>
-                            <p className="pu-modal-subtitle">Transfer the exact amount to either account below, then submit your confirmation text or receipt.</p>
+                            <h1 className="pu-modal-title" style={{ fontSize: '1.9rem' }}>{t('premium_pay_amount', userProfile?.sex, 'Pay {amount} ETB').replace('{amount}', amountDue)}</h1>
+                            <p className="pu-modal-subtitle">{t('premium_pay_sub', userProfile?.sex, 'Transfer the exact amount to either account below, then submit your confirmation text or receipt.')}</p>
 
                             {accountsLoading ? (
                                 <div className="pu-accounts-loading">
                                     <i className="fa-solid fa-shield-halved fa-spin" style={{ fontSize: '2rem', color: 'var(--gold-main)', marginBottom: '10px' }}></i>
-                                    <p>Verifying official banking channels...</p>
+                                    <p>{t('premium_verifying_channels', userProfile?.sex, 'Verifying official banking channels...')}</p>
                                 </div>
                             ) : accountsError || !accounts ? (
                                 <div className="pu-accounts-error">
                                     <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '2rem', color: '#ff5f5f', marginBottom: '8px' }}></i>
-                                    <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '6px' }}>Payment Channels Unavailable</h3>
+                                    <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '6px' }}>{t('premium_channels_unavail', userProfile?.sex, 'Payment Channels Unavailable')}</h3>
                                     <p style={{ fontSize: '0.8rem', color: '#aaa', lineHeight: 1.4, margin: '0 0 12px 0' }}>
                                         {accountsError || "Could not retrieve verified recipient accounts from the server."}
                                     </p>
                                     <button className="pu-retry-btn" onClick={fetchPaymentAccounts}>
-                                        <i className="fa-solid fa-rotate-right"></i> Retry Connection
+                                        <i className="fa-solid fa-rotate-right"></i> {t('premium_retry', userProfile?.sex, 'Retry Connection')}
                                     </button>
                                 </div>
                             ) : (
@@ -516,7 +516,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                                     onClick={() => copyToClipboard(accounts.cbe.account_number, 'cbe')}
                                                 >
                                                     <i className={`fa-solid ${copiedKey === 'cbe' ? 'fa-check' : 'fa-copy'}`}></i>
-                                                    <span>{copiedKey === 'cbe' ? 'Copied' : 'Copy'}</span>
+                                                    <span>{copiedKey === 'cbe' ? t('premium_copied', userProfile?.sex, 'Copied') : t('premium_copy', userProfile?.sex, 'Copy')}</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -557,7 +557,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                                     onClick={() => copyToClipboard(accounts.telebirr.phone_number, 'telebirr')}
                                                 >
                                                     <i className={`fa-solid ${copiedKey === 'telebirr' ? 'fa-check' : 'fa-copy'}`}></i>
-                                                    <span>{copiedKey === 'telebirr' ? 'Copied' : 'Copy'}</span>
+                                                    <span>{copiedKey === 'telebirr' ? t('premium_copied', userProfile?.sex, 'Copied') : t('premium_copy', userProfile?.sex, 'Copy')}</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -570,12 +570,12 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 onClick={() => setView('verify')} 
                                 disabled={accountsLoading || !accounts || !!accountsError}
                             >
-                                <span>Already Paid? Verify Payment</span>
+                                <span>{t('premium_already_paid_btn', userProfile?.sex, 'Already Paid? Verify Payment')}</span>
                                 <i className="fa-solid fa-check-double"></i>
                             </button>
 
                             <div className="pu-trust-footer">
-                                <span>Questions? Contact support <a href="https://t.me/linkupregistrationbot" target="_blank" rel="noopener noreferrer" className="pu-support-link">@linkupregistrationbot</a></span>
+                                <span>{t('premium_questions', userProfile?.sex, 'Questions? Contact support')} <a href="https://t.me/linkupregistrationbot" target="_blank" rel="noopener noreferrer" className="pu-support-link">@linkupregistrationbot</a></span>
                             </div>
                         </>
                     )}
@@ -586,11 +586,11 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                     {view === 'verify' && (
                         <>
                             <div className="pu-scholar-badge" style={{ marginTop: '0.5rem' }}>
-                                <span>Proof of Payment</span>
+                                <span>{t('premium_proof_title', userProfile?.sex, 'Proof of Payment')}</span>
                             </div>
 
-                            <h1 className="pu-modal-title" style={{ fontSize: '1.8rem' }}>Verify {amountDue} ETB</h1>
-                            <p className="pu-modal-subtitle">Paste the confirmation SMS you received or attach a screenshot.</p>
+                            <h1 className="pu-modal-title" style={{ fontSize: '1.8rem' }}>{t('premium_proof_amount', userProfile?.sex, 'Verify {amount} ETB').replace('{amount}', amountDue)}</h1>
+                            <p className="pu-modal-subtitle">{t('premium_proof_sub', userProfile?.sex, 'Paste the confirmation SMS you received or attach a screenshot.')}</p>
 
                             <div className="pu-verify-form">
                                 <div className="pu-method-tabs">
@@ -603,7 +603,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                         ) : (
                                             <i className="fa-solid fa-building-columns"></i>
                                         )}
-                                        Paid with CBE
+                                        {t('premium_paid_cbe', userProfile?.sex, 'Paid with CBE')}
                                     </button>
                                     <button 
                                         className={`pu-method-tab ${selectedMethod === 'telebirr' ? 'active' : ''}`}
@@ -614,18 +614,18 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                         ) : (
                                             <i className="fa-solid fa-mobile-screen-button"></i>
                                         )}
-                                        Paid with Telebirr
+                                        {t('premium_paid_tb', userProfile?.sex, 'Paid with Telebirr')}
                                     </button>
                                 </div>
 
                                 <div className="pu-field-group">
                                     <label className="pu-field-label">
-                                        <span>Confirmation SMS Text</span>
-                                        <span className="req">(Optional if uploading pic)</span>
+                                        <span>{t('premium_sms_label', userProfile?.sex, 'Confirmation SMS Text')}</span>
+                                        <span className="req">{t('premium_sms_opt', userProfile?.sex, '(Optional if uploading pic)')}</span>
                                     </label>
                                     <textarea 
                                         className="pu-textarea" 
-                                        placeholder="Paste the transaction SMS from CBE or Telebirr here..."
+                                        placeholder={t('premium_sms_placeholder', userProfile?.sex, 'Paste the transaction SMS from CBE or Telebirr here...')}
                                         value={smsText}
                                         onChange={e => handleSmsChange(e.target.value)}
                                         disabled={isSubmitting}
@@ -633,15 +633,15 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     {txnRef && (
                                         <div className="pu-parsed-tag">
                                             <i className="fa-solid fa-circle-check"></i>
-                                            <span>Detected Txn Ref: <strong>{txnRef}</strong></span>
+                                            <span>{t('premium_detected_txn', userProfile?.sex, 'Detected Txn Ref:')} <strong>{txnRef}</strong></span>
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="pu-field-group">
                                     <label className="pu-field-label">
-                                        <span>Screenshot / Receipt</span>
-                                        <span className="req">(Optional if SMS pasted)</span>
+                                        <span>{t('premium_pic_label', userProfile?.sex, 'Screenshot / Receipt')}</span>
+                                        <span className="req">{t('premium_pic_opt', userProfile?.sex, '(Optional if SMS pasted)')}</span>
                                     </label>
                                     
                                     <input 
@@ -660,12 +660,12 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                         {receiptFile ? (
                                             <>
                                                 <i className="fa-solid fa-file-image"></i>
-                                                <span>{receiptFile.name} (Tap to change)</span>
+                                                <span>{t('premium_pic_change', userProfile?.sex, '{name} (Tap to change)').replace('{name}', receiptFile.name)}</span>
                                             </>
                                         ) : (
                                             <>
                                                 <i className="fa-solid fa-cloud-arrow-up"></i>
-                                                <span>Tap to attach receipt screenshot</span>
+                                                <span>{t('premium_pic_attach', userProfile?.sex, 'Tap to attach receipt screenshot')}</span>
                                             </>
                                         )}
                                     </div>
@@ -680,11 +680,11 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 {isSubmitting ? (
                                     <>
                                         <i className="fa-solid fa-circle-notch fa-spin"></i>
-                                        <span>Submitting Proof...</span>
+                                        <span>{t('premium_submitting', userProfile?.sex, 'Submitting Proof...')}</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span>Submit for Verification</span>
+                                        <span>{t('premium_submit_btn', userProfile?.sex, 'Submit for Verification')}</span>
                                         <i className="fa-solid fa-paper-plane"></i>
                                     </>
                                 )}
@@ -701,13 +701,13 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 <i className="fa-solid fa-hourglass-half"></i>
                             </div>
 
-                            <h1 className="pu-modal-title" style={{ fontSize: '1.8rem' }}>Verification in Progress</h1>
+                            <h1 className="pu-modal-title" style={{ fontSize: '1.8rem' }}>{t('premium_pending_title', userProfile?.sex, 'Verification in Progress')}</h1>
                             <p className="pu-modal-subtitle">
-                                We received your payment submission. Our team will verify the transaction and activate your Gold Pass shortly.
+                                {t('premium_pending_sub', userProfile?.sex, 'We received your payment submission. Our team will verify the transaction and activate your Gold Pass shortly.')}
                             </p>
 
                             <div className="pu-status-card">
-                                <div><strong>Plan:</strong> {existingSubmission?.plan === 'annual' ? 'Annual Pass' : 'Semester Pass'} ({existingSubmission?.amount || amountDue} ETB)</div>
+                                <div><strong>{t('premium_plan_lbl', userProfile?.sex, 'Plan:')}</strong> {existingSubmission?.plan === 'annual' ? t('premium_plan_ann', userProfile?.sex, 'Annual Pass') : t('premium_plan_sem', userProfile?.sex, 'Semester Pass')} ({existingSubmission?.amount || amountDue} ETB)</div>
                                 {existingSubmission?.discount_applied > 0 && (
                                     <div style={{ marginTop: '4px', color: 'var(--green-accent)' }}>
                                         <strong>Credits Applied:</strong> {existingSubmission.credits_applied} (-{existingSubmission.discount_applied} ETB)
@@ -716,18 +716,18 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 {existingSubmission?.transaction_ref && (
                                     <div style={{ marginTop: '4px' }}><strong>Txn Ref:</strong> {existingSubmission.transaction_ref}</div>
                                 )}
-                                <div style={{ marginTop: '4px' }}><strong>Status:</strong> <span style={{ color: 'var(--gold-main)', fontWeight: 600 }}>Under Review</span></div>
+                                <div style={{ marginTop: '4px' }}><strong>{t('premium_status', userProfile?.sex, 'Status:')}</strong> <span style={{ color: 'var(--gold-main)', fontWeight: 600 }}>{t('premium_under_review', userProfile?.sex, 'Under Review')}</span></div>
                                 <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#888' }}>
-                                    If not approved within 24 hours, please contact support <a href="https://t.me/linkupregistrationbot" target="_blank" rel="noopener noreferrer" className="pu-support-link">@linkupregistrationbot</a>.
+                                    {t('premium_not_approved', userProfile?.sex, 'If not approved within 24 hours, please contact support')} <a href="https://t.me/linkupregistrationbot" target="_blank" rel="noopener noreferrer" className="pu-support-link">@linkupregistrationbot</a>.
                                 </div>
                             </div>
 
                             <button className="pu-secondary-btn" onClick={() => setView('verify')}>
-                                <i className="fa-solid fa-pen" style={{ marginRight: '6px' }}></i> Update / Re-Upload Proof
+                                <i className="fa-solid fa-pen" style={{ marginRight: '6px' }}></i> {t('premium_update_proof', userProfile?.sex, 'Update / Re-Upload Proof')}
                             </button>
 
                             <button className="pu-cta-gold-btn" style={{ marginTop: '10px' }} onClick={onClose}>
-                                <span>Done</span>
+                                <span>{t('common_done', userProfile?.sex, 'Done')}</span>
                             </button>
                         </div>
                     )}
@@ -746,22 +746,22 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 <span>Premium Pass Active</span>
                             </div>
 
-                            <h1 className="pu-modal-title" style={{ fontSize: '2rem' }}>You Are Premium!</h1>
+                            <h1 className="pu-modal-title" style={{ fontSize: '2rem' }}>{t('premium_active_title', userProfile?.sex, 'You Are Premium!')}</h1>
                             <p className="pu-modal-subtitle">
-                                All academic privileges are fully unlocked on your account.
+                                {t('premium_active_sub', userProfile?.sex, 'All academic privileges are fully unlocked on your account.')}
                             </p>
 
                             <div className="pu-status-card">
-                                <div><strong>Membership:</strong> LinkUp Premium Scholar</div>
+                                <div><strong>{t('premium_membership', userProfile?.sex, 'Membership:')}</strong> LinkUp Premium Scholar</div>
                                 {userProfile?.pro_expires_at && (
                                     <div style={{ marginTop: '4px' }}>
-                                        <strong>Expires:</strong> {new Date(userProfile.pro_expires_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        <strong>{t('premium_expires', userProfile?.sex, 'Expires:')}</strong> {new Date(userProfile.pro_expires_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                                     </div>
                                 )}
                             </div>
 
                             <button className="pu-cta-gold-btn" onClick={onClose}>
-                                <span>Return to Dashboard</span>
+                                <span>{t('premium_return_dash', userProfile?.sex, 'Return to Dashboard')}</span>
                             </button>
                         </div>
                     )}
@@ -775,20 +775,20 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 <i className="fa-solid fa-triangle-exclamation"></i>
                             </div>
 
-                            <h1 className="pu-modal-title" style={{ fontSize: '1.8rem', color: '#ff5f5f' }}>Verification Issue</h1>
+                            <h1 className="pu-modal-title" style={{ fontSize: '1.8rem', color: '#ff5f5f' }}>{t('premium_rejected_title', userProfile?.sex, 'Verification Issue')}</h1>
                             <p className="pu-modal-subtitle">
-                                We could not confirm your previous transaction.
+                                {t('premium_rejected_sub', userProfile?.sex, 'We could not confirm your previous transaction.')}
                             </p>
 
                             <div className="pu-status-card" style={{ borderColor: 'rgba(255, 95, 95, 0.3)' }}>
-                                <div><strong>Reason:</strong> {existingSubmission?.rejection_reason || 'Transaction could not be matched with bank records.'}</div>
+                                <div><strong>{t('premium_reason', userProfile?.sex, 'Reason:')}</strong> {existingSubmission?.rejection_reason || 'Transaction could not be matched with bank records.'}</div>
                                 <div style={{ marginTop: '6px', fontSize: '0.78rem', color: '#aaa' }}>
-                                    Please verify your account details or re-upload a clear receipt screenshot.
+                                    {t('premium_please_verify', userProfile?.sex, 'Please verify your account details or re-upload a clear receipt screenshot.')}
                                 </div>
                             </div>
 
                             <button className="pu-cta-gold-btn" onClick={() => setView('verify')}>
-                                <span>Re-Submit Proof</span>
+                                <span>{t('premium_resubmit', userProfile?.sex, 'Re-Submit Proof')}</span>
                                 <i className="fa-solid fa-arrow-rotate-right"></i>
                             </button>
                         </div>
