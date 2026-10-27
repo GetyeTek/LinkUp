@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 
 const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
+  const { t } = usePlatform();
   const [src, setSrc] = useState('');
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -65,7 +67,7 @@ const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
   return (
       <div className="cropper-overlay">
           <div className="cropper-card">
-              <h3>Adjust Profile Picture</h3>
+              <h3>{t('crop_title', null, 'Adjust Profile Picture')}</h3>
               <div 
                   className="cropper-viewport"
                   onMouseDown={e => handleStart(e.clientX, e.clientY)}
@@ -97,8 +99,8 @@ const AvatarCropperModal = ({ imageFile, onCancel, onSave }) => {
                   <i className="fas fa-search-plus"></i>
               </div>
               <div className="cropper-actions">
-                  <button className="btn-crop-cancel" onClick={onCancel}>Cancel</button>
-                  <button className="btn-crop-save" onClick={generateCrop}>Apply</button>
+                  <button className="btn-crop-cancel" onClick={onCancel}>{t('crop_cancel', null, 'Cancel')}</button>
+                  <button className="btn-crop-save" onClick={generateCrop}>{t('crop_apply', null, 'Apply')}</button>
               </div>
           </div>
       </div>
