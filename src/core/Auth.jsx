@@ -149,10 +149,10 @@ const Auth = () => {
             });
             if (error) throw error;
             setNotice({
-                title: 'Recovery Link Sent',
-                message: 'Check your email inbox for the password reset link.',
+                title: isAm ? 'የይለፍ ቃል ማደሻ ተልኳል' : 'Recovery Link Sent',
+                message: isAm ? 'የይለፍ ቃል መቀየሪያውን ሊንክ ለማግኘት የኢሜይል መልዕክት ሳጥንዎን ይመልከቱ።' : 'Check your email inbox for the password reset link.',
                 type: 'success',
-                actionLabel: 'Back to Sign In'
+                actionLabel: isAm ? 'ወደ መግቢያ ተመለስ' : 'Back to Sign In'
             });
             setIsForgotPassword(false);
         } catch (err) {
@@ -207,19 +207,19 @@ const Auth = () => {
                     const provider = checkData[0].provider;
                     if (provider === 'google') {
                         setNotice({
-                            title: 'Linked via Google',
-                            message: 'This email is already associated with a Google account. Please use the Google button to sign in.',
+                            title: isAm ? 'በGoogle የተገናኘ' : 'Linked via Google',
+                            message: isAm ? 'ይህ ኢሜይል ቀድሞውኑ ከGoogle መለያ ጋር የተገናኘ ነው። እባክዎ ለመግባት የGoogle ቁልፍን ይጠቀሙ።' : 'This email is already associated with a Google account. Please use the Google button to sign in.',
                             type: 'google',
-                            actionLabel: 'Got it'
+                            actionLabel: isAm ? 'እሺ' : 'Got it'
                         });
                         setLoading(false);
                         return;
                     } else {
                         setNotice({
-                            title: 'Already a Member',
-                            message: 'An account with this email already exists. Would you like to sign in instead?',
+                            title: isAm ? 'ቀድመው ተመዝግበዋል' : 'Already a Member',
+                            message: isAm ? 'በዚህ ኢሜይል የተመዘገበ አካውንት አስቀድሞ አለ። ወደ መግቢያ ገጽ መቀየር ይፈልጋሉ?' : 'An account with this email already exists. Would you like to sign in instead?',
                             type: 'exists',
-                            actionLabel: 'Switch to Sign In'
+                            actionLabel: isAm ? 'ወደ መግቢያ ገጽ ቀይር' : 'Switch to Sign In'
                         });
                         setLoading(false);
                         return;
@@ -264,10 +264,10 @@ const Auth = () => {
                 if (signUpError) throw signUpError;
                 
                 setNotice({
-                    title: 'Verification Sent',
-                    message: 'We have dispatched a secure verification link to your email. Please verify your account in your inbox first, then return here to sign in and set up your academic profile.',
+                    title: isAm ? 'ማረጋገጫ ተልኳል' : 'Verification Sent',
+                    message: isAm ? 'ወደ ኢሜይልዎ ደህንነቱ የተጠበቀ የማረጋገጫ ሊንክ ልከናል። እባክዎ መጀመሪያ ኢሜይልዎን ከፍተው ያረጋግጡ፤ ከዚያ ወደዚህ ተመልሰው በመግባት የትምህርት መገለጫዎን ያዘጋጁ።' : 'We have dispatched a secure verification link to your email. Please verify your account in your inbox first, then return here to sign in and set up your academic profile.',
                     type: 'success',
-                    actionLabel: 'Go to Sign In',
+                    actionLabel: isAm ? 'ወደ መግቢያ ሂድ' : 'Go to Sign In',
                     action: 'signin'
                 });
             } else {
