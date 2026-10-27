@@ -4,7 +4,7 @@ import FlashcardArena from './FlashcardArena.jsx';
 import './FlashcardPavilion.css';
 
 const FlashcardPavilion = ({ onClose }) => {
-    const { theme } = usePlatform();
+    const { theme, t } = usePlatform();
     const isLight = theme === 'light';
     const [stats, setStats] = useState({ mistakes_due: 0, course_decks: [] });
     const [activeSession, setActiveSession] = useState(null);
@@ -107,11 +107,11 @@ const FlashcardPavilion = ({ onClose }) => {
                 <button className="fcp-back-btn" onClick={onClose}>
                     <i className="fas fa-chevron-left"></i>
                 </button>
-                <h2>Flashcard Decks</h2>
+                <h2>{t('flashcards_title', 'Flashcard Decks')}</h2>
             </header>
 
             <main className="fcp-scroll-body">
-                <span className="fcp-section-tag">⚡ Personalized Recovery</span>
+                <span className="fcp-section-tag">⚡ {t('flashcards_recovery', 'Personalized Recovery')}</span>
 
                 {/* Mistake Vault Card */}
                 <div className={`fcp-mistake-card ${openingDeckId === 'vault' ? 'is-opening' : ''}`} onClick={handleStartMistakes}>
@@ -119,15 +119,15 @@ const FlashcardPavilion = ({ onClose }) => {
                         {openingDeckId === 'vault' ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-bullseye"></i>}
                     </div>
                     <div className="fcp-mv-info">
-                        <h3>Mistake Vault</h3>
-                        <p>Questions you missed on recent exam drills and book checkpoints</p>
+                        <h3>{t('flashcards_mistake_vault', 'Mistake Vault')}</h3>
+                        <p>{t('flashcards_mistake_desc', 'Questions you missed on recent exam drills and book checkpoints')}</p>
                     </div>
                     <div className="fcp-badge-red">
-                        {stats.mistakes_due > 0 ? `${stats.mistakes_due} Due` : 'Review'}
+                        {stats.mistakes_due > 0 ? t('flashcards_due_badge', '{count} Due').replace('{count}', String(stats.mistakes_due)) : t('flashcards_review_badge', 'Review')}
                     </div>
                 </div>
 
-                <span className="fcp-section-tag" style={{ marginTop: '12px' }}>📚 Course Decks</span>
+                <span className="fcp-section-tag" style={{ marginTop: '12px' }}>📚 {t('flashcards_course_decks', 'Course Decks')}</span>
 
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--accent-teal)' }}>
@@ -164,10 +164,10 @@ const FlashcardPavilion = ({ onClose }) => {
                                 <div className="fcp-cdc-info">
                                     <div className="fcp-cdc-code">{d.course_code}</div>
                                     <div className="fcp-cdc-title">{d.title}</div>
-                                    <div className="fcp-cdc-desc">{d.total_cards} Total Cards</div>
+                                    <div className="fcp-cdc-desc">{d.total_cards} {t('flashcards_reviewed_count', 'Cards')}</div>
                                 </div>
                                 <div className="fcp-badge-teal">
-                                    {d.due_cards || 0} Due
+                                    {t('flashcards_due_badge', '{count} Due').replace('{count}', String(d.due_cards || 0))}
                                 </div>
                             </div>
                         );
