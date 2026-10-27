@@ -12,36 +12,18 @@ const YEARS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 const PROGRAMS = ['Regular', 'Extension'];
 const STREAMS = ['Natural Science', 'Social Science'];
 
-// Reusable Custom Chip Dropdown component
-const ChipDropdown = ({ label, value, options, fieldKey, singleCol, expandedField, setExpandedField, setEditForm }) => {
-    const isExpanded = expandedField === fieldKey;
+// Reusable Selection Field leading to Modal
+const SelectionField = ({ label, value, fieldKey, onOpen }) => {
     return (
         <div className="input-group-sm" style={{ marginTop: '1rem' }}>
             <label>{label}</label>
             <div 
-                className={`pe-dropdown-summary ${isExpanded ? 'expanded' : ''}`} 
-                onClick={() => setExpandedField(isExpanded ? null : fieldKey)}
+                className="pe-dropdown-summary" 
+                onClick={() => onOpen(fieldKey, label)}
             >
                 <span className={value ? 'has-value' : 'is-empty'}>{value || `Select ${label.toLowerCase()}...`}</span>
-                <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`}></i>
+                <i className="fas fa-chevron-down"></i>
             </div>
-            
-            {isExpanded && (
-                <div className={`wizard-options-grid ${singleCol ? 'single-col' : ''}`} style={{ marginTop: '0.75rem' }}>
-                    {options.map(o => (
-                        <div 
-                            key={o} 
-                            className={`wizard-option-card ${value === o ? 'active' : ''}`} 
-                            onClick={() => {
-                                setEditForm(prev => ({ ...prev, [fieldKey]: o }));
-                                setExpandedField(null); // Auto-collapse on selection
-                            }}
-                        >
-                            {o}
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
     );
 };
@@ -55,7 +37,8 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
     
     const [selectedFile, setSelectedFile] = useState(null);
     const [croppedAvatar, setCroppedAvatar] = useState(null);
-    const [expandedField, setExpandedField] = useState(null);
+    
+    const [activeSelectionModal, setActiveSelectionModal] = useState(null); // { fieldKey, title, options }
 
     const [editForm, setEditForm] = useState({
         sureName: '', fatherName: '', username: '', bio: '', email: '', phone: '', sex: '', university_id: '', 
@@ -419,21 +402,21 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                         </div>
 
                         <div id="pe-field-program">
-                            <ChipDropdown label="Program Type" value={editForm.program} options={PROGRAMS} fieldKey="program" singleCol={true} expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                            <SelectionField label="Program Type" value={editForm.program} fieldKey="program" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: PROGRAMS })} />
                         </div>
                         
                         <div id="pe-field-department">
-                            <ChipDropdown label="Department" value={editForm.department} options={DEPARTMENTS} fieldKey="department" expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                            <SelectionField label="Department" value={editForm.department} fieldKey="department" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: DEPARTMENTS })} />
                         </div>
 
                         <div id="pe-field-academic_sub">
                             {editForm.department === 'Freshman' ? (
                                 <>
-                                    <ChipDropdown label="Freshman Stream" value={editForm.freshman_stream} options={STREAMS} fieldKey="freshman_stream" singleCol={true} expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
-                                    <ChipDropdown label="Target Department" value={editForm.target_department} options={DEPARTMENTS.filter(d => d !== 'Freshman')} fieldKey="target_department" expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                                    <SelectionField label="Freshman Stream" value={editForm.freshman_stream} fieldKey="freshman_stream" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: STREAMS })} />
+                                    <SelectionField label="Target Department" value={editForm.target_department} fieldKey="target_department" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: DEPARTMENTS.filter(d => d !== 'Freshman') })} />
                                 </>
                             ) : (
-                                <ChipDropdown label="Year of Study" value={editForm.year} options={YEARS} fieldKey="year" expandedField={expandedField} setExpandedField={setExpandedField} setEditForm={setEditForm} />
+                                <SelectionField label="Year of Study" value={editForm.year} fieldKey="year" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: YEARS })} />
                             )}
                         </div>
                     </div>
@@ -470,6 +453,38 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                     </button>
                 </footer>
             </div>
+
+            {/* Reusable Full-Screen / Bottom Sheet Selection Modal */}
+            {activeSelectionModal && (
+                <div className="custom-modal-overlay" onClick={() => setActiveSelectionModal(null)} style={{ zIndex: 7000 }}>
+                    <div className="custom-modal-card selection-modal-card" onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-primary-dark)' }}>{activeSelectionModal.title}</h3>
+                            <button className="icon-button" onClick={() => setActiveSelectionModal(null)} style={{ width: '32px', height: '32px', color: 'var(--text-secondary-dark)' }}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="sm-options-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '50vh', overflowY: 'auto' }}>
+                            {activeSelectionModal.options.map(opt => {
+                                const isSelected = editForm[activeSelectionModal.fieldKey] === opt;
+                                return (
+                                    <div 
+                                        key={opt} 
+                                        className={`sm-option-row ${isSelected ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setEditForm(prev => ({ ...prev, [activeSelectionModal.fieldKey]: opt }));
+                                            setActiveSelectionModal(null);
+                                        }}
+                                    >
+                                        <span>{opt}</span>
+                                        {isSelected && <i className="fas fa-check"></i>}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
