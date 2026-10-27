@@ -31,7 +31,7 @@ const AnimatedValue = ({ target = 0, isActive }) => {
 
 
 const ObservatoryOverlay = ({ isActive, onClose }) => {
-    const { sessionUser } = usePlatform();
+    const { sessionUser, user: userProfile, t } = usePlatform();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     const starsRef = useRef(null);
@@ -105,7 +105,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
             <canvas id="stars-bg" ref={starsRef}></canvas>
             <div className="overlay-content">
                 <header className="overlay-header">
-                    <h2 className="overlay-title">Study Analytics</h2>
+                    <h2 className="overlay-title">{t('study_analytics', 'Study Analytics')}</h2>
                     <button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
                 </header>
                 <div className="overlay-inner-content">
@@ -118,7 +118,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                     <div className="value">
                                         <AnimatedValue target={data?.mastery_rating || 0} isActive={isActive} />
                                     </div>
-                                    <div className="label">Study Score</div>
+                                    <div className="label">{t('observatory_score', 'Study Score')}</div>
                                 </div>
                             </div>
                             <div className="dashboard-card">
@@ -127,7 +127,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                     <div className="value">
                                         <AnimatedValue target={data?.current_streak || 0} isActive={isActive} />
                                     </div>
-                                    <div className="label">Day Streak</div>
+                                    <div className="label">{t('observatory_streak', 'Day Streak')}</div>
                                 </div>
                             </div>
                         </div>
@@ -139,18 +139,18 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                             <div className="crest-emblem">
                                 <i className="fas fa-trophy"></i>
                             </div>
-                            <h3 className="rank-title">Campus Leaderboard</h3>
+                            <h3 className="rank-title">{t('campus_leaderboard', 'Campus Leaderboard')}</h3>
                             <p className="rank-standing-subtitle">
                                 {data?.my_standing?.is_hidden 
-                                    ? 'Rank: Hidden (Private)' 
-                                    : `Rank #${data?.my_standing?.rank || '--'} of ${data?.my_standing?.total_scholars || '--'} Students`}
+                                    ? t('leaderboard_hidden', 'Rank: Hidden (Private)') 
+                                    : t('observatory_standing', 'Rank #{rank} of {total} Students').replace('{rank}', data?.my_standing?.rank || '--').replace('{total}', data?.my_standing?.total_scholars || '--')}
                             </p>
                         </header>
 
                         {/* Top 10 Ladder */}
                         <div className="ladder-header-bar">
-                            <span>Top Scholars</span>
-                            <span>Score</span>
+                            <span>{t('observatory_top_scholars', 'Top Scholars')}</span>
+                            <span>{t('observatory_score_label', 'Score')}</span>
                         </div>
                         <div className="ladder-list">
                             {(data?.leaderboard || []).map((player) => (
@@ -189,7 +189,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                         />
                                         <div className="player-details-col">
                                             <span className="player-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                You {(data.my_standing.is_pro || userProfile?.is_pro) && <GoldBadge size="sm" />} {data.my_standing.is_hidden && <span style={{ fontSize: '0.72rem', color: '#ffab40', fontWeight: 'normal' }}>(Unlisted)</span>}
+                                                You {(data.my_standing.is_pro || userProfile?.is_pro) && <GoldBadge size="sm" />} {data.my_standing.is_hidden && <span style={{ fontSize: '0.72rem', color: '#ffab40', fontWeight: 'normal' }}>{t('observatory_unlisted', '(Unlisted)')}</span>}
                                             </span>
                                         </div>
                                         <div className="player-score-tag">{data.my_standing.mastery_rating} pts</div>
@@ -201,7 +201,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
 
                     {/* Analytics Suite (Universal Habit Ring & Weekly Bars) */}
                     <section className="analytics-suite fade-in-up" style={{ transitionDelay: '0.3s' }}>
-                        <h2 className="section-title"><span>Weekly Study Analytics</span></h2>
+                        <h2 className="section-title"><span>{t('observatory_weekly_analytics', 'Weekly Study Analytics')}</span></h2>
                         
                         {(() => {
                             const totalHours = weeklyBars.reduce((acc, b) => acc + Math.min(Number(b.hours) || 0, 16), 0);
@@ -214,7 +214,7 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                 <div className="analytics-grid">
                                     {/* Left: Universal Habit Gauge */}
                                     <div className="habit-gauge-panel">
-                                        <h3 className="analytics-card-title">Weekly Consistency</h3>
+                                        <h3 className="analytics-card-title">{t('observatory_weekly_consistency', 'Weekly Consistency')}</h3>
                                         
                                         <div className="habit-gauge-content">
                                             <div className="habit-ring-box">
@@ -228,21 +228,21 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                                 </svg>
                                                 <div className="habit-ring-text">
                                                     <span className="habit-ring-num">{activeDays}/7</span>
-                                                    <span className="habit-ring-sub">Days</span>
+                                                    <span className="habit-ring-sub">{t('observatory_days', 'Days')}</span>
                                                 </div>
                                             </div>
 
                                             <div className="habit-stats-col">
                                                 <div className="habit-stat-row">
-                                                    <span className="stat-lbl">Time Studied</span>
+                                                    <span className="stat-lbl">{t('observatory_time_studied', 'Time Studied')}</span>
                                                     <span className="stat-val">{totalHours.toFixed(1)} hrs</span>
                                                 </div>
                                                 <div className="habit-stat-row">
-                                                    <span className="stat-lbl">Daily Average</span>
+                                                    <span className="stat-lbl">{t('observatory_daily_avg', 'Daily Average')}</span>
                                                     <span className="stat-val">{dailyAvg} hrs/day</span>
                                                 </div>
                                                 <div className="habit-stat-row">
-                                                    <span className="stat-lbl">Consistency</span>
+                                                    <span className="stat-lbl">{t('observatory_consistency', 'Consistency')}</span>
                                                     <span className="stat-val" style={{ color: 'var(--accent-teal)' }}>{activePct}%</span>
                                                 </div>
                                             </div>
@@ -252,9 +252,9 @@ const ObservatoryOverlay = ({ isActive, onClose }) => {
                                     {/* Right: Daily Hours Bar Chart */}
                                     <div className="velocity-bar-panel">
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                            <h3 className="analytics-card-title" style={{ margin: 0 }}>Daily Study Hours</h3>
+                                            <h3 className="analytics-card-title" style={{ margin: 0 }}>{t('observatory_daily_hours', 'Daily Study Hours')}</h3>
                                             <span style={{ fontSize: '0.72rem', color: '#888', fontFamily: 'Roboto Mono, monospace' }}>
-                                                Mon — Sun
+                                                {t('observatory_mon_sun', 'Mon — Sun')}
                                             </span>
                                         </div>
                                         
