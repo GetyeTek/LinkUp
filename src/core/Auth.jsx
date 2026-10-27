@@ -380,27 +380,7 @@ const Auth = () => {
         <div className="auth-root">
             <div className="ambient-elegant-bg"></div>
 
-            {/* Top Utility Controls (Language & Theme) */}
-            <div className="auth-top-bar">
-                <button 
-                    type="button" 
-                    className="auth-util-btn icon-only" 
-                    onClick={toggleTheme} 
-                    title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                    aria-label="Toggle Theme"
-                >
-                    <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
-                </button>
-                <button 
-                    type="button" 
-                    className="auth-util-btn lang-toggle" 
-                    onClick={toggleLanguage} 
-                    title="Change Display Language"
-                >
-                    <span className="auth-lang-flag">{isAm ? '🇬🇧' : '🇪🇹'}</span>
-                    <span className="auth-lang-label">{isAm ? 'English' : 'አማርኛ'}</span>
-                </button>
-            </div>
+
 
             {notice && (
                 <div className="auth-notice-overlay" onClick={() => setNotice(null)}>
@@ -497,21 +477,26 @@ const Auth = () => {
             )}
 
             <div className="auth-portal-frame">
-                {/* Desktop Institutional Authority Panel (Portal Style - Not Landing Page) */}
-                <div className="auth-institutional-panel">
-                    <div className="aip-emblem-wrap">
-                        <i className="fa-solid fa-graduation-cap"></i>
-                    </div>
-                    <span className="aip-sub-title">Federal Democratic Republic of Ethiopia</span>
-                    <h2 className="aip-main-title">Higher Education Gateway</h2>
-                    <div className="aip-divider"></div>
-                    <p className="aip-description">
-                        Standardized academic portal for university freshman curricula, institutional past examinations, and collaborative study.
-                    </p>
-                    <div className="aip-badge-list">
-                        <span className="aip-badge"><i className="fa-solid fa-book-bookmark"></i> MoE Modular Syllabus</span>
-                        <span className="aip-badge"><i className="fa-solid fa-shield-halved"></i> Verified Identity</span>
-                    </div>
+                {/* Top Utility Controls (Language & Theme) Pinned to Card Header */}
+                <div className="auth-top-bar">
+                    <button 
+                        type="button" 
+                        className="auth-util-btn icon-only" 
+                        onClick={toggleTheme} 
+                        title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                        aria-label="Toggle Theme"
+                    >
+                        <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
+                    </button>
+                    <button 
+                        type="button" 
+                        className="auth-util-btn lang-toggle" 
+                        onClick={toggleLanguage} 
+                        title="Change Display Language"
+                    >
+                        <span className="auth-lang-flag">{isAm ? '🇬🇧' : '🇪🇹'}</span>
+                        <span className="auth-lang-label">{isAm ? 'English' : 'አማርኛ'}</span>
+                    </button>
                 </div>
 
                 <div className="auth-card">
