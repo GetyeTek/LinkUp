@@ -44,11 +44,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    background: rgba(14, 14, 18, 0.95);
+    background: var(--surface-dark);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .pav-header-left {
@@ -59,7 +60,7 @@
 }
 
 .pav-back-btn {
-    color: #fff;
+    color: var(--text-primary-dark);
     width: 38px;
     height: 38px;
     flex-shrink: 0;
@@ -68,7 +69,7 @@
 .pav-main-title {
     font-size: 1.15rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary-dark);
     margin: 0;
     line-height: 1.2;
 }
@@ -131,9 +132,9 @@
     background: transparent;
     border: none;
     outline: none;
-    color: #fff;
-    font-size: 0.88rem;
+    color: var(--text-primary-dark);
     font-family: 'Poppins', sans-serif;
+    font-size: 0.88rem;
     padding: 10px 0;
 }
 
@@ -243,7 +244,7 @@
 .psc-name {
     font-size: 1.05rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-primary-dark);
     margin: 0 0 0.85rem 0;
     line-height: 1.3;
 }
@@ -300,11 +301,12 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: rgba(14, 14, 18, 0.95);
+    background: var(--surface-dark);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .pav-vault-title-group {
@@ -318,7 +320,7 @@
 .pav-vault-title-group h2 {
     font-size: 1.05rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-primary-dark);
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -510,7 +512,7 @@
 .pcf-uni-name {
     font-size: 0.98rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-primary-dark);
     margin: 0;
     line-height: 1.3;
 }
@@ -633,10 +635,32 @@
 .ppr-exam-title {
     font-size: 0.92rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-primary-dark);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.theme-light .pcf-paper-rows {
+    background: rgba(0, 0, 0, 0.03);
+    border-top: 1px solid var(--border-color);
+}
+
+.theme-light .pcf-paper-row {
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.theme-light .pav-scope-btn {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .pav-term-tabs {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: var(--border-color);
 }
 
 .ppr-term-badge {
