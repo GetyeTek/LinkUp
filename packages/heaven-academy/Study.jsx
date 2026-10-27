@@ -61,13 +61,13 @@ const Study = () => {
                     } catch (e) {}
                     const examBook = { 
                         id: "exam-trigger-001",
-                        title: "Exams", 
+                        title: t('exams', 'Exams'), 
                         isExamTrigger: true, 
                         cover_url: "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/book-assets/covers/Exams.jpg" 
                     };
                     const flashcardBook = {
                         id: "flashcard-trigger-001",
-                        title: "Flashcards",
+                        title: t('flashcards', 'Flashcards'),
                         isFlashcardTrigger: true,
                         cover_url: "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/book-assets/covers/Flashcards.jpg"
                     };
@@ -282,8 +282,8 @@ const Study = () => {
                                 <h4 className="drill-title">{t('mistake_vault', 'Mistake Vault Quick Drill')}</h4>
                                 <p className="drill-subtitle">
                                     {mistakeCount > 0 
-                                        ? `${mistakeCount} missed questions ready for review.` 
-                                        : "Review concepts and questions you missed during practice."}
+                                        ? t('study_mistake_due', '{count} Missed Questions Ready').replace('{count}', String(mistakeCount)) 
+                                        : t('study_mistake_empty', 'Review concepts and questions you missed during practice.')}
                                 </p>
                             </div>
                             <button className="drill-action-btn">
@@ -318,7 +318,7 @@ const Study = () => {
                                     <input 
                                         ref={searchInputRef}
                                         type="text" 
-                                        placeholder={shelfLevel === 'main' ? "Search books or code (e.g. PHYS 1011)..." : "Search universities..."}
+                                        placeholder={shelfLevel === 'main' ? t('study_search_books', "Search books or code (e.g. PHYS 1011)...") : t('select_university', "Search universities...")}
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                     />
@@ -383,7 +383,7 @@ const Study = () => {
                                         return (
                                             <div className="library-search-empty">
                                                 <i className="fas fa-search"></i>
-                                                <p>No materials found matching &ldquo;{searchQuery}&rdquo;.</p>
+                                                <p>{t('study_search_empty', 'No materials found matching "{query}".').replace('{query}', searchQuery)}</p>
                                             </div>
                                         );
                                     }
