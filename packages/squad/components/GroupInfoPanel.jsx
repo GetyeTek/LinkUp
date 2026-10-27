@@ -10,7 +10,7 @@ import { usePlatform } from '@linkup-platform/sdk-core';
 import './GroupInfoPanel.css';
 
 const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMembers, messages, myRole, onClose, onUpdateInfo, onDisband, onOpenAdminSettings, onOpenUser, autoTriggerLinkFlow, setAutoTriggerLinkFlow }) => {
-    const { user: userProfile } = usePlatform();
+    const { user: userProfile, t } = usePlatform();
     const canSeeMembers = myRole === 'owner' || myRole === 'admin' || chatInfo.metadata?.hide_members !== true;
     const isMember = !!members[currentUser.id]?.is_current_member;
     
