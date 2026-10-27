@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import AvatarCropperModal from './AvatarCropperModal.jsx';
 import ProfileAvatarPicker from './ProfileAvatarPicker.jsx';
 import UsernameField from './UsernameField.jsx';
@@ -29,6 +29,7 @@ const SelectionField = ({ label, value, fieldKey, onOpen }) => {
 };
 
 const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpdated, highlightTarget }) => {
+    const { t } = usePlatform();
     const [universities, setUniversities] = useState([]);
     const [saving, setSaving] = useState(false);
     const [alertNotice, setAlertNotice] = useState(null);
@@ -224,11 +225,11 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
             {showDiscardConfirm && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 6000, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }}>
                     <div style={{ background: 'var(--surface-dark)', border: '1px solid var(--border-color)', borderRadius: '20px', width: '100%', maxWidth: '360px', padding: '1.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
-                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#ff5f5f' }}>Discard Changes?</h3>
-                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>You have unsaved changes. Are you sure you want to leave?</p>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#ff5f5f' }}>{t('editor_discard_title', 'Discard Changes?')}</h3>
+                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#aaa', lineHeight: 1.5 }}>{t('editor_discard_desc', 'You have unsaved changes. Are you sure you want to leave?')}</p>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                            <button style={{ padding: '10px 18px', borderRadius: '10px', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }} onClick={() => setShowDiscardConfirm(false)}>Stay</button>
-                            <button style={{ padding: '10px 18px', borderRadius: '10px', background: '#ff5f5f', color: '#fff', border: 'none', cursor: 'pointer' }} onClick={() => { setShowDiscardConfirm(false); setCroppedAvatar(null); onClose(); }}>Discard</button>
+                            <button style={{ padding: '10px 18px', borderRadius: '10px', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }} onClick={() => setShowDiscardConfirm(false)}>{t('editor_stay', 'Stay')}</button>
+                            <button style={{ padding: '10px 18px', borderRadius: '10px', background: '#ff5f5f', color: '#fff', border: 'none', cursor: 'pointer' }} onClick={() => { setShowDiscardConfirm(false); setCroppedAvatar(null); onClose(); }}>{t('editor_discard', 'Discard')}</button>
                         </div>
                     </div>
                 </div>
@@ -239,7 +240,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                     <button className="icon-button" onClick={handleCloseEditor} disabled={saving}>
                         <i className="fas fa-chevron-left"></i>
                     </button>
-                    <h2>Account Settings</h2>
+                    <h2>{t('editor_title', 'Account Settings')}</h2>
                     <div style={{ width: '40px' }}></div>
                 </header>
                 
@@ -255,14 +256,14 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                     </div>
                     
                     <div className="onboarding-form" style={{ marginTop: '2rem' }}>
-                        <h3 className="section-title">Identity & Bio</h3>
+                        <h3 className="section-title">{t('editor_identity_bio', 'Identity & Bio')}</h3>
                         <div className="input-row">
                             <div className="input-group-sm">
-                                <label>Sure Name</label>
+                                <label>{t('editor_sure_name', 'Sure Name')}</label>
                                 <input type="text" value={editForm.sureName} onChange={e => setEditForm({...editForm, sureName: e.target.value})} disabled={saving} />
                             </div>
                             <div className="input-group-sm">
-                                <label>Father Name <span className="optional-tag">(Opt)</span></label>
+                                <label>{t('editor_father_name', 'Father Name')} <span className="optional-tag">({t('common_optional', 'Opt')})</span></label>
                                 <input type="text" value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} disabled={saving} />
                             </div>
                         </div>
@@ -275,7 +276,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                         />
 
                         <div className="input-group-sm" id="pe-field-sex" style={{ marginTop: '0.5rem' }}>
-                            <label>Gender / ጾታ</label>
+                            <label>{t('editor_gender', 'Gender / ጾታ')}</label>
                             <div className="sex-selector-row">
                                 <button
                                     type="button"
@@ -285,7 +286,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                                 >
                                     <span className="sex-icon">👨</span>
                                     <div className="sex-labels">
-                                        <span className="sex-primary">ወንድ</span>
+                                        <span className="sex-primary">{t('auth_male', 'Male')}</span>
                                         <span className="sex-sub">Male</span>
                                     </div>
                                 </button>
@@ -297,7 +298,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                                 >
                                     <span className="sex-icon">👩</span>
                                     <div className="sex-labels">
-                                        <span className="sex-primary">ሴት</span>
+                                        <span className="sex-primary">{t('auth_female', 'Female')}</span>
                                         <span className="sex-sub">Female</span>
                                     </div>
                                 </button>
@@ -305,10 +306,10 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                         </div>
                         
                         <div className="input-group-sm" id="pe-field-bio" style={{ marginTop: '0.5rem' }}>
-                            <label>About Me</label>
+                            <label>{t('editor_about_me', 'About Me')}</label>
                             <textarea 
                                 className="ui-textarea" 
-                                placeholder="Write a short bio..."
+                                placeholder={t('editor_bio_placeholder', 'Write a short bio...')}
                                 value={editForm.bio}
                                 onChange={e => setEditForm({...editForm, bio: e.target.value})}
                                 disabled={saving}
@@ -318,18 +319,18 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                             <div style={{fontSize: '0.7rem', color: '#888', textAlign: 'right', marginTop: '4px'}}>{editForm.bio.length}/150</div>
                         </div>
 
-                        <h3 className="section-title" style={{marginTop: '1.5rem'}}>Security Details</h3>
+                        <h3 className="section-title" style={{marginTop: '1.5rem'}}>{t('editor_security_details', 'Security Details')}</h3>
                         <div className="input-row">
                             <div className="input-group-sm">
-                                <label>Email Address</label>
+                                <label>{t('editor_email_address', 'Email Address')}</label>
                                 <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} disabled={saving} />
                             </div>
                             <div className="input-group-sm">
                                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span>Phone Number</span>
+                                    <span>{t('editor_phone_number', 'Phone Number')}</span>
                                     {userProfile?.registered_with_telegram && (
                                         <span style={{ fontSize: '0.65rem', color: 'var(--accent-teal)', fontWeight: 700, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <i className="fas fa-shield-check"></i> Verified with Telegram
+                                            <i className="fas fa-shield-check"></i> {t('editor_verified_telegram', 'Verified with Telegram')}
                                         </span>
                                     )}
                                 </label>
@@ -355,7 +356,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                                 {userProfile?.registered_with_telegram ? (
                                     <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                                         <span style={{ fontSize: '0.72rem', color: '#888' }}>
-                                            Verified numbers are locked. To transfer to a new SIM, update via bot.
+                                            {t('editor_verified_locked', 'Verified numbers are locked. To transfer to a new SIM, update via bot.')}
                                         </span>
                                         <button
                                             type="button"
@@ -376,7 +377,7 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                                                 whiteSpace: 'nowrap'
                                             }}
                                         >
-                                            {isLinkingPhone ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fab fa-telegram"></i> Change via Bot</>}
+                                            {isLinkingPhone ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fab fa-telegram"></i> {t('editor_change_via_bot', 'Change via Bot')}</>}
                                         </button>
                                     </div>
                                 ) : (
@@ -392,31 +393,31 @@ const ProfileEditor = ({ isOpen, onClose, userProfile, sessionUser, onProfileUpd
                             </div>
                         </div>
 
-                        <h3 className="section-title" style={{marginTop: '1.5rem'}}>Academic Information</h3>
+                        <h3 className="section-title" style={{marginTop: '1.5rem'}}>{t('editor_academic_info', 'Academic Information')}</h3>
                         <div className="input-group-sm" id="pe-field-university">
-                            <label>University</label>
+                            <label>{t('editor_university', 'University')}</label>
                             <select className="wizard-select" style={{ marginTop: '0.5rem' }} value={editForm.university_id} onChange={e => setEditForm({...editForm, university_id: e.target.value})}>
-                                <option value="" disabled>Select your university...</option>
+                                <option value="" disabled>{t('editor_select_university', 'Select your university...')}</option>
                                 {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                             </select>
                         </div>
 
                         <div id="pe-field-program">
-                            <SelectionField label="Program Type" value={editForm.program} fieldKey="program" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: PROGRAMS })} />
+                            <SelectionField label={t('editor_program_type', 'Program Type')} value={editForm.program} fieldKey="program" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: PROGRAMS })} />
                         </div>
                         
                         <div id="pe-field-department">
-                            <SelectionField label="Department" value={editForm.department} fieldKey="department" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: DEPARTMENTS })} />
+                            <SelectionField label={t('editor_department', 'Department')} value={editForm.department} fieldKey="department" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: DEPARTMENTS })} />
                         </div>
 
                         <div id="pe-field-academic_sub">
                             {editForm.department === 'Freshman' ? (
                                 <>
-                                    <SelectionField label="Freshman Stream" value={editForm.freshman_stream} fieldKey="freshman_stream" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: STREAMS })} />
-                                    <SelectionField label="Target Department" value={editForm.target_department} fieldKey="target_department" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: DEPARTMENTS.filter(d => d !== 'Freshman') })} />
+                                    <SelectionField label={t('editor_freshman_stream', 'Freshman Stream')} value={editForm.freshman_stream} fieldKey="freshman_stream" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: STREAMS })} />
+                                    <SelectionField label={t('editor_target_department', 'Target Department')} value={editForm.target_department} fieldKey="target_department" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: DEPARTMENTS.filter(d => d !== 'Freshman') })} />
                                 </>
                             ) : (
-                                <SelectionField label="Year of Study" value={editForm.year} fieldKey="year" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: YEARS })} />
+                                <SelectionField label={t('editor_year_of_study', 'Year of Study')} value={editForm.year} fieldKey="year" onOpen={(key, title) => setActiveSelectionModal({ fieldKey: key, title, options: YEARS })} />
                             )}
                         </div>
                     </div>
