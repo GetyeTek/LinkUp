@@ -190,6 +190,7 @@
     animation: slideUpGroup 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     font-family: 'Poppins', sans-serif;
     color: var(--text-primary-dark);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .immersive-ambient {
@@ -202,6 +203,12 @@
     padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;
     z-index: 10; border-bottom: 1px solid var(--border-color);
     background: var(--glass-bg); backdrop-filter: blur(10px);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.theme-light .immersive-header {
+    background: var(--surface-dark);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .header-left-cluster {
@@ -319,10 +326,17 @@
     font-weight: 600; font-family: 'Poppins', sans-serif; font-size: 1rem;
     cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
     transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 .big-mic-btn.active-mic {
     background: rgba(255, 95, 95, 0.1); border-color: #ff5f5f; color: #ff5f5f;
     box-shadow: 0 0 15px rgba(255, 95, 95, 0.2); animation: pulseRed 2s infinite;
+}
+
+.theme-light .big-mic-btn {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 .pinned-hero-card {
@@ -649,14 +663,98 @@
 .immersive-listeners-panel {
     width: 100%; 
     max-width: 320px; 
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--glass-border); 
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color); 
     border-radius: 20px; 
     padding: 12px 16px;
     display: flex; 
     flex-direction: row;
     align-items: center; 
     justify-content: space-between;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.theme-light .immersive-listeners-panel {
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .listeners-row .listeners-overflow {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+    color: var(--accent-teal);
+}
+
+.theme-light .listeners-row img {
+    border-color: #ffffff;
+}
+
+.theme-light .mod-tabs button {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .mod-tabs button.active {
+    background: #ffffff;
+    color: var(--text-primary-dark);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .mod-q-card {
+    background: #ffffff;
+    border-color: var(--border-color);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+
+.theme-light .mqc-header {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .mod-btn.approve {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary-dark);
+}
+
+.theme-light .mod-empty {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .stage-question-card {
+    background: #ffffff;
+    border-color: var(--border-color);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+
+.theme-light .sq-meta {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .immersive-dock {
+    background: #ffffff;
+    border-color: var(--border-color);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .immersive-dock textarea::placeholder {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .immersive-input-area {
+    background: var(--surface-dark);
+    border-top: 1px solid var(--border-color);
+}
+
+.theme-light .pinned-hero-card {
+    background: rgba(13, 148, 136, 0.08);
+    border-color: rgba(13, 148, 136, 0.3);
+}
+
+.theme-light .ph-asker {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .minimize-stage-btn {
+    background: rgba(0, 0, 0, 0.04);
+    color: var(--text-primary-dark);
 }
 
 /* Left-hand count title styling */
