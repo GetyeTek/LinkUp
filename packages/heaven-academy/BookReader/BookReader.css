@@ -493,13 +493,13 @@
 #ui-layer.hidden { opacity: 0; pointer-events: none !important; }
 .ui-bar { pointer-events: auto; }
 
-.reader-header { background-color: rgba(18, 18, 18, 0.95); backdrop-filter: blur(12px); color: #e0e0e0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; height: 44px; border-bottom: 1px solid rgba(255,255,255,0.05); transform: translateY(0); transition: transform 0.3s; }
+.reader-header { background-color: var(--ctx-bg, rgba(18, 18, 18, 0.95)); backdrop-filter: blur(12px); color: var(--text-color, #e0e0e0); display: flex; align-items: center; justify-content: space-between; padding: 0 8px; height: 44px; border-bottom: 1px solid var(--ctx-border, rgba(255,255,255,0.05)); transform: translateY(0); transition: transform 0.3s, background-color 0.3s; }
 #ui-layer.hidden .reader-header { transform: translateY(-100%); }
 
 .header-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
-.header-title { font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 12px; font-family: 'Poppins', sans-serif;}
+.header-title { font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 12px; font-family: 'Poppins', sans-serif; color: var(--text-color);}
 
-.reader-footer { background-color: rgba(18, 18, 18, 0.95); backdrop-filter: blur(12px); color: #e0e0e0; display: flex; align-items: center; gap: 12px; padding: 0 16px; height: calc(54px + env(safe-area-inset-bottom, 10px)); padding-bottom: env(safe-area-inset-bottom, 10px); border-top: 1px solid rgba(255,255,255,0.05); transform: translateY(0); transition: transform 0.3s; }
+.reader-footer { background-color: var(--ctx-bg, rgba(18, 18, 18, 0.95)); backdrop-filter: blur(12px); color: var(--text-color, #e0e0e0); display: flex; align-items: center; gap: 12px; padding: 0 16px; height: calc(54px + env(safe-area-inset-bottom, 10px)); padding-bottom: env(safe-area-inset-bottom, 10px); border-top: 1px solid var(--ctx-border, rgba(255,255,255,0.05)); transform: translateY(0); transition: transform 0.3s, background-color 0.3s; }
 #ui-layer.hidden .reader-footer { transform: translateY(100%); }
 
 
