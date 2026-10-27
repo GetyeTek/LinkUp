@@ -47,8 +47,23 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const [loading, setLoading] = useState(true);
     const [pages, setPages] = useState([]);
     const [isUiVisible, setIsUiVisible] = useState(true);
-    const [currentTheme, setCurrentTheme] = useState('dark');
     const [contextMenu, setContextMenu] = useState(null);
+    const [viewMode, setViewMode] = useState('text');
+    
+    // Internal Independent Theme Engine for BookReader
+    const [currentTheme, setCurrentTheme] = useState('light');
+    const [userToggledTheme, setUserToggledTheme] = useState(false);
+
+    useEffect(() => {
+        if (!userToggledTheme) {
+            setCurrentTheme(viewMode === 'text' ? 'light' : 'dark');
+        }
+    }, [viewMode, userToggledTheme]);
+
+    const handleToggleTheme = () => {
+        setCurrentTheme(prev => prev === 'dark' ? 'light' : 'dark');
+        setUserToggledTheme(true);
+    };
     const [mappedQuestions, setMappedQuestions] = useState({});
     const [activeExplanations, setActiveExplanations] = useState({});
     const [layoutReady, setLayoutReady] = useState(false);
@@ -57,7 +72,6 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     const [bookPrefix, setBookPrefix] = useState(() => book?.prefix || resolveBookPrefix(book?.course_code, book?.title));
 
     // Course Variant Modes: 'text' (standard PDF/JSON) | 'visual_en' | 'visual_am'
-    const [viewMode, setViewMode] = useState('text');
     const [visualLangs, setVisualLangs] = useState([]);
     const [visualSheets, setVisualSheets] = useState([]);
     const [activeVisualSheetIndex, setActiveVisualSheetIndex] = useState(0);
@@ -558,10 +572,6 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
     // 7. Zero-Latency Hardware Accelerated Dragging
     const handleDragStart = useDraggable(menuRef);
 
-    const toggleTheme = () => {
-        setCurrentTheme(prev => prev === 'dark' ? 'light' : 'dark');
-    };
-
     const handleMenuAction = (action) => {
         if (!contextMenu) return; // Prevent crashes if selection clears milliseconds before tap
         if (action === 'ask_miron') {
@@ -867,7 +877,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 book={book}
                 isUiVisible={isUiVisible}
                 setIsUiVisible={setIsUiVisible}
-                toggleTheme={toggleTheme}
+                toggleTheme={handleToggleTheme}
                 onClose={onClose}
                 isTocOpen={isTocOpen}
                 setIsTocOpen={setIsTocOpen}
