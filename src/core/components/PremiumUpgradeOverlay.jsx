@@ -14,7 +14,7 @@ const parseTransactionRef = (text) => {
 };
 
 const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
-    const { sessionUser, user: userProfile } = usePlatform();
+    const { sessionUser, user: userProfile, t } = usePlatform();
     
     // View States: 'pricing' | 'methods' | 'verify' | 'pending' | 'active_pro' | 'rejected'
     const [view, setView] = useState('pricing');
