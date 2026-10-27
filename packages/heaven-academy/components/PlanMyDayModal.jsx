@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import { invokePlanMyDay } from '../api.js';
 import './PlanMyDayModal.css';
 
 const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
+    const { t } = usePlatform();
     const [loading, setLoading] = useState(true);
     const [planData, setPlanData] = useState(null);
     const [error, setError] = useState(null);
@@ -60,7 +62,7 @@ const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
                             <img src={mironAvatarUrl} alt="Miron" onError={(e) => { e.target.style.display = 'none'; }} />
                         </div>
                         <div>
-                            <div className="pmd-miron-tag-title">Miron Study Planner</div>
+                            <div className="pmd-miron-tag-title">{t('plan_my_day_title', 'Miron Study Planner')}</div>
                         </div>
                     </div>
                     <button className="pmd-close-screen-btn" onClick={onClose} aria-label="Close">
@@ -75,9 +77,9 @@ const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
                             <div className="pmd-orb-pulse">
                                 <i className="fa-solid fa-sparkles"></i>
                             </div>
-                            <h3 style={{ fontSize: '1.2rem', margin: '1rem 0 0.25rem 0', color: '#fff' }}>Generating Study Plan...</h3>
+                            <h3 style={{ fontSize: '1.2rem', margin: '1rem 0 0.25rem 0', color: '#fff' }}>{t('plan_my_day_generating', 'Generating Study Plan...')}</h3>
                             <p style={{ fontSize: '0.85rem', color: '#888', maxWidth: '320px', lineHeight: 1.4 }}>
-                                Analyzing course textbook pacing, study habits, and question performance.
+                                {t('plan_my_day_generating_desc', 'Analyzing course textbook pacing, study habits, and question performance.')}
                             </p>
                         </div>
                     ) : error ? (
@@ -102,7 +104,7 @@ const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
                                 <h1 className="pmd-hero-greeting">{planData.greeting_title || 'Good morning!'}</h1>
                                 <p className="pmd-hero-speech">{planData.miron_briefing}</p>
                                 <div className="pmd-hero-stats-line">
-                                    <span>EST. TIME: <strong style={{ color: '#fff' }}>{planData.estimated_total_minutes || 60} MINS</strong></span>
+                                    <span>{t('plan_my_day_est_time', 'EST. TIME: {time} MINS').replace('{time}', String(planData.estimated_total_minutes || 60))}</span>
                                     {planData.vibe_tag && (
                                         <>
                                             <span>•</span>
@@ -141,12 +143,12 @@ const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
                                                             className="pmd-step-start-btn" 
                                                             onClick={() => handleExecute(block)}
                                                         >
-                                                            <span>{block.task_type === 'drill' ? 'Start Practice' : 'Start Reading'}</span>
+                                                            <span>{block.task_type === 'drill' ? t('plan_my_day_start_practice', 'Start Practice') : t('plan_my_day_start_reading', 'Start Reading')}</span>
                                                             <i className="fa-solid fa-arrow-right"></i>
                                                         </button>
                                                     ) : (
                                                         <button className="pmd-step-start-btn" disabled>
-                                                            <span><i className="fa-solid fa-lock" style={{ marginRight: '4px' }}></i> Up Next</span>
+                                                            <span><i className="fa-solid fa-lock" style={{ marginRight: '4px' }}></i> {t('plan_my_day_up_next', 'Up Next')}</span>
                                                         </button>
                                                     )}
                                                 </div>
@@ -163,12 +165,12 @@ const PlanMyDayModal = ({ isOpen, onClose, onExecuteTask }) => {
                 {planData && !loading && blocks.length > 0 && (
                     <footer className="pmd-bottom-hud">
                         <div className="pmd-hud-summary">
-                            <span className="pmd-hud-lbl">NEXT ACTION</span>
+                            <span className="pmd-hud-lbl">{t('plan_my_day_next_action', 'NEXT ACTION')}</span>
                             <span className="pmd-hud-val">{blocks[0]?.course_title || 'Phase 1'}</span>
                         </div>
 
                         <button className="pmd-master-launch-btn" onClick={() => handleExecute(blocks[0])}>
-                            <span>Start Study Session</span>
+                            <span>{t('plan_my_day_start_session', 'Start Study Session')}</span>
                             <i className="fa-solid fa-arrow-right"></i>
                         </button>
                     </footer>
