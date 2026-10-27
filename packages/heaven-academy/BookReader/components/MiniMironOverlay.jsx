@@ -19,7 +19,7 @@ const renderMiniMarkdown = (txt) => {
 };
 
 const MiniMironOverlay = ({ context, textContext, onClose }) => {
-    const { shell } = usePlatform();
+    const { shell, t } = usePlatform();
     const ctx = context || (typeof textContext === 'string' ? { selectedText: textContext, fullPrompt: textContext } : textContext);
 
     const [lang, setLang] = useState('am'); // Default Amharic
@@ -162,15 +162,15 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
                         className={`mini-lang-toggle-btn ${lang === 'am' ? 'am-active' : 'en-active'}`}
                         onClick={handleToggleLang}
                         disabled={isMiniTyping}
-                        title={lang === 'am' ? shell.t?.('mini_switch_en', null, "Switch to English") : shell.t?.('mini_switch_am', null, "Switch to Amharic")}
+                        title={lang === 'am' ? t('mini_switch_en', null, "Switch to English") : t('mini_switch_am', null, "Switch to Amharic")}
                     >
                         <span className="mini-lang-flag">{lang === 'am' ? '🇪🇹' : '🇬🇧'}</span>
                         <span className="mini-lang-label">{lang === 'am' ? 'አማርኛ' : 'EN'}</span>
                     </button>
-                    <button className="icon-button" style={{color: 'white', opacity: 0.8, width: '34px', height: '34px', fontSize: '1rem'}} onClick={handleMiniExpand} title={shell.t?.('mini_expand', null, "Expand to Fullscreen Miron")}>
+                    <button className="icon-button" style={{color: 'white', opacity: 0.8, width: '34px', height: '34px', fontSize: '1rem'}} onClick={handleMiniExpand} title={t('mini_expand', null, "Expand to Fullscreen Miron")}>
                         <i className="fa-solid fa-expand"></i>
                     </button>
-                    <button className="icon-button" style={{color: 'white', opacity: 0.8, width: '34px', height: '34px', fontSize: '1.1rem'}} onClick={onClose} title={shell.t?.('mini_dismiss', null, "Dismiss")}>
+                    <button className="icon-button" style={{color: 'white', opacity: 0.8, width: '34px', height: '34px', fontSize: '1.1rem'}} onClick={onClose} title={t('mini_dismiss', null, "Dismiss")}>
                         <i className="fa-solid fa-times"></i>
                     </button>
                 </div>
@@ -204,7 +204,7 @@ const MiniMironOverlay = ({ context, textContext, onClose }) => {
                     <textarea 
                         ref={miniInputRef}
                         rows="1"
-                        placeholder={shell.t?.('mini_follow_up', null, "Ask follow-up about this passage...")} 
+                        placeholder={t('mini_follow_up', null, "Ask follow-up about this passage...")} 
                         value={miniInput}
                         onChange={(e) => setMiniInput(e.target.value)}
                         onKeyDown={(e) => {
