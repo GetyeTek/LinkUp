@@ -238,7 +238,7 @@ const Notes = ({ currentUser, onClose, onForward }) => {
     return (
         <div className="notes-overlay">
             <header className="notes-header" style={{ justifyContent: 'flex-start', gap: '1.5rem' }}>
-                <button className="icon-button" style={{color: 'white', marginLeft: '-0.5rem'}} onClick={onClose}>
+                <button className="icon-button" style={{color: 'var(--text-primary-dark)', marginLeft: '-0.5rem'}} onClick={onClose}>
                     <i className="fas fa-chevron-left"></i>
                 </button>
                 <div className="notes-title-box">
