@@ -96,9 +96,9 @@
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     border-radius: 24px;
-    background: #16161a;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     padding: 28px 22px;
     display: flex;
     flex-direction: column;
@@ -107,14 +107,19 @@
 
 .fca-card-face.front {
     transform: rotateY(0deg);
-    border-color: rgba(255, 255, 255, 0.12);
+    border-color: var(--border-color);
 }
 
 .fca-card-face.back {
     transform: rotateY(180deg);
-    background: linear-gradient(160deg, #181920 0%, #101114 100%);
+    background: var(--surface-dark);
     border-color: rgba(66, 215, 184, 0.35);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 15px rgba(66, 215, 184, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 15px rgba(66, 215, 184, 0.1);
+}
+
+.theme-light .fca-card-face.back {
+    background: #ffffff;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
 }
 
 .fca-topic-tag {
@@ -130,7 +135,7 @@
     font-family: 'Newsreader', serif;
     font-size: 1.35rem;
     line-height: 1.45;
-    color: #fff;
+    color: var(--text-primary-dark);
     text-align: center;
     margin: auto 0;
 }
@@ -161,7 +166,7 @@
 .fca-answer-text {
     font-size: 0.95rem;
     line-height: 1.6;
-    color: #e5e5eb;
+    color: var(--text-primary-dark);
     margin: auto 0;
     text-align: left;
 }
@@ -276,20 +281,20 @@
     box-shadow: 0 0 35px rgba(66, 215, 184, 0.4);
 }
 
-.fca-summary h2 { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
-.fca-summary p { font-size: 0.88rem; color: #aaa; margin-bottom: 30px; max-width: 320px; line-height: 1.4; }
+.fca-summary h2 { font-size: 1.5rem; font-weight: 700; color: var(--text-primary-dark); margin-bottom: 8px; }
+.fca-summary p { font-size: 0.88rem; color: var(--text-secondary-dark); margin-bottom: 30px; max-width: 320px; line-height: 1.4; }
 
 .fca-stats-pill {
     display: flex;
     gap: 20px;
-    background: #16161a;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
     padding: 14px 24px;
     border-radius: 16px;
     margin-bottom: 35px;
 }
 .fca-stat-col { display: flex; flex-direction: column; }
-.fca-stat-col span.num { font-family: 'Roboto Mono', monospace; font-weight: 700; font-size: 1.2rem; color: #fff; }
+.fca-stat-col span.num { font-family: 'Roboto Mono', monospace; font-weight: 700; font-size: 1.2rem; color: var(--text-primary-dark); }
 .fca-stat-col span.lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
 
 .fca-btn-finish {
