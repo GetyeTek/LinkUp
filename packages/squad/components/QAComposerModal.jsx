@@ -49,7 +49,7 @@ const QAComposerModal = ({ currentUser, onClose, onSuccess, onError }) => {
         <div className="qa-composer-overlay" onClick={onClose}>
             <div className="qa-composer-card" onClick={e => e.stopPropagation()}>
                 <header className="qa-composer-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
-                    <button className="icon-button" onClick={onClose} style={{ color: 'white', opacity: 0.7 }}>
+                    <button className="icon-button" onClick={onClose} style={{ color: 'var(--text-primary-dark)' }}>
                         <i className="fas fa-chevron-left"></i>
                     </button>
                     <h2 style={{ fontSize: '1.1rem' }}>Ask a Question</h2>
