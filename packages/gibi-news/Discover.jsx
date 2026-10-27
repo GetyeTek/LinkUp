@@ -149,7 +149,7 @@ const Discover = () => {
     return (
         <div className="tab-content active" id="discover-content">
             <header id="discover-header">
-                <h1 className="discover-title">{t('nav_discover', 'Discover')}</h1>
+                <h1 className="discover-title">{t('discover_title', 'Discover')}</h1>
                 <div className="header-actions">
                     <button 
                         className="header-miron-btn" 
@@ -218,7 +218,7 @@ const Discover = () => {
                                 {!hasMore && (
                                     <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#888', fontStyle: 'italic', fontSize: '0.85rem' }}>
                                         <i className="fas fa-check-circle" style={{marginBottom: '0.5rem', display: 'block', color: 'var(--accent-teal)'}}></i>
-                                        You're all caught up.
+                                        {t('all_caught_up', "You're all caught up.")}
                                     </div>
                                 )}
                             </>
@@ -229,7 +229,7 @@ const Discover = () => {
                                 </div>
                                 <h3 style={{ color: 'var(--text-primary-dark)', fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>{t('all_caught_up_excl', "You're all caught up!")}</h3>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary-dark)', maxWidth: '300px', lineHeight: 1.5, margin: '4px 0 1rem 0' }}>
-                                    {selectedChannel !== 'all' ? 'No updates in this channel right now.' : "No new posts right now. We'll bring you the latest campus announcements as soon as they drop."}
+                                    {selectedChannel !== 'all' ? t('discover_no_updates_channel', 'No updates in this channel right now.') : t('discover_no_posts', "No new posts right now. We'll bring you the latest campus announcements as soon as they drop.")}
                                 </p>
                                 <button 
                                     onClick={handleRefresh}
@@ -259,7 +259,7 @@ const Discover = () => {
                 {/* Concept B: Desktop Editorial Sidebar */}
                 <aside className="discover-desktop-sidebar">
                     <div className="dds-card filter-card">
-                        <h3 className="dds-title"><i className="fas fa-layer-group"></i> Feed Channels</h3>
+                        <h3 className="dds-title"><i className="fas fa-layer-group"></i> {t('discover_feed_channels', 'Feed Channels')}</h3>
                         <div className="dds-channels-list">
                             <button 
                                 className={`dds-channel-btn ${selectedChannel === 'all' ? 'active' : ''}`}
@@ -267,7 +267,7 @@ const Discover = () => {
                             >
                                 <div className="dds-ch-left">
                                     <span className="dds-ch-icon all"><i className="fas fa-globe"></i></span>
-                                    <span>All Updates</span>
+                                    <span>{t('discover_all_updates', 'All Updates')}</span>
                                 </div>
                                 <span className="dds-ch-count">{selectedChannel === 'all' ? feed.length : 'Feed'}</span>
                             </button>
@@ -278,7 +278,7 @@ const Discover = () => {
                             >
                                 <div className="dds-ch-left">
                                     <span className="dds-ch-icon ann"><i className="fas fa-bullhorn"></i></span>
-                                    <span>Announcements</span>
+                                    <span>{t('discover_announcements', 'Announcements')}</span>
                                 </div>
                                 <span className="dds-ch-count">{announcementCount}</span>
                             </button>
@@ -299,27 +299,27 @@ const Discover = () => {
                     <div className="dds-card info-card">
                         <div className="dds-info-header">
                             <span className="dds-pulse-dot"></span>
-                            <h4>Live Campus Feed</h4>
+                            <h4>{t('discover_campus_feed', 'Live Campus Feed')}</h4>
                         </div>
                         <p className="dds-desc">
-                            Real-time notices syndicated from official campus channels and verified academic bulletins.
+                            {t('discover_campus_feed_desc', 'Real-time notices syndicated from official campus channels and verified academic bulletins.')}
                         </p>
                         <button className="dds-refresh-btn" onClick={handleRefresh} disabled={newsLoading}>
                             <i className={`fas fa-rotate-right ${newsLoading ? 'fa-spin' : ''}`}></i>
-                            <span>Check for Updates</span>
+                            <span>{t('discover_check_updates', 'Check for Updates')}</span>
                         </button>
                     </div>
 
                     <div className="dds-card dispatch-card">
-                        <h4>Got News or Event Tips?</h4>
-                        <p>Share verified notices or department updates with the LinkUp student community.</p>
+                        <h4>{t('discover_tips_title', 'Got News or Event Tips?')}</h4>
+                        <p>{t('discover_tips_desc', 'Share verified notices or department updates with the LinkUp student community.')}</p>
                         <a 
                             href="https://t.me/linkupregistrationbot" 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="dds-dispatch-link"
                         >
-                            <i className="fab fa-telegram"></i> Submit to Dispatch
+                            <i className="fab fa-telegram"></i> {t('discover_submit_dispatch', 'Submit to Dispatch')}
                         </a>
                     </div>
                 </aside>
@@ -332,7 +332,7 @@ const Discover = () => {
                         <button className="icon-button" onClick={() => setActiveHtmlRoom(null)}>
                             <i className="fas fa-chevron-left"></i>
                         </button>
-                        <span className="sandbox-modal-title">Campus Announcement</span>
+                        <span className="sandbox-modal-title">{t('announcement_campus', 'Campus Announcement')}</span>
                     </header>
                     <iframe
                         srcDoc={activeHtmlRoom}
