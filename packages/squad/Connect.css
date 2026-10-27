@@ -1,8 +1,8 @@
 /* --- LinkUp Social Connect Scoped Styles --- */
 .interactive-header { position: relative; z-index: 10; background: linear-gradient(180deg, var(--bg-dark) 40%, transparent 100%); transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
-.large-title-row { display: flex; align-items: center; justify-content: space-between; padding: 1.5rem 1rem 1rem; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); height: 80px; opacity: 1; }
-.large-title { font-family: 'Newsreader', serif; font-size: 1.8rem; font-weight: 500; line-height: 1; background: linear-gradient(45deg, var(--text-primary-dark) 60%, var(--accent-teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-.main-nav-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border-bottom: 1px solid transparent; }
+.large-title-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem 0.5rem; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); height: 60px; opacity: 1; }
+.large-title { font-family: 'Newsreader', serif; font-size: 1.5rem; font-weight: 500; line-height: 1; background: linear-gradient(45deg, var(--text-primary-dark) 60%, var(--accent-teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); margin: 0; }
+.main-nav-row { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 1rem 0.5rem; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border-bottom: 1px solid transparent; }
 .orbiter-container { display: flex; align-items: center; gap: 0.5rem; }
 .icon-orbiter { position: relative; display: flex; align-items: center; gap: 1.5rem; }
 .icon-orbiter .option { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; z-index: 2; }
