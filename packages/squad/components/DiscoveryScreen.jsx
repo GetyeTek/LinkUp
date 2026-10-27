@@ -18,11 +18,11 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) =>
     return (
         <div className="discovery-screen">
             <header className="discovery-header">
-                <button className="icon-button" onClick={onClose} style={{color: 'white'}}>
+                <button className="icon-button" onClick={onClose} style={{color: 'var(--text-primary-dark)'}}>
                     <i className="fas fa-chevron-left"></i>
                 </button>
                 <h2>Discover Peers</h2>
-                <button className="icon-button" onClick={onOpenSearch} style={{color: 'white'}}>
+                <button className="icon-button" onClick={onOpenSearch} style={{color: 'var(--text-primary-dark)'}}>
                     <i className="fas fa-search"></i>
                 </button>
             </header>
