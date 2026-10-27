@@ -3,7 +3,7 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './PrivacySecurityOverlay.css';
 
 const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => {
-    const { sessionUser, user: userProfile } = usePlatform();
+    const { sessionUser, user: userProfile, t } = usePlatform();
     const isInitialPassword = initialTarget === 'password';
     
     // Check Telegram Identity Status
@@ -203,13 +203,13 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
                     <button className="icon-button" onClick={onClose} style={{ marginLeft: '-0.5rem' }}>
                         <i className="fas fa-chevron-left"></i>
                     </button>
-                    <h2>Privacy & Security</h2>
+                    <h2>{t('privacy_security', 'Privacy & Security')}</h2>
                 </header>
 
                 <div className="pso-body">
                     {/* 1. Academic Privacy Section */}
                     <div className="pso-section">
-                        <span className="pso-section-title">Academic Privacy</span>
+                        <span className="pso-section-title">{t('academic_privacy', 'Academic Privacy')}</span>
                         
                         <div className="pso-card" onClick={handleToggleLeaderboard} style={{ cursor: isUpdatingPrivacy ? 'wait' : 'pointer' }}>
                             <div className="pso-card-info">
@@ -217,9 +217,9 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
                                     <i className="fas fa-trophy"></i>
                                 </div>
                                 <div className="pso-text-group">
-                                    <h4>Campus Leaderboard</h4>
+                                    <h4>{t('campus_leaderboard', 'Campus Leaderboard')}</h4>
                                     <span className="pso-inline-meta">
-                                        {showOnLeaderboard ? 'Listed on Ladder' : 'Hidden from Rankings'}
+                                        {showOnLeaderboard ? t('leaderboard_listed', 'Listed on Ladder') : t('leaderboard_hidden', 'Hidden from Rankings')}
                                     </span>
                                 </div>
                             </div>
@@ -230,13 +230,13 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
                             ></div>
                         </div>
                         <p className="pso-section-hint">
-                            Controls whether your study streak and score are displayed on the Observatory campus leaderboard.
+                            {t('pso_leaderboard_desc', 'Controls whether your study streak and score are displayed on the Observatory campus leaderboard.')}
                         </p>
                     </div>
 
                     {/* 2. Identity & Verification Section */}
                     <div className="pso-section">
-                        <span className="pso-section-title">Identity & Verification</span>
+                        <span className="pso-section-title">{t('identity_verification', 'Identity & Verification')}</span>
                         
                         <div className="pso-card" id="pso-telegram-card">
                             <div className="pso-card-info">
@@ -244,7 +244,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
                                     <i className="fab fa-telegram-plane"></i>
                                 </div>
                                 <div className="pso-text-group">
-                                    <h4>Telegram Identity</h4>
+                                    <h4>{t('telegram_identity', 'Telegram Identity')}</h4>
                                     <span className="pso-inline-meta">
                                         {isTelegramLinked 
                                             ? `${telegramHandle || 'Scholar'}${linkedPhone ? ` (${linkedPhone})` : ''}` 
@@ -254,7 +254,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
                             </div>
                             {isTelegramLinked ? (
                                 <div className="pso-badge-verified">
-                                    <i className="fas fa-check-circle"></i> Linked
+                                    <i className="fas fa-check-circle"></i> {t('common_linked', 'Linked')}
                                 </div>
                             ) : (
                                 <button 
@@ -273,18 +273,18 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
                                     disabled={isUpdatingPrivacy}
                                     className="pso-action-btn pso-tg-btn"
                                 >
-                                    {isUpdatingPrivacy ? <i className="fas fa-circle-notch fa-spin"></i> : <>Verify <i className="fas fa-arrow-up-right-from-square" style={{ fontSize: '0.72rem', marginLeft: '4px' }}></i></>}
+                                    {isUpdatingPrivacy ? <i className="fas fa-circle-notch fa-spin"></i> : <>{t('missions_verify', 'Verify')} <i className="fas fa-arrow-up-right-from-square" style={{ fontSize: '0.72rem', marginLeft: '4px' }}></i></>}
                                 </button>
                             )}
                         </div>
                         <p className="pso-section-hint">
-                            Used for instant 1-tap browser authentication and account recovery protection.
+                            {t('pso_telegram_desc', 'Used for instant 1-tap browser authentication and account recovery protection.')}
                         </p>
                     </div>
 
                     {/* 3. Account Security Section */}
                     <div className="pso-section">
-                        <span className="pso-section-title">Account Security</span>
+                        <span className="pso-section-title">{t('account_security', 'Account Security')}</span>
                         
                         <div className="pso-card">
                             <div className="pso-card-info">
@@ -292,18 +292,18 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
                                     <i className="fas fa-key"></i>
                                 </div>
                                 <div className="pso-text-group">
-                                    <h4>Account Password</h4>
+                                    <h4>{t('account_password', 'Account Password')}</h4>
                                     <span className="pso-inline-meta">
-                                        {hasPassword ? 'Protected' : (isSyntheticEmail ? 'No Email Linked' : 'Not Configured')}
+                                        {hasPassword ? t('password_protected', 'Protected') : (isSyntheticEmail ? 'No Email Linked' : t('password_not_configured', 'Not Configured'))}
                                     </span>
                                 </div>
                             </div>
                             <button className="pso-action-btn" onClick={handleOpenPasswordModal}>
-                                {hasPassword ? 'Change' : 'Set Up'}
+                                {hasPassword ? t('change', 'Change') : t('set_up', 'Set Up')}
                             </button>
                         </div>
                         <p className="pso-section-hint">
-                            Configure standard email and password credentials to sign in directly without third-party popups.
+                            {t('pso_password_desc', 'Configure standard email and password credentials to sign in directly without third-party popups.')}
                         </p>
                     </div>
                 </div>
@@ -314,7 +314,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
                 <div className="pso-modal-overlay" onClick={handleClosePasswordModal}>
                     <div className="pso-modal-card" onClick={e => e.stopPropagation()}>
                         <div className="pso-modal-header">
-                            <h3>{hasPassword ? 'Change Password' : (isSyntheticEmail ? 'Set Email & Password' : 'Create Account Password')}</h3>
+                            <h3>{hasPassword ? t('pso_change_password', 'Change Password') : (isSyntheticEmail ? t('pso_set_email_password', 'Set Email & Password') : t('pso_set_password', 'Create Account Password'))}</h3>
                             <button className="icon-button" onClick={handleClosePasswordModal} disabled={loading} style={{ width: '32px', height: '32px' }}>
                                 <i className="fas fa-times"></i>
                             </button>
@@ -329,7 +329,7 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
 
                         <div className="pso-alert-box info" style={{ background: 'rgba(66, 215, 184, 0.08)', border: '1px solid rgba(66, 215, 184, 0.25)', color: 'var(--accent-teal)', marginBottom: '4px' }}>
                             <i className="fas fa-lightbulb" style={{ marginRight: '6px' }}></i>
-                            Choose a secure password and be sure to remember it!
+                            {t('pso_remember_hint', 'Choose a secure password and be sure to remember it!')}
                         </div>
 
                         {statusMsg && (
@@ -434,10 +434,10 @@ const PrivacySecurityOverlay = ({ isActive, onClose, initialTarget = null }) => 
 
                             <div className="pso-modal-footer">
                                 <button type="button" className="pso-btn-cancel" onClick={handleClosePasswordModal} disabled={loading}>
-                                    Cancel
+                                    {t('common_cancel', 'Cancel')}
                                 </button>
                                 <button type="submit" className="pso-btn-submit" disabled={loading || !newPassword || !confirmPassword || (isSyntheticEmail && !realEmail.trim())}>
-                                    {loading ? <i className="fas fa-circle-notch fa-spin"></i> : (hasPassword ? 'Update Password' : (isSyntheticEmail ? 'Link Email & Set Password' : 'Set Password'))}
+                                    {loading ? <i className="fas fa-circle-notch fa-spin"></i> : (hasPassword ? t('pso_update_password', 'Update Password') : (isSyntheticEmail ? t('pso_set_email_password', 'Link Email & Set Password') : t('pso_set_password', 'Set Password')))}
                                 </button>
                             </div>
                         </form>
