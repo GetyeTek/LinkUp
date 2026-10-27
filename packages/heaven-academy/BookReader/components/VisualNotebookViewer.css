@@ -25,7 +25,7 @@
    THEME DESIGN TOKENS (IN-FLIGHT NORMALIZER CONTRACT)
    ============================================================================== */
 .v-notebook-root, 
-.theme-dark .v-notebook-root {
+.v-notebook-root.theme-dark {
     --vn-canvas-bg: #141418;
     --vn-card-bg: #1c1c24;
     --vn-subcard-bg: #14141a;
@@ -37,7 +37,7 @@
 
 
 
-.theme-light .v-notebook-root {
+.v-notebook-root.theme-light {
     --vn-canvas-bg: #ffffff;
     --vn-card-bg: #ffffff;
     --vn-subcard-bg: #f8fafc;
@@ -52,25 +52,25 @@
    ============================================================================== */
 
 /* --- DARK THEME ADAPTATION --- */
-.theme-dark .v-notebook-root .sheet-canvas {
+.v-notebook-root.theme-dark .sheet-canvas {
     background: #141418 !important;
     color: #f1f5f9 !important;
 }
 
 /* 1. All Generic Primary Containers, Cards, Headers, and Inline-Styled Divs */
-.theme-dark .v-notebook-root .sheet-canvas [class*="-card"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="-box"]:not(.hero-banner):not([class*="-icon"]),
-.theme-dark .v-notebook-root .sheet-canvas [class*="-block"]:not(.v-bento-canvas),
-.theme-dark .v-notebook-root .sheet-canvas [class*="-item"]:not([class*="timeline"]):not([class*="icon"]),
-.theme-dark .v-notebook-root .sheet-canvas [class*="-panel"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
-.theme-dark .v-notebook-root .sheet-canvas [class*="-grid"] > div,
-.theme-dark .v-notebook-root .sheet-canvas [class*="-rail"] > div:not([class*="dot"]),
-.theme-dark .v-notebook-root .sheet-canvas [class*="-header"]:not([class*="hero"]):not(.v-sheet-anchor-bar),
-.theme-dark .v-notebook-root .sheet-canvas > div:not(.v-sheet-anchor-bar),
-.theme-dark .v-notebook-root .sheet-canvas > header:not(.v-sheet-anchor-bar),
-.theme-dark .v-notebook-root .sheet-canvas div[style*="background"],
-.theme-dark .v-notebook-root .sheet-canvas div[style*="background-color"] {
+.v-notebook-root.theme-dark .sheet-canvas [class*="-card"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="-box"]:not(.hero-banner):not([class*="-icon"]),
+.v-notebook-root.theme-dark .sheet-canvas [class*="-block"]:not(.v-bento-canvas),
+.v-notebook-root.theme-dark .sheet-canvas [class*="-item"]:not([class*="timeline"]):not([class*="icon"]),
+.v-notebook-root.theme-dark .sheet-canvas [class*="-panel"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
+.v-notebook-root.theme-dark .sheet-canvas [class*="-grid"] > div,
+.v-notebook-root.theme-dark .sheet-canvas [class*="-rail"] > div:not([class*="dot"]),
+.v-notebook-root.theme-dark .sheet-canvas [class*="-header"]:not([class*="hero"]):not(.v-sheet-anchor-bar),
+.v-notebook-root.theme-dark .sheet-canvas > div:not(.v-sheet-anchor-bar),
+.v-notebook-root.theme-dark .sheet-canvas > header:not(.v-sheet-anchor-bar),
+.v-notebook-root.theme-dark .sheet-canvas div[style*="background"],
+.v-notebook-root.theme-dark .sheet-canvas div[style*="background-color"] {
     background: #1c1c24 !important;
     border-color: rgba(255, 255, 255, 0.09) !important;
     color: #f1f5f9 !important;
@@ -78,23 +78,23 @@
 }
 
 /* 2. Secondary Nested Sub-Cards & Examples */
-.theme-dark .v-notebook-root .sheet-canvas [class*="sub-"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="mini-"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="inner-"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="example"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="syllogism"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="rule-"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="step-"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="ans-"] {
+.v-notebook-root.theme-dark .sheet-canvas [class*="sub-"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="mini-"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="inner-"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="example"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="syllogism"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="rule-"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="step-"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="ans-"] {
     background: #14141a !important;
     border-color: rgba(255, 255, 255, 0.07) !important;
     color: #e2e8f0 !important;
 }
 
 /* 3. Hero Banners across all subjects */
-.theme-dark .v-notebook-root .sheet-canvas [class*="hero-"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="header-banner"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="welcome-card"] {
+.v-notebook-root.theme-dark .sheet-canvas [class*="hero-"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="header-banner"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="welcome-card"] {
     background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
     border: 1px solid rgba(148, 163, 184, 0.25) !important;
     color: #ffffff !important;
@@ -102,125 +102,125 @@
 }
 
 /* 4. Headings & Titles */
-.theme-dark .v-notebook-root .sheet-canvas h1,
-.theme-dark .v-notebook-root .sheet-canvas h2,
-.theme-dark .v-notebook-root .sheet-canvas h3,
-.theme-dark .v-notebook-root .sheet-canvas h4,
-.theme-dark .v-notebook-root .sheet-canvas [class*="-title"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="-heading"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="-header"]:not(.v-sheet-anchor-bar) {
+.v-notebook-root.theme-dark .sheet-canvas h1,
+.v-notebook-root.theme-dark .sheet-canvas h2,
+.v-notebook-root.theme-dark .sheet-canvas h3,
+.v-notebook-root.theme-dark .sheet-canvas h4,
+.v-notebook-root.theme-dark .sheet-canvas [class*="-title"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="-heading"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="-header"]:not(.v-sheet-anchor-bar) {
     color: #ffffff !important;
 }
 
-.theme-dark .v-notebook-root .sheet-canvas [class*="-heading"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="section-title"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="card-title"] {
+.v-notebook-root.theme-dark .sheet-canvas [class*="-heading"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="section-title"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="card-title"] {
     color: #38bdf8 !important;
     border-bottom-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* 5. Typography and In-Flight Inline Color Inversion */
-.theme-dark .v-notebook-root .sheet-canvas p,
-.theme-dark .v-notebook-root .sheet-canvas li,
-.theme-dark .v-notebook-root .sheet-canvas td,
-.theme-dark .v-notebook-root .sheet-canvas th,
-.theme-dark .v-notebook-root .sheet-canvas div:not([class*="-badge"]):not([class*="-tag"]):not([class*="-num"]):not([class*="icon"]):not(.anchor-pill) {
+.v-notebook-root.theme-dark .sheet-canvas p,
+.v-notebook-root.theme-dark .sheet-canvas li,
+.v-notebook-root.theme-dark .sheet-canvas td,
+.v-notebook-root.theme-dark .sheet-canvas th,
+.v-notebook-root.theme-dark .sheet-canvas div:not([class*="-badge"]):not([class*="-tag"]):not([class*="-num"]):not([class*="icon"]):not(.anchor-pill) {
     color: #f1f5f9 !important;
 }
 
-.theme-dark .v-notebook-root .sheet-canvas strong,
-.theme-dark .v-notebook-root .sheet-canvas b,
-.theme-dark .v-notebook-root .sheet-canvas div[style*="font-weight: 700"],
-.theme-dark .v-notebook-root .sheet-canvas div[style*="font-weight:700"],
-.theme-dark .v-notebook-root .sheet-canvas div[style*="font-weight: bold"],
-.theme-dark .v-notebook-root .sheet-canvas div[style*="font-weight:bold"] {
+.v-notebook-root.theme-dark .sheet-canvas strong,
+.v-notebook-root.theme-dark .sheet-canvas b,
+.v-notebook-root.theme-dark .sheet-canvas div[style*="font-weight: 700"],
+.v-notebook-root.theme-dark .sheet-canvas div[style*="font-weight:700"],
+.v-notebook-root.theme-dark .sheet-canvas div[style*="font-weight: bold"],
+.v-notebook-root.theme-dark .sheet-canvas div[style*="font-weight:bold"] {
     color: #38bdf8 !important;
 }
 
 /* Invert hardcoded daylight text colors on dark canvas */
-.theme-dark .v-notebook-root .sheet-canvas [style*="color: #0"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color:#0"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color: #1"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color:#1"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color: #2"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color:#2"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color: #3"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color:#3"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color: #4"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color:#4"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color: #6"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color:#6"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color: #7"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color:#7"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color: #8"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color:#8"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color: black"],
-.theme-dark .v-notebook-root .sheet-canvas [style*="color:#000"] {
+.v-notebook-root.theme-dark .sheet-canvas [style*="color: #0"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color:#0"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color: #1"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color:#1"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color: #2"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color:#2"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color: #3"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color:#3"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color: #4"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color:#4"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color: #6"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color:#6"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color: #7"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color:#7"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color: #8"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color:#8"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color: black"],
+.v-notebook-root.theme-dark .sheet-canvas [style*="color:#000"] {
     color: #e2e8f0 !important;
 }
 
 /* 6. Semantic Alerts, Traps & Quotes */
-.theme-dark .v-notebook-root .sheet-canvas [class*="quote"] {
+.v-notebook-root.theme-dark .sheet-canvas [class*="quote"] {
     background: rgba(255, 255, 255, 0.03) !important;
     border-left-color: #38bdf8 !important;
     color: #e2e8f0 !important;
 }
 
-.theme-dark .v-notebook-root .sheet-canvas [class*="callout"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="trap"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="alert"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="caution"] {
+.v-notebook-root.theme-dark .sheet-canvas [class*="callout"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="trap"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="alert"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="caution"] {
     background: rgba(245, 158, 11, 0.08) !important;
     border-color: rgba(245, 158, 11, 0.35) !important;
     color: #fef3c7 !important;
 }
 
-.theme-dark .v-notebook-root .sheet-canvas [class*="myth"] {
+.v-notebook-root.theme-dark .sheet-canvas [class*="myth"] {
     background: rgba(239, 68, 68, 0.08) !important;
     border-color: rgba(239, 68, 68, 0.35) !important;
     color: #fecaca !important;
 }
 
-.theme-dark .v-notebook-root .sheet-canvas [class*="fact"] {
+.v-notebook-root.theme-dark .sheet-canvas [class*="fact"] {
     background: rgba(16, 185, 129, 0.08) !important;
     border-color: rgba(16, 185, 129, 0.35) !important;
     color: #a7f3d0 !important;
 }
 
 /* 7. Tables & SVG Math Diagrams in Dark Mode */
-.theme-dark .v-notebook-root .sheet-canvas .table-container,
-.theme-dark .v-notebook-root .sheet-canvas table {
+.v-notebook-root.theme-dark .sheet-canvas .table-container,
+.v-notebook-root.theme-dark .sheet-canvas table {
     background: #141418 !important;
     border-color: rgba(255, 255, 255, 0.08) !important;
 }
-.theme-dark .v-notebook-root .sheet-canvas th {
+.v-notebook-root.theme-dark .sheet-canvas th {
     background: #1e1e26 !important;
     color: #ffffff !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
 }
-.theme-dark .v-notebook-root .sheet-canvas td {
+.v-notebook-root.theme-dark .sheet-canvas td {
     border-color: rgba(255, 255, 255, 0.06) !important;
     color: #e2e8f0 !important;
 }
-.theme-dark .v-notebook-root .sheet-canvas svg rect[fill="#ffffff"],
-.theme-dark .v-notebook-root .sheet-canvas svg rect[fill="#f8fafc"] {
+.v-notebook-root.theme-dark .sheet-canvas svg rect[fill="#ffffff"],
+.v-notebook-root.theme-dark .sheet-canvas svg rect[fill="#f8fafc"] {
     fill: #181920 !important;
     stroke: rgba(255, 255, 255, 0.12) !important;
 }
 
 /* 8. Nuclear Shield: Neutralize all Rogue Badges, Pills, Tags, and Micro-Components */
-.theme-dark .v-notebook-root .sheet-canvas [class*="badge"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="pill"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="tag"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="-label"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="-num"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="tier"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="-step"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="-node"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="layer-"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="col-"],
-.theme-dark .v-notebook-root .sheet-canvas [class*="icon"]:not(.hero-icon),
-.theme-dark .v-notebook-root .sheet-canvas [class*="code"] {
+.v-notebook-root.theme-dark .sheet-canvas [class*="badge"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="pill"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="tag"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="-label"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="-num"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="tier"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="-step"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="-node"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="layer-"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="col-"],
+.v-notebook-root.theme-dark .sheet-canvas [class*="icon"]:not(.hero-icon),
+.v-notebook-root.theme-dark .sheet-canvas [class*="code"] {
     background: rgba(255, 255, 255, 0.08) !important;
     border-color: rgba(255, 255, 255, 0.15) !important;
     color: var(--vn-heading-color, #38bdf8) !important;
@@ -230,31 +230,31 @@
 
 
 /* --- LIGHT THEME ADAPTATION --- */
-.theme-light .v-notebook-root .sheet-canvas {
+.v-notebook-root.theme-light .sheet-canvas {
     background: #ffffff !important;
     color: #1e293b !important;
 }
 
-.theme-light .v-notebook-root .v-sheet-anchor-bar {
+.v-notebook-root.theme-light .v-sheet-anchor-bar {
     background: rgba(0, 0, 0, 0.04);
     border-color: rgba(0, 0, 0, 0.1);
     color: #64748b;
 }
 
 /* 1. All Generic Primary Containers, Cards, and Inline-Styled Divs */
-.theme-light .v-notebook-root .sheet-canvas [class*="-card"],
-.theme-light .v-notebook-root .sheet-canvas [class*="-box"]:not(.hero-banner):not([class*="-icon"]),
-.theme-light .v-notebook-root .sheet-canvas [class*="-block"]:not(.v-bento-canvas),
-.theme-light .v-notebook-root .sheet-canvas [class*="-item"]:not([class*="timeline"]):not([class*="icon"]),
-.theme-light .v-notebook-root .sheet-canvas [class*="-panel"],
-.theme-light .v-notebook-root .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
-.theme-light .v-notebook-root .sheet-canvas [class*="-grid"] > div,
-.theme-light .v-notebook-root .sheet-canvas [class*="-rail"] > div:not([class*="dot"]),
-.theme-light .v-notebook-root .sheet-canvas [class*="-header"]:not([class*="hero"]):not(.v-sheet-anchor-bar),
-.theme-light .v-notebook-root .sheet-canvas > div:not(.v-sheet-anchor-bar),
-.theme-light .v-notebook-root .sheet-canvas > header:not(.v-sheet-anchor-bar),
-.theme-light .v-notebook-root .sheet-canvas div[style*="background"],
-.theme-light .v-notebook-root .sheet-canvas div[style*="background-color"] {
+.v-notebook-root.theme-light .sheet-canvas [class*="-card"],
+.v-notebook-root.theme-light .sheet-canvas [class*="-box"]:not(.hero-banner):not([class*="-icon"]),
+.v-notebook-root.theme-light .sheet-canvas [class*="-block"]:not(.v-bento-canvas),
+.v-notebook-root.theme-light .sheet-canvas [class*="-item"]:not([class*="timeline"]):not([class*="icon"]),
+.v-notebook-root.theme-light .sheet-canvas [class*="-panel"],
+.v-notebook-root.theme-light .sheet-canvas [class*="-container"]:not(.table-container):not(.svg-container):not(.v-bento-canvas),
+.v-notebook-root.theme-light .sheet-canvas [class*="-grid"] > div,
+.v-notebook-root.theme-light .sheet-canvas [class*="-rail"] > div:not([class*="dot"]),
+.v-notebook-root.theme-light .sheet-canvas [class*="-header"]:not([class*="hero"]):not(.v-sheet-anchor-bar),
+.v-notebook-root.theme-light .sheet-canvas > div:not(.v-sheet-anchor-bar),
+.v-notebook-root.theme-light .sheet-canvas > header:not(.v-sheet-anchor-bar),
+.v-notebook-root.theme-light .sheet-canvas div[style*="background"],
+.v-notebook-root.theme-light .sheet-canvas div[style*="background-color"] {
     background: #ffffff !important;
     border-color: rgba(0, 0, 0, 0.08) !important;
     color: #1e293b !important;
@@ -262,128 +262,128 @@
 }
 
 /* 2. Secondary Nested Sub-Cards & Examples */
-.theme-light .v-notebook-root .sheet-canvas [class*="sub-"],
-.theme-light .v-notebook-root .sheet-canvas [class*="mini-"],
-.theme-light .v-notebook-root .sheet-canvas [class*="inner-"],
-.theme-light .v-notebook-root .sheet-canvas [class*="example"],
-.theme-light .v-notebook-root .sheet-canvas [class*="syllogism"],
-.theme-light .v-notebook-root .sheet-canvas [class*="rule-"],
-.theme-light .v-notebook-root .sheet-canvas [class*="step-"],
-.theme-light .v-notebook-root .sheet-canvas [class*="ans-"] {
+.v-notebook-root.theme-light .sheet-canvas [class*="sub-"],
+.v-notebook-root.theme-light .sheet-canvas [class*="mini-"],
+.v-notebook-root.theme-light .sheet-canvas [class*="inner-"],
+.v-notebook-root.theme-light .sheet-canvas [class*="example"],
+.v-notebook-root.theme-light .sheet-canvas [class*="syllogism"],
+.v-notebook-root.theme-light .sheet-canvas [class*="rule-"],
+.v-notebook-root.theme-light .sheet-canvas [class*="step-"],
+.v-notebook-root.theme-light .sheet-canvas [class*="ans-"] {
     background: #f8fafc !important;
     border-color: rgba(0, 0, 0, 0.05) !important;
     color: #334155 !important;
 }
 
 /* 3. Hero Banners across all subjects */
-.theme-light .v-notebook-root .sheet-canvas [class*="hero-"],
-.theme-light .v-notebook-root .sheet-canvas [class*="header-banner"],
-.theme-light .v-notebook-root .sheet-canvas [class*="welcome-card"] {
+.v-notebook-root.theme-light .sheet-canvas [class*="hero-"],
+.v-notebook-root.theme-light .sheet-canvas [class*="header-banner"],
+.v-notebook-root.theme-light .sheet-canvas [class*="welcome-card"] {
     background: linear-gradient(135deg, #0284c7 0%, #1e40af 100%) !important;
     border: 1px solid rgba(0, 0, 0, 0.1) !important;
     color: #ffffff !important;
     box-shadow: 0 4px 15px rgba(2, 132, 199, 0.2) !important;
 }
 
-.theme-light .v-notebook-root .sheet-canvas [class*="hero-"] *,
-.theme-light .v-notebook-root .sheet-canvas [class*="header-banner"] *,
-.theme-light .v-notebook-root .sheet-canvas [class*="welcome-card"] * {
+.v-notebook-root.theme-light .sheet-canvas [class*="hero-"] *,
+.v-notebook-root.theme-light .sheet-canvas [class*="header-banner"] *,
+.v-notebook-root.theme-light .sheet-canvas [class*="welcome-card"] * {
     color: #ffffff !important;
 }
 
 /* 4. Headings & Titles */
-.theme-light .v-notebook-root .sheet-canvas h1,
-.theme-light .v-notebook-root .sheet-canvas h2,
-.theme-light .v-notebook-root .sheet-canvas h3,
-.theme-light .v-notebook-root .sheet-canvas h4,
-.theme-light .v-notebook-root .sheet-canvas [class*="-title"],
-.theme-light .v-notebook-root .sheet-canvas [class*="-heading"],
-.theme-light .v-notebook-root .sheet-canvas [class*="-header"]:not(.v-sheet-anchor-bar) {
+.v-notebook-root.theme-light .sheet-canvas h1,
+.v-notebook-root.theme-light .sheet-canvas h2,
+.v-notebook-root.theme-light .sheet-canvas h3,
+.v-notebook-root.theme-light .sheet-canvas h4,
+.v-notebook-root.theme-light .sheet-canvas [class*="-title"],
+.v-notebook-root.theme-light .sheet-canvas [class*="-heading"],
+.v-notebook-root.theme-light .sheet-canvas [class*="-header"]:not(.v-sheet-anchor-bar) {
     color: #0f172a !important;
 }
 
-.theme-light .v-notebook-root .sheet-canvas [class*="-heading"],
-.theme-light .v-notebook-root .sheet-canvas [class*="section-title"],
-.theme-light .v-notebook-root .sheet-canvas [class*="card-title"] {
+.v-notebook-root.theme-light .sheet-canvas [class*="-heading"],
+.v-notebook-root.theme-light .sheet-canvas [class*="section-title"],
+.v-notebook-root.theme-light .sheet-canvas [class*="card-title"] {
     color: #0284c7 !important;
     border-bottom-color: rgba(0, 0, 0, 0.05) !important;
 }
 
 /* 5. Typography */
-.theme-light .v-notebook-root .sheet-canvas p,
-.theme-light .v-notebook-root .sheet-canvas li,
-.theme-light .v-notebook-root .sheet-canvas td,
-.theme-light .v-notebook-root .sheet-canvas th,
-.theme-light .v-notebook-root .sheet-canvas div:not([class*="-badge"]):not([class*="-tag"]):not([class*="-num"]):not([class*="icon"]):not(.anchor-pill) {
+.v-notebook-root.theme-light .sheet-canvas p,
+.v-notebook-root.theme-light .sheet-canvas li,
+.v-notebook-root.theme-light .sheet-canvas td,
+.v-notebook-root.theme-light .sheet-canvas th,
+.v-notebook-root.theme-light .sheet-canvas div:not([class*="-badge"]):not([class*="-tag"]):not([class*="-num"]):not([class*="icon"]):not(.anchor-pill) {
     color: #1e293b !important;
 }
 
-.theme-light .v-notebook-root .sheet-canvas strong,
-.theme-light .v-notebook-root .sheet-canvas b,
-.theme-light .v-notebook-root .sheet-canvas div[style*="font-weight: 700"],
-.theme-light .v-notebook-root .sheet-canvas div[style*="font-weight:700"],
-.theme-light .v-notebook-root .sheet-canvas div[style*="font-weight: bold"],
-.theme-light .v-notebook-root .sheet-canvas div[style*="font-weight:bold"] {
+.v-notebook-root.theme-light .sheet-canvas strong,
+.v-notebook-root.theme-light .sheet-canvas b,
+.v-notebook-root.theme-light .sheet-canvas div[style*="font-weight: 700"],
+.v-notebook-root.theme-light .sheet-canvas div[style*="font-weight:700"],
+.v-notebook-root.theme-light .sheet-canvas div[style*="font-weight: bold"],
+.v-notebook-root.theme-light .sheet-canvas div[style*="font-weight:bold"] {
     color: var(--vn-heading-color, #0284c7) !important;
 }
 
 /* 6. Semantic Alerts, Traps & Quotes */
-.theme-light .v-notebook-root .sheet-canvas [class*="quote"] {
+.v-notebook-root.theme-light .sheet-canvas [class*="quote"] {
     background: #f1f5f9 !important;
     border-left-color: #0284c7 !important;
     color: #1e293b !important;
 }
 
-.theme-light .v-notebook-root .sheet-canvas [class*="callout"],
-.theme-light .v-notebook-root .sheet-canvas [class*="trap"],
-.theme-light .v-notebook-root .sheet-canvas [class*="alert"],
-.theme-light .v-notebook-root .sheet-canvas [class*="caution"] {
+.v-notebook-root.theme-light .sheet-canvas [class*="callout"],
+.v-notebook-root.theme-light .sheet-canvas [class*="trap"],
+.v-notebook-root.theme-light .sheet-canvas [class*="alert"],
+.v-notebook-root.theme-light .sheet-canvas [class*="caution"] {
     background: #fffbeb !important;
     border-color: #fde68a !important;
     color: #92400e !important;
 }
 
-.theme-light .v-notebook-root .sheet-canvas [class*="myth"] {
+.v-notebook-root.theme-light .sheet-canvas [class*="myth"] {
     background: #fef2f2 !important;
     border-color: #fecaca !important;
     color: #991b1b !important;
 }
 
-.theme-light .v-notebook-root .sheet-canvas [class*="fact"] {
+.v-notebook-root.theme-light .sheet-canvas [class*="fact"] {
     background: #f0fdf4 !important;
     border-color: #bbf7d0 !important;
     color: #065f46 !important;
 }
 
 /* 7. Tables & SVG Math Diagrams */
-.theme-light .v-notebook-root .sheet-canvas .table-container,
-.theme-light .v-notebook-root .sheet-canvas table {
+.v-notebook-root.theme-light .sheet-canvas .table-container,
+.v-notebook-root.theme-light .sheet-canvas table {
     background: #ffffff !important;
     border-color: rgba(0, 0, 0, 0.08) !important;
 }
-.theme-light .v-notebook-root .sheet-canvas th {
+.v-notebook-root.theme-light .sheet-canvas th {
     background: #f8fafc !important;
     color: #0f172a !important;
     border-color: rgba(0, 0, 0, 0.1) !important;
 }
-.theme-light .v-notebook-root .sheet-canvas td {
+.v-notebook-root.theme-light .sheet-canvas td {
     border-color: rgba(0, 0, 0, 0.06) !important;
     color: #334155 !important;
 }
 
 /* 8. Nuclear Shield: Neutralize all Rogue Badges, Pills, Tags, and Micro-Components */
-.theme-light .v-notebook-root .sheet-canvas [class*="badge"],
-.theme-light .v-notebook-root .sheet-canvas [class*="pill"],
-.theme-light .v-notebook-root .sheet-canvas [class*="tag"],
-.theme-light .v-notebook-root .sheet-canvas [class*="-label"],
-.theme-light .v-notebook-root .sheet-canvas [class*="-num"],
-.theme-light .v-notebook-root .sheet-canvas [class*="tier"],
-.theme-light .v-notebook-root .sheet-canvas [class*="-step"],
-.theme-light .v-notebook-root .sheet-canvas [class*="-node"],
-.theme-light .v-notebook-root .sheet-canvas [class*="layer-"],
-.theme-light .v-notebook-root .sheet-canvas [class*="col-"],
-.theme-light .v-notebook-root .sheet-canvas [class*="icon"]:not(.hero-icon),
-.theme-light .v-notebook-root .sheet-canvas [class*="code"] {
+.v-notebook-root.theme-light .sheet-canvas [class*="badge"],
+.v-notebook-root.theme-light .sheet-canvas [class*="pill"],
+.v-notebook-root.theme-light .sheet-canvas [class*="tag"],
+.v-notebook-root.theme-light .sheet-canvas [class*="-label"],
+.v-notebook-root.theme-light .sheet-canvas [class*="-num"],
+.v-notebook-root.theme-light .sheet-canvas [class*="tier"],
+.v-notebook-root.theme-light .sheet-canvas [class*="-step"],
+.v-notebook-root.theme-light .sheet-canvas [class*="-node"],
+.v-notebook-root.theme-light .sheet-canvas [class*="layer-"],
+.v-notebook-root.theme-light .sheet-canvas [class*="col-"],
+.v-notebook-root.theme-light .sheet-canvas [class*="icon"]:not(.hero-icon),
+.v-notebook-root.theme-light .sheet-canvas [class*="code"] {
     background: #eef2ff !important;
     border-color: #c7d2fe !important;
     color: var(--vn-heading-color, #1e40af) !important;
