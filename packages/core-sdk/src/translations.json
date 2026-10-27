@@ -225,7 +225,12 @@
     "connect_limit_reached_desc": "You have already established 3 study squads. To maintain the highest quality of collaboration across the platform, students are restricted to 3 active owned groups.",
     "groups_tab_members": "Members",
     "groups_tab_media": "Media",
-    "groups_tab_control_panel": "Control Panel"
+    "groups_tab_control_panel": "Control Panel",
+    "miron_live_voice": "Live Voice",
+    "miron_connecting": "Connecting to Miron...",
+    "miron_ready_to_study": "Ready to Study",
+    "miron_pick_chapter_prompt": "Pick a chapter on the right to reveal study topics",
+    "miron_gold_required": "LinkUp Gold Required"
   },
   "am": {
     "nav_home": "ዋና ገጽ",
@@ -453,6 +458,11 @@
     "connect_limit_reached_desc": "አስቀድመው 3 የጥናት ግሩፖችን መስርተዋል። ጥራቱን ለመጠበቅ አንድ ተማሪ መፍጠር የሚችለው እስከ 3 ንቁ ግሩፖችን ብቻ ነው።",
     "groups_tab_members": "አባላት",
     "groups_tab_media": "ሚዲያ",
-    "groups_tab_control_panel": "የአስተዳዳሪ ክፍል"
+    "groups_tab_control_panel": "የአስተዳዳሪ ክፍል",
+    "miron_live_voice": "የቀጥታ ድምጽ",
+    "miron_connecting": "ከሚሮን ጋር በመገናኘት ላይ...",
+    "miron_ready_to_study": "ለጥናት ዝግጁ",
+    "miron_pick_chapter_prompt": "የትምህርት ርዕሶችን ለማየት በቀኝ በኩል ካሉት ምዕራፎች ይምረጡ",
+    "miron_gold_required": "LinkUp ፕሪሚየም ያስፈልጋል"
   }
 }
