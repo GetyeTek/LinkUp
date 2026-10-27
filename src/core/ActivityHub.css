@@ -56,7 +56,7 @@
     transition: background 0.3s;
 }
 
-.pulse-item:hover { background: rgba(255,255,255,0.02); }
+.pulse-item:hover { background: rgba(128, 128, 128, 0.05); }
 
 .pulse-item.unread::before {
     content: ''; position: absolute; left: 0; top: 0; bottom: 0;
@@ -73,9 +73,9 @@
 
 .p-content { flex: 1; }
 .p-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.p-meta h3 { font-size: 0.95rem; font-weight: 500; margin: 0; }
-.p-time { font-size: 0.7rem; color: #909090; }
-.p-desc { font-size: 0.85rem; color: #909090; line-height: 1.4; margin: 0; }
+.p-meta h3 { font-size: 0.95rem; font-weight: 500; margin: 0; color: var(--text-primary-dark); }
+.p-time { font-size: 0.7rem; color: var(--text-secondary-dark); }
+.p-desc { font-size: 0.85rem; color: var(--text-secondary-dark); line-height: 1.4; margin: 0; }
 
 .miron-insight-box {
     margin-top: 10px; padding: 10px 14px; border-radius: 10px;
