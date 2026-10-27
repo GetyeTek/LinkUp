@@ -12,7 +12,8 @@
 }
 
 .sao-header {
-    padding: 1rem 1.5rem;
+    padding: 0.6rem 1rem;
+    min-height: 52px;
     display: flex;
     align-items: center;
     background: var(--surface-dark);
@@ -23,10 +24,11 @@
 }
 
 .sao-header h2 {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 600;
     margin: 0;
     letter-spacing: -0.2px;
+    color: var(--text-primary-dark);
 }
 
 .sao-body {
