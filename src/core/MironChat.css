@@ -9,12 +9,22 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: athenaEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s;
+    will-change: opacity, transform;
 }
 
-@keyframes athenaEnter { 
-    from { opacity: 0; transform: translateY(20px) scale(0.98); } 
-    to { opacity: 1; transform: translateY(0) scale(1); } 
+.miron-chat-overlay.is-hidden {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translateY(24px) !important;
+}
+
+.miron-chat-overlay.is-open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateY(0) !important;
 }
 
 /* --- HARDWARE ACCELERATED AMBIENCE --- */
@@ -576,6 +586,25 @@
     .miron-chat-overlay {
         flex-direction: row !important;
         display: flex !important;
+        left: 260px !important;
+        width: calc(100% - 260px) !important;
+        right: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        z-index: 50 !important;
+        border-left: 1px solid var(--border-color);
+    }
+
+    .miron-chat-overlay.is-hidden {
+        transform: translateX(35px) !important;
+    }
+
+    .miron-chat-overlay.is-open {
+        transform: translateX(0) !important;
+    }
+
+    .athena-sidebar-toggle {
+        display: none !important;
     }
 
     .athena-header {
