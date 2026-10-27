@@ -227,8 +227,8 @@ const Discover = () => {
                                 <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', marginBottom: '0.5rem', boxShadow: '0 0 20px rgba(66, 215, 184, 0.15)' }}>
                                     <i className="fas fa-sparkles"></i>
                                 </div>
-                                <h3 style={{ color: '#fff', fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>{t('all_caught_up_excl', "You're all caught up!")}</h3>
-                                <p style={{ fontSize: '0.85rem', color: '#888', maxWidth: '300px', lineHeight: 1.5, margin: '4px 0 1rem 0' }}>
+                                <h3 style={{ color: 'var(--text-primary-dark)', fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>{t('all_caught_up_excl', "You're all caught up!")}</h3>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary-dark)', maxWidth: '300px', lineHeight: 1.5, margin: '4px 0 1rem 0' }}>
                                     {selectedChannel !== 'all' ? 'No updates in this channel right now.' : "No new posts right now. We'll bring you the latest campus announcements as soon as they drop."}
                                 </p>
                                 <button 
