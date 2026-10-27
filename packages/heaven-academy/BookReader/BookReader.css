@@ -76,8 +76,8 @@
 }
 
 /* Universal ID Shield: Prevents injected book stylesheets from breaking active theme */
-.theme-dark #book-layer .page-canvas { color: var(--text-color) !important; background-color: var(--page-bg) !important; }
-.theme-light #book-layer .page-canvas { color: var(--text-color) !important; background-color: var(--page-bg) !important; }
+.reader-root.theme-dark #book-layer .page-canvas { color: var(--text-color) !important; background-color: var(--page-bg) !important; }
+.reader-root.theme-light #book-layer .page-canvas { color: var(--text-color) !important; background-color: var(--page-bg) !important; }
 
 .page-wrapper { 
     width: 100%; 
