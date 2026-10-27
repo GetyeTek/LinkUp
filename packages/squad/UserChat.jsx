@@ -56,17 +56,17 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
     const chatAvatar = isOtherUserDeleted ? null : (chat.type === 'dm' ? chat.other_user_avatar : chat.avatar_url);
 
     const formatLastSeen = (dateStr) => {
-        if (!dateStr) return 'Offline';
+        if (!dateStr) return t('connect_offline', 'Offline');
         const date = new Date(dateStr);
         const now = new Date();
         const diffInMs = now - date;
         const diffInMins = Math.floor(diffInMs / 60000);
         const diffInHours = Math.floor(diffInMs / 3600000);
 
-        if (diffInMins < 1) return 'last seen just now';
-        if (diffInMins < 60) return `last seen ${diffInMins}m ago`;
-        if (diffInHours < 24) return `last seen ${diffInHours}h ago`;
-        return `last seen ${date.toLocaleDateString()}`;
+        if (diffInMins < 1) return t('connect_last_seen_now', 'last seen just now');
+        if (diffInMins < 60) return t('connect_last_seen_mins', 'last seen {m}m ago').replace('{m}', String(diffInMins));
+        if (diffInHours < 24) return t('connect_last_seen_hours', 'last seen {h}h ago').replace('{h}', String(diffInHours));
+        return t('connect_last_seen_date', 'last seen {date}').replace('{date}', date.toLocaleDateString());
     };
 
     useEffect(() => {
@@ -499,7 +499,7 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                                 {isOtherTyping ? (
                                     <span>typing<span className="blink-cursor">...</span></span>
                                 ) : (
-                                    isOnline ? 'Online' : formatLastSeen(chat.other_user_last_seen)
+                                    isOnline ? t('connect_online', 'Online') : formatLastSeen(chat.other_user_last_seen)
                                 )}
                             </p>
                         </div>
@@ -525,10 +525,10 @@ const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onCl
                         <div className="wave-sticker-orb">
                             <span className="wave-emoji-animated">👋</span>
                         </div>
-                        <h3>Say hello to {chatTitle.split(' ')[0]}!</h3>
-                        <p>Tap to send a wave and kick off the conversation</p>
+                        <h3>{t('say_hello_to', 'Say hello to {name}!').replace('{name}', chatTitle.split(' ')[0])}</h3>
+                        <p>{t('tap_send_wave', 'Tap to send a wave and kick off the conversation')}</p>
                         <button type="button" className="wave-action-pill">
-                            <span>Send Wave 👋</span>
+                            <span>{t('send_wave', 'Send Wave 👋')}</span>
                         </button>
                     </div>
                 ) : messages.map((m) => {
