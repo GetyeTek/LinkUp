@@ -1,10 +1,12 @@
 import React, { useRef, useEffect } from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './NoteInputDock.css';
 
 const NoteInputDock = ({ 
     fileInputRef, handleFileUpload, isUploading, 
     input, setInput, handleSend 
 }) => {
+    const { t } = usePlatform();
     const noteTextareaRef = useRef(null);
 
     useEffect(() => {
@@ -29,7 +31,7 @@ const NoteInputDock = ({
                 <textarea 
                     ref={noteTextareaRef}
                     className="notes-input" 
-                    placeholder="Save a note or link..." 
+                    placeholder={t('notes_placeholder', 'Save a note or link...')} 
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
