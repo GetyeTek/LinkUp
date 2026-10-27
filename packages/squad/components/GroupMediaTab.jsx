@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 
 const GroupMediaTab = ({ messages, members }) => {
+    const { t } = usePlatform();
     const [mediaSubTab, setMediaSubTab] = useState('media'); // files, media, links
 
     // Auto-scrape Media Assets from Messages
@@ -15,9 +17,9 @@ const GroupMediaTab = ({ messages, members }) => {
     return (
         <div className="si-vault">
             <div className="si-media-pills">
-                <div className={`si-media-pill ${mediaSubTab === 'media' ? 'active' : ''}`} onClick={() => setMediaSubTab('media')}>Media</div>
-                <div className={`si-media-pill ${mediaSubTab === 'files' ? 'active' : ''}`} onClick={() => setMediaSubTab('files')}>Files</div>
-                <div className={`si-media-pill ${mediaSubTab === 'links' ? 'active' : ''}`} onClick={() => setMediaSubTab('links')}>Links</div>
+                <div className={`si-media-pill ${mediaSubTab === 'media' ? 'active' : ''}`} onClick={() => setMediaSubTab('media')}>{t('gmedia_tab_media', 'Media')}</div>
+                <div className={`si-media-pill ${mediaSubTab === 'files' ? 'active' : ''}`} onClick={() => setMediaSubTab('files')}>{t('gmedia_tab_files', 'Files')}</div>
+                <div className={`si-media-pill ${mediaSubTab === 'links' ? 'active' : ''}`} onClick={() => setMediaSubTab('links')}>{t('gmedia_tab_links', 'Links')}</div>
             </div>
 
             <div className="si-media-content">
@@ -30,7 +32,7 @@ const GroupMediaTab = ({ messages, members }) => {
                                 </a>
                             ))}
                         </div>
-                    ) : <div className="si-vault-empty"><i className="fas fa-image"></i><p>No photos or videos yet.</p></div>
+                    ) : <div className="si-vault-empty"><i className="fas fa-image"></i><p>{t('gmedia_no_media', 'No photos or videos yet.')}</p></div>
                 )}
 
                 {mediaSubTab === 'files' && (
@@ -46,7 +48,7 @@ const GroupMediaTab = ({ messages, members }) => {
                                 </a>
                             ))}
                         </div>
-                    ) : <div className="si-vault-empty"><i className="fas fa-file-alt"></i><p>No documents shared yet.</p></div>
+                    ) : <div className="si-vault-empty"><i className="fas fa-file-alt"></i><p>{t('gmedia_no_files', 'No documents shared yet.')}</p></div>
                 )}
 
                 {mediaSubTab === 'links' && (
@@ -57,12 +59,12 @@ const GroupMediaTab = ({ messages, members }) => {
                                     <div className="si-vault-icon link"><i className="fas fa-link"></i></div>
                                     <div className="si-vault-info">
                                         <div className="si-vault-name link">{l.url}</div>
-                                        <div className="si-vault-meta">From {l.sender}</div>
+                                        <div className="si-vault-meta">{t('gmedia_from_sender', 'From {sender}').replace('{sender}', l.sender)}</div>
                                     </div>
                                 </a>
                             ))}
                         </div>
-                    ) : <div className="si-vault-empty"><i className="fas fa-link"></i><p>No links shared yet.</p></div>
+                    ) : <div className="si-vault-empty"><i className="fas fa-link"></i><p>{t('gmedia_no_links', 'No links shared yet.')}</p></div>
                 )}
             </div>
         </div>
