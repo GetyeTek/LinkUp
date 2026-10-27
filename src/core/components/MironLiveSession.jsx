@@ -203,7 +203,7 @@ const applyDOMHighlight = (root, searchText) => {
 };
 
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
-    const { sessionUser } = usePlatform();
+    const { sessionUser, t } = usePlatform();
     const [sessionId] = useState(() => crypto.randomUUID());
     const [viewState, setViewState] = useState('full');
     const [isConnected, setIsConnected] = useState(false);
@@ -1230,22 +1230,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     {stage === 'reading' ? (
                         <div className="ml-reading-header-controls">
                             <span className="ml-hdr-page-title">
-                                {selectedBook?.course_code || 'Book'}
+                                {selectedBook?.course_code || t('reader_book', 'Book')}
                                 {activePageNum ? ` • p.${activePageNum}` : (sectionPages[0]?.page_number ? ` • p.${sectionPages[0].page_number}` : '')}
                             </span>
                         </div>
                     ) : (
                         <span>
-                            {!isConnected ? 'Connecting to Miron...' :
-                             stage === 'course_select' ? 'Select a Course' : 
+                            {!isConnected ? t('miron_connecting', 'Connecting to Miron...') :
+                             stage === 'course_select' ? t('miron_what_studying_today', 'Select a Course') : 
                              stage === 'toc_select' ? (selectedBook?.course_code || selectedBook?.title) :
-                             'Ready to Study'}
+                             t('miron_ready_to_study', 'Ready to Study')}
                         </span>
                     )}
                     {isConnected && stage !== 'reading' && (
                         <span className="ml-voice-status-pill">
                             <i className="fas fa-headphones-simple"></i>
-                            <span>Live Voice</span>
+                            <span>{t('miron_live_voice', 'Live Voice')}</span>
                         </span>
                     )}
                 </div>
@@ -1286,7 +1286,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     </div>
                     {isConsulting && (
                         <span className="ml-consulting-badge">
-                            <i className="fas fa-circle-notch fa-spin"></i> Consulting textbook...
+                            <i className="fas fa-circle-notch fa-spin"></i> {t('miron_consulting_textbook', 'Consulting textbook...')}
                         </span>
                     )}
                 </div>
@@ -1295,8 +1295,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 {stage === 'course_select' && (
                     <div className="ml-stage-content course-grid-stage">
                         <div className="ml-stage-header">
-                            <h2>What are we studying today?</h2>
-                            <p>Tap a course to explore the curriculum out loud with Miron.</p>
+                            <h2>{t('miron_what_studying_today', 'What are we studying today?')}</h2>
+                            <p>{t('miron_select_course_desc', 'Tap a course to explore the curriculum out loud with Miron.')}</p>
                         </div>
                         {!isCatalogRevealed ? (
                             <div className="ml-courses-grid skeleton-grid">
@@ -1341,7 +1341,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
                                         <div className="ml-card-footer">
                                             <span className="ml-card-count">
-                                                {b.toc?.length ? `${b.toc.length} Chapters` : 'Curriculum Book'}
+                                                {b.toc?.length ? t('miron_chapters_in_syllabus', '{count} Chapters').replace('{count}', String(b.toc.length)) : t('curriculum_textbook', 'Curriculum Book')}
                                             </span>
                                             <span className="ml-card-arrow">
                                                 <i className="fas fa-arrow-right"></i>
@@ -1376,18 +1376,18 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                     <span className="ml-card-code-tag">{selectedBook.course_code || 'CURRICULUM'}</span>
                                     <h2 className="ml-showcase-title">{selectedBook.title}</h2>
                                     <p className="ml-showcase-meta">
-                                        {selectedBook.toc?.length ? `${selectedBook.toc.length} Chapters in Syllabus` : 'Official Curriculum Textbook'}
+                                        {selectedBook.toc?.length ? t('miron_chapters_in_syllabus', '{count} Chapters in Syllabus').replace('{count}', String(selectedBook.toc.length)) : t('curriculum_textbook', 'Official Curriculum Textbook')}
                                     </p>
                                     {stage === 'toc_select' && (
                                         <div className="ml-showcase-prompt-tip">
                                             <i className="fas fa-hand-pointer"></i>
-                                            <span>Pick a chapter on the right to reveal study topics</span>
+                                            <span>{t('miron_pick_chapter_prompt', 'Pick a chapter on the right to reveal study topics')}</span>
                                         </div>
                                     )}
                                     {stage === 'reading' && (
                                         <div className="ml-showcase-prompt-tip" style={{background: 'rgba(66, 215, 184, 0.1)', borderColor: 'rgba(66, 215, 184, 0.25)'}}>
                                             <i className="fas fa-book-open"></i>
-                                            <span>Reading Page {currentPage?.page_number || ''}</span>
+                                            <span>{t('miron_reading_page', 'Reading Page {page}').replace('{page}', String(currentPage?.page_number || ''))}</span>
                                         </div>
                                     )}
                                 </div>
@@ -1472,22 +1472,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                     ) : (
                                         <div className="ml-confirm-card">
                                             <span className="ml-confirm-tag">
-                                                <i className="fas fa-bookmark"></i> SELECTED TOPIC
+                                                <i className="fas fa-bookmark"></i> {t('miron_selected_topic', 'SELECTED TOPIC')}
                                             </span>
                                             <span className="ml-confirm-parent">{selectedSection.parentTitle}</span>
                                             <h2 className="ml-confirm-title">{selectedSection.title}</h2>
                                             <div className="ml-confirm-meta">
-                                                <span><i className="far fa-file-alt"></i> Starts on Page {selectedSection.page || 1}</span>
-                                                <span><i className="fas fa-bolt"></i> Co-Pilot Guided Session</span>
+                                                <span><i className="far fa-file-alt"></i> {t('miron_reading_page', 'Starts on Page {page}').replace('{page}', String(selectedSection.page || 1))}</span>
+                                                <span><i className="fas fa-bolt"></i> {t('miron_copilot_session', 'Co-Pilot Guided Session')}</span>
                                             </div>
 
                                             <p className="ml-confirm-blurb">
-                                                Miron will read through this section with you, breaking down concepts, formulas, and highlighting key sentences live as he explains them.
+                                                {t('miron_copilot_desc', 'Miron will read through this section with you, breaking down concepts, formulas, and highlighting key sentences live as he explains them.')}
                                             </p>
 
                                             <div className="ml-confirm-actions-row">
                                                 <button className="ml-btn-back-toc" onClick={() => setStage('toc_select')}>
-                                                    <i className="fas fa-chevron-left"></i> Change Topic
+                                                    <i className="fas fa-chevron-left"></i> {t('miron_change_topic', 'Change Topic')}
                                                 </button>
                                                 <button 
                                                     className="ml-start-grind-btn" 
@@ -1497,11 +1497,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                     {isLoadingPages ? (
                                                         <>
                                                             <i className="fas fa-circle-notch fa-spin"></i>
-                                                            <span>Preparing Session...</span>
+                                                            <span>{t('miron_preparing_session', 'Preparing Session...')}</span>
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <span>Start Reading with Miron</span>
+                                                            <span>{t('miron_start_reading_btn', 'Start Reading with Miron')}</span>
                                                             <i className="fas fa-arrow-right"></i>
                                                         </>
                                                     )}
@@ -1584,7 +1584,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 {/* Live Transcript Drawer */}
                 <div className={`ml-transcript-floating-drawer ${showTranscriptDrawer ? 'open' : ''}`}>
                     <div className="ml-tfd-header">
-                        <span><i className="fas fa-comment-dots"></i> Live Transcript</span>
+                        <span><i className="fas fa-comment-dots"></i> {t('miron_live_transcript', 'Live Transcript')}</span>
                         <button onClick={() => setShowTranscriptDrawer(false)}><i className="fas fa-times"></i></button>
                     </div>
                     <div className="ml-tfd-scroll" ref={transcriptRef}>
@@ -1594,11 +1594,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                     <div className="miron-credit-out-card live-mode">
                                         <div className="mcoc-header">
                                             <div className="mcoc-crown-badge"><i className="fas fa-crown"></i></div>
-                                            <span className="mcoc-title">LinkUp Gold Required</span>
+                                            <span className="mcoc-title">{t('miron_gold_required', 'LinkUp Gold Required')}</span>
                                         </div>
                                         <p className="mcoc-text">{t.text}</p>
                                         <button className="mcoc-upgrade-btn" onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}>
-                                            <i className="fas fa-bolt"></i> Upgrade to LinkUp Gold
+                                            <i className="fas fa-bolt"></i> {t('miron_upgrade_gold', 'Upgrade to LinkUp Gold')}
                                         </button>
                                     </div>
                                 ) : (
@@ -1619,7 +1619,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     <textarea 
                         ref={liveTextareaRef}
                         rows="1"
-                        placeholder={stage === 'reading' ? "Ask Miron about this page..." : "Type to Miron..."} 
+                        placeholder={stage === 'reading' ? t('miron_ask_about_page', 'Ask Miron about this page...') : t('miron_type_to_miron', 'Type to Miron...')} 
                         value={textInput}
                         onChange={e => setTextInput(e.target.value)}
                         onKeyDown={(e) => {
