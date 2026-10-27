@@ -45,7 +45,7 @@ const LiveStageSetupModal = ({
     isStartingLive,
     conversation_id
 }) => {
-    const { user: userProfile } = usePlatform();
+    const { user: userProfile, t } = usePlatform();
     const [books, setBooks] = useState([]);
     const [selectedBook, setSelectedBook] = useState(null);
     const [selectedNode, setSelectedNode] = useState(null);
