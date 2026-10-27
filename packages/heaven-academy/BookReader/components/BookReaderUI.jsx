@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './BookReaderUI.css';
 
 const BookReaderUI = ({
@@ -33,6 +34,7 @@ const BookReaderUI = ({
     activeVisualSheetIndex = 0,
     onJumpToVisualSheet
 }) => {
+    const { t } = usePlatform();
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
     useEffect(() => {
@@ -72,18 +74,18 @@ const BookReaderUI = ({
                     {/* Desktop Toolbar: Dynamically Hugs Book Right Shoulder */}
                     <div className="reader-desktop-tools" style={{ right: `${dynamicRight}px` }}>
                         <div className="reader-zoom-cluster">
-                            <button className="reader-zoom-btn" onClick={onZoomOut} title="Zoom Out">
+                            <button className="reader-zoom-btn" onClick={onZoomOut} title={t('reader_zoom_out', 'Zoom Out')}>
                                 <i className="fa-solid fa-minus"></i>
                             </button>
-                            <button className="reader-zoom-indicator" onClick={onZoomReset} title="Reset Zoom">
+                            <button className="reader-zoom-indicator" onClick={onZoomReset} title={t('reader_reset_zoom', 'Reset Zoom')}>
                                 {zoomDisplay || 100}%
                             </button>
-                            <button className="reader-zoom-btn" onClick={onZoomIn} title="Zoom In">
+                            <button className="reader-zoom-btn" onClick={onZoomIn} title={t('reader_zoom_in', 'Zoom In')}>
                                 <i className="fa-solid fa-plus"></i>
                             </button>
-                            <button className="reader-fit-btn" onClick={onZoomFit} title="Fit to Screen">
+                            <button className="reader-fit-btn" onClick={onZoomFit} title={t('reader_fit', 'Fit to Screen')}>
                                 <i className="fa-solid fa-arrows-left-right-to-line"></i>
-                                <span>Fit</span>
+                                <span>{t('reader_fit', 'Fit')}</span>
                             </button>
                         </div>
 
@@ -104,26 +106,26 @@ const BookReaderUI = ({
                                     <button 
                                         className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
                                         onClick={() => setViewMode('text')}
-                                        title="Book"
+                                        title={t('reader_book', 'Book')}
                                     >
                                         <i className="fas fa-book-open"></i>
-                                        <span className="variant-label">Book</span>
+                                        <span className="variant-label">{t('reader_book', 'Book')}</span>
                                     </button>
                                     <button 
                                         className={`variant-toggle-btn ${viewMode === 'visual_en' ? 'active' : ''}`}
                                         onClick={() => setViewMode('visual_en')}
-                                        title="English Note"
+                                        title={t('reader_english_note', 'English Note')}
                                     >
                                         <span className="variant-flag">🇬🇧</span>
-                                        <span className="variant-label">English Note</span>
+                                        <span className="variant-label">{t('reader_english_note', 'English Note')}</span>
                                     </button>
                                     <button 
                                         className={`variant-toggle-btn ${viewMode === 'visual_am' ? 'am-active' : ''}`}
                                         onClick={() => setViewMode('visual_am')}
-                                        title="Amharic Note"
+                                        title={t('reader_amharic_note', 'Amharic Note')}
                                     >
                                         <span className="variant-flag">🇪🇹</span>
-                                        <span className="variant-label">Amharic Note</span>
+                                        <span className="variant-label">{t('reader_amharic_note', 'Amharic Note')}</span>
                                     </button>
                                 </div>
                             );
@@ -134,18 +136,18 @@ const BookReaderUI = ({
                                 <button 
                                     className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
                                     onClick={() => setViewMode('text')}
-                                    title="Book"
+                                    title={t('reader_book', 'Book')}
                                 >
                                     <i className="fas fa-book-open"></i>
-                                    <span className="variant-label">Book</span>
+                                    <span className="variant-label">{t('reader_book', 'Book')}</span>
                                 </button>
                                 <button 
                                     className={`variant-toggle-btn ${isVisualActive ? (singleTarget === 'visual_am' ? 'am-active' : 'active') : ''}`}
                                     onClick={() => setViewMode(singleTarget)}
-                                    title={singleTarget === 'visual_am' ? 'Amharic Note' : 'English Note'}
+                                    title={singleTarget === 'visual_am' ? t('reader_amharic_note', 'Amharic Note') : t('reader_english_note', 'English Note')}
                                 >
                                     <span className="variant-flag">{singleTarget === 'visual_am' ? '🇪🇹' : '🇬🇧'}</span>
-                                    <span className="variant-label">{singleTarget === 'visual_am' ? 'Amharic Note' : 'English Note'}</span>
+                                    <span className="variant-label">{singleTarget === 'visual_am' ? t('reader_amharic_note', 'Amharic Note') : t('reader_english_note', 'English Note')}</span>
                                 </button>
                             </div>
                         );
@@ -153,7 +155,7 @@ const BookReaderUI = ({
                 </div>
 
                 <div className="ui-bar reader-footer">
-                    <div className="icon-btn" title="Table of Contents" onClick={() => setIsTocOpen(!isTocOpen)}>
+                    <div className="icon-btn" title={t('reader_contents', 'Table of Contents')} onClick={() => setIsTocOpen(!isTocOpen)}>
                         <i className="fa-solid fa-list"></i>
                     </div>
                     
@@ -215,9 +217,9 @@ const BookReaderUI = ({
                     )}
 
                     {viewMode !== 'text' ? (
-                        <div className="page-counter-btn visual-counter-pill" title="Active Visual Sheet">
+                        <div className="page-counter-btn visual-counter-pill" title={t('reader_sheet', 'Active Visual Sheet')}>
                             <i className="fas fa-sparkles" style={{ fontSize: '0.72rem', color: 'var(--accent, #42d7b8)' }}></i>
-                            <span className="counter-sheet-word">Sheet </span>
+                            <span className="counter-sheet-word">{t('reader_sheet', 'Sheet')} </span>
                             <span>{activeVisualSheetIndex + 1}</span>
                             <span className="counter-divider">/{visualSheets.length || '--'}</span>
                         </div>
