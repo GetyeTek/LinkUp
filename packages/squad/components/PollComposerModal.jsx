@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './PollComposerModal.css';
 
 const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
+    const { t } = usePlatform();
     const [question, setQuestion] = useState(initialPollData?.question || '');
     const [description, setDescription] = useState(initialPollData?.description || '');
     const [options, setOptions] = useState(initialPollData?.options?.map((text, i) => ({id: i + 1, text})) || [{ id: 1, text: '' }, { id: 2, text: '' }]);
@@ -87,11 +89,11 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
     // Button is deliberately kept enabled so the user can click it and see the guided validation error scroll
     const isValid = true;
 
-    return createPortal(
+            return createPortal(
         <div className="poll-composer-overlay" onClick={onClose}>
             <div className="poll-composer-sheet" onClick={e => e.stopPropagation()}>
                 <header className="poll-comp-header">
-                    <h2>{initialPollData ? 'Update Poll' : 'Create Poll'}</h2>
+                    <h2>{initialPollData ? t('poll_update_title', null, 'Update Poll') : t('poll_create_title', null, 'Create Poll')}</h2>
                     <button className="icon-button" style={{color: '#888'}} onClick={onClose}><i className="fas fa-times"></i></button>
                 </header>
 
@@ -104,17 +106,17 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                     )}
                     
                     <div className="pc-group">
-                        <label className="pc-label">Question</label>
-                        <input className="pc-input" type="text" placeholder="Ask a question..." value={question} onChange={e => setQuestion(e.target.value)} autoFocus />
+                        <label className="pc-label">{t('poll_q_label', null, 'Question')}</label>
+                        <input className="pc-input" type="text" placeholder={t('poll_q_placeholder', null, 'Ask a question...')} value={question} onChange={e => setQuestion(e.target.value)} autoFocus />
                     </div>
 
                     <div className="pc-group">
-                        <label className="pc-label" style={{color: '#888'}}>Description (Optional)</label>
-                        <input className="pc-input" type="text" placeholder="Add context or instructions..." value={description} onChange={e => setDescription(e.target.value)} />
+                        <label className="pc-label" style={{color: '#888'}}>{t('poll_desc_label', null, 'Description (Optional)')}</label>
+                        <input className="pc-input" type="text" placeholder={t('poll_desc_placeholder', null, 'Add context or instructions...')} value={description} onChange={e => setDescription(e.target.value)} />
                     </div>
 
                     <div className="pc-group">
-                        <label className="pc-label">Options</label>
+                        <label className="pc-label">{t('poll_opt_label', null, 'Options')}</label>
                         <div className="pc-options-list">
                             {options.map((opt, i) => (
                                 <div className="pc-option-row" key={opt.id}>
@@ -125,7 +127,7 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                                         className="pc-input" 
                                         style={{flex: 1}} 
                                         type="text" 
-                                        placeholder={`Option ${i + 1}`} 
+                                        placeholder={t('poll_opt_placeholder', null, 'Option {num}').replace('{num}', String(i + 1))} 
                                         value={opt.text} 
                                         onChange={e => handleUpdateOption(opt.id, e.target.value)} 
                                     />
@@ -136,12 +138,12 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                             ))}
                         </div>
                         {options.length < 10 && (
-                            <button className="pc-add-btn" onClick={handleAddOption}>+ Add Option</button>
+                            <button className="pc-add-btn" onClick={handleAddOption}>{t('poll_add_opt', null, '+ Add Option')}</button>
                         )}
                     </div>
 
                     <div className="pc-group">
-                        <label className="pc-label">Settings</label>
+                        <label className="pc-label">{t('poll_settings', null, 'Settings')}</label>
                         <div className="pc-settings-panel">
                             <div className="pc-setting-row" onClick={() => { 
                                 const next = !quizMode;
@@ -152,8 +154,8 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                                 }
                             }}>
                                 <div className="pc-setting-info">
-                                    <span className="pc-setting-title">Quiz Mode</span>
-                                    <span className="pc-setting-desc">Set a correct answer</span>
+                                    <span className="pc-setting-title">{t('poll_quiz_mode', null, 'Quiz Mode')}</span>
+                                    <span className="pc-setting-desc">{t('poll_quiz_desc', null, 'Set a correct answer')}</span>
                                 </div>
                                 <div className={`toggle-switch ${quizMode ? 'on' : 'off'}`}></div>
                             </div>
@@ -167,8 +169,8 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                                 }
                             }}>
                                 <div className="pc-setting-info">
-                                    <span className="pc-setting-title">Multiple Answers</span>
-                                    <span className="pc-setting-desc">Allow checking multiple options</span>
+                                    <span className="pc-setting-title">{t('poll_multi_ans', null, 'Multiple Answers')}</span>
+                                    <span className="pc-setting-desc">{t('poll_multi_desc', null, 'Allow checking multiple options')}</span>
                                 </div>
                                 <div className={`toggle-switch ${multipleAnswers ? 'on' : 'off'}`}></div>
                             </div>
@@ -178,23 +180,23 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                                 setAllowRevote(!allowRevote);
                             }}>
                                 <div className="pc-setting-info">
-                                    <span className="pc-setting-title">Allow Revoting</span>
-                                    <span className="pc-setting-desc">Users can change their answer</span>
+                                    <span className="pc-setting-title">{t('poll_allow_revote', null, 'Allow Revoting')}</span>
+                                    <span className="pc-setting-desc">{t('poll_allow_desc', null, 'Users can change their answer')}</span>
                                 </div>
                                 <div className={`toggle-switch ${allowRevote ? 'on' : 'off'} ${multipleAnswers ? 'disabled' : ''}`}></div>
                             </div>
 
                             <div className="pc-setting-row" style={{flexDirection: 'column', alignItems: 'stretch'}}>
                                 <div className="pc-setting-info">
-                                    <span className="pc-setting-title">Limit Duration</span>
-                                    <span className="pc-setting-desc">Poll ends automatically</span>
+                                    <span className="pc-setting-title">{t('poll_limit_dur', null, 'Limit Duration')}</span>
+                                    <span className="pc-setting-desc">{t('poll_limit_desc', null, 'Poll ends automatically')}</span>
                                 </div>
                                 <div className="pc-duration-pills">
-                                    <div className={`pc-duration-pill ${durationIdx === null ? 'active' : ''}`} onClick={() => setDurationIdx(null)}>Infinite</div>
+                                    <div className={`pc-duration-pill ${durationIdx === null ? 'active' : ''}`} onClick={() => setDurationIdx(null)}>{t('poll_infinite', null, 'Infinite')}</div>
                                     {durations.map((d, i) => (
                                         <div key={i} className={`pc-duration-pill ${durationIdx === i ? 'active' : ''}`} onClick={() => setDurationIdx(i)}>{d.label}</div>
                                     ))}
-                                    <div className={`pc-duration-pill ${durationIdx === 'custom' ? 'active' : ''}`} onClick={() => setDurationIdx('custom')}>Custom</div>
+                                    <div className={`pc-duration-pill ${durationIdx === 'custom' ? 'active' : ''}`} onClick={() => setDurationIdx('custom')}>{t('poll_custom', null, 'Custom')}</div>
                                 </div>
                                 {durationIdx === 'custom' && (
                                     <input 
@@ -210,7 +212,7 @@ const PollComposerModal = ({ onClose, onSendPoll, initialPollData }) => {
                     </div>
                 </div>
 
-                <button className="poll-submit-btn" disabled={!isValid} onClick={handleSubmit}>{initialPollData ? 'Update Poll' : 'Create Poll'}</button>
+                <button className="poll-submit-btn" disabled={!isValid} onClick={handleSubmit}>{initialPollData ? t('poll_update_title', null, 'Update Poll') : t('poll_create_title', null, 'Create Poll')}</button>
             </div>
         </div>,
         document.body
