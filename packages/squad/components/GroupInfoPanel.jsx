@@ -296,15 +296,15 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
                 {confirmLinkMode && (
                     <GenericConfirmModal
-                        title={confirmLinkMode === 'unlink' ? "Unlink Class" : "Link Official Class"}
+                        title={confirmLinkMode === 'unlink' ? t('confirm_unlink_title', null, 'Unlink Class') : t('confirm_link_title', null, 'Link Official Class')}
                         description={
-                            confirmLinkMode === 'unlink' ? "Are you sure you want to unlink this class? Your dashboard will no longer receive timeline deadlines and exam alerts from this group." :
-                            confirmLinkMode === 'overwrite' ? "You are currently linked to another class. Linking to this one will unsubscribe you from the previous class, and all your countdowns and announcements will be rerouted here. Proceed?" :
-                            `Link ${chatInfo.title} to your profile? This will synchronize all timeline deadlines, calendars, and exam alerts to your dashboard.`
+                            confirmLinkMode === 'unlink' ? t('confirm_unlink_desc', null, "Are you sure you want to unlink this class? Your dashboard will no longer receive timeline deadlines and exam alerts from this group.") :
+                            confirmLinkMode === 'overwrite' ? t('confirm_overwrite_desc', null, "You are currently linked to another class. Linking to this one will unsubscribe you from the previous class, and all your countdowns and announcements will be rerouted here. Proceed?") :
+                            t('confirm_link_desc', null, 'Link {name} to your profile? This will synchronize all timeline deadlines, calendars, and exam alerts to your dashboard.').replace('{name}', chatInfo.title)
                         }
                         onConfirm={executeLinkToggle}
                         onCancel={() => setConfirmLinkMode(null)}
-                        confirmText={confirmLinkMode === 'unlink' ? "Unlink" : "Link Class"}
+                        confirmText={confirmLinkMode === 'unlink' ? t('confirm_unlink_btn', null, "Unlink") : t('confirm_link_btn', null, "Link Class")}
                         isDanger={confirmLinkMode === 'unlink'}
                         isProcessing={isProcessing}
                     />
@@ -312,11 +312,11 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
                 {confirmLeave && (
                     <GenericConfirmModal
-                        title="Leave Group"
-                        description="Are you sure you want to leave this group? You will no longer receive messages or notifications."
+                        title={t('confirm_leave_title', null, 'Leave Group')}
+                        description={t('confirm_leave_desc', null, 'Are you sure you want to leave this group? You will no longer receive messages or notifications.')}
                         onConfirm={executeLeave}
                         onCancel={() => setConfirmLeave(false)}
-                        confirmText="Leave Group"
+                        confirmText={t('leave_group', null, 'Leave Group')}
                         isDanger={true}
                         isProcessing={isProcessing}
                     />
@@ -324,11 +324,11 @@ const GroupInfoPanel = ({ chatInfo, conversationId, currentUser, members, setMem
 
                 {confirmRevoke && (
                     <GenericConfirmModal
-                        title="Revoke Invitation Link"
-                        description="Are you sure you want to permanently revoke this secret link? Anyone attempting to use it will be blocked."
+                        title={t('confirm_revoke_title', null, 'Revoke Invitation Link')}
+                        description={t('confirm_revoke_desc', null, 'Are you sure you want to permanently revoke this secret link? Anyone attempting to use it will be blocked.')}
                         onConfirm={executeRevoke}
                         onCancel={() => setConfirmRevoke(false)}
-                        confirmText="Revoke Link"
+                        confirmText={t('confirm_revoke_btn', null, 'Revoke Link')}
                         isDanger={true}
                         isProcessing={isProcessing}
                     />
