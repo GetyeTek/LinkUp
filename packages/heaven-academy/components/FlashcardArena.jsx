@@ -28,7 +28,7 @@ const sanitizeCard = (c) => ({
 });
 
 const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
-    const { user: userProfile } = usePlatform();
+    const { user: userProfile, t } = usePlatform();
     const isProUser = Boolean(userProfile?.is_pro);
     const isVault = deck?.course_code === 'VAULT';
     const [chapters, setChapters] = useState([]);
@@ -251,7 +251,7 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                             <i className="fas fa-times"></i>
                         </button>
                         <span className="fca-counter">
-                            {loadingCards ? 'Loading...' : `Card ${cards.length > 0 ? currentIndex + 1 : 0} / ${cards.length}`}
+                            {loadingCards ? t('common_loading', 'Loading...') : t('flashcards_card_counter', 'Card {current} / {total}').replace('{current}', String(cards.length > 0 ? currentIndex + 1 : 0)).replace('{total}', String(cards.length))}
                         </span>
                         <div style={{ width: '36px' }}></div>
                     </header>
@@ -318,13 +318,13 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                                     />
 
                                     <div className="fca-tap-hint">
-                                        <i className="fas fa-rotate"></i> Tap card to reveal answer
+                                        <i className="fas fa-rotate"></i> {t('flashcards_tap_reveal', 'Tap card to reveal answer')}
                                     </div>
                                 </div>
 
                                 {/* BACK FACE */}
                                 <div className="fca-card-face back">
-                                    <span className="fca-back-label">Explanation & Answer</span>
+                                    <span className="fca-back-label">{t('flashcards_explanation_label', 'Explanation & Answer')}</span>
 
                                     <div 
                                         className="fca-answer-text" 
@@ -343,18 +343,18 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                     <footer className="fca-footer">
                         {cards.length === 0 || loadingCards ? null : !isFlipped ? (
                             <button className="fca-btn-flip" onClick={handleFlip}>
-                                <i className="fas fa-eye"></i> Show Answer
+                                <i className="fas fa-eye"></i> {t('flashcards_show_answer', 'Show Answer')}
                             </button>
                         ) : (
                             <div className="fca-srs-group">
                                 <button className="fca-btn-srs hard" onClick={() => handleRate('hard')}>
-                                    🔴 Hard
+                                    🔴 {t('flashcards_hard', 'Hard')}
                                 </button>
                                 <button className="fca-btn-srs good" onClick={() => handleRate('good')}>
-                                    🟡 Good
+                                    🟡 {t('flashcards_good', 'Good')}
                                 </button>
                                 <button className="fca-btn-srs easy" onClick={() => handleRate('easy')}>
-                                    🟢 Easy
+                                    🟢 {t('flashcards_easy', 'Easy')}
                                 </button>
                             </div>
                         )}
@@ -365,25 +365,25 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                     <div className="fca-trophy-orb">
                         <i className="fas fa-trophy"></i>
                     </div>
-                    <h2>Session Complete!</h2>
-                    <p>You have practiced {activePillObject?.label ? `all cards in ${activePillObject.label}` : 'this deck'}. Your spaced repetition schedule has been updated.</p>
+                    <h2>{t('flashcards_session_complete_title', 'Session Complete!')}</h2>
+                    <p>{t('flashcards_session_complete_desc', 'You have practiced all cards in this deck. Your spaced repetition schedule has been updated.')}</p>
 
                     <div className="fca-stats-pill">
                         <div className="fca-stat-col">
                             <span className="num">{cards.length}</span>
-                            <span className="lbl">Reviewed</span>
+                            <span className="lbl">{t('flashcards_reviewed_count', 'Reviewed')}</span>
                         </div>
                         <div className="fca-stat-col" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '16px' }}>
                             <span className="num" style={{ color: 'var(--accent-teal, #42d7b8)' }}>{stats.easy}</span>
-                            <span className="lbl">Easy</span>
+                            <span className="lbl">{t('flashcards_easy', 'Easy')}</span>
                         </div>
                         <div className="fca-stat-col" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '16px' }}>
                             <span className="num" style={{ color: '#f1c40f' }}>{stats.good}</span>
-                            <span className="lbl">Good</span>
+                            <span className="lbl">{t('flashcards_good', 'Good')}</span>
                         </div>
                         <div className="fca-stat-col" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '16px' }}>
                             <span className="num" style={{ color: '#ff5f5f' }}>{stats.hard}</span>
-                            <span className="lbl">Hard</span>
+                            <span className="lbl">{t('flashcards_hard', 'Hard')}</span>
                         </div>
                     </div>
 
@@ -392,11 +392,11 @@ const FlashcardArena = ({ deck, initialCards = [], onClose }) => {
                         setCurrentIndex(0);
                         setStats({ hard: 0, good: 0, easy: 0 });
                     }} style={{ marginBottom: '10px', background: 'rgba(255, 255, 255, 0.1)', color: '#fff' }}>
-                        Review Again
+                        {t('flashcards_review_again', 'Review Again')}
                     </button>
 
                     <button className="fca-btn-finish" onClick={onClose}>
-                        Return to Decks
+                        {t('flashcards_return_to_decks', 'Return to Decks')}
                     </button>
                 </main>
             )}
