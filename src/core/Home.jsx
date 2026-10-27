@@ -29,20 +29,20 @@ const Home = () => {
     const [selectedDeadline, setSelectedDeadline] = useState(null);
 
     const formatDeadlineCountdown = (dateString) => {
-        if (!dateString) return { num: 0, unit: 'hours left', isUrgent: false };
+        if (!dateString) return { num: 0, unit: t('common_hours_left', '{count} hours left').replace('{count}', '0'), isUrgent: false };
         const diffMs = new Date(dateString) - new Date();
         const diffHours = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
         const isUrgent = diffHours <= 24;
 
         if (diffHours >= 48) {
             const days = Math.ceil(diffHours / 24);
-            return { num: days, unit: days === 1 ? 'day left' : 'days left', isUrgent: false };
+            return { num: days, unit: t('common_days_left', '{count} days left').replace('{count}', String(days)), isUrgent: false };
         }
         if (diffHours > 0) {
-            return { num: diffHours, unit: diffHours === 1 ? 'hour left' : 'hours left', isUrgent };
+            return { num: diffHours, unit: t('common_hours_left', '{count} hours left').replace('{count}', String(diffHours)), isUrgent };
         }
         const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-        return { num: diffMins, unit: diffMins === 1 ? 'min left' : 'mins left', isUrgent: true };
+        return { num: diffMins, unit: t('common_mins_left', '{count} mins left').replace('{count}', String(diffMins)), isUrgent: true };
     };
 
     const formatChannelTitle = (name) => {
@@ -188,29 +188,27 @@ const Home = () => {
         // Dynamic Time-Slipped Gender-Aware Greeting Logic
         const currentHour = new Date().getHours();
         const userSex = userProfile?.sex || 'polite';
-        const isAm = (language === 'am');
 
         if (currentHour >= 0 && currentHour < 4) {
-            setGreeting(isAm ? t('greeting_midnight', userSex, 'እኩለ ሌሊት ጥናት ላይ ነህ') : 'Burning the midnight oil');
+            setGreeting(t('greeting_midnight', userSex, 'Burning the midnight oil'));
             setPunctuation('?');
         } else if (currentHour >= 4 && currentHour < 7) {
-            setGreeting(isAm ? t('greeting_early', userSex, 'ማለዳ ጀምረሃል') : 'Starting early');
+            setGreeting(t('greeting_early', userSex, 'Starting early'));
             setPunctuation('?');
         } else if (currentHour >= 7 && currentHour < 12) {
-            setGreeting(isAm ? t('greeting_morning', userSex, 'እንደምን አደርክ') : 'Good morning');
+            setGreeting(t('greeting_morning', userSex, 'Good morning'));
             setPunctuation('.');
         } else if (currentHour >= 12 && currentHour < 17) {
-            setGreeting(isAm ? t('greeting_afternoon', userSex, 'እንደምን ዋልክ') : 'Good afternoon');
+            setGreeting(t('greeting_afternoon', userSex, 'Good afternoon'));
             setPunctuation('.');
         } else if (currentHour >= 17 && currentHour < 21) {
-            setGreeting(isAm ? t('greeting_evening', userSex, 'እንደምን አመሸህ') : 'Good evening');
+            setGreeting(t('greeting_evening', userSex, 'Good evening'));
             setPunctuation('.');
         } else {
-            setGreeting(isAm ? t('greeting_late', userSex, 'ለነገ እየተዘጋጀህ ነው') : 'Preparing for tomorrow');
+            setGreeting(t('greeting_late', userSex, 'Preparing for tomorrow'));
             setPunctuation('?');
         }
-
-    }, []);
+    }, [language, userProfile?.sex]);
 
     // Global Desktop Keyboard Shortcut (Cmd/Ctrl + K to focus AI dock)
     useEffect(() => {
