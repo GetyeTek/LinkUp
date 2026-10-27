@@ -16,7 +16,11 @@ const Profile = () => {
     const [privacyTarget, setPrivacyTarget] = useState(null);
     const [editorHighlightTarget, setEditorHighlightTarget] = useState(null);
     
-    const handleLogout = async () => {
+    const handleLogout = async (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         await supabase.auth.signOut();
     };
 
