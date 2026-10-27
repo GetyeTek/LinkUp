@@ -299,6 +299,42 @@
 .theme-light .portal-card:hover {
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.09);
 }
+
+/* Premium Card Light Mode Overhaul (Profile Tab) */
+.theme-light .premium-portal-card {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fefce8 100%) !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15) !important;
+}
+
+.theme-light .premium-portal-card::before {
+    background: linear-gradient(135deg, #f59e0b, #d97706, #fbbf24);
+    opacity: 0.2;
+}
+
+.theme-light .premium-portal-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(245, 158, 11, 0.25) !important;
+}
+
+.theme-light .premium-portal-card .portal-title {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    color: transparent !important;
+    text-shadow: none !important;
+}
+
+.theme-light .premium-portal-card .portal-subtitle {
+    color: #92400e !important;
+    font-weight: 500 !important;
+}
+
+.theme-light .premium-portal-card .portal-window {
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.15), transparent) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+    color: #d97706 !important;
+}
 .theme-light .linkoin-balance-hero {
     background: var(--surface-dark);
     border-color: var(--border-color);
