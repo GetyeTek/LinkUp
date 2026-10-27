@@ -19,15 +19,16 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(14, 14, 18, 0.9);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--surface-dark);
     backdrop-filter: blur(15px);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .fcp-back-btn {
     background: transparent;
     border: none;
-    color: #fff;
+    color: var(--text-primary-dark);
     font-size: 1.2rem;
     cursor: pointer;
     display: flex;
@@ -38,6 +39,7 @@
     font-size: 1.2rem;
     font-weight: 600;
     margin: 0;
+    color: var(--text-primary-dark);
 }
 
 .fcp-scroll-body {
@@ -91,8 +93,8 @@
     flex-shrink: 0;
 }
 
-.fcp-mv-info h3 { font-size: 1rem; font-weight: 600; color: #fff; margin: 0; }
-.fcp-mv-info p { font-size: 0.78rem; color: #aaa; margin-top: 3px; line-height: 1.3; }
+.fcp-mv-info h3 { font-size: 1rem; font-weight: 600; color: var(--text-primary-dark); margin: 0; }
+.fcp-mv-info p { font-size: 0.78rem; color: var(--text-secondary-dark); margin-top: 3px; line-height: 1.3; }
 
 .fcp-badge-red {
     margin-left: auto;
@@ -108,18 +110,28 @@
 
 /* Course Deck Card */
 .fcp-deck-card {
-    background: #16161a;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
     border-radius: 18px;
     padding: 16px;
     display: flex;
     align-items: center;
     gap: 14px;
     cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     transition: all 0.25s ease;
 }
 .fcp-deck-card:hover { border-color: var(--accent-teal, #42d7b8); transform: translateY(-2px); }
 .fcp-deck-card:active { transform: scale(0.98); }
+
+.theme-light .fcp-deck-card {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .fcp-mistake-card {
+    background: linear-gradient(135deg, rgba(255, 95, 95, 0.1) 0%, #ffffff 100%);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
 
 /* Opening Feedback Animation */
 .fcp-deck-card.is-opening, .fcp-mistake-card.is-opening {
@@ -156,8 +168,8 @@
 
 .fcp-cdc-info { flex: 1; min-width: 0; }
 .fcp-cdc-code { font-family: 'Roboto Mono', monospace; font-size: 0.7rem; color: var(--accent-teal, #42d7b8); font-weight: 700; }
-.fcp-cdc-title { font-size: 0.95rem; font-weight: 600; color: #fff; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fcp-cdc-desc { font-size: 0.75rem; color: #888; }
+.fcp-cdc-title { font-size: 0.95rem; font-weight: 600; color: var(--text-primary-dark); margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fcp-cdc-desc { font-size: 0.75rem; color: var(--text-secondary-dark); }
 
 .fcp-badge-teal {
     background: rgba(66, 215, 184, 0.15);
