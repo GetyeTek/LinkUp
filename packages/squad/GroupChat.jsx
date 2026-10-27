@@ -1024,33 +1024,33 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
 
             {stopPollConfirm && (
                 <GenericConfirmModal
-                    title="Stop Poll"
-                    description="Are you sure you want to stop this poll? This action is irreversible and the poll will no longer accept votes."
+                    title={t('confirm_stop_poll_title', currentUser?.sex, 'Stop Poll')}
+                    description={t('confirm_stop_poll_desc', currentUser?.sex, 'Are you sure you want to stop this poll? This action is irreversible and the poll will no longer accept votes.')}
                     onConfirm={executeStopPoll}
                     onCancel={() => setStopPollConfirm(null)}
-                    confirmText="Stop Poll"
+                    confirmText={t('confirm_stop_poll_btn', currentUser?.sex, 'Stop Poll')}
                     isDanger={true}
                 />
             )}
 
             {deleteConfirm && (
                 <GenericConfirmModal
-                    title="Delete Message"
-                    description="Are you sure you want to permanently delete this message for everyone?"
+                    title={t('confirm_delete_msg_title', currentUser?.sex, 'Delete Message')}
+                    description={t('confirm_delete_msg_desc', currentUser?.sex, 'Are you sure you want to permanently delete this message for everyone?')}
                     onConfirm={confirmAndDelete}
                     onCancel={() => setDeleteConfirm(null)}
-                    confirmText="Delete Message"
+                    confirmText={t('confirm_delete_btn', currentUser?.sex, 'Purge Message')}
                     isDanger={true}
                 />
             )}
 
             {downloadConfirm && (
                 <GenericConfirmModal
-                    title="Bulk Download"
-                    description={`You are about to securely download ${downloadConfirm.length} files to your device.`}
+                    title={t('confirm_bulk_dl_title', currentUser?.sex, 'Bulk Download')}
+                    description={t('confirm_bulk_dl_desc', currentUser?.sex, 'You are about to securely download {count} files to your device.').replace('{count}', String(downloadConfirm.length))}
                     onConfirm={confirmAndDownloadAll}
                     onCancel={() => setDownloadConfirm(null)}
-                    confirmText="Download All"
+                    confirmText={t('confirm_dl_all', currentUser?.sex, 'Download All')}
                     isDanger={false}
                 />
             )}
