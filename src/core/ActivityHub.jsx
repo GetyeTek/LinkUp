@@ -3,7 +3,7 @@ import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './ActivityHub.css';
 
 const ActivityHub = ({ onClose }) => {
-    const { shell, sessionUser } = usePlatform();
+    const { shell, sessionUser, user, t } = usePlatform();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -46,20 +46,20 @@ const ActivityHub = ({ onClose }) => {
         <div className="activity-overlay" onClick={onClose}>
             <div className="pulse-container" onClick={e => e.stopPropagation()}>
                 <header className="pulse-header" style={{ justifyContent: 'flex-start', gap: '1.5rem', alignItems: 'center' }}>
-                    <button className="icon-button" onClick={onClose} style={{ color: 'white' }}>
+                    <button className="icon-button" onClick={onClose}>
                         <i className="fas fa-chevron-left"></i>
                     </button>
-                    <h1 style={{ margin: 0, paddingBottom: '2px' }}>Activity</h1>
+                    <h1 style={{ margin: 0, paddingBottom: '2px', color: 'var(--text-primary-dark)' }}>{t('activity_title', user?.sex, 'Activity')}</h1>
                 </header>
 
                 <main className="pulse-scroll">
-                    <div className="pulse-section-label">Recent Activity</div>
+                    <div className="pulse-section-label">{t('activity_recent', user?.sex, 'Recent Activity')}</div>
                     {loading ? (
-                        <div style={{textAlign: 'center', padding: '2rem', color: '#888'}}><i className="fas fa-circle-notch fa-spin"></i> Synchronizing...</div>
+                        <div style={{textAlign: 'center', padding: '2rem', color: '#888'}}><i className="fas fa-circle-notch fa-spin"></i> {t('activity_syncing', user?.sex, 'Synchronizing...')}</div>
                     ) : notifications.length === 0 ? (
                         <div style={{textAlign: 'center', padding: '3rem', color: '#666'}}>
                             <i className="fas fa-bell-slash" style={{fontSize: '2rem', marginBottom: '1rem'}}></i>
-                            <p>No new activity right now.</p>
+                            <p>{t('activity_empty', user?.sex, 'No new activity right now.')}</p>
                         </div>
                     ) : notifications.map(n => (
                         <div key={n.id} className={`pulse-item type-${n.type} ${!n.is_read ? 'unread' : ''}`}>
@@ -74,7 +74,7 @@ const ActivityHub = ({ onClose }) => {
                                     <div className="miron-insight-box">"{n.insight}"</div>
                                 )}
                                 <div className="p-action-row">
-                                    <button className="p-btn primary" onClick={() => handleAction(n)}>View</button>
+                                    <button className="p-btn primary" onClick={() => handleAction(n)}>{t('activity_view', user?.sex, 'View')}</button>
                                 </div>
                             </div>
                         </div>
