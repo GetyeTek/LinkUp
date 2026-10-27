@@ -1588,22 +1588,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         <button onClick={() => setShowTranscriptDrawer(false)}><i className="fas fa-times"></i></button>
                     </div>
                     <div className="ml-tfd-scroll" ref={transcriptRef}>
-                        {transcripts.map(t => (
-                            <div key={t.id} className={`ml-bubble-wrap ${t.role}`}>
-                                {t.isBroke ? (
+                        {transcripts.map(item => (
+                            <div key={item.id} className={`ml-bubble-wrap ${item.role}`}>
+                                {item.isBroke ? (
                                     <div className="miron-credit-out-card live-mode">
                                         <div className="mcoc-header">
                                             <div className="mcoc-crown-badge"><i className="fas fa-crown"></i></div>
                                             <span className="mcoc-title">{t('miron_gold_required', 'LinkUp Gold Required')}</span>
                                         </div>
-                                        <p className="mcoc-text">{t.text}</p>
+                                        <p className="mcoc-text">{item.text}</p>
                                         <button className="mcoc-upgrade-btn" onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}>
                                             <i className="fas fa-bolt"></i> {t('miron_upgrade_gold', 'Upgrade to LinkUp Gold')}
                                         </button>
                                     </div>
                                 ) : (
                                     <div className="ml-bubble">
-                                        {t.text || <span className="ml-typing-dots">...</span>}
+                                        {item.text || <span className="ml-typing-dots">...</span>}
                                     </div>
                                 )}
                             </div>
