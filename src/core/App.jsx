@@ -630,9 +630,9 @@ const App = () => {
       {showOfflineBanner && (
           <div className={`global-offline-banner ${!isOffline ? 'restored' : ''}`}>
               {isOffline ? (
-                  <><i className="fas fa-wifi-slash"></i> <span>Offline. Waiting for network...</span></>
+                  <><i className="fas fa-wifi-slash"></i> <span>{t('common_offline', 'Offline. Waiting for network...')}</span></>
               ) : (
-                  <><i className="fas fa-wifi" style={{color: '#42d7b8'}}></i> <span style={{color: '#42d7b8'}}>Connection restored.</span></>
+                  <><i className="fas fa-wifi" style={{color: '#42d7b8'}}></i> <span style={{color: '#42d7b8'}}>{t('common_connection_restored', 'Connection restored.')}</span></>
               )}
               <button className="close-btn" onClick={() => setShowOfflineBanner(false)}><i className="fas fa-times"></i></button>
           </div>
@@ -682,10 +682,10 @@ const App = () => {
                       <i className="fas fa-pause"></i>
                   </div>
                   <h3 style={{ margin: '0 0 8px 0', fontSize: '1.3rem', color: '#fff', fontWeight: 700 }}>
-                      Active on Another Device
+                      {t('device_active_another_title', 'Active on Another Device')}
                   </h3>
                   <p style={{ margin: '0 0 1.75rem 0', fontSize: '0.88rem', color: '#aaa', lineHeight: 1.5 }}>
-                      Your account is currently active on <strong>{leaseConflict}</strong>. To protect your study data and prevent simultaneous account sharing, sessions are single-stream.
+                      {t('device_active_another_desc', 'Your account is currently active on {device}. To protect your study data and prevent simultaneous account sharing, sessions are single-stream.').replace('{device}', leaseConflict)}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
                       <button 
@@ -707,7 +707,7 @@ const App = () => {
                               fontFamily: 'Poppins, sans-serif'
                           }}
                       >
-                          Resume on this Device
+                          {t('device_resume_here', 'Resume on this Device')}
                       </button>
                       <button 
                           onClick={async () => {
@@ -727,7 +727,7 @@ const App = () => {
                               fontFamily: 'Poppins, sans-serif'
                           }}
                       >
-                          Sign Out
+                          {t('device_sign_out', 'Sign Out')}
                       </button>
                   </div>
               </div>
@@ -741,9 +741,11 @@ const App = () => {
                   <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255, 171, 64, 0.15)', color: '#ffab40', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 1.25rem' }}>
                       <i className="fas fa-mobile-screen"></i>
                   </div>
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#fff' }}>Transfer Primary Phone?</h3>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#fff' }}>
+                      {t('device_transfer_title', 'Transfer Primary Phone?')}
+                  </h3>
                   <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.88rem', color: '#aaa', lineHeight: 1.5 }}>
-                      Your primary phone is currently <strong>{primaryTransferPrompt}</strong>. Setting this phone as your active device will disconnect your old phone.
+                      {t('device_transfer_desc', 'Your primary phone is currently {device}. Setting this phone as your active device will disconnect your old phone.').replace('{device}', primaryTransferPrompt)}
                   </p>
                   <div style={{ display: 'flex', gap: '10px' }}>
                       <button 
@@ -753,7 +755,7 @@ const App = () => {
                           }}
                           style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: '#aaa', fontWeight: 600, cursor: 'pointer' }}
                       >
-                          Cancel
+                          {t('common_cancel', 'Cancel')}
                       </button>
                       <button 
                           onClick={async () => {
@@ -761,7 +763,7 @@ const App = () => {
                           }}
                           style={{ flex: 1, padding: '12px', background: 'var(--accent-teal)', border: 'none', borderRadius: '12px', color: '#000', fontWeight: 700, cursor: 'pointer' }}
                       >
-                          Switch Phone
+                          {t('device_switch_phone', 'Switch Phone')}
                       </button>
                   </div>
               </div>
