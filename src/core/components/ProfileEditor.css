@@ -133,6 +133,36 @@
 }
 .pe-dropdown-summary:hover { background: rgba(128, 128, 128, 0.06); }
 .pe-dropdown-summary.expanded { border-color: var(--accent-teal); }
+
+/* Selection Modal Options */
+.sm-option-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-primary-dark);
+    transition: all 0.2s ease;
+}
+.sm-option-row:hover { background: rgba(128, 128, 128, 0.08); }
+.sm-option-row.active {
+    background: rgba(66, 215, 184, 0.1);
+    border-color: var(--accent-teal);
+    color: var(--accent-teal);
+    font-weight: 600;
+}
+.theme-light .sm-option-row {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.theme-light .sm-option-row.active {
+    background: rgba(13, 148, 136, 0.12);
+}
 .pe-dropdown-summary .is-empty { color: var(--text-secondary-dark); }
 .pe-dropdown-summary .has-value { color: var(--text-primary-dark); font-weight: 600; }
 
