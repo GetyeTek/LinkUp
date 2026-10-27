@@ -51,7 +51,7 @@ const renderMathText = (content) => {
 };
 
 const InlineChatQuiz = ({ quiz, onSubmit }) => {
-    const { sessionUser } = usePlatform();
+    const { sessionUser, t } = usePlatform();
     const [answers, setAnswers] = useState({});
     const [submitted, setSubmitted] = useState(false);
 
@@ -118,7 +118,7 @@ const InlineChatQuiz = ({ quiz, onSubmit }) => {
                     </div>
                 ))}
                 <button className="mq-submit-btn" disabled={submitted} onClick={handleSubmit}>
-                    {submitted ? 'Submitted' : 'Submit'} <i className="fas fa-check"></i>
+                    {submitted ? t('quiz_submitted', null, 'Submitted') : t('quiz_submit', null, 'Submit')} <i className="fas fa-check"></i>
                 </button>
             </div>
         </div>
