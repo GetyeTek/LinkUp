@@ -654,9 +654,9 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             {kickedNotice && (
                 <div className="kicked-overlay">
                     <i className="fas fa-user-slash"></i>
-                    <h2>Access Revoked</h2>
-                    <p>You have been removed or banned from this group by an administrator.</p>
-                    <button className="cm-btn-primary" onClick={onClose}>Return to Hub</button>
+                    <h2>{t('connect_access_revoked_title', 'Access Revoked')}</h2>
+                    <p>{t('connect_access_revoked_desc', 'You have been removed or banned from this group by an administrator.')}</p>
+                    <button className="cm-btn-primary" onClick={onClose}>{t('connect_return_to_hub', 'Return to Hub')}</button>
                 </div>
             )}
 
@@ -799,17 +799,17 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                     <div className="live-banner-left">
                         <div className="pulse-indicator"></div>
                         <div className="live-banner-text">
-                            <div>Study Session is Live</div>
-                            <div>{localChatInfo.metadata?.live_topic ? `${localChatInfo.metadata.live_topic} • ` : ''}Join stage</div>
+                            <div>{t('live_stage_is_live', 'Study Session is Live')}</div>
+                            <div>{localChatInfo.metadata?.live_topic ? `${localChatInfo.metadata.live_topic} • ` : ''}{t('live_stage_join', 'Join Stage')}</div>
                         </div>
                     </div>
                     {isMeHost ? (
                         <button className="join-stage-action-btn" onClick={startLiveSession} disabled={isStartingLive}>
-                            {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Resume Stage'}
+                            {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : t('live_stage_resume', 'Resume Stage')}
                         </button>
                     ) : (
                         <button className="join-stage-action-btn" onClick={joinLiveSession} disabled={isStartingLive}>
-                            {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Stage'}
+                            {isStartingLive ? <i className="fas fa-circle-notch fa-spin"></i> : t('live_stage_join', 'Join Stage')}
                         </button>
                     )}
                 </div>
@@ -819,9 +819,9 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 <div className="pinned-msg-banner" style={{background: 'rgba(66, 215, 184, 0.1)', borderBottom: '1px solid rgba(66, 215, 184, 0.3)', cursor: 'default'}}>
                     <div className="pinned-bar"></div>
                     <div className="pinned-info">
-                        <div className="pinned-title" style={{color: '#fff', fontSize: '0.85rem'}}>Unlinked Class</div>
+                        <div className="pinned-title" style={{color: '#fff', fontSize: '0.85rem'}}>{t('connect_unlinked_class_title', 'Unlinked Class')}</div>
                         <div className="pinned-snippet" style={{color: '#aaa', whiteSpace: 'normal', lineHeight: 1.3}}>
-                            Link this as your official class group to track deadlines and exams?
+                            {t('connect_unlinked_class_desc', 'Link this as your official class group to track deadlines and exams?')}
                         </div>
                     </div>
                     <div className="toggle-switch off" style={{ flexShrink: 0, marginLeft: '12px' }} onClick={() => {
@@ -835,14 +835,14 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                 <div className="pinned-msg-banner" onClick={() => scrollToMessage(localChatInfo.metadata.pinned_message.id)}>
                     <div className="pinned-bar"></div>
                     <div className="pinned-info">
-                        <div className="pinned-title">Pinned Message</div>
+                        <div className="pinned-title">{t('pinned_message', 'Pinned Message')}</div>
                         <div className="pinned-snippet">
                             <span className="pinned-author">{localChatInfo.metadata.pinned_message.sender_name}:</span>
                             <span className="pinned-text">{localChatInfo.metadata.pinned_message.text}</span>
                         </div>
                     </div>
                     {(myRole === 'owner' || myRole === 'admin') && (
-                        <button className="icon-button pinned-close-btn" onClick={(e) => { e.stopPropagation(); handleUnpinMessage(); }} title="Unpin message">
+                        <button className="icon-button pinned-close-btn" onClick={(e) => { e.stopPropagation(); handleUnpinMessage(); }} title={t('unpin_message', 'Unpin message')}>
                             <i className="fas fa-times"></i>
                         </button>
                     )}
@@ -977,7 +977,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
             {chat.is_preview && !isMember ? (
                 <div style={{ padding: '0 1.5rem calc(1rem + env(safe-area-inset-bottom))', background: 'linear-gradient(to top, #08080c 80%, transparent)' }}>
                     <button className="squad-join-full-btn" onClick={() => onJoin(chat.conversation_id)} disabled={isJoining}>
-                        {isJoining ? <i className="fas fa-circle-notch fa-spin"></i> : 'Join Squad'}
+                        {isJoining ? <i className="fas fa-circle-notch fa-spin"></i> : t('connect_join_squad', 'Join Squad')}
                     </button>
                 </div>
             ) : (
@@ -1007,7 +1007,7 @@ const GroupChat = ({ chat, currentUser, isHidden, targetMessageId, onClose, onMi
                             </div>
                         ) : (!isLoading && !canPost) ? (
                             <div className="squad-muted-notice" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: '#aaa', justifyContent: 'center' }}>
-                                <i className="fas fa-lock"></i> Only admins can send messages right now.
+                                <i className="fas fa-lock"></i> {t('connect_admins_only_posting', 'Only admins can send messages right now.')}
                             </div>
                         ) : null
                     }
