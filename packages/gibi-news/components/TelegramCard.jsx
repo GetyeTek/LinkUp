@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './TelegramCard.css';
 
 const formatChannelName = (channel) => {
@@ -8,6 +9,7 @@ const formatChannelName = (channel) => {
 };
 
 const TelegramCard = ({ post, onImageClick }) => {
+    const { t } = usePlatform();
     const [expanded, setExpanded] = useState(false);
     const [imgError, setImgError] = useState(false);
     const cardRef = useRef(null);
@@ -57,17 +59,17 @@ const TelegramCard = ({ post, onImageClick }) => {
                 </div>
                 {!expanded && isLong && (
                     <button className="tc-show-more" onClick={() => setExpanded(true)}>
-                        Show more <i className="fas fa-chevron-down"></i>
+                        {t('news_show_more', 'Show more')} <i className="fas fa-chevron-down"></i>
                     </button>
                 )}
                 <div className="tc-footer">
                     <div className="tc-reference">
                         <i className="fa-solid fa-quote-left" style={{fontSize: '0.6rem'}}></i>
-                        Ref: {formatChannelName(post.channel)}
+                        {t('news_ref', 'Ref:')} {formatChannelName(post.channel)}
                     </div>
                     <div className="tc-footer-bottom">
                         <a href={post.post_url} target="_blank" rel="noreferrer" className="tc-link">
-                            <i className="fab fa-telegram"></i> Full Post
+                            <i className="fab fa-telegram"></i> {t('news_full_post', 'Full Post')}
                         </a>
                         <span className="tc-time">{new Date(post.telegram_timestamp).toLocaleString([], {month: 'short', day: 'numeric', hour: 'numeric', minute:'2-digit', hour12: true})}</span>
                     </div>
