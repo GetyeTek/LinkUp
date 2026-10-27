@@ -184,13 +184,34 @@ const MironMessageNode = React.memo(({ m, copiedId, handleCopyMessage, handleInl
     );
 });
 
-const MironChat = ({ onClose, initialContext, autoSend = false, preloadedHistory = null, initialTitle = null, initialCourseCode = null }) => {
-    const autoSentRef = useRef(false);
-    const { sessionUser, user: userProfile, updateUserProfile } = usePlatform();
+const MironChat = ({ 
+    isOpen = false, 
+    onClose, 
+    contextPayload = null, 
+    onClearContext = null,
+    initialContext = null, 
+    autoSend = false, 
+    preloadedHistory = null, 
+    initialTitle = null, 
+    initialCourseCode = null 
+}) => {
+    const { sessionUser, user: userProfile } = usePlatform();
     const [avatarError, setAvatarError] = useState(false);
     const mironAvatarUrl = "https://linkup-gateway.getyeteklu2.workers.dev/storage/v1/object/public/avatars/Miron/20260706_101739.png";
 
-    // Multi-Thread States
+    // Desktop Environment Detection
+    const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 900);
+
+    useEffect(() => {
+        const handleResize = () => {
+            const desk = window.innerWidth >= 900;
+            setIsDesktop(desk);
+            if (desk) setIsSidebarOpen(true);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // Multi-Thread States
     const [threads, setThreads] = useState([]);
     const [activeThread, setActiveThread] = useState(null);
@@ -205,6 +226,7 @@ const MironChat = ({ onClose, initialContext, autoSend = false, preloadedHistory
     const isAutoScrollEnabled = useRef(true);
     const touchStartY = useRef(0);
     const mironTextareaRef = useRef(null);
+    const prevContextKeyRef = useRef(null);
 
     useEffect(() => {
         if (mironTextareaRef.current) {
@@ -306,13 +328,55 @@ const MironChat = ({ onClose, initialContext, autoSend = false, preloadedHistory
         initThreads();
     }, [sessionUser?.id]);
 
-    // Auto-Send query from Home Dock (Waits for initialization to finish)
+    // Ingest Dynamic Context Payload (Passage Study, Book Quotes, or Home Dock Inquiries) without unmounting
     useEffect(() => {
-        if (autoSend && initialContext && !autoSentRef.current && !isTyping && !isLoadingMessages && !preloadedHistory) {
-            autoSentRef.current = true;
-            sendMessage(initialContext);
+        if (!contextPayload || contextPayload.key === prevContextKeyRef.current || !sessionUser?.id) return;
+        prevContextKeyRef.current = contextPayload.key;
+
+        const { text, autoSend: shouldAutoSend, preloadedHistory: history, title, courseCode } = contextPayload;
+
+        if (history && history.length > 0) {
+            const threadTitle = title || "Passage Study";
+            supabase
+                .from('miron_threads')
+                .insert({
+                    user_id: sessionUser.id,
+                    title: threadTitle,
+                    course_code: courseCode || null
+                })
+                .select()
+                .single()
+                .then(async ({ data: newThread, error: tErr }) => {
+                    if (!tErr && newThread) {
+                        setActiveThread(newThread);
+                        setThreads(prev => [newThread, ...prev]);
+
+                        const dbMessages = history.map(m => ({
+                            thread_id: newThread.id,
+                            user_id: sessionUser.id,
+                            role: m.side === 'miron' ? 'miron' : 'user',
+                            text: m.text
+                        }));
+                        await supabase.from('miron_messages').insert(dbMessages);
+
+                        setMessages(history.map((m, i) => ({
+                            id: m.id || (Date.now() + i),
+                            side: m.side === 'miron' ? 'miron' : 'user',
+                            text: m.text
+                        })));
+                        setIsLoadingMessages(false);
+                    }
+                });
+        } else if (text) {
+            if (shouldAutoSend) {
+                sendMessage(text);
+            } else {
+                setInput(text);
+            }
         }
-    }, [autoSend, initialContext, isTyping, isLoadingMessages, preloadedHistory]);
+
+        onClearContext?.();
+    }, [contextPayload, sessionUser?.id]);
 
     const handleCopyMessage = (msgId, rawText) => {
         if (!rawText) return;
@@ -745,11 +809,11 @@ const MironChat = ({ onClose, initialContext, autoSend = false, preloadedHistory
     };
 
     return (
-        <div className="miron-chat-overlay">
+        <div className={`miron-chat-overlay ${isOpen ? 'is-open' : 'is-hidden'}`}>
             <div className="athena-bg"></div>
 
             <MironThreadSidebar 
-                isOpen={isSidebarOpen}
+                isOpen={isDesktop ? true : isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
                 threads={threads}
                 activeThreadId={activeThread?.id}
@@ -765,7 +829,12 @@ const MironChat = ({ onClose, initialContext, autoSend = false, preloadedHistory
             <div className="athena-chat-stage">
                 <header className="athena-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <button className="athena-close" onClick={onClose} style={{ background: 'transparent' }}>
+                    <button 
+                        className="athena-close" 
+                        onClick={onClose} 
+                        style={{ background: 'transparent' }} 
+                        title={isDesktop ? "Close Chat" : "Back"}
+                    >
                         <i className="fas fa-chevron-left"></i>
                     </button>
                     <button className="athena-sidebar-toggle" onClick={() => setIsSidebarOpen(true)} title="Chat History">
