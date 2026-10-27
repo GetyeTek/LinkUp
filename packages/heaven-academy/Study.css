@@ -3,8 +3,8 @@
 .notification-badge { position: absolute; top: -2px; right: -4px; background-color: var(--accent-teal); color: var(--bg-dark); border-radius: 50%; min-width: 18px; height: 18px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--bg-dark); box-shadow: 0 0 8px rgba(66, 215, 184, 0.5); }
 .study-hub-view { --cyber-gold: #b1d34b; position: relative; display: flex; height: 100%; flex-direction: column; width: 100%;}
 .study-hub-content { flex-grow: 1; overflow-y: auto; }
-.study-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; flex-shrink: 0; z-index: 20; position: sticky; top: 0; background-color: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); transition: background-color 0.3s ease, border-color 0.3s ease; }
-.study-header h2 { font-size: 1.8rem; font-weight: 700; color: var(--text-primary-dark); }
+.study-header { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; min-height: 52px; flex-shrink: 0; z-index: 20; position: sticky; top: 0; background-color: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); transition: background-color 0.3s ease, border-color 0.3s ease; }
+.study-header h2 { font-size: 1.5rem; font-weight: 700; color: var(--text-primary-dark); margin: 0; }
 .library-preview-wrapper { position: relative; cursor: pointer; }
 .preview-shelf-inner {
     height: 220px;
@@ -399,7 +399,7 @@
 .vignette-bg { background-color: #3E2723; background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('https://www.transparenttextures.com/patterns/wood-pattern.png'); position: relative; }
 .pt-4 { padding-top: 1.5rem; }
 .fullscreen-header { background-color: var(--surface-dark); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px); z-index: 30; flex-shrink: 0; transition: background-color 0.3s ease, border-color 0.3s ease; }
-.header-main-row { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1rem; gap: 8px; color: var(--text-primary-dark); }
+.header-main-row { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; min-height: 52px; gap: 8px; color: var(--text-primary-dark); }
 .header-main-row .icon-button { color: var(--text-primary-dark); }
 .header-title-wrapper { display: flex; align-items: center; gap: 4px; cursor: pointer; }
 .header-title-wrapper h2 { font-family: 'Poppins', sans-serif; color: var(--text-primary-dark); font-size: 1.125rem; font-weight: 700; }
