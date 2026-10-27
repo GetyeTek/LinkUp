@@ -11,7 +11,7 @@ import { useChatInputState } from './hooks/useChatInputState.js';
 import './UserChat.css';
 
 const UserChat = ({ chat, currentUser, isHidden, isOnline, targetMessageId, onClose, onForward, onOriginClick, onOpenUser }) => {
-    const { user: userProfile } = usePlatform();
+    const { user: userProfile, t } = usePlatform();
     const [activeConvId, setActiveConvId] = useState(chat.conversation_id);
     const [messages, setMessages] = useState([]);
     const [isLoadingMsgs, setIsLoadingMsgs] = useState(!!chat.conversation_id);
