@@ -17,15 +17,15 @@
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Floating Top Utility Bar */
+/* Top Utility Bar Docked Directly Over Modal */
 .auth-top-bar {
-    position: absolute;
-    top: max(14px, env(safe-area-inset-top, 14px));
-    right: 16px;
-    z-index: 100;
+    width: 100%;
     display: flex;
+    justify-content: flex-end;
     align-items: center;
     gap: 8px;
+    margin-bottom: 8px;
+    z-index: 20;
 }
 
 .auth-util-btn {
@@ -132,10 +132,7 @@
     transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Institutional Side Panel (Desktop Portal Style - Strictly Not a Marketing Page) */
-.auth-institutional-panel {
-    display: none;
-}
+
 
 /* Premium Frosted Glass Card */
 .auth-card {
@@ -889,113 +886,7 @@
     background: #23252a;
 }
 
-/* ==============================================================================
-   DESKTOP INSTITUTIONAL PORTAL WORKSTATION (>= 960px)
-   ============================================================================== */
-@media (min-width: 960px) {
-    .auth-portal-frame {
-        max-width: 900px;
-        flex-direction: row;
-        align-items: stretch;
-        background: rgba(14, 14, 18, 0.85);
-        backdrop-filter: blur(35px);
-        -webkit-backdrop-filter: blur(35px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 28px;
-        overflow: hidden;
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
-    }
 
-    .auth-institutional-panel {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        flex: 1;
-        padding: 3rem 2.5rem;
-        background: linear-gradient(160deg, rgba(20, 20, 26, 0.95) 0%, rgba(12, 12, 15, 0.98) 100%);
-        border-right: 1px solid rgba(255, 255, 255, 0.06);
-        text-align: left;
-    }
-
-    .aip-emblem-wrap {
-        width: 52px;
-        height: 52px;
-        border-radius: 14px;
-        background: rgba(66, 215, 184, 0.12);
-        border: 1px solid rgba(66, 215, 184, 0.3);
-        color: var(--accent-teal, #42d7b8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        margin-bottom: 1.25rem;
-        box-shadow: 0 0 25px rgba(66, 215, 184, 0.2);
-    }
-
-    .aip-sub-title {
-        font-size: 0.72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: var(--accent-teal, #42d7b8);
-        margin-bottom: 4px;
-    }
-
-    .aip-main-title {
-        font-family: 'Newsreader', serif;
-        font-size: 2.2rem;
-        font-weight: 600;
-        color: #fff;
-        line-height: 1.15;
-        margin: 0;
-    }
-
-    .aip-divider {
-        width: 40px;
-        height: 2px;
-        background: var(--accent-teal, #42d7b8);
-        margin: 1.25rem 0;
-        border-radius: 2px;
-    }
-
-    .aip-description {
-        font-size: 0.86rem;
-        color: #aaa;
-        line-height: 1.6;
-        margin-bottom: 1.5rem;
-        max-width: 340px;
-    }
-
-    .aip-badge-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .aip-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: #ddd;
-    }
-
-    .aip-badge i {
-        color: var(--accent-teal, #42d7b8);
-        font-size: 0.8rem;
-    }
-
-    .auth-card {
-        flex: 1.1;
-        max-width: none;
-        border: none;
-        border-radius: 0;
-        background: transparent;
-        box-shadow: none;
-        padding: 3rem 2.5rem;
-    }
-}
 
 /* Commitment Note styling for Auth and Onboarding */
 .commitment-note {
@@ -1190,28 +1081,7 @@
     color: #0284c7;
 }
 
-.theme-light .auth-institutional-panel {
-    background: linear-gradient(160deg, #f8fafc 0%, #e2e8f0 100%);
-    border-right-color: rgba(0, 0, 0, 0.08);
-}
 
-.theme-light .aip-main-title {
-    color: #0f172a;
-}
-
-.theme-light .aip-description {
-    color: #475569;
-}
-
-.theme-light .aip-badge {
-    color: #334155;
-}
-
-.theme-light .auth-portal-frame {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.1);
-}
 
 .theme-light .consortium-label {
     color: #64748b;
