@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, getCachedBookCover } from '@linkup-platform/sdk-core';
+import { supabase, getCachedBookCover, usePlatform } from '@linkup-platform/sdk-core';
 import FlashcardArena from './FlashcardArena.jsx';
 import './FlashcardPavilion.css';
 
 const FlashcardPavilion = ({ onClose }) => {
+    const { theme } = usePlatform();
+    const isLight = theme === 'light';
     const [stats, setStats] = useState({ mistakes_due: 0, course_decks: [] });
     const [activeSession, setActiveSession] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -145,7 +147,9 @@ const FlashcardPavilion = ({ onClose }) => {
                                 className={`fcp-deck-card ${openingDeckId === d.course_code ? 'is-opening' : ''}`} 
                                 onClick={() => handleStartCourse(d.course_code, d.title)}
                                 style={deckCover ? {
-                                    backgroundImage: `linear-gradient(135deg, rgba(14, 14, 18, 0.70) 0%, rgba(10, 10, 14, 0.84) 100%), url("${deckCover}")`,
+                                    backgroundImage: `${isLight 
+                                        ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(240, 242, 245, 0.94) 100%)' 
+                                        : 'linear-gradient(135deg, rgba(14, 14, 18, 0.70) 0%, rgba(10, 10, 14, 0.84) 100%)'}, url("${deckCover}")`,
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center'
                                 } : {}}
