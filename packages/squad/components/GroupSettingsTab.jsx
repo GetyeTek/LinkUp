@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import { invokeSocial } from '../api.js';
 
 const GroupSettingsTab = ({ chatInfo, conversationId, onUpdateInfo, onDisband, isProcessing, setIsProcessing, setAlertNotice, cleanBase }) => {
+    const { t } = usePlatform();
     const [editTitle, setEditTitle] = useState(chatInfo.title || '');
     const [nameStatus, setNameStatus] = useState('idle');
     const [nameError, setNameError] = useState('');
@@ -107,7 +108,7 @@ const GroupSettingsTab = ({ chatInfo, conversationId, onUpdateInfo, onDisband, i
         <>
             <div className="si-settings">
                 <div className="si-settings-group">
-                    <label className="si-label">Group Name</label>
+                    <label className="si-label">{t('gs_name_label', 'Group Name')}</label>
                     <div className="si-input-wrapper">
                         <input 
                             type="text" 
@@ -121,23 +122,23 @@ const GroupSettingsTab = ({ chatInfo, conversationId, onUpdateInfo, onDisband, i
                         <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', minHeight: '30px' }}>
                             {editTitle !== chatInfo.title && (
                                 <button className="si-save-slug-btn" onClick={updateSquadName} disabled={nameStatus === 'saving' || !editTitle.trim()}>
-                                    {nameStatus === 'saving' ? 'Saving...' : 'Save Name'}
+                                    {nameStatus === 'saving' ? 'Saving...' : t('gs_save_name', 'Save Name')}
                                 </button>
                             )}
                             {nameStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> {nameError}</span>}
-                            {nameStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Name updated!</span>}
+                            {nameStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> {t('gs_name_updated', 'Name updated!')}</span>}
                         </div>
                     )}
                 </div>
 
                 <div className="si-settings-group">
-                    <label className="si-label">Group Description / Rules</label>
+                    <label className="si-label">{t('gs_desc_label', 'Group Description / Rules')}</label>
                     <div className="si-input-wrapper">
                         <textarea 
                             className="si-textarea" 
                             value={editBio} 
                             onChange={e => { setEditBio(e.target.value); setBioStatus('idle'); }} 
-                            placeholder="What is this group about?"
+                            placeholder={t('gs_desc_placeholder', 'What is this group about?')}
                             maxLength={500}
                             rows={3}
                         />
@@ -146,18 +147,18 @@ const GroupSettingsTab = ({ chatInfo, conversationId, onUpdateInfo, onDisband, i
                         <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', minHeight: '30px' }}>
                             {editBio !== (chatInfo.metadata?.bio || '') && (
                                 <button className="si-save-slug-btn" onClick={updateSquadBio} disabled={bioStatus === 'saving' || editBio.trim() === (chatInfo.metadata?.bio || '')}>
-                                    {bioStatus === 'saving' ? 'Saving...' : 'Save Description'}
+                                    {bioStatus === 'saving' ? 'Saving...' : t('gs_save_desc', 'Save Description')}
                                 </button>
                             )}
                             {bioStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> Failed</span>}
-                            {bioStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Saved!</span>}
+                            {bioStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> {t('gs_saved', 'Saved!')}</span>}
                         </div>
                     )}
                 </div>
 
                 {chatInfo.metadata?.privacy !== 'private' && (
                 <div className="si-settings-group">
-                    <label className="si-label">Group Link Handle</label>
+                    <label className="si-label">{t('gs_handle_label', 'Group Link Handle')}</label>
                     <div className="si-slug-container">
                         <span className="si-slug-prefix">{cleanBase}?sq=</span>
                         <input 
@@ -172,11 +173,11 @@ const GroupSettingsTab = ({ chatInfo, conversationId, onUpdateInfo, onDisband, i
                         <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', minHeight: '30px' }}>
                             {editSlug !== (chatInfo.metadata?.slug || '') && (
                                 <button className="si-save-slug-btn" onClick={updateSquadSlug} disabled={slugStatus === 'saving' || !editSlug.trim()}>
-                                    {slugStatus === 'saving' ? 'Saving...' : 'Save Handle'}
+                                    {slugStatus === 'saving' ? 'Saving...' : t('gs_save_handle', 'Save Handle')}
                                 </button>
                             )}
                             {slugStatus === 'error' && <span style={{ color: '#ff5f5f', fontSize: '0.8rem' }}><i className="fas fa-exclamation-triangle"></i> {slugError}</span>}
-                            {slugStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> Handle updated!</span>}
+                            {slugStatus === 'success' && <span style={{ color: '#42d7b8', fontSize: '0.8rem', animation: 'fadeIn 0.3s ease' }}><i className="fas fa-check-circle"></i> {t('gs_handle_updated', 'Handle updated!')}</span>}
                         </div>
                     )}
                 </div>
@@ -184,8 +185,8 @@ const GroupSettingsTab = ({ chatInfo, conversationId, onUpdateInfo, onDisband, i
 
                 <div className="si-settings-row" onClick={() => setPrivacyModal(true)}>
                     <div className="sr-info">
-                        <h4>Privacy Status</h4>
-                        <p>{chatInfo.metadata?.privacy === 'public' ? 'Anyone can find and join' : 'Invite only'}</p>
+                        <h4>{t('gs_privacy_status', 'Privacy Status')}</h4>
+                        <p>{chatInfo.metadata?.privacy === 'public' ? t('gs_public_sub', 'Anyone can find and join') : t('gs_private_sub', 'Invite only')}</p>
                     </div>
                     <div className="sr-val">{chatInfo.metadata?.privacy || 'public'} <i className="fas fa-chevron-right"></i></div>
                 </div>
@@ -193,10 +194,10 @@ const GroupSettingsTab = ({ chatInfo, conversationId, onUpdateInfo, onDisband, i
                 <hr style={{border:'none', borderTop:'1px solid rgba(255,255,255,0.05)', margin:'2rem 0'}}/>
 
                 <div className="si-settings-group">
-                    <label className="si-label" style={{color:'#ff5f5f'}}>Danger Zone</label>
-                    <p style={{fontSize:'0.8rem', color:'#888', marginBottom:'1rem'}}>Deleting this group will permanently remove all associated messages, files, and links. This action is irreversible.</p>
+                    <label className="si-label" style={{color:'#ff5f5f'}}>{t('gs_danger_zone', 'Danger Zone')}</label>
+                    <p style={{fontSize:'0.8rem', color:'#888', marginBottom:'1rem'}}>{t('gs_delete_warning', 'Deleting this group will permanently remove all associated messages, files, and links. This action is irreversible.')}</p>
                     <button className="si-disband-btn" onClick={() => setDisbandModal(true)}>
-                        <i className="fas fa-triangle-exclamation"></i> Delete Group
+                        <i className="fas fa-triangle-exclamation"></i> {t('gs_delete_group_btn', 'Delete Group')}
                     </button>
                 </div>
             </div>
