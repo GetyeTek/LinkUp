@@ -15,8 +15,8 @@
 
 /* Fullscreen Overlay for "Add Member" */
 .si-fullscreen-overlay { position: fixed; inset: 0; z-index: 8000; background: var(--bg-dark); display: flex; flex-direction: column; animation: slideUpScreen 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-.si-fs-header { padding: 1.2rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: var(--glass-bg); }
-.si-fs-header h2 { font-size: 1.2rem; font-weight: 600; margin: 0; color: var(--text-primary-dark); }
+.si-fs-header { padding: 0.6rem 1rem; min-height: 52px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: var(--surface-dark); }
+.si-fs-header h2 { font-size: 1.15rem; font-weight: 600; margin: 0; color: var(--text-primary-dark); }
 .si-fs-body { flex: 1; overflow-y: auto; padding: 1.5rem; }
 
 /* Media Tab (Pills & Grid) */
