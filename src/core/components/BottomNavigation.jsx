@@ -11,7 +11,7 @@ const tabIndex = {
 };
 
 const BottomNavigation = ({ activeTab, setActiveTab, hasActiveLive = false }) => {
-    const { t } = usePlatform();
+    const { t, user } = usePlatform();
 
     return (
         <footer className="navigation-magic">
@@ -31,7 +31,7 @@ const BottomNavigation = ({ activeTab, setActiveTab, hasActiveLive = false }) =>
                 >
                     <a>
                         <span className="icon"><i className="fas fa-home"></i></span>
-                        <span className="text">{t('nav_home', 'Home')}</span>
+                        <span className="text">{t('nav_home', user?.sex, 'Home')}</span>
                     </a>
                 </li>
                 
@@ -41,7 +41,7 @@ const BottomNavigation = ({ activeTab, setActiveTab, hasActiveLive = false }) =>
                 >
                     <a>
                         <span className="icon"><i className="fas fa-compass"></i></span>
-                        <span className="text">{t('nav_discover', 'Discover')}</span>
+                        <span className="text">{t('nav_discover', user?.sex, 'Discover')}</span>
                     </a>
                 </li>
 
@@ -51,7 +51,7 @@ const BottomNavigation = ({ activeTab, setActiveTab, hasActiveLive = false }) =>
                 >
                     <a>
                         <span className="icon"><i className="fas fa-book-open"></i></span>
-                        <span className="text">{t('nav_study', 'Study')}</span>
+                        <span className="text">{t('nav_study', user?.sex, 'Study')}</span>
                     </a>
                 </li>
 
@@ -68,7 +68,7 @@ const BottomNavigation = ({ activeTab, setActiveTab, hasActiveLive = false }) =>
                                 </span>
                             )}
                         </span>
-                        <span className="text">{t('nav_connect', 'Connect')}</span>
+                        <span className="text">{t('nav_connect', user?.sex, 'Connect')}</span>
                     </a>
                 </li>
 
@@ -78,7 +78,7 @@ const BottomNavigation = ({ activeTab, setActiveTab, hasActiveLive = false }) =>
                 >
                     <a>
                         <span className="icon"><i className="fas fa-user"></i></span>
-                        <span className="text">{t('nav_profile', 'Profile')}</span>
+                        <span className="text">{t('nav_profile', user?.sex, 'Profile')}</span>
                     </a>
                 </li>
             </nav>
