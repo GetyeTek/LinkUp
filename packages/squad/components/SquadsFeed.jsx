@@ -113,7 +113,7 @@ const SquadsFeed = ({
                                         </span>
                                     </div>
                                     <div className="message-info">
-                                        <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff' }}>
+                                        <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary-dark)' }}>
                                             {chat.title} 
                                             <span className="squad-type-pill class-pill"><i className="fas fa-graduation-cap"></i> CLASS</span>
                                             {chat.relevance_score >= 10 ? (
@@ -192,7 +192,7 @@ const SquadsFeed = ({
                                         </span>
                                     </div>
                                     <div className="message-info">
-                                        <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff' }}>
+                                        <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary-dark)' }}>
                                             {chat.title} 
                                             <span className="squad-type-pill squad-pill"><i className="fas fa-layer-group"></i> {chat.metadata?.focus || 'SQUAD'}</span>
                                         </div>
