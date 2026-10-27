@@ -1,20 +1,15 @@
-/* --- MY NOTES UI (Clean & Friendly) --- */
+/* --- MY NOTES UI (Clean & Adaptive) --- */
 .notes-overlay {
     position: fixed;
     inset: 0;
     z-index: 2500;
-    background-color: #f7f7f8;
-    color: #1a1a1a;
+    background-color: var(--bg-dark);
+    color: var(--text-primary-dark);
     font-family: 'Poppins', sans-serif;
     display: flex;
     flex-direction: column;
     animation: slideUpNotes 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Dark mode fallback if the app wrapper forces it */
-:root .notes-overlay {
-    background-color: #121212;
-    color: #e0e0e0;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 @keyframes slideUpNotes {
@@ -27,10 +22,11 @@
     align-items: center;
     justify-content: space-between;
     padding: 1rem 1.5rem;
-    background: rgba(18, 18, 18, 0.95);
+    background: var(--surface-dark);
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    color: white;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary-dark);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .notes-title-box {
@@ -43,7 +39,7 @@
     width: 38px;
     height: 38px;
     border-radius: 10px;
-    background: #42d7b8;
+    background: var(--accent-teal);
     color: #000;
     display: flex;
     align-items: center;
@@ -51,8 +47,8 @@
     font-size: 1.1rem;
 }
 
-.notes-header h2 { font-size: 1.1rem; font-weight: 600; margin: 0; }
-.notes-header p { font-size: 0.75rem; color: #aaa; margin: 0; }
+.notes-header h2 { font-size: 1.1rem; font-weight: 600; margin: 0; color: var(--text-primary-dark); }
+.notes-header p { font-size: 0.75rem; color: var(--text-secondary-dark); margin: 0; }
 
 .notes-flow {
     flex: 1;
