@@ -540,23 +540,23 @@ const Home = () => {
 
 
             {selectedDeadline && (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }} onClick={() => setSelectedDeadline(null)}>
-                    <div style={{ background: 'var(--surface-dark)', border: '1px solid var(--border-color)', borderRadius: '24px', width: '100%', maxWidth: '400px', padding: '1.75rem', boxShadow: '0 25px 60px rgba(0,0,0,0.6)', animation: 'popModal 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', animation: 'fadeIn 0.2s ease-out' }} onClick={() => setSelectedDeadline(null)}>
+                    <div style={{ background: 'var(--surface-dark)', border: '1px solid var(--border-color)', borderRadius: '24px', width: '100%', maxWidth: '400px', padding: '1.75rem', boxShadow: '0 25px 60px rgba(0,0,0,0.3)', animation: 'popModal 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                             <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, color: 'var(--accent-teal)', background: 'rgba(66, 215, 184, 0.12)', padding: '3px 8px', borderRadius: '6px' }}>
                                 {formatChannelTitle(selectedDeadline.channel_name || selectedDeadline.event_type)}
                             </span>
-                            <button className="icon-button" style={{ width: '30px', height: '30px', color: '#888' }} onClick={() => setSelectedDeadline(null)}>
+                            <button className="icon-button" style={{ width: '30px', height: '30px', color: 'var(--text-secondary-dark)' }} onClick={() => setSelectedDeadline(null)}>
                                 <i className="fas fa-times"></i>
                             </button>
                         </div>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', margin: '0 0 10px 0', lineHeight: 1.3 }}>{selectedDeadline.title}</h3>
-                        <p style={{ fontSize: '0.88rem', color: '#ccc', lineHeight: 1.6, margin: '0 0 1.5rem 0', whiteSpace: 'pre-wrap' }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary-dark)', margin: '0 0 10px 0', lineHeight: 1.3 }}>{selectedDeadline.title}</h3>
+                        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary-dark)', lineHeight: 1.6, margin: '0 0 1.5rem 0', whiteSpace: 'pre-wrap' }}>
                             {selectedDeadline.description || 'No additional details provided.'}
                         </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
                             <i className="far fa-clock" style={{ color: 'var(--accent-teal)' }}></i>
-                            <span style={{ fontSize: '0.82rem', color: '#eee', fontFamily: 'Roboto Mono, monospace', fontWeight: 600 }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--text-primary-dark)', fontFamily: 'Roboto Mono, monospace', fontWeight: 600 }}>
                                 {formatEventDisplayDate(selectedDeadline.event_date)}
                             </span>
                         </div>
