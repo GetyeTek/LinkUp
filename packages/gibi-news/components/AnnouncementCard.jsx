@@ -1,7 +1,9 @@
 import React from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './AnnouncementCard.css';
 
 const AnnouncementCard = ({ event, onAction, onImageClick }) => {
+    const { t } = usePlatform();
     const isHigh = (event.weight ?? 10) > 80;
 
     return (
@@ -32,11 +34,11 @@ const AnnouncementCard = ({ event, onAction, onImageClick }) => {
                 <div className="ac-tag-row">
                     <span className="ac-tag" style={{ color: event.tag_color || 'var(--accent-teal)' }}>
                         <i className="fa-solid fa-bullhorn" style={{ marginRight: '6px' }}></i>
-                        {event.tag_text || 'Campus Announcement'}
+                        {event.tag_text || t('announcement_campus', 'Campus Announcement')}
                     </span>
                     {isHigh && (
                         <span className="ac-weight-badge">
-                            <i className="fa-solid fa-bolt"></i> Priority
+                            <i className="fa-solid fa-bolt"></i> {t('announcement_priority', 'Priority')}
                         </span>
                     )}
                 </div>
