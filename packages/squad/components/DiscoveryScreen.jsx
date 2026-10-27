@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, getAvatarFallback } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback, usePlatform } from '@linkup-platform/sdk-core';
 import './DiscoveryScreen.css';
 
 const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) => {
+    const { t } = usePlatform();
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -21,7 +22,7 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) =>
                 <button className="icon-button" onClick={onClose} style={{color: 'var(--text-primary-dark)'}}>
                     <i className="fas fa-chevron-left"></i>
                 </button>
-                <h2>Discover Peers</h2>
+                <h2>{t('discovery_peers_title', 'Discover Peers')}</h2>
                 <button className="icon-button" onClick={onOpenSearch} style={{color: 'var(--text-primary-dark)'}}>
                     <i className="fas fa-search"></i>
                 </button>
@@ -31,14 +32,14 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) =>
                 <div className="add-friend-trigger" onClick={onOpenSearch}>
                     <div className="icon-box"><i className="fas fa-search"></i></div>
                     <div>
-                        <div style={{fontSize: '1rem'}}>Global Search</div>
-                        <div style={{fontSize: '0.75rem', color: '#888', fontWeight: '400'}}>Find users or public groups</div>
+                        <div style={{fontSize: '1rem'}}>{t('discovery_global_search', 'Global Search')}</div>
+                        <div style={{fontSize: '0.75rem', color: '#888', fontWeight: '400'}}>{t('discovery_find_prompt', 'Find users or public groups')}</div>
                     </div>
                 </div>
 
                 {suggestions.length > 0 && (
                     <div className="suggestion-section">
-                        <h3 className="section-title" style={{marginBottom: '0.5rem'}}>Suggested Classmates</h3>
+                        <h3 className="section-title" style={{marginBottom: '0.5rem'}}>{t('discovery_suggested_classmates', 'Suggested Classmates')}</h3>
                         {suggestions.map(user => (
                             <div className="peer-card" key={user.id} onClick={() => onStartChat(user)}>
                                 <img src={user.avatar_url || getAvatarFallback(user.full_name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(user.full_name); }} className="peer-avatar" alt="Avatar" />
@@ -46,7 +47,7 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) =>
                                     <div className="peer-name">{user.full_name}</div>
                                     <div className="peer-meta">
                                         <span className={`peer-tier-badge tier-${user.tier}`}>
-                                            {user.tier === 1 ? 'Classmate' : user.tier === 2 ? 'Campus' : 'Global'}
+                                            {user.tier === 1 ? t('discovery_tier_classmate', 'Classmate') : user.tier === 2 ? t('discovery_tier_campus', 'Campus') : t('discovery_tier_global', 'Global')}
                                         </span>
                                         <span>@{user.username}</span>
                                     </div>
@@ -59,7 +60,7 @@ const DiscoveryScreen = ({ currentUser, onClose, onStartChat, onOpenSearch }) =>
                 
                 {!loading && suggestions.length === 0 && (
                     <div style={{textAlign: 'center', color: '#666', marginTop: '2rem', fontStyle: 'italic'}}>
-                        No new suggestions right now.
+                        {t('discovery_empty', 'No new suggestions right now.')}
                     </div>
                 )}
             </div>
