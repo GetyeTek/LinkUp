@@ -681,6 +681,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                     onSheetsLoaded={(loadedSheets) => setVisualSheets(loadedSheets)}
                     onActiveSheetChange={(idx) => setActiveVisualSheetIndex(idx)}
                     targetSheetIndex={targetVisualSheetIndex}
+                    currentTheme={currentTheme}
                 />
             )}
 
