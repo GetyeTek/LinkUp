@@ -67,7 +67,7 @@
 
 /* Mistake Vault Card */
 .fcp-mistake-card {
-    background: linear-gradient(135deg, rgba(255, 95, 95, 0.12) 0%, rgba(22, 22, 26, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(255, 95, 95, 0.12) 0%, var(--surface-dark) 100%);
     border: 1px solid rgba(255, 95, 95, 0.35);
     border-radius: 20px;
     padding: 16px 18px;
