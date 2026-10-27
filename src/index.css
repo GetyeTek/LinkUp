@@ -298,7 +298,8 @@ body.library-open { overflow: hidden; }
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    padding: 0.65rem 1.25rem 0.25rem; 
+    padding: 0.5rem 1rem 0.25rem; 
+    min-height: 52px;
 }
 .app-header .welcome-text h1 { 
     font-size: 1.35rem; 
@@ -791,8 +792,8 @@ body.library-open { overflow: hidden; }
 .fullscreen-overlay.is-active { opacity: 1; pointer-events: auto; clip-path: circle(120% at 50% 50%); }
 .overlay-content { height: 100%; overflow-y: auto; }
 .overlay-content::-webkit-scrollbar { display: none; }
-.overlay-header { position: sticky; top: 0; z-index: 20; display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: var(--surface-dark); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); transition: background-color 0.3s ease, border-color 0.3s ease; }
-.overlay-title { font-size: 1.25rem; font-weight: 600; color: var(--text-primary-dark); }
+.overlay-header { position: sticky; top: 0; z-index: 20; display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 1rem; min-height: 52px; background: var(--surface-dark); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); transition: background-color 0.3s ease, border-color 0.3s ease; }
+.overlay-title { font-size: 1.15rem; font-weight: 600; color: var(--text-primary-dark); }
 .close-btn { background: none; border: none; color: var(--text-primary-dark); font-size: 1.5rem; cursor: pointer; }
 
 .theme-light .overlay-header {
