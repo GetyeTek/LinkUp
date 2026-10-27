@@ -61,12 +61,55 @@
 /* --- HIGH-FIDELITY ACCOUNT EDITOR FIXES --- */
 .profile-edit-overlay .input-group-sm input,
 .profile-edit-overlay .wizard-select {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
+    background: var(--surface-dark);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary-dark);
     padding: 14px 16px;
     border-radius: 12px;
     transition: all 0.2s ease;
+}
+
+.theme-light .profile-edit-overlay .input-group-sm input,
+.theme-light .profile-edit-overlay .wizard-select {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary-dark);
+}
+
+.theme-light .sex-card {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+    color: var(--text-primary-dark);
+}
+
+.theme-light .sex-card:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+.theme-light .sex-card.active {
+    background: rgba(13, 148, 136, 0.12);
+    border-color: var(--accent-teal);
+    color: var(--accent-teal);
+}
+
+.theme-light .pe-dropdown-summary {
+    background: #ffffff;
+    border-color: var(--border-color);
+}
+
+.theme-light .pe-dropdown-summary .has-value {
+    color: var(--text-primary-dark);
+}
+
+.theme-light .ui-textarea {
+    background: #ffffff;
+    border-color: var(--border-color);
+    color: var(--text-primary-dark);
+}
+
+.theme-light .ui-textarea:focus {
+    background: #ffffff;
 }
 
 .profile-edit-overlay .input-group-sm input:focus,
