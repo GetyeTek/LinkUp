@@ -1,8 +1,8 @@
 /* --- FULL SCREEN DISCOVERY & SEARCH --- */
 .discovery-screen { position: fixed; inset: 0; z-index: 5000; background: var(--bg-dark); display: flex; flex-direction: column; animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes slideInUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.discovery-header { padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border-color); background: var(--surface-dark); backdrop-filter: blur(10px); transition: background-color 0.3s ease, border-color 0.3s ease; }
-.discovery-header h2 { font-size: 1.2rem; font-weight: 600; flex: 1; margin: 0; color: var(--text-primary-dark); }
+.discovery-header { padding: 0.6rem 1rem; min-height: 52px; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border-color); background: var(--surface-dark); backdrop-filter: blur(10px); transition: background-color 0.3s ease, border-color 0.3s ease; }
+.discovery-header h2 { font-size: 1.15rem; font-weight: 600; flex: 1; margin: 0; color: var(--text-primary-dark); }
 
 .theme-light .peer-card {
     background: var(--surface-dark);
