@@ -219,14 +219,19 @@
         animation: none !important;
         height: 100% !important;
         flex-shrink: 0 !important;
+        display: flex !important;
     }
 
     .mts-drawer {
-        width: 320px !important;
-        max-width: 340px !important;
+        width: 300px !important;
+        max-width: 320px !important;
         background: rgba(14, 14, 18, 0.98) !important;
         border-right: 1px solid var(--border-color) !important;
         box-shadow: none !important;
         animation: none !important;
+    }
+
+    .mts-close-btn {
+        display: none !important;
     }
 }
