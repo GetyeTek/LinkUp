@@ -397,7 +397,7 @@
     clip-path: inset(0% 0% 0% 0%); 
 }
 .vignette-bg { background-color: #3E2723; background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('https://www.transparenttextures.com/patterns/wood-pattern.png'); position: relative; }
-.pt-4 { padding-top: 1.5rem; }
+.pt-4 { padding-top: 0.5rem; }
 .fullscreen-header { background-color: var(--surface-dark); border-bottom: 1px solid var(--border-color); backdrop-filter: blur(10px); z-index: 30; flex-shrink: 0; transition: background-color 0.3s ease, border-color 0.3s ease; }
 .header-main-row { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; min-height: 52px; gap: 8px; color: var(--text-primary-dark); }
 .header-main-row .icon-button { color: var(--text-primary-dark); }
@@ -406,8 +406,8 @@
 .header-title-wrapper .chevron-icon { font-size: 1.25rem; transition: transform 0.3s ease; }
 .header-title-wrapper.expanded .chevron-icon { transform: rotate(180deg); }
 .filter-pills-container { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease; padding: 0 1rem; }
-.filter-pills-container.expanded { max-height: 100px; opacity: 1; padding: 0.5rem 1rem 1rem; }
-.library-filters { padding: 0.5rem 0 1rem; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.filter-pills-container.expanded { max-height: 60px; opacity: 1; padding: 0 1rem 0.5rem; }
+.library-filters { padding: 0.25rem 0 0.5rem; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; }
 .library-filters::-webkit-scrollbar { display: none; }
 .library-filters .chip { 
     cursor: pointer; 
