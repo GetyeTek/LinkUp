@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './MironThreadSidebar.css';
 
 const cleanThreadTitle = (rawTitle) => {
@@ -25,6 +26,7 @@ const MironThreadSidebar = ({
 }) => {
     if (!isOpen) return null;
 
+    const { t } = usePlatform();
     const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 900;
 
     const handleSelect = (t) => {
@@ -44,9 +46,9 @@ const MironThreadSidebar = ({
         const diffInMins = Math.floor((now - date) / 60000);
         const diffInHours = Math.floor(diffInMins / 60);
 
-        if (diffInMins < 1) return 'Just now';
-        if (diffInMins < 60) return `${diffInMins}m ago`;
-        if (diffInHours < 24) return `${diffInHours}h ago`;
+        if (diffInMins < 1) return t('common_just_now', 'Just now');
+        if (diffInMins < 60) return t('common_minutes_ago', '{m}m ago').replace('{m}', String(diffInMins));
+        if (diffInHours < 24) return t('common_hours_ago', '{h}h ago').replace('{h}', String(diffInHours));
         return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
@@ -56,20 +58,20 @@ const MironThreadSidebar = ({
                 <header className="mts-header">
                     <h3>
                         <i className="fas fa-sparkles"></i> 
-                        <span>Miron History</span>
+                        <span>{t('miron_history', 'Miron History')}</span>
                     </h3>
-                    <button className="icon-button mts-close-btn" onClick={onClose} title="Close Sidebar" style={{ width: '32px', height: '32px' }}>
+                    <button className="icon-button mts-close-btn" onClick={onClose} title={t('common_close', 'Close Sidebar')} style={{ width: '32px', height: '32px' }}>
                         <i className="fas fa-times"></i>
                     </button>
                 </header>
 
                 <button className="mts-new-btn" onClick={handleNew}>
-                    <i className="fas fa-plus"></i> New Conversation
+                    <i className="fas fa-plus"></i> {t('miron_new_chat', 'New Conversation')}
                 </button>
 
                 <div className="mts-list">
                     {threads.length === 0 ? (
-                        <div className="mts-empty">No previous study threads.</div>
+                        <div className="mts-empty">{t('miron_no_threads', 'No previous study threads.')}</div>
                     ) : (
                         threads.map(t => (
                             <div 
@@ -90,7 +92,7 @@ const MironThreadSidebar = ({
                                         e.stopPropagation();
                                         onDeleteThread(t.id);
                                     }}
-                                    title="Delete Thread"
+                                    title={t('miron_delete_thread', 'Delete Thread')}
                                 >
                                     <i className="fas fa-trash-alt"></i>
                                 </button>
