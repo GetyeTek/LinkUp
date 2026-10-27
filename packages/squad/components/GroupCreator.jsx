@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './GroupCreator.css';
 
 const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
+    const { t } = usePlatform();
     const effectiveMode = initialMode === 'class' ? 'class' : (initialMode === 'academic' ? 'academic' : '');
     const [step, setStep] = useState(effectiveMode ? 2 : 1);
     const [loading, setLoading] = useState(false);
@@ -92,7 +93,7 @@ const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
             <div className="gc-card">
                 <header className="gc-header" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
                     <button className="icon-button" onClick={onClose} disabled={loading}><i className="fas fa-chevron-left"></i></button>
-                    <h2>{form.type === 'class' ? 'Create Official Class' : (form.type === 'academic' ? 'Create Study Squad' : 'Create New Group')}</h2>
+                    <h2>{form.type === 'class' ? t('create_official_class', 'Create Official Class') : (form.type === 'academic' ? t('create_study_squad', 'Create Study Squad') : t('create_new_group', 'Create New Group'))}</h2>
                 </header>
 
                 <div className="gc-body">
@@ -103,8 +104,8 @@ const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
                     ) : groupCount >= 3 ? (
                         <div className="gc-limit-reached">
                             <i className="fas fa-lock"></i>
-                            <h3>Limit Reached</h3>
-                            <p>You have already established <strong>{groupCount}</strong> study squads. To maintain the highest quality of collaboration across the platform, students are restricted to 3 active owned groups.</p>
+                            <h3>{t('connect_limit_reached_title', 'Limit Reached')}</h3>
+                            <p>{t('connect_limit_reached_desc', 'You have already established 3 study squads. To maintain the highest quality of collaboration across the platform, students are restricted to 3 active owned groups.')}</p>
                         </div>
                     ) : (
                         <>
@@ -112,17 +113,17 @@ const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
                             
                             {step === 1 && (
                         <div className="gc-step animate-in">
-                            <label className="gc-label" style={{textAlign: 'center', marginBottom: '1rem'}}>Select Format</label>
+                            <label className="gc-label" style={{textAlign: 'center', marginBottom: '1rem'}}>{t('select_group_format', 'Select Format')}</label>
                             <div className="gc-type-grid">
                                 <div className="gc-type-card" onClick={() => { setForm({ ...form, type: 'academic' }); setStep(2); }}>
                                     <i className="fas fa-book-open gc-type-icon"></i>
-                                    <div className="gc-type-title">Study Squad</div>
-                                    <div className="gc-type-desc">Subject-specific prep & collaboration</div>
+                                    <div className="gc-type-title">{t('create_study_squad', 'Study Squad')}</div>
+                                    <div className="gc-type-desc">{t('study_squad_desc', 'Subject-specific prep & collaboration')}</div>
                                 </div>
                                 <div className="gc-type-card" onClick={() => { setForm({ ...form, type: 'class', focus: 'Class', privacy: 'public' }); setStep(2); }}>
                                     <i className="fas fa-users-rectangle gc-type-icon"></i>
-                                    <div className="gc-type-title">Official Class</div>
-                                    <div className="gc-type-desc">Section coordination & batch announcements</div>
+                                    <div className="gc-type-title">{t('create_official_class', 'Official Class')}</div>
+                                    <div className="gc-type-desc">{t('official_class_desc', 'Section coordination & batch announcements')}</div>
                                 </div>
                             </div>
                         </div>
@@ -131,53 +132,53 @@ const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
                     {/* ACADEMIC PATH */}
                     {step === 2 && form.type === 'academic' && (
                         <div className="gc-step animate-in">
-                            <label className="gc-label">Subject Classification</label>
+                            <label className="gc-label">{t('connect_subject_classification', 'Subject Classification')}</label>
                             <div className="gc-grid" style={{marginTop: '1rem'}}>
                                 {['Physics', 'Chemistry', 'Mathematics', 'Biology', 'CS', 'General'].map(f => (
                                     <div key={f} className={`gc-chip ${form.focus === f ? 'active' : ''}`} onClick={() => setForm({...form, focus: f})}>{f}</div>
                                 ))}
                             </div>
                             <div className="gc-nav">
-                                <button className="gc-btn secondary" onClick={() => initialMode ? onClose() : setStep(1)}>Back</button>
-                                <button className="gc-btn primary" onClick={() => setStep(3)} disabled={!form.focus}>Next</button>
+                                <button className="gc-btn secondary" onClick={() => initialMode ? onClose() : setStep(1)}>{t('common_back', 'Back')}</button>
+                                <button className="gc-btn primary" onClick={() => setStep(3)} disabled={!form.focus}>{t('common_next', 'Next')}</button>
                             </div>
                         </div>
                     )}
 
                     {step === 3 && form.type === 'academic' && (
                         <div className="gc-step animate-in">
-                            <label className="gc-label">Squad Name</label>
+                            <label className="gc-label">{t('group_name', 'Squad Name')}</label>
                             <input className="gc-input" placeholder="e.g. Physics Core 101" value={form.title} onChange={e => setForm({...form, title: e.target.value})} autoFocus />
                             <div className="gc-nav">
-                                <button className="gc-btn secondary" onClick={() => setStep(2)}>Back</button>
-                                <button className="gc-btn primary" disabled={form.title.length < 3} onClick={() => setStep(4)}>Continue</button>
+                                <button className="gc-btn secondary" onClick={() => setStep(2)}>{t('common_back', 'Back')}</button>
+                                <button className="gc-btn primary" disabled={form.title.length < 3} onClick={() => setStep(4)}>{t('common_continue', 'Continue')}</button>
                             </div>
                         </div>
                     )}
 
                     {step === 4 && form.type === 'academic' && (
                         <div className="gc-step animate-in">
-                            <label className="gc-label">Access Control</label>
+                            <label className="gc-label">{t('access_control', 'Access Control')}</label>
                             <div className="gc-privacy-options">
                                 <div className={`gc-privacy-card ${form.privacy === 'public' ? 'active' : ''}`} onClick={() => setForm({...form, privacy: 'public'})}>
                                     <i className="fas fa-globe"></i>
                                     <div>
-                                        <h4>Public Squad</h4>
-                                        <p>Searchable by anyone on the platform.</p>
+                                        <h4>{t('public_squad', 'Public Squad')}</h4>
+                                        <p>{t('public_squad_desc', 'Searchable by anyone on the platform.')}</p>
                                     </div>
                                 </div>
                                 <div className={`gc-privacy-card ${form.privacy === 'private' ? 'active' : ''}`} onClick={() => setForm({...form, privacy: 'private'})}>
                                     <i className="fas fa-lock"></i>
                                     <div>
-                                        <h4>Private Squad</h4>
-                                        <p>Access restricted to invitees only.</p>
+                                        <h4>{t('private_squad', 'Private Squad')}</h4>
+                                        <p>{t('private_squad_desc', 'Access restricted to invitees only.')}</p>
                                     </div>
                                 </div>
                             </div>
                             <div className="gc-nav">
-                                <button className="gc-btn secondary" onClick={() => setStep(3)} disabled={loading}>Back</button>
+                                <button className="gc-btn secondary" onClick={() => setStep(3)} disabled={loading}>{t('common_back', 'Back')}</button>
                                 <button className="gc-btn primary" onClick={handleCreate} disabled={loading}>
-                                    {loading ? <i className="fas fa-circle-notch fa-spin"></i> : "Initialize"}
+                                    {loading ? <i className="fas fa-circle-notch fa-spin"></i> : t('connect_initialize_btn', 'Initialize')}
                                 </button>
                             </div>
                         </div>
@@ -186,24 +187,24 @@ const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
                     {/* CLASS PATH */}
                     {step === 2 && form.type === 'class' && (
                         <div className="gc-step animate-in">
-                            <label className="gc-label">Class / Section Name</label>
+                            <label className="gc-label">{t('connect_class_section_name', 'Class / Section Name')}</label>
                             <input className="gc-input" placeholder="e.g. Section B 2026" value={form.title} onChange={e => setForm({...form, title: e.target.value})} autoFocus />
                             <div className="gc-nav">
-                                <button className="gc-btn secondary" onClick={() => initialMode ? onClose() : setStep(1)}>Back</button>
+                                <button className="gc-btn secondary" onClick={() => initialMode ? onClose() : setStep(1)}>{t('common_back', 'Back')}</button>
                                 <button className="gc-btn primary" disabled={form.title.length < 3} onClick={() => {
                                     if (!form.slug) {
                                         setForm({...form, slug: form.title.toLowerCase().replace(/[^a-z0-9]/g, '')});
                                     }
                                     setStep(3);
-                                }}>Next</button>
+                                }}>{t('common_next', 'Next')}</button>
                             </div>
                         </div>
                     )}
 
                     {step === 3 && form.type === 'class' && (
                         <div className="gc-step animate-in">
-                            <label className="gc-label">Secure Invitation Link</label>
-                            <p style={{fontSize: '0.8rem', color: '#888', marginBottom: '0'}}>Customize the public link handle for your class.</p>
+                            <label className="gc-label">{t('connect_secure_invite_link', 'Secure Invitation Link')}</label>
+                            <p style={{fontSize: '0.8rem', color: '#888', marginBottom: '0'}}>{t('connect_customize_handle', 'Customize the public link handle for your class.')}</p>
                             
                             <div className={`gc-slug-box ${slugStatus === 'available' ? 'available' : slugStatus === 'taken' || slugStatus === 'invalid' ? 'taken' : ''}`}>
                                 <span className="gc-slug-prefix">{getBaseUrl()}?sq=</span>
@@ -244,9 +245,9 @@ const GroupCreator = ({ currentUser, onClose, onCreated, initialMode }) => {
                             </div>
 
                             <div className="gc-nav" style={{marginTop: '2rem'}}>
-                                <button className="gc-btn secondary" onClick={() => setStep(2)} disabled={loading}>Back</button>
+                                <button className="gc-btn secondary" onClick={() => setStep(2)} disabled={loading}>{t('common_back', 'Back')}</button>
                                 <button className="gc-btn primary" onClick={handleCreate} disabled={loading || slugStatus !== 'available'}>
-                                    {loading ? <i className="fas fa-circle-notch fa-spin"></i> : "Establish Class"}
+                                    {loading ? <i className="fas fa-circle-notch fa-spin"></i> : t('connect_establish_class', 'Establish Class')}
                                 </button>
                             </div>
                         </div>
