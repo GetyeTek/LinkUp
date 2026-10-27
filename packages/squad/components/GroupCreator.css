@@ -16,7 +16,7 @@
 .gc-slug-input { flex: 1; background: transparent; border: none; color: #fff; padding: 14px 0; outline: none; font-family: 'Roboto Mono', monospace; font-size: 0.95rem; min-width: 0; font-weight: 600; }
 .gc-slug-status-icon { padding-left: 10px; font-size: 1rem; }
 .gc-slug-hint { font-size: 0.75rem; font-weight: 500; margin-top: 6px; padding-left: 4px; }
-.gc-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
+.gc-header { padding: 0.8rem 1rem; min-height: 52px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
 .gc-header h2 { font-size: 1.2rem; margin: 0; }
 .gc-body { padding: 1.5rem; }
 .gc-error { background: rgba(255,95,95,0.1); color: #ff5f5f; padding: 10px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 1rem; text-align: center; }
