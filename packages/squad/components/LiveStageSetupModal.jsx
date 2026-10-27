@@ -155,17 +155,17 @@ const LiveStageSetupModal = ({
                 {isGenerating && (
                     <div className="ls-preparing-overlay">
                         <i className="fas fa-satellite-dish fa-spin"></i>
-                        <h3>Miron is Parsing...</h3>
-                        <p>Scanning the textbook and compiling a conversational peer-to-peer lecture.</p>
+                        <h3>{t('live_miron_parsing', userProfile?.sex, 'Miron is Parsing...')}</h3>
+                        <p>{t('live_miron_scanning', userProfile?.sex, 'Scanning the textbook and compiling a conversational peer-to-peer lecture.')}</p>
                     </div>
                 )}
 
                 <header className="poll-comp-header" style={{ marginBottom: '1rem' }}>
                     <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {mode === 'miron' ? (
-                            <><i className="fas fa-sparkles" style={{ color: 'var(--accent-teal)' }}></i> Invite Miron</>
+                            <><i className="fas fa-sparkles" style={{ color: 'var(--accent-teal)' }}></i> {t('live_invite_miron', userProfile?.sex, 'Invite Miron')}</>
                         ) : (
-                            <><i className="fas fa-broadcast-tower" style={{ color: 'var(--accent-teal)' }}></i> Host Live Session</>
+                            <><i className="fas fa-broadcast-tower" style={{ color: 'var(--accent-teal)' }}></i> {t('live_host_session', userProfile?.sex, 'Host Live Session')}</>
                         )}
                     </h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -220,11 +220,11 @@ const LiveStageSetupModal = ({
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                             <div className="pc-group">
-                                <label className="pc-label">Main Topic</label>
-                                <input type="text" className="pc-input" placeholder="e.g. Thermodynamics Review" value={liveSetupData.topic} onChange={e => setLiveSetupData({...liveSetupData, topic: e.target.value})} />
+                                <label className="pc-label">{t('live_main_topic', userProfile?.sex, 'Main Topic')}</label>
+                                <input type="text" className="pc-input" placeholder={t('live_topic_ph', userProfile?.sex, 'e.g. Thermodynamics Review')} value={liveSetupData.topic} onChange={e => setLiveSetupData({...liveSetupData, topic: e.target.value})} />
                             </div>
                             <div className="pc-group">
-                                <label className="pc-label">Course</label>
+                                <label className="pc-label">{t('live_course', userProfile?.sex, 'Course')}</label>
                                 <div className="ls-course-pills-wrap">
                                     {courseOptions.map(c => (
                                         <div 
@@ -244,7 +244,7 @@ const LiveStageSetupModal = ({
                                         <span>General</span>
                                     </div>
                                 </div>
-                                <input type="text" className="pc-input" placeholder="Or type custom course name..." value={liveSetupData.course} onChange={e => setLiveSetupData({...liveSetupData, course: e.target.value})} />
+                                <input type="text" className="pc-input" placeholder={t('live_course_ph', userProfile?.sex, 'Or type custom course name...')} value={liveSetupData.course} onChange={e => setLiveSetupData({...liveSetupData, course: e.target.value})} />
                             </div>
                         </div>
                     )}
@@ -255,7 +255,7 @@ const LiveStageSetupModal = ({
                     onClick={handlePrepareLecture} 
                     disabled={isGenerating || isStartingLive || (mode === 'miron' ? (!selectedBook || !isChildNode) : (!liveSetupData?.topic?.trim() || !liveSetupData?.course?.trim()))}
                 >
-                    {isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? 'Prepare Lecture & Invite' : 'Go Live')}
+                    {isStartingLive || isGenerating ? <i className="fas fa-circle-notch fa-spin"></i> : (mode === 'miron' ? t('live_prep_invite', userProfile?.sex, 'Prepare Lecture & Invite') : t('live_go_live', userProfile?.sex, 'Go Live'))}
                 </button>
             </div>
         </div>,
