@@ -218,7 +218,7 @@ body.library-open { overflow: hidden; }
 }
 
 .home-miron-dock input::placeholder {
-    color: #888;
+    color: var(--text-secondary-dark);
     font-size: 0.88rem;
 }
 
@@ -247,8 +247,8 @@ body.library-open { overflow: hidden; }
 }
 
 .home-miron-action-btn.voice {
-    background: rgba(255, 255, 255, 0.08);
-    color: #ccc;
+    background: rgba(128, 128, 128, 0.12);
+    color: var(--text-secondary-dark);
 }
 
 .home-miron-action-btn.voice:hover {
@@ -405,9 +405,64 @@ body.library-open { overflow: hidden; }
     box-shadow: var(--card-shadow);
     transition: var(--transition-smooth);
     border: 1px solid var(--border-color);
-    background: var(--glass-bg);
+    background: var(--surface-dark);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+}
+
+.theme-light .promo-card {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .promo-title {
+    color: var(--text-primary-dark);
+}
+
+.theme-light .promo-desc {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .promo-card.video-tour {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, #ffffff 100%);
+    border-color: rgba(13, 148, 136, 0.25);
+}
+
+.theme-light .promo-card.credits-mission {
+    background: linear-gradient(135deg, rgba(217, 119, 6, 0.08) 0%, #ffffff 100%);
+    border-color: rgba(217, 119, 6, 0.25);
+}
+
+.theme-light .priority-card {
+    background: var(--surface-dark);
+    border-color: var(--border-color);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .priority-card .title {
+    color: var(--text-primary-dark);
+}
+
+.theme-light .home-miron-dock {
+    background: var(--surface-dark);
+    border-color: rgba(13, 148, 136, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .home-miron-kbd-hint {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: var(--border-color);
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .miron-chip-btn {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: var(--border-color);
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .miron-chip-btn:hover {
+    background: rgba(13, 148, 136, 0.1);
+    color: var(--text-primary-dark);
 }
 .promo-card::before {
     content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
@@ -759,10 +814,11 @@ body.library-open { overflow: hidden; }
         position: static;
         padding: 0 0 1.25rem 0;
     }
-    .app-header .welcome-text h1 {
-        font-size: 1.85rem;
-        font-weight: 700;
-        text-shadow: none;
+        .app-header .welcome-text h1 { 
+        font-size: 1.85rem; 
+        font-weight: 700; 
+        text-shadow: none; 
+        color: var(--text-primary-dark);
     }
     .welcome-hero {
         height: 200px;
