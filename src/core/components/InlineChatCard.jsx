@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { marked } from 'https://esm.sh/marked';
 import katex from 'https://esm.sh/katex@0.16.11';
 import DOMPurify from 'dompurify';
+import { usePlatform } from '@linkup-platform/sdk-core';
 import './InlineChatCard.css';
 
 const renderFormattedText = (content) => {
@@ -48,6 +49,7 @@ const renderFormattedText = (content) => {
 };
 
 const InlineChatCard = ({ cards = [], card, onRate }) => {
+    const { t } = usePlatform();
     const rawList = cards && cards.length > 0 ? cards : (card ? [card] : []);
     const [queue, setQueue] = useState(rawList);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -121,12 +123,12 @@ const InlineChatCard = ({ cards = [], card, onRate }) => {
                     <div className="mic-completed-icon">
                         <i className="fas fa-check-circle"></i>
                     </div>
-                    <h4>Review Completed!</h4>
-                    <p>{rawList.length} cards scheduled in your Spaced Repetition deck.</p>
+                    <h4>{t('inline_review_completed', null, 'Review Completed!')}</h4>
+                    <p>{t('inline_cards_scheduled', null, '{count} cards scheduled in your Spaced Repetition deck.').replace('{count}', String(rawList.length))}</p>
                     <div className="mic-stats-mini">
-                        <span style={{ color: 'var(--accent-teal, #42d7b8)' }}>🟢 {stats.easy} Easy</span>
-                        <span style={{ color: '#f1c40f' }}>🟡 {stats.good} Good</span>
-                        <span style={{ color: '#ff5f5f' }}>🔴 {stats.hard} Hard</span>
+                        <span style={{ color: 'var(--accent-teal, #42d7b8)' }}>🟢 {stats.easy} {t('flashcards_easy', null, 'Easy')}</span>
+                        <span style={{ color: '#f1c40f' }}>🟡 {stats.good} {t('flashcards_good', null, 'Good')}</span>
+                        <span style={{ color: '#ff5f5f' }}>🔴 {stats.hard} {t('flashcards_hard', null, 'Hard')}</span>
                     </div>
                     <button className="mic-restart-btn" onClick={() => {
                         setCurrentIndex(0);
@@ -134,7 +136,7 @@ const InlineChatCard = ({ cards = [], card, onRate }) => {
                         setIsFlipped(false);
                         setQueue(rawList);
                     }}>
-                        <i className="fas fa-rotate-right"></i> Review Again
+                        <i className="fas fa-rotate-right"></i> {t('inline_review_again', null, 'Review Again')}
                     </button>
                 </div>
             </div>
@@ -145,7 +147,7 @@ const InlineChatCard = ({ cards = [], card, onRate }) => {
         <div className="miron-inline-card-wrapper" onTouchStart={e => e.stopPropagation()}>
             <div className="mic-deck-header">
                 <span className="mic-counter">
-                    Card {currentIndex + 1} of {queue.length}
+                    {t('flashcards_card_counter', null, 'Card {current} / {total}').replace('{current}', String(currentIndex + 1)).replace('{total}', String(queue.length))}
                 </span>
                 <span className="mic-course-tag">
                     {currentCard?.course_code || 'MIRON'} {currentCard?.topic ? `• ${currentCard.topic}` : ''}
@@ -163,7 +165,7 @@ const InlineChatCard = ({ cards = [], card, onRate }) => {
                 {/* FRONT FACE */}
                 <div className="mic-face front">
                     <div className="mic-top-tag">
-                        <span>Active Recall</span>
+                        <span>{t('inline_active_recall', null, 'Active Recall')}</span>
                         <i className="fas fa-sparkles"></i>
                     </div>
 
@@ -173,13 +175,13 @@ const InlineChatCard = ({ cards = [], card, onRate }) => {
                     />
 
                     <div className="mic-tap-hint">
-                        <i className="fas fa-rotate"></i> Tap card to reveal answer
+                        <i className="fas fa-rotate"></i> {t('inline_tap_reveal', null, 'Tap card to reveal answer')}
                     </div>
                 </div>
 
                 {/* BACK FACE */}
                 <div className="mic-face back">
-                    <div className="mic-back-header">Explanation & Answer</div>
+                    <div className="mic-back-header">{t('inline_exp_ans', null, 'Explanation & Answer')}</div>
 
                     <div 
                         className="mic-answer-text"
@@ -188,18 +190,18 @@ const InlineChatCard = ({ cards = [], card, onRate }) => {
 
                     <div className="mic-source-ref">
                         <i className="fas fa-bookmark"></i>
-                        <span>{currentCard?.ref || 'Miron Dynamic Synthesis'}</span>
+                        <span>{currentCard?.ref || t('inline_miron_sync', null, 'Miron Dynamic Synthesis')}</span>
                     </div>
 
                     <div className="mic-rating-bar" onClick={e => e.stopPropagation()}>
                         <button className="mic-rate-btn hard" onClick={e => handleRating(e, 'hard')}>
-                            🔴 Hard
+                            🔴 {t('flashcards_hard', null, 'Hard')}
                         </button>
                         <button className="mic-rate-btn good" onClick={e => handleRating(e, 'good')}>
-                            🟡 Good
+                            🟡 {t('flashcards_good', null, 'Good')}
                         </button>
                         <button className="mic-rate-btn easy" onClick={e => handleRating(e, 'easy')}>
-                            🟢 Easy
+                            🟢 {t('flashcards_easy', null, 'Easy')}
                         </button>
                     </div>
                 </div>
