@@ -28,20 +28,21 @@
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    background: rgba(12, 12, 12, 0.85); 
+    background: var(--surface-dark); 
     backdrop-filter: blur(20px); 
     -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    border-bottom: 1px solid var(--border-color); 
     position: sticky; 
     top: 0; 
     z-index: 10; 
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .pe-header h2 { 
     font-size: 1.3rem; 
     font-weight: 600; 
     margin: 0; 
-    color: #fff;
+    color: var(--text-primary-dark);
     letter-spacing: -0.3px;
 }
 
@@ -127,13 +128,13 @@
 /* Custom Chip Dropdown */
 .pe-dropdown-summary {
     display: flex; justify-content: space-between; align-items: center;
-    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--surface-dark); border: 1px solid var(--border-color);
     padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s;
 }
-.pe-dropdown-summary:hover { background: rgba(255, 255, 255, 0.1); }
+.pe-dropdown-summary:hover { background: rgba(128, 128, 128, 0.06); }
 .pe-dropdown-summary.expanded { border-color: var(--accent-teal); }
-.pe-dropdown-summary .is-empty { color: #888; }
-.pe-dropdown-summary .has-value { color: #fff; font-weight: 500; }
+.pe-dropdown-summary .is-empty { color: var(--text-secondary-dark); }
+.pe-dropdown-summary .has-value { color: var(--text-primary-dark); font-weight: 600; }
 
 .pe-btn { flex: 1; padding: 14px; border-radius: 12px; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; border: none; transition: transform 0.2s; }
 .pe-btn:active:not(:disabled) { transform: scale(0.98); }
