@@ -3,7 +3,7 @@ import { supabase, usePlatform, getAvatarFallback } from '@linkup-platform/sdk-c
 import './MissionControlOverlay.css';
 
 const MissionControlOverlay = ({ isActive, onClose }) => {
-    const { sessionUser, user: userProfile } = usePlatform();
+    const { sessionUser, user: userProfile, t } = usePlatform();
     const [activeMissionTab, setActiveMissionTab] = useState('daily');
     const [noticeModal, setNoticeModal] = useState(null);
     
@@ -266,7 +266,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
         <div className={`fullscreen-overlay ${isActive ? 'is-active' : ''}`} id="mission-overlay">
             <div className="overlay-content">
                 <header className="overlay-header">
-                    <h2 className="overlay-title">Tasks & Rewards</h2>
+                    <h2 className="overlay-title">{t('tasks_rewards', 'Tasks & Rewards')}</h2>
                     <button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
                 </header>
                 <div className="overlay-inner-content">
@@ -277,7 +277,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                 className={`nav-tab ${activeMissionTab === tab ? 'active' : ''}`} 
                                 onClick={() => setActiveMissionTab(tab)}
                             >
-                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                {t(`missions_tab_${tab}`, tab.charAt(0).toUpperCase() + tab.slice(1))}
                             </div>
                         ))}
                         <div className="nav-indicator" style={{ 
@@ -295,8 +295,8 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                             <i className="fab fa-telegram-plane"></i>
                                         </div>
                                         <div className="task-details">
-                                            <div className="task-title">Secure Identity</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>Link & verify your phone</div>
+                                            <div className="task-title">{t('mission_secure_identity', 'Secure Identity')}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>{t('mission_link_phone', 'Link & verify your phone')}</div>
                                         </div>
                                         <div className="task-action">
                                             <div className="reward-amount"><i className="fas fa-coins"></i> 50</div>
@@ -310,8 +310,8 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                                 disabled={tgMissionState === 'loading' || tgMissionState === 'claimed' || isClaiming}
                                             >
                                                 {tgMissionState === 'loading' || isClaiming ? <i className="fas fa-circle-notch fa-spin"></i> : 
-                                                 tgMissionState === 'unverified' ? 'Verify' : 
-                                                 tgMissionState === 'unclaimed' ? 'Claim' : 
+                                                 tgMissionState === 'unverified' ? t('missions_verify', 'Verify') : 
+                                                 tgMissionState === 'unclaimed' ? t('missions_claim', 'Claim') : 
                                                  <i className="fas fa-check"></i>}
                                             </button>
                                         </div>
@@ -389,15 +389,15 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                 <div className="invite-card-premium">
                                     <div className="ic-header">
                                         <i className="fas fa-gem" style={{ color: 'var(--linkoin-gold)', fontSize: '1.2rem' }}></i>
-                                        <h3>Invite Friends, Earn Together</h3>
+                                        <h3>{t('mission_invite_friends', 'Invite Friends, Earn Together')}</h3>
                                     </div>
                                     <div className="ic-body">
-                                        Earn <strong>+30 Credits</strong> for every classmate who joins and verifies their phone. They get a <strong>+100 welcome boost</strong> too!
+                                        {t('mission_invite_desc', 'Earn +30 Credits for every classmate who joins and verifies their phone. They get a +100 welcome boost too!')}
                                     </div>
                                     <div className="ic-link-box">
-                                        <div className="ic-link-text">{referralLink || 'Loading link...'}</div>
+                                        <div className="ic-link-text">{referralLink || t('common_loading', 'Loading link...')}</div>
                                         <button className="ic-copy-btn" onClick={handleCopyLink} disabled={!referralLink}>
-                                            {copySuccess ? <><i className="fas fa-check"></i> Copied</> : <><i className="fas fa-copy"></i> Copy</>}
+                                            {copySuccess ? <><i className="fas fa-check"></i> {t('common_copied', 'Copied')}</> : <><i className="fas fa-copy"></i> {t('common_copy', 'Copy')}</>}
                                         </button>
                                     </div>
                                     <div className="ic-share-actions">
@@ -407,8 +407,8 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                 </div>
 
                                 <div className="network-tracker-header">
-                                    <span>Squad Network</span>
-                                    <span>{referrals.length} Invites</span>
+                                    <span>{t('missions_squad_network', 'Squad Network')}</span>
+                                    <span>{t('missions_invites_count', '{count} Invites').replace('{count}', String(referrals.length))}</span>
                                 </div>
 
                                 {loadingReferrals ? (
@@ -450,9 +450,9 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                                     <i className="fas fa-fire"></i>
                                                 </div>
                                                 <div className="task-details">
-                                                    <div className="task-title">{streakData.target}-Day Streak Quest</div>
+                                                    <div className="task-title">{t('missions_streak_quest', '{target}-Day Streak Quest').replace('{target}', String(streakData.target))}</div>
                                                     <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>
-                                                        {streakData.status === 'claimable' ? 'Milestone achieved! Claim your reward.' : 'Log in daily to build consistency.'}
+                                                        {streakData.status === 'claimable' ? t('missions_streak_claimable', 'Milestone achieved! Claim your reward.') : t('missions_streak_progress', 'Log in daily to build consistency.')}
                                                     </div>
                                                 </div>
                                                 <div className="task-action">
@@ -462,7 +462,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                                         disabled={streakData.status !== 'claimable' || isClaimingStreak}
                                                         onClick={handleClaimStreak}
                                                     >
-                                                        {isClaimingStreak ? <i className="fas fa-circle-notch fa-spin"></i> : streakData.status === 'claimable' ? 'Claim' : 'In Progress'}
+                                                        {isClaimingStreak ? <i className="fas fa-circle-notch fa-spin"></i> : streakData.status === 'claimable' ? t('missions_claim', 'Claim') : t('missions_in_progress', 'In Progress')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -477,7 +477,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                                 }}></div>
                                             </div>
                                             <div style={{textAlign: 'right', fontSize: '0.75rem', color: '#888', marginTop: '6px', fontWeight: 600, fontFamily: '"Roboto Mono", monospace'}}>
-                                                {streakData.current} / {streakData.target} Days
+                                                {t('missions_days_count', '{current} / {target} Days').replace('{current}', String(streakData.current)).replace('{target}', String(streakData.target))}
                                             </div>
                                         </div>
                                     </li>
