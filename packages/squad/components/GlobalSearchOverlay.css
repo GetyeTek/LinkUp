@@ -14,11 +14,12 @@
 }
 @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .gs-header {
-    padding: 0.8rem 1rem; 
+    padding: 0.6rem 1rem; 
+    min-height: 52px;
     display: flex; 
     align-items: center; 
     gap: 10px;
-    background: var(--glass-bg); 
+    background: var(--surface-dark); 
     border-bottom: 1px solid var(--border-color);
     width: 100%;
     max-width: 100%;
