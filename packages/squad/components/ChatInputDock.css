@@ -37,10 +37,10 @@
 
 .attach-popover-menu {
     position: absolute; bottom: 50px; left: 0;
-    background: var(--glass-bg); backdrop-filter: blur(20px);
+    background: var(--surface-dark); backdrop-filter: blur(20px);
     border: 1px solid var(--border-color); border-radius: 16px;
     padding: 6px; display: flex; flex-direction: column; gap: 4px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25); z-index: 100;
     min-width: 160px;
     animation: menuPopFixed 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     transform-origin: bottom left;
@@ -53,8 +53,12 @@
     display: flex; align-items: center; gap: 12px; transition: background 0.2s;
 }
 
-.attach-popover-menu button:hover { background: rgba(255,255,255,0.1); }
+.attach-popover-menu button:hover { background: rgba(128, 128, 128, 0.08); }
 .attach-popover-menu button i { color: var(--accent-teal); font-size: 1.1rem; width: 20px; text-align: center; }
+
+.theme-light .attach-popover-menu {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
 .unified-send-btn {
     width: 40px; height: 40px; border-radius: 50%; background: var(--accent-teal); border: none; color: #000; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: transform 0.2s; flex-shrink: 0;
 }
