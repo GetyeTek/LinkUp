@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, getAvatarFallback, GoldBadge } from '@linkup-platform/sdk-core';
+import { supabase, getAvatarFallback, GoldBadge, usePlatform } from '@linkup-platform/sdk-core';
 import { invokeSocial } from '../api.js';
 import GenericConfirmModal from './GenericConfirmModal.jsx';
 import PunishMemberModal from './PunishMemberModal.jsx';
@@ -9,6 +9,7 @@ const GroupMembersTab = ({
     onOpenUser, setIsProcessing, isProcessing, setAlertNotice, 
     showAddMember, setShowAddMember, activeMemberMenu, setActiveMemberMenu 
 }) => {
+    const { t } = usePlatform();
     const [inviteContacts, setInviteContacts] = useState([]);
     const [confirmAddUser, setConfirmAddUser] = useState(null);
     const [confirmModal, setConfirmModal] = useState(null);
@@ -127,13 +128,13 @@ const GroupMembersTab = ({
                                 {activeMemberMenu === uid && (
                                     <div className="si-dropdown-menu" onClick={e => e.stopPropagation()}>
                                         <button onClick={() => { setActiveMemberMenu(null); setConfirmModal({ uid, name: m.name }); }}>
-                                            <i className="fas fa-user-minus"></i> Kick User
+                                            <i className="fas fa-user-minus"></i> {t('gm_kick_user', 'Kick User')}
                                         </button>
                                         <button onClick={() => { setActiveMemberMenu(null); setPunishConfig({ uid, type: 'mute', isTemp: true, duration: 1, unit: 'days' }); }}>
-                                            <i className="fas fa-comment-slash"></i> Restrict Writing
+                                            <i className="fas fa-comment-slash"></i> {t('gm_restrict_writing', 'Restrict Writing')}
                                         </button>
                                         <button className="danger" onClick={() => { setActiveMemberMenu(null); setPunishConfig({ uid, type: 'ban', isTemp: true, duration: 1, unit: 'days' }); }}>
-                                            <i className="fas fa-ban"></i> Ban User
+                                            <i className="fas fa-ban"></i> {t('gm_ban_user', 'Ban User')}
                                         </button>
                                     </div>
                                 )}
@@ -148,19 +149,19 @@ const GroupMembersTab = ({
                 <div className="si-fullscreen-overlay">
                     <header className="si-fs-header">
                         <button className="icon-button" onClick={() => setShowAddMember(false)}><i className="fas fa-chevron-left"></i></button>
-                        <h2>Add Member</h2>
+                        <h2>{t('gm_add_member_title', 'Add Member')}</h2>
                         <div style={{width:'36px'}}></div>
                     </header>
                     <div className="si-fs-body">
                         {isFetchingContacts ? (
                             <div className="si-vault-empty">
                                 <i className="fas fa-circle-notch fa-spin"></i>
-                                <p>Loading contacts...</p>
+                                <p>{t('gm_loading_contacts', 'Loading contacts...')}</p>
                             </div>
                         ) : inviteContacts.length === 0 ? (
                             <div className="si-vault-empty">
                                 <i className="fas fa-user-slash"></i>
-                                <p>No eligible contacts found in your DMs.</p>
+                                <p>{t('gm_no_contacts', 'No eligible contacts found in your DMs.')}</p>
                             </div>
                         ) : (
                             inviteContacts.map(c => (
@@ -168,7 +169,7 @@ const GroupMembersTab = ({
                                     <img src={c.other_user_avatar || getAvatarFallback(c.other_user_name)} onError={(e) => { e.target.onerror = null; e.target.src = getAvatarFallback(c.other_user_name); }} alt="Avatar" className="si-member-avatar" />
                                     <div className="si-member-info">
                                         <div className="si-member-name">{c.other_user_name}</div>
-                                        <span className="si-member-role si-role-member">Contact</span>
+                                        <span className="si-member-role si-role-member">{t('gm_contact', 'Contact')}</span>
                                     </div>
                                     <i className="fas fa-plus" style={{color:'var(--accent-teal)'}}></i>
                                 </div>
