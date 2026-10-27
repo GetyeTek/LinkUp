@@ -227,13 +227,13 @@
 .dm-icebreaker-card h3 {
     font-size: 1.15rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--text-primary-dark);
     margin: 0 0 8px 0;
 }
 
 .dm-icebreaker-card p {
     font-size: 0.85rem;
-    color: #aaa;
+    color: var(--text-secondary-dark);
     line-height: 1.4;
     margin: 0 0 1.5rem 0;
 }
