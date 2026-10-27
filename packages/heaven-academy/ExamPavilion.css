@@ -374,10 +374,13 @@
     transition: all 0.2s ease;
 }
 
-.pav-scope-btn.active {
-    background: rgba(66, 215, 184, 0.15);
-    border-color: var(--accent-teal, #42d7b8);
-    color: var(--accent-teal, #42d7b8);
+.pav-scope-btn.active,
+.theme-light .pav-scope-btn.active {
+    background: rgba(66, 215, 184, 0.18) !important;
+    border-color: var(--accent-teal) !important;
+    color: var(--accent-teal) !important;
+    font-weight: 700;
+    box-shadow: 0 0 12px rgba(66, 215, 184, 0.3);
 }
 
 .pav-scope-btn i.fa-star {
@@ -652,7 +655,7 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 
-.theme-light .pav-scope-btn {
+.theme-light .pav-scope-btn:not(.active) {
     background: var(--surface-dark);
     border-color: var(--border-color);
     color: var(--text-secondary-dark);
@@ -661,6 +664,15 @@
 .theme-light .pav-term-tabs {
     background: rgba(0, 0, 0, 0.05);
     border-color: var(--border-color);
+}
+
+.theme-light .pav-term-tab:not(.active) {
+    color: var(--text-secondary-dark);
+}
+
+.theme-light .pav-term-tab.active {
+    background: var(--accent-teal);
+    color: #0c0c0c;
 }
 
 .ppr-term-badge {
