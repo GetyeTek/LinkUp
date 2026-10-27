@@ -123,7 +123,7 @@ const Profile = () => {
                                 <button 
                                     className="profile-next-action-pill"
                                     onClick={handleExecuteNextAction}
-                                    title="Complete this task"
+                                    title={t('profile_complete_task', userProfile?.sex, 'Complete this task')}
                                 >
                                     <i className={nextAction.icon}></i>
                                     <span>{nextAction.label}</span>
@@ -132,14 +132,14 @@ const Profile = () => {
                             ) : completionScore === 100 ? (
                                 <div className="profile-next-action-pill verified-complete">
                                     <i className="fas fa-shield-check"></i>
-                                    <span>100% Completed</span>
+                                    <span>{t('profile_completed_100', userProfile?.sex, '100% Completed')}</span>
                                 </div>
                             ) : null}
                         </div>
 
                         <div className="user-info">
                             <h1 className="profile-name" style={{ display: 'flex', alignItems: 'center' }}>
-                                {userProfile?.full_name || 'Student'}
+                                {userProfile?.full_name || t('profile_student_fallback', userProfile?.sex, 'Student')}
                                 {userProfile?.is_pro && <GoldBadge size="lg" />}
                             </h1>
                             {userProfile?.username && (
@@ -147,13 +147,13 @@ const Profile = () => {
                             )}
                             <div className="linkoin-balance-hero" title="LinkUp Credits">
                                 <i className="fas fa-coins linkoin-icon-sm"></i>
-                                <span>{userProfile?.linkoin_balance ?? 0} Credits</span>
+                                <span>{userProfile?.linkoin_balance ?? 0} {t('credits', userProfile?.sex, 'Credits')}</span>
                             </div>
                         </div>
 
                         <div className="hero-actions-desktop">
                             <button className="hero-edit-profile-btn" onClick={() => setIsEditingProfile(true)}>
-                                <i className="fas fa-user-pen"></i> Edit Profile
+                                <i className="fas fa-user-pen"></i> {t('profile_edit', userProfile?.sex, 'Edit Profile')}
                             </button>
                         </div>
                     </div>
@@ -181,15 +181,15 @@ const Profile = () => {
                                 </svg>
                             </div>
                             <div className="portal-content">
-                                <h2 className="portal-title">{t('study_analytics', 'Study Analytics')}</h2>
-                                <p className="portal-subtitle">{t('study_analytics_desc', 'View your study stats and global rank')}</p>
+                                <h2 className="portal-title">{t('study_analytics', userProfile?.sex, 'Study Analytics')}</h2>
+                                <p className="portal-subtitle">{t('study_analytics_desc', userProfile?.sex, 'View your study stats and global rank')}</p>
                             </div>
                         </div>
                         <div className="portal-card" id="mission-portal-card" onClick={() => toggleOverlay('mission', true)}>
                             <div className="portal-window" style={{ color: 'var(--linkoin-gold)' }}><i className="fas fa-tasks"></i></div>
                             <div className="portal-content">
-                                <h2 className="portal-title">{t('tasks_rewards', 'Tasks & Rewards')}</h2>
-                                <p className="portal-subtitle">{t('tasks_rewards_desc', 'Complete daily tasks to earn Credits')}</p>
+                                <h2 className="portal-title">{t('tasks_rewards', userProfile?.sex, 'Tasks & Rewards')}</h2>
+                                <p className="portal-subtitle">{t('tasks_rewards_desc', userProfile?.sex, 'Complete daily tasks to earn Credits')}</p>
                             </div>
                         </div>
                         
@@ -199,29 +199,28 @@ const Profile = () => {
                                 <i className="fa-solid fa-crown"></i>
                             </div>
                             <div className="portal-content">
-                                <h2 className="portal-title" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f1c40f 60%, #d4ac0d 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: '"Newsreader", serif', fontWeight: 600 }}>{t('linkup_premium', 'LinkUp Premium')}</h2>
-                                <p className="portal-subtitle">{t('linkup_premium_sub', 'Upgrade to unlimited AI & Archives')}</p>
+                                <h2 className="portal-title" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f1c40f 60%, #d4ac0d 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: '"Newsreader", serif', fontWeight: 600 }}>{t('linkup_premium', userProfile?.sex, 'LinkUp Premium')}</h2>
+                                <p className="portal-subtitle">{t('linkup_premium_sub', userProfile?.sex, 'Upgrade to unlimited AI & Archives')}</p>
                             </div>
                         </div>
                     </div>
 
                     <div className="settings-group">
-                        <h2 className="section-title"><span>Settings</span></h2>
                         <div className="settings-list">
                             <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); setIsEditingProfile(true); }}>
-                                <i className="fas fa-user-pen list-item-icon"></i><span className="list-item-text">{t('account_settings', 'Account Settings')}</span><i className="fas fa-chevron-right list-item-chevron"></i>
+                                <i className="fas fa-user-pen list-item-icon"></i><span className="list-item-text">{t('account_settings', userProfile?.sex, 'Account Settings')}</span><i className="fas fa-chevron-right list-item-chevron"></i>
                             </a>
                             <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('appearance', true); }}>
                                 <i className="fas fa-palette list-item-icon"></i>
-                                <span className="list-item-text">{t('appearance', 'Appearance')}</span>
+                                <span className="list-item-text">{t('appearance', userProfile?.sex, 'Appearance')}</span>
                                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary-dark)', marginRight: '8px' }}>
                                     {theme === 'dark' ? 'Dark' : 'Light'} • {language === 'am' ? 'አማርኛ' : 'EN'}
                                 </span>
                                 <i className="fas fa-chevron-right list-item-chevron"></i>
                             </a>
-                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('privacy', true); }}><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">{t('privacy_security', 'Privacy & Security')}</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
-                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('open-support-modal')); }}><i className="fas fa-info-circle list-item-icon"></i><span className="list-item-text">{t('support_about', 'Support & About')}</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
-                            <a href="#" className="list-item" onClick={handleLogout} style={{ color: '#ff4757' }}><i className="fas fa-sign-out-alt list-item-icon" style={{ color: '#ff4757' }}></i><span className="list-item-text">{t('logout', 'Log Out')}</span></a>
+                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); toggleOverlay('privacy', true); }}><i className="fas fa-shield-halved list-item-icon"></i><span className="list-item-text">{t('privacy_security', userProfile?.sex, 'Privacy & Security')}</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
+                            <a href="#" className="list-item" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('open-support-modal')); }}><i className="fas fa-info-circle list-item-icon"></i><span className="list-item-text">{t('support_about', userProfile?.sex, 'Support & About')}</span><i className="fas fa-chevron-right list-item-chevron"></i></a>
+                            <a href="#" className="list-item" onClick={handleLogout} style={{ color: '#ff4757' }}><i className="fas fa-sign-out-alt list-item-icon" style={{ color: '#ff4757' }}></i><span className="list-item-text">{t('logout', userProfile?.sex, 'Log Out')}</span></a>
                         </div>
                     </div>
                 </div>
