@@ -97,7 +97,8 @@ const VisualNotebookViewer = ({
   zoomScale = 1,
   onSheetsLoaded,
   onActiveSheetChange,
-  targetSheetIndex = null
+  targetSheetIndex = null,
+  currentTheme = 'dark'
 }) => {
   const cacheKey = `${courseCode}_${language}`;
 
@@ -338,7 +339,7 @@ const VisualNotebookViewer = ({
 
   if (loading) {
     return (
-      <div className="v-notebook-root" style={{ justifyContent: 'center' }}>
+      <div className={`v-notebook-root theme-${currentTheme}`} style={{ justifyContent: 'center' }}>
         <i className="fas fa-circle-notch fa-spin fa-2x" style={{ color: 'var(--accent-teal)' }}></i>
       </div>
     );
@@ -346,7 +347,7 @@ const VisualNotebookViewer = ({
 
   if (!sheets || sheets.length === 0) {
     return (
-      <div className={`v-notebook-root lang-${language}`} style={{ justifyContent: 'center' }}>
+      <div className={`v-notebook-root lang-${language} theme-${currentTheme}`} style={{ justifyContent: 'center' }}>
         <div className="v-card" style={{ maxWidth: '440px', textAlign: 'center', padding: '2.5rem 1.5rem' }}>
           <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 1rem' }}>
             <i className="fas fa-palette"></i>
@@ -371,7 +372,7 @@ const VisualNotebookViewer = ({
   }
 
   return (
-    <div className={`v-notebook-root lang-${language}`} ref={containerRef}>
+    <div className={`v-notebook-root lang-${language} theme-${currentTheme}`} ref={containerRef}>
               <div 
           className="v-bento-canvas"
           style={{ 
