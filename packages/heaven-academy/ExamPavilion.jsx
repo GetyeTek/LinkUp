@@ -10,7 +10,7 @@ const ExamPavilion = ({
     homeUniversityId, 
     onClose 
 }) => {
-    const { user: userProfile } = usePlatform();
+    const { user: userProfile, t } = usePlatform();
     const isProUser = Boolean(userProfile?.is_pro);
     const [allUnis, setAllUnis] = useState(universities);
 
@@ -252,11 +252,11 @@ const ExamPavilion = ({
                                 <i className="fas fa-chevron-left"></i>
                             </button>
                             <div>
-                                <h1 className="pav-main-title">Exam Pavilion</h1>
+                                <h1 className="pav-main-title">{t('exam_pavilion', 'Exam Pavilion')}</h1>
                                 <p className="pav-main-sub">
                                     {homeUniversity 
-                                        ? `⭐ ${homeUniversity.name.split(' ')[0]} Campus Archive` 
-                                        : 'Verified University Archives'}
+                                        ? `⭐ ${t('exam_campus_archive', '{uni} Campus Archive').replace('{uni}', homeUniversity.name.split(' ')[0])}` 
+                                        : t('exam_verified_archives', 'Verified University Archives')}
                                 </p>
                             </div>
                         </div>
@@ -275,7 +275,7 @@ const ExamPavilion = ({
                             <i className="fas fa-search"></i>
                             <input 
                                 type="text"
-                                placeholder="Search course by name or code..."
+                                placeholder={t('exam_search_placeholder', 'Search course by name or code...')}
                                 value={subjectSearch}
                                 onChange={e => setSubjectSearch(e.target.value)}
                             />
@@ -292,13 +292,13 @@ const ExamPavilion = ({
                         {loading ? (
                             <div className="pav-loading-state">
                                 <i className="fas fa-circle-notch fa-spin fa-2x"></i>
-                                <p>Cataloging University Archives...</p>
+                                <p>{t('common_loading', 'Cataloging University Archives...')}</p>
                             </div>
                         ) : filteredSubjectHubs.length === 0 ? (
                             <div className="pav-empty-state">
                                 <i className="fas fa-book-open"></i>
-                                <h3>No Courses Found</h3>
-                                <p>No examination papers matched &ldquo;{subjectSearch}&rdquo;.</p>
+                                <h3>{t('exam_no_courses_found', 'No Courses Found')}</h3>
+                                <p>{t('exam_no_match_desc', 'No examination papers matched "{query}".').replace('{query}', subjectSearch)}</p>
                             </div>
                         ) : (
                             <div className="pav-subject-grid">
@@ -324,12 +324,12 @@ const ExamPavilion = ({
 
                                         <div className="psc-footer">
                                             <span className="psc-count">
-                                                {hub.exams.length} {hub.exams.length === 1 ? 'Paper' : 'Papers'}
+                                                {hub.exams.length === 1 ? t('exam_paper_single', '1 Paper') : t('exam_paper_plural', '{count} Papers').replace('{count}', String(hub.exams.length))}
                                             </span>
 
                                             {hub.myCampusCount > 0 ? (
                                                 <span className="psc-campus-pill">
-                                                    ⭐ {hub.myCampusCount} from your campus
+                                                    ⭐ {t('exam_from_your_campus', '{count} from your campus').replace('{count}', String(hub.myCampusCount))}
                                                 </span>
                                             ) : (
                                                 <span className="psc-arrow">
@@ -361,9 +361,9 @@ const ExamPavilion = ({
                                     <button 
                                         className="pvt-read-book-btn" 
                                         onClick={() => window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: 'study', payload: { action: 'resume_book', course_code: selectedSubject.code, title: selectedSubject.name } } }))}
-                                        title="Open Course Textbook"
+                                        title={t('curriculum_textbook', 'Curriculum Textbook')}
                                     >
-                                        <i className="fas fa-book-open"></i> <span>Textbook</span>
+                                        <i className="fas fa-book-open"></i> <span>{t('reader_book', 'Textbook')}</span>
                                     </button>
                                 )}
                             </header>
@@ -379,7 +379,7 @@ const ExamPavilion = ({
                                     onClick={() => setCampusScope('my_campus')}
                                 >
                                     <i className="fas fa-star"></i>
-                                    <span>My Campus ({activeSubjectCounts.myCampus})</span>
+                                    <span>{t('exam_scope_my_campus', 'My Campus ({count})').replace('{count}', String(activeSubjectCounts.myCampus))}</span>
                                 </button>
                             )}
                             <button 
@@ -387,13 +387,13 @@ const ExamPavilion = ({
                                 onClick={() => setCampusScope('other_campuses')}
                             >
                                 <i className="fas fa-globe"></i>
-                                <span>Other Campuses ({activeSubjectCounts.otherCampuses})</span>
+                                <span>{t('exam_scope_other_campuses', 'Other Campuses ({count})').replace('{count}', String(activeSubjectCounts.otherCampuses))}</span>
                             </button>
                             <button 
                                 className={`pav-scope-btn ${campusScope === 'all' ? 'active' : ''}`}
                                 onClick={() => setCampusScope('all')}
                             >
-                                <span>All ({activeSubjectCounts.total})</span>
+                                <span>{t('exam_scope_all', 'All ({count})').replace('{count}', String(activeSubjectCounts.total))}</span>
                             </button>
                         </div>
 
@@ -403,19 +403,19 @@ const ExamPavilion = ({
                                 className={`pav-term-tab ${termFilter === 'all' ? 'active' : ''}`}
                                 onClick={() => setTermFilter('all')}
                             >
-                                All ({activeSubjectCounts.currentScopeTotal})
+                                {t('exam_term_all', 'All ({count})').replace('{count}', String(activeSubjectCounts.currentScopeTotal))}
                             </button>
                             <button 
                                 className={`pav-term-tab ${termFilter === 'midterm' ? 'active' : ''}`}
                                 onClick={() => setTermFilter('midterm')}
                             >
-                                Midterms ({activeSubjectCounts.midterms})
+                                {t('exam_term_midterms', 'Midterms ({count})').replace('{count}', String(activeSubjectCounts.midterms))}
                             </button>
                             <button 
                                 className={`pav-term-tab ${termFilter === 'final' ? 'active' : ''}`}
                                 onClick={() => setTermFilter('final')}
                             >
-                                Finals ({activeSubjectCounts.finals})
+                                {t('exam_term_finals', 'Finals ({count})').replace('{count}', String(activeSubjectCounts.finals))}
                             </button>
                         </div>
                     </div>
@@ -425,18 +425,18 @@ const ExamPavilion = ({
                         {groupedVaultExams.length === 0 ? (
                             <div className="pav-empty-state">
                                 <i className="fas fa-folder-open"></i>
-                                <h3>No Exams in this Category</h3>
+                                <h3>{t('exam_no_courses_found', 'No Exams in this Category')}</h3>
                                 <p>
                                     {campusScope === 'my_campus' 
-                                        ? `No papers available specifically from ${homeUniversity?.name}. Try exploring other universities!` 
-                                        : 'Try switching the term or campus filter.'}
+                                        ? t('exam_empty_scope', 'No papers available specifically from {uni}. Try exploring other universities!').replace('{uni}', homeUniversity?.name || '') 
+                                        : t('exam_no_match_desc', 'Try switching the term or campus filter.')}
                                 </p>
                                 {campusScope === 'my_campus' && (
                                     <button 
                                         className="pav-switch-scope-btn"
                                         onClick={() => setCampusScope('other_campuses')}
                                     >
-                                        <i className="fas fa-globe"></i> View Other Campuses
+                                        <i className="fas fa-globe"></i> {t('exam_switch_scope', 'View Other Campuses')}
                                     </button>
                                 )}
                             </div>
@@ -526,11 +526,11 @@ const ExamPavilion = ({
 
                                                                 {isLocked ? (
                                                                     <button className="ppr-practice-btn pro-locked">
-                                                                        <i className="fas fa-crown"></i> Unlock
+                                                                        <i className="fas fa-crown"></i> {t('exam_unlock_pro', 'Unlock')}
                                                                     </button>
                                                                 ) : (
                                                                     <button className="ppr-practice-btn">
-                                                                        <i className="fas fa-bolt"></i> Practice
+                                                                        <i className="fas fa-bolt"></i> {t('exam_practice', 'Practice')}
                                                                     </button>
                                                                 )}
                                                             </div>
