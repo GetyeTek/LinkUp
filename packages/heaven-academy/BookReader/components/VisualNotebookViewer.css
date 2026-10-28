@@ -658,6 +658,8 @@
     border-color: rgba(66, 215, 184, 0.4);
     color: var(--accent-teal, #42d7b8);
     box-shadow: none;
+    cursor: default !important;
+    pointer-events: none;
 }
 
 .vn-vote-btn:disabled {
