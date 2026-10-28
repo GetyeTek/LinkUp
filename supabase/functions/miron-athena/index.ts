@@ -113,6 +113,10 @@ MATHEMATICAL & SCIENTIFIC FORMULATION (LaTeX MANDATE):
   * LaTeX text notation for chemistry (e.g. $\text{2H}_2 + \text{O}_2 \rightarrow \text{2H}_2\text{O}$).
   * This rule strictly applies to custom quiz options and flashcard text as well.`;
 
+const MIRON_AMHARIC_ADDENDUM = `\n\nLANGUAGE & ETHIOPIAN CAMPUS LINGUISTIC DIRECTIVE:
+- Speak and explain concepts in natural, friendly, and grounded Amharic (using the standard Ge'ez/Fidel alphabet) with an authentic university peer tone.
+- Code-Switching Rule: Use English for all course-specific technical terms, formulas, variables, theorems, scientific names, or concepts that lack natural peer Amharic translations (e.g., "Momentum", "Thermodynamics", "Derivative", "Photosynthesis", "Scalar"). Seamlessly integrate these English terms into your Amharic sentences without sounding robotic.`;
+
 // Define the Tools (Function Calling)
 const toolsDefinition = {
   functionDeclarations: [
@@ -1202,6 +1206,11 @@ serve(async (req) => {
 
           console.log(`[MIRON STREAM] Initiating real-time turn with primary model: Gemini (${GEMINI_MODEL})`);
 
+          const isAmharicChat = (lang || 'am') === 'am';
+          const activeSystemPrompt = isAmharicChat
+            ? `${MIRON_SYSTEM_PROMPT}${MIRON_AMHARIC_ADDENDUM}`
+            : MIRON_SYSTEM_PROMPT;
+
           let geminiMessages: any[] = [];
           if (context) {
             geminiMessages.push({ role: "user", parts: [{ text: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.` }]});
@@ -1227,7 +1236,7 @@ serve(async (req) => {
             const turnResult = await streamGeminiTurn(
               geminiMessages,
               geminiLoop === 0 ? [toolsDefinition] : null,
-              MIRON_SYSTEM_PROMPT,
+              activeSystemPrompt,
               (chunkText) => {
                 finalText += chunkText;
                 sendEvent('chunk', { delta: chunkText });
@@ -1284,7 +1293,7 @@ serve(async (req) => {
           try {
             sendEvent('status', { message: 'Switching cognitive engine...' });
             const groqMessages: any[] = [
-              { role: "system", content: MIRON_SYSTEM_PROMPT }
+              { role: "system", content: activeSystemPrompt }
             ];
             const trimmed = history.slice(-6);
             trimmed.forEach((m: any) => groqMessages.push({ role: m.side === 'user' ? 'user' : 'assistant', content: m.text }));
