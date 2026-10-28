@@ -94,12 +94,62 @@ const VisualNotebookViewer = ({
   currentPage = 1, 
   onCloseVariant, 
   onSyncTextbookPage,
+  onSwitchLanguage,
   zoomScale = 1,
   onSheetsLoaded,
   onActiveSheetChange,
   targetSheetIndex = null,
   currentTheme = 'dark'
 }) => {
+  const [requestCount, setRequestCount] = useState(0);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [isVoting, setIsVoting] = useState(false);
+  const [voteLoading, setVoteLoading] = useState(false);
+
+  useEffect(() => {
+    if (!loading && (!sheets || sheets.length === 0) && courseCode) {
+      setVoteLoading(true);
+      supabase.rpc('get_course_note_request_status', {
+        p_course_code: courseCode,
+        p_language: language
+      }).then(({ data, error }) => {
+        if (!error && data) {
+          setRequestCount(data.count || 0);
+          setHasVoted(Boolean(data.has_voted));
+        }
+        setVoteLoading(false);
+      }).catch(() => setVoteLoading(false));
+    }
+  }, [loading, sheets?.length, courseCode, language]);
+
+  const handleToggleVote = async () => {
+    if (isVoting || !courseCode) return;
+    setIsVoting(true);
+    const nextVoted = !hasVoted;
+    const delta = nextVoted ? 1 : -1;
+    setHasVoted(nextVoted);
+    setRequestCount(prev => Math.max(0, prev + delta));
+    if (navigator.vibrate) navigator.vibrate(nextVoted ? [25, 45] : 15);
+
+    try {
+      const { data, error } = await supabase.rpc('toggle_course_note_request', {
+        p_course_code: courseCode,
+        p_language: language
+      });
+      if (!error && data) {
+        setRequestCount(data.count || 0);
+        setHasVoted(Boolean(data.has_voted));
+      } else if (error) {
+        setHasVoted(!nextVoted);
+        setRequestCount(prev => Math.max(0, prev - delta));
+      }
+    } catch {
+      setHasVoted(!nextVoted);
+      setRequestCount(prev => Math.max(0, prev - delta));
+    } finally {
+      setIsVoting(false);
+    }
+  };
   const cacheKey = `${courseCode}_${language}`;
 
   // Instant hydration from cache (zero spinner flash on remount)
@@ -346,25 +396,88 @@ const VisualNotebookViewer = ({
   }
 
   if (!sheets || sheets.length === 0) {
+    const isAm = language === 'am';
     return (
       <div className={`v-notebook-root lang-${language} theme-${currentTheme}`} style={{ justifyContent: 'center' }}>
-        <div className="v-card" style={{ maxWidth: '440px', textAlign: 'center', padding: '2.5rem 1.5rem' }}>
-          <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(66, 215, 184, 0.1)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 1rem' }}>
-            <i className="fas fa-palette"></i>
+        <div className="v-card vn-demand-card">
+          <div className="vn-demand-top-row">
+            <span className="v-tag cyber">{courseCode}</span>
+            <div className="vn-vote-lang-pills">
+              <button
+                type="button"
+                className={`vn-vote-lang-btn ${isAm ? 'active' : ''}`}
+                onClick={() => onSwitchLanguage?.('am')}
+                title="አማርኛ የእይታ ኖት"
+              >
+                <span>🇪🇹</span> አማርኛ
+              </button>
+              <button
+                type="button"
+                className={`vn-vote-lang-btn ${!isAm ? 'active' : ''}`}
+                onClick={() => onSwitchLanguage?.('en')}
+                title="English Visual Note"
+              >
+                <span>🇬🇧</span> English
+              </button>
+            </div>
           </div>
-          <span className="v-tag cyber">{courseCode}</span>
-          <h3>{language === 'am' ? 'የእይታ መማሪያ በመዘጋጀት ላይ ነው' : 'Visual Guide in Development'}</h3>
-          <p style={{ color: '#aaa', fontSize: '0.88rem', margin: '8px 0 1.5rem 0', lineHeight: 1.5 }}>
-            {language === 'am' 
-              ? `ለ${courseCode} የተቀናጀ የእይታ እና የማጠቃለያ መማሪያ ገጾች በቅርቡ ይጫናሉ። መደበኛውን መጽሐፍ ማንበብ መቀጠል ይችላሉ።`
-              : `Visual summary companions for ${courseCode} are currently in development. You can continue with the standard textbook.`}
+
+          <div className="vn-demand-emblem">
+            <i className="fa-solid fa-fire"></i>
+          </div>
+
+          <h3 className="vn-demand-title">
+            {isAm ? 'ይህ ኖት ገና አልተዘጋጀም' : 'Visual Note in High Demand'}
+          </h3>
+
+          <p className="vn-demand-sub">
+            {isAm
+              ? `ለ${courseCode} የተዘጋጀ የእይታ ኖት እንዲዘጋጅ የድምጽ መስጫ እየተካሄደ ነው። ይዘጋጅ የሚሉ ተማሪዎች ቁጥር ሲበዛ ቅድሚያ ተሰጥቶት ይዘጋጃል!`
+              : `Curated visual summary notes for ${courseCode} are currently queued for production based on student demand. Cast your vote to prioritize this course!`}
           </p>
-          <button 
-            className="variant-toggle-btn active" 
-            onClick={onCloseVariant}
-            style={{ margin: '0 auto', padding: '8px 18px', fontSize: '0.85rem' }}
+
+          <div className="vn-demand-count-badge">
+            <i className="fa-solid fa-users"></i>
+            {voteLoading ? (
+              <span>{isAm ? 'በመቁጠር ላይ...' : 'Tallying requests...'}</span>
+            ) : requestCount > 0 ? (
+              <span>
+                {isAm 
+                  ? `${requestCount} ተማሪዎች ይዘጋጅ ብለዋል` 
+                  : `${requestCount} ${requestCount === 1 ? 'student has' : 'students have'} requested this`}
+              </span>
+            ) : (
+              <span>{isAm ? 'የመጀመሪያው ጠያቂ ይሁኑ!' : 'Be the first to request this note!'}</span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className={`vn-vote-btn ${hasVoted ? 'voted' : ''}`}
+            onClick={handleToggleVote}
+            disabled={isVoting || voteLoading}
           >
-            <i className="fas fa-book-open"></i> {language === 'am' ? 'ወደ መጽሐፉ ተመለስ' : 'Return to Textbook'}
+            {isVoting ? (
+              <i className="fas fa-circle-notch fa-spin"></i>
+            ) : hasVoted ? (
+              <>
+                <i className="fa-solid fa-circle-check"></i>
+                <span>{isAm ? 'ተመርጧል (ተመዝግቧል)' : 'Requested (Vote Recorded)'}</span>
+              </>
+            ) : (
+              <>
+                <i className="fa-solid fa-hand"></i>
+                <span>{isAm ? 'ይዘጋጅ (+1)' : 'Request This Note (+1)'}</span>
+              </>
+            )}
+          </button>
+
+          <button 
+            type="button"
+            className="vn-return-btn" 
+            onClick={onCloseVariant}
+          >
+            <i className="fas fa-book-open"></i> {isAm ? 'ወደ መጽሐፉ ተመለስ' : 'Return to Textbook'}
           </button>
         </div>
       </div>
