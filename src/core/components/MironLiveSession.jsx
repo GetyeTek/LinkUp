@@ -821,7 +821,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
                 if (!profileErr && freshProfile) {
                     const isPro = Boolean(freshProfile.is_pro && (!freshProfile.pro_expires_at || new Date(freshProfile.pro_expires_at) > new Date()));
-                    const hasCredits = (freshProfile.linkoin_balance || 0) >= 2;
+                    const hasCredits = (freshProfile.linkoin_balance || 0) >= 10;
 
                     if (!isPro && !hasCredits) {
                         console.warn("[Miron Live] Backend pre-flight credit check failed. Triggering paywall.");
