@@ -88,8 +88,8 @@ const normalizeSheetHtml = (rawHtml) => {
   }
 };
 
-const getSeedOffset = (code, lang) => {
-  const str = `${code || ''}_${lang || ''}`;
+const getSeedOffset = (code) => {
+  const str = `${code || ''}_am`;
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = (hash << 5) - hash + str.charCodeAt(i);
@@ -102,11 +102,10 @@ const VisualNotebookViewer = ({
   courseCode, 
   friendlyName,
   bookTitle,
-  language = 'en', 
+  language = 'am', 
   currentPage = 1, 
   onCloseVariant, 
   onSyncTextbookPage,
-  onSwitchLanguage,
   zoomScale = 1,
   onSheetsLoaded,
   onActiveSheetChange,
@@ -123,7 +122,7 @@ const VisualNotebookViewer = ({
       setVoteLoading(true);
       supabase.rpc('get_course_note_request_status', {
         p_course_code: courseCode,
-        p_language: language
+        p_language: 'am'
       }).then(({ data, error }) => {
         if (!error && data) {
           setRequestCount(data.count || 0);
@@ -132,7 +131,7 @@ const VisualNotebookViewer = ({
         setVoteLoading(false);
       }).catch(() => setVoteLoading(false));
     }
-  }, [loading, sheets?.length, courseCode, language]);
+  }, [loading, sheets?.length, courseCode]);
 
   const handleToggleVote = async () => {
     if (isVoting || !courseCode || hasVoted) return;
@@ -144,7 +143,7 @@ const VisualNotebookViewer = ({
     try {
       const { data, error } = await supabase.rpc('toggle_course_note_request', {
         p_course_code: courseCode,
-        p_language: language
+        p_language: 'am'
       });
       if (!error && data) {
         setRequestCount(data.count || 0);
@@ -407,33 +406,17 @@ const VisualNotebookViewer = ({
   }
 
   if (!sheets || sheets.length === 0) {
-    const isAm = language === 'am';
     const resolvedCourseName = friendlyName || (bookTitle ? bookTitle.replace(/^General\s+/i, '') : '') || courseCode;
-    const totalDisplayCount = getSeedOffset(courseCode, language) + requestCount;
+    const totalDisplayCount = getSeedOffset(courseCode) + requestCount;
 
     return (
-      <div className={`v-notebook-root lang-${language} theme-${currentTheme}`} style={{ justifyContent: 'center' }}>
+      <div className={`v-notebook-root lang-am theme-${currentTheme}`} style={{ justifyContent: 'center' }}>
         <div className="v-card vn-demand-card">
           <div className="vn-demand-top-row">
             <span className="v-tag cyber">{resolvedCourseName}</span>
-            <div className="vn-vote-lang-pills">
-              <button
-                type="button"
-                className={`vn-vote-lang-btn ${isAm ? 'active' : ''}`}
-                onClick={() => onSwitchLanguage?.('am')}
-                title="አማርኛ የእይታ ኖት"
-              >
-                <span>🇪🇹</span> አማርኛ
-              </button>
-              <button
-                type="button"
-                className={`vn-vote-lang-btn ${!isAm ? 'active' : ''}`}
-                onClick={() => onSwitchLanguage?.('en')}
-                title="English Visual Note"
-              >
-                <span>🇬🇧</span> English
-              </button>
-            </div>
+            <span className="vn-lang-chip">
+              <span>🇪🇹</span> አማርኛ ኖት
+            </span>
           </div>
 
           <div className="vn-demand-emblem">
@@ -441,25 +424,19 @@ const VisualNotebookViewer = ({
           </div>
 
           <h3 className="vn-demand-title">
-            {isAm ? 'ይህ ኖት ገና አልተዘጋጀም' : 'Visual Note in High Demand'}
+            ይህ ኖት ገና አልተዘጋጀም
           </h3>
 
           <p className="vn-demand-sub">
-            {isAm
-              ? `ለ ${resolvedCourseName} የተዘጋጀ ${isAm ? 'የአማርኛ ኖት' : 'የእንግሊዝኛ ኖት'} እንዲዘጋጅ የድምጽ መስጫ እየተካሄደ ነው። ይዘጋጅ የሚሉ ተማሪዎች ቁጥር ሲበዛ ቅድሚያ ተሰጥቶት ይዘጋጃል!`
-              : `A vote is underway to prepare the ${isAm ? 'Amharic' : 'English'} visual note for ${resolvedCourseName}. When enough students request it, production will be prioritized!`}
+            ለ {resolvedCourseName} የተዘጋጀ የአማርኛ ኖት እንዲዘጋጅ የድምጽ መስጫ እየተካሄደ ነው። ይዘጋጅ የሚሉ ተማሪዎች ቁጥር ሲበዛ ቅድሚያ ተሰጥቶት ይዘጋጃል!
           </p>
 
           <div className="vn-demand-count-badge">
             <i className="fa-solid fa-users"></i>
             {voteLoading ? (
-              <span>{isAm ? 'በመቁጠር ላይ...' : 'Tallying requests...'}</span>
+              <span>በመቁጠር ላይ...</span>
             ) : (
-              <span>
-                {isAm 
-                  ? `${totalDisplayCount} ተማሪዎች ይዘጋጅ ብለዋል` 
-                  : `${totalDisplayCount} students requested this`}
-              </span>
+              <span>{totalDisplayCount} ተማሪዎች ይዘጋጅ ብለዋል</span>
             )}
           </div>
 
@@ -474,12 +451,12 @@ const VisualNotebookViewer = ({
             ) : hasVoted ? (
               <>
                 <i className="fa-solid fa-circle-check"></i>
-                <span>{isAm ? 'ተመርጧል (ተመዝግቧል)' : 'Requested (Vote Recorded)'}</span>
+                <span>ተመርጧል (ተመዝግቧል)</span>
               </>
             ) : (
               <>
                 <i className="fa-solid fa-hand"></i>
-                <span>{isAm ? 'ይዘጋጅ (+1)' : 'Request This Note (+1)'}</span>
+                <span>ይዘጋጅ (+1)</span>
               </>
             )}
           </button>
@@ -489,7 +466,7 @@ const VisualNotebookViewer = ({
             className="vn-return-btn" 
             onClick={onCloseVariant}
           >
-            <i className="fas fa-book-open"></i> {isAm ? 'ወደ መጽሐፉ ተመለስ' : 'Return to Textbook'}
+            <i className="fas fa-book-open"></i> ወደ መጽሐፉ ተመለስ
           </button>
         </div>
       </div>
