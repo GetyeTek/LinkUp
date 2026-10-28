@@ -141,6 +141,33 @@ const MironMessageNode = React.memo(({ m, copiedId, handleCopyMessage, handleInl
         );
     }
 
+    if (m.isHighTraffic) {
+        return (
+            <div className={`chat-node ${m.side}`}>
+                <div className="miron-high-traffic-card">
+                    <div className="mhtc-header">
+                        <div className="mhtc-icon-badge">
+                            <i className="fa-solid fa-server"></i>
+                        </div>
+                        <span className="mhtc-title">High Traffic Alert (503)</span>
+                    </div>
+                    <p className="mhtc-text">{m.text}</p>
+                    <button 
+                        className="mhtc-retry-btn" 
+                        onClick={() => {
+                            if (m.retryText && sendMessage) {
+                                sendMessage(m.retryText);
+                            }
+                        }}
+                    >
+                        <i className="fa-solid fa-rotate-right"></i>
+                        <span>Retry Request</span>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={`chat-node ${m.side}`}>
             <div className="athena-bubble">
@@ -180,6 +207,7 @@ const MironMessageNode = React.memo(({ m, copiedId, handleCopyMessage, handleInl
         prevProps.m.text === nextProps.m.text &&
         prevProps.m.status === nextProps.m.status &&
         prevProps.m.isStreaming === nextProps.m.isStreaming &&
+        prevProps.m.isHighTraffic === nextProps.m.isHighTraffic &&
         wasCopied === isCopied
     );
 });
@@ -778,6 +806,7 @@ const MironChat = ({
             console.error("Miron Communication Error:", error);
             const errMsg = String(error?.message || '').toLowerCase();
             const isBroke = errMsg.includes('402') || errMsg.includes('insufficient_credits') || errMsg.includes('insufficient linkup credits') || errMsg.includes('out of linkup credits');
+            const is503 = errMsg.includes('503') || errMsg.includes('model_unavailable') || errMsg.includes('unavailable') || errMsg.includes('high traffic') || errMsg.includes('overloaded') || errMsg.includes('capacity');
 
             setMessages(prev => prev.map(m => {
                 if (m.id === tempId) return { ...m, id: dbUserMsgId };
@@ -790,6 +819,17 @@ const MironChat = ({
                             isStreaming: false,
                             status: null,
                             isBroke: true 
+                        };
+                    }
+                    if (is503) {
+                        return {
+                            id: `traffic-${Date.now()}`,
+                            side: 'miron',
+                            text: "Miron is currently experiencing high traffic across campus networks and the model is momentarily unavailable.",
+                            isStreaming: false,
+                            status: null,
+                            isHighTraffic: true,
+                            retryText: textToSend
                         };
                     }
                     return {
