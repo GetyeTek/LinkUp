@@ -97,7 +97,7 @@ const BookReaderUI = ({
                     {/* Adaptive Mode Switcher */}
                     {(() => {
                         const hasBoth = visualLangs.includes('en') && visualLangs.includes('am');
-                        const singleTarget = visualLangs.includes('am') && !visualLangs.includes('en') ? 'visual_am' : 'visual_en';
+                        const singleTarget = visualLangs.includes('en') && !visualLangs.includes('am') ? 'visual_en' : 'visual_am';
                         const isVisualActive = viewMode === 'visual_en' || viewMode === 'visual_am';
 
                         if (hasBoth) {
