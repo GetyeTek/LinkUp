@@ -2046,7 +2046,7 @@ Start our co-study session by directly referencing this page out loud to ${this.
       const rpcUrl = `${supabaseUrl}/rest/v1/rpc/lease_gemini_api_key`;
       console.log(`[Agent|GEMINI|DB] Executing POST request to Supabase RPC: ${rpcUrl}`);
 
-      const sessionCost = this.isOneOnOne ? 2 : 20;
+      const sessionCost = this.isOneOnOne ? 10 : 20;
       const dbResponse = await fetch(rpcUrl, {
         method: "POST",
         headers: {
