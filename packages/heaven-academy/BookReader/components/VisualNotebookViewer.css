@@ -535,39 +535,18 @@
     margin-bottom: 0.75rem;
 }
 
-.vn-vote-lang-pills {
-    display: flex;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 99px;
-    padding: 2px;
-    gap: 3px;
-}
-
-.vn-vote-lang-btn {
-    background: transparent;
-    border: none;
-    color: #888;
-    padding: 4px 10px;
-    border-radius: 99px;
-    font-family: 'Poppins', sans-serif;
-    font-size: 0.72rem;
-    font-weight: 700;
-    cursor: pointer;
+.vn-lang-chip {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.vn-vote-lang-btn:hover {
-    color: #fff;
-}
-
-.vn-vote-lang-btn.active {
-    background: var(--accent-teal, #42d7b8);
-    color: #0c0c0c;
-    box-shadow: 0 2px 8px rgba(66, 215, 184, 0.3);
+    gap: 6px;
+    background: rgba(241, 196, 15, 0.12);
+    border: 1px solid rgba(241, 196, 15, 0.35);
+    color: #f1c40f;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    letter-spacing: 0.4px;
 }
 
 .vn-demand-emblem {
