@@ -117,6 +117,8 @@ const VisualNotebookViewer = ({
   const [hasVoted, setHasVoted] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
   const [voteLoading, setVoteLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     if (!loading && (!sheets || sheets.length === 0) && courseCode) {
@@ -150,10 +152,12 @@ const VisualNotebookViewer = ({
         setRequestCount(data.count || 0);
         setHasVoted(true);
       } else if (error) {
+        console.error("[VisualNotebook] Voting RPC Error:", error);
         setHasVoted(false);
         setRequestCount(prev => Math.max(0, prev - 1));
       }
-    } catch {
+    } catch (err) {
+      console.error("[VisualNotebook] Voting Exception:", err);
       setHasVoted(false);
       setRequestCount(prev => Math.max(0, prev - 1));
     } finally {
@@ -186,12 +190,14 @@ const VisualNotebookViewer = ({
     if (notebookSheetsCache.has(cacheKey)) {
       const cached = notebookSheetsCache.get(cacheKey);
       setSheets(cached);
+      setFetchError(false);
       setLoading(false);
       onSheetsLoaded?.(cached);
       return;
     }
 
     setLoading(true);
+    setFetchError(false);
 
     const loadSheets = async () => {
       try {
@@ -216,6 +222,7 @@ const VisualNotebookViewer = ({
       } catch (err) {
         console.error('[VisualNotebook] Backend fetch error:', err);
         if (isMounted) {
+          setFetchError(true);
           setSheets([]);
           setLoading(false);
         }
@@ -224,7 +231,7 @@ const VisualNotebookViewer = ({
 
     loadSheets();
     return () => { isMounted = false; };
-  }, [courseCode, language, cacheKey]);
+  }, [courseCode, language, cacheKey, retryTick]);
 
   // 2. Inject combined scoped styles dynamically into head (with in-flight color & font sanitization)
   useEffect(() => {
@@ -404,6 +411,36 @@ const VisualNotebookViewer = ({
   }
 
   const resolvedCourseName = friendlyName || (bookTitle ? bookTitle.replace(/^General\s+/i, '') : '') || courseCode;
+
+  if (fetchError) {
+    return (
+      <div className={`v-notebook-root lang-am theme-${currentTheme}`} style={{ justifyContent: 'center' }}>
+        <div className="v-card vn-demand-card" style={{ maxWidth: '400px' }}>
+          <div className="vn-demand-emblem" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.35)', animation: 'none' }}>
+            <i className="fa-solid fa-link-slash"></i>
+          </div>
+
+          <h3 className="vn-demand-title">ግንኙነት ተቋርጧል</h3>
+          <p className="vn-demand-sub" style={{ marginBottom: '2rem' }}>
+            ማስታወሻውን ማምጣት አልተቻለም። እባክዎ የኢንተርኔት ግንኙነትዎን ያረጋግጡና እንደገና ይሞክሩ።
+          </p>
+
+          <button
+            type="button"
+            className="vn-vote-btn"
+            onClick={() => setRetryTick(prev => prev + 1)}
+            style={{ background: '#ef4444', borderColor: '#ef4444', color: '#fff', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)' }}
+          >
+            <i className="fa-solid fa-rotate-right"></i> <span>እንደገና ሞክር (Retry)</span>
+          </button>
+
+          <button type="button" className="vn-return-btn" onClick={onCloseVariant}>
+            <i className="fas fa-book-open"></i> ወደ መጽሐፉ ተመለስ
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!sheets || sheets.length === 0) {
     const totalDisplayCount = getSeedOffset(courseCode) + requestCount;
