@@ -82,8 +82,9 @@ TOOLKIT MASTERY & PEDAGOGICAL PURPOSE:
    - Pedagogical Purpose: Long-term memory reinforcement.
    - When to use: When you have explained high-yield formulas, fundamental laws, technical definitions, or multi-step mechanisms that students must memorize for exams.
    - How to introduce: Integrate them smoothly as a natural study aid (e.g., "I've created an active recall card for this formula below and added it to your review deck:").
-   - Place [FLASHCARD_1] on its own line where you want the interactive deck to render.
-   - Cards must follow the Atomic Recall Principle: A sharp, single-concept prompt on the front; a punchy, precise explanation on the back. Wrap all math/variables in LaTeX.
+       - Place [FLASHCARD_1] on its own line where you want the interactive deck to render.
+    - Volume Guideline: Keep count dynamic based on topic depth, with a strict minimum of 5 cards. You are encouraged to generate more (e.g., 6 to 10+ cards) for thorough retention. Never generate fewer than 5.
+    - Cards must follow the Atomic Recall Principle: A sharp, single-concept prompt on the front; a punchy, precise explanation on the back. Wrap all math/variables in LaTeX.
 
 3. "render_quiz" (Interactive Knowledge Checks):
    - Pedagogical Purpose: Active testing and formative assessment.
@@ -91,9 +92,9 @@ TOOLKIT MASTERY & PEDAGOGICAL PURPOSE:
    - Mode Selection Guide:
      * 'database': Pulls authentic past university exam questions mapped to that textbook chapter. Use this whenever you want to test the student against real university exam standards.
      * 'custom': Generates your own targeted questions on the fly. Ideal for verifying formulas or concepts you just explained, or when testing specific problem-solving techniques.
-   - Silent Fallback: If 'database' mode reports that no archived questions are mapped to that section, do NOT mention database limitations or backend messages to the user. Silently call 'render_quiz' again with mode: 'custom' in that exact turn to generate your own questions on the spot.
-   - Dynamic Count: You choose how many questions to present (maximum ceiling: 20) based on the depth of the topic or what the student asked for. Do not force an artificial limit.
-   - Tag Requirement: You can ONLY insert [QUIZ_0] into your response if the tool was executed and returned that tag.
+       - Silent Fallback: If 'database' mode reports that no archived questions are mapped to that section, do NOT mention database limitations or backend messages to the user. Silently call 'render_quiz' again with mode: 'custom' in that exact turn to generate your own questions on the spot.
+    - Dynamic Count: Keep count dynamic with a strict minimum of 5 questions. You are encouraged to generate more (e.g., 6 to 10+, up to a ceiling of 20) for rigorous examination preparation. Never generate fewer than 5 unless the student explicitly asks for a smaller number.
+    - Tag Requirement: You can ONLY insert [QUIZ_0] into your response if the tool was executed and returned that tag.
 
 4. "render_book_snapshot":
    - Pedagogical Purpose: Spatial and visual textbook recall.
@@ -188,10 +189,10 @@ const toolsDefinition = {
           mode: { type: "STRING", description: "'database' to fetch mapped questions from the book, or 'custom' to use your own generated questions." },
           course_code: { type: "STRING", description: "Required if mode is 'database' (e.g., 'LOCT 1011')." },
           section_title: { type: "STRING", description: "Optional if mode is 'database'. Used to filter questions to a specific chapter/section." },
-          limit: { type: "INTEGER", description: "Number of questions to display (Maximum ceiling: 20). Choose an appropriate count dynamically based on the student's request or topic depth." },
+          limit: { type: "INTEGER", description: "Number of questions to display (Minimum: 5, ceiling: 20). Encourage generating 5 or more dynamically based on the student's request or topic depth." },
           custom_questions: {
             type: "ARRAY",
-            description: "Required if mode is 'custom'. Generate Multiple Choice or True/False questions. MANDATORY: Every formula, variable, symbol, and option MUST be written in standard LaTeX enclosed in single dollar signs ($...).",
+            description: "Required if mode is 'custom'. Generate Multiple Choice or True/False questions. Minimum: 5 questions (encourage 6 to 10+ for thorough assessment). MANDATORY: Every formula, variable, symbol, and option MUST be written in standard LaTeX enclosed in single dollar signs ($...).",
             items: {
               type: "OBJECT",
               properties: {
@@ -209,7 +210,7 @@ const toolsDefinition = {
     },
     {
       name: "render_flashcards",
-      description: "Generate interactive 3D flashcards that are permanently saved to the student's Spaced Repetition (SRS) memory deck. Call this autonomously whenever you explain a core law, formula, definition, contrasting mechanism, or key exam takeaway. You decide the appropriate number of cards needed to test the concept with atomic recall.",
+      description: "Generate interactive 3D flashcards that are permanently saved to the student's Spaced Repetition (SRS) memory deck. Call this autonomously whenever you explain a core law, formula, definition, contrasting mechanism, or key exam takeaway. Minimum: 5 cards (encourage more, e.g. 6 to 10+).",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -217,7 +218,7 @@ const toolsDefinition = {
           topic: { type: "STRING", description: "The topic or chapter title (e.g. 'Doppler Effect', 'Thermodynamics', 'Categorical Logic')." },
           flashcards: {
             type: "ARRAY",
-            description: "Array of atomic flashcards. You decide how many cards are necessary based on the topic. MANDATORY: Every formula, variable, symbol, and unit MUST be written in standard LaTeX ($...).",
+            description: "Array of atomic flashcards. Minimum: 5 cards (encourage 6 to 10+ for comprehensive topic coverage). MANDATORY: Every formula, variable, symbol, and unit MUST be written in standard LaTeX ($...).",
             items: {
               type: "OBJECT",
               properties: {
@@ -463,7 +464,7 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    const { history, prompt, context, mode, lang, sex } = await req.json();
+    const { history, prompt, context, mode, lang, sex, name } = await req.json();
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Prompt text is required." }), { 
@@ -486,14 +487,22 @@ serve(async (req) => {
       }), { status: isBroke ? 402 : 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-        // 3. Inspect user Pro status and gender identity for pronoun resolution
+        // 3. Inspect user Pro status, gender identity, and name for personal address
     const { data: userProfile } = await supabase
       .from('profiles')
-      .select('is_pro, pro_expires_at, sex')
+      .select('is_pro, pro_expires_at, sex, full_name')
       .eq('id', userId)
       .maybeSingle();
 
     const isPro = Boolean(userProfile?.is_pro && (!userProfile?.pro_expires_at || new Date(userProfile.pro_expires_at) > new Date()));
+
+    const rawName = userProfile?.full_name || name || user?.user_metadata?.full_name || '';
+    const studentFirstName = rawName ? rawName.trim().split(' ')[0] : '';
+    let identityDirective = '';
+    if (studentFirstName) {
+      identityDirective = `\n\nSTUDENT NAME & PERSONAL ADDRESS:
+- The student's name is ${studentFirstName}. Address them by their name naturally in conversation (e.g., "${studentFirstName}...", "ሰላም ${studentFirstName}", "ጥሩ ጥያቄ ነው ${studentFirstName}"). Do not robotically repeat it in every single sentence, but weave it in naturally like a real classmate sitting right next to them.`;
+    }
 
     const resolvedSex = (userProfile?.sex || sex || '').toLowerCase().trim();
     let genderDirective = '';
@@ -504,7 +513,7 @@ serve(async (req) => {
     } else if (resolvedSex === 'male' || resolvedSex === 'm') {
       genderDirective = `\n\nSTUDENT GENDER & GRAMMATICAL DIRECTIVE:
 - The student is male. Always address him using masculine grammatical forms and pronouns.
-- In Amharic, strictly use masculine conjugations and pronouns (e.g., አንተ, -ክ such as እንዴት ነህ, ተረድተሃል, አስታውስ, ይገባሃል).`;
+- In Amharic, strictly use masculine conjugations and pronouns (e.g., አንተ, -ክ እንደ እንዴት ነህ, ተረድተሃል, አስታውስ, ይገባሃል).`;
     }
 
     const isAmharicChat = (lang || 'am') === 'am';
@@ -514,6 +523,9 @@ serve(async (req) => {
 
     if (genderDirective) {
       activeSystemPrompt += genderDirective;
+    }
+    if (identityDirective) {
+      activeSystemPrompt += identityDirective;
     }
 
     // 1. API Key Round-Robin Engine (Groq & Gemini)
@@ -864,7 +876,7 @@ serve(async (req) => {
                 .map(m => m.question_id);
 
               if (validQIds.length > 0) {
-                const queryLimit = Math.min(20, Math.max(1, args.limit || 5));
+                const queryLimit = Math.min(20, Math.max(5, args.limit || 5));
                 const { data: dbQs } = await supabase.from('questions')
                   .select(`id, text, question_type, options, correct_answer, sections(exams(universities(name)))`)
                   .in('id', validQIds)
