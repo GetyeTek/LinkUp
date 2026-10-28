@@ -120,37 +120,48 @@
     transform: scale(1.05);
 }
 
-.athena-dev-copy-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--surface-dark);
-    border: 1px solid var(--border-color);
-    color: var(--accent-teal);
-    display: flex;
+.mini-lang-toggle-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 99px;
+    padding: 3px 10px;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: 5px;
+    color: #e0e0e0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-    font-size: 0.95rem;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
 }
 
-.athena-dev-copy-btn:hover:not(:disabled) {
-    background: rgba(66, 215, 184, 0.15);
-    transform: scale(1.05);
-    color: #fff;
+.mini-lang-toggle-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
 }
 
-.athena-dev-copy-btn:disabled {
-    opacity: 0.4;
+.mini-lang-toggle-btn.am-active {
+    border-color: rgba(241, 196, 15, 0.45);
+    background: rgba(241, 196, 15, 0.12);
+    color: #f1c40f;
+}
+
+.mini-lang-toggle-btn.en-active {
+    border-color: rgba(66, 215, 184, 0.45);
+    background: rgba(66, 215, 184, 0.12);
+    color: var(--accent-teal, #42d7b8);
+}
+
+.mini-lang-toggle-btn:disabled {
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
-.athena-dev-copy-btn.copied {
-    background: rgba(66, 215, 184, 0.25);
-    border-color: var(--accent-teal);
-    color: var(--accent-teal);
+.mini-lang-flag {
+    font-size: 0.82rem;
+    line-height: 1;
 }
 
 /* Bubble Action Row & Copy Button */
