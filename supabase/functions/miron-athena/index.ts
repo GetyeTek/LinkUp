@@ -1047,6 +1047,8 @@ serve(async (req) => {
           }
         };
 
+        let hasStreamError = false;
+
         try {
           // --- FAST PATH: MINI MIRON PASSAGE EXPLANATION ---
           if (mode === 'passage_explain') {
@@ -1317,6 +1319,7 @@ serve(async (req) => {
           }
 
         } catch (geminiErr: any) {
+          hasStreamError = true;
           console.error(`[MIRON GEMINI FAILED] ${geminiErr.message}. Groq fallback disabled for main chat.`);
           // Refund credits immediately if charged
           if (!isPro) {
@@ -1347,20 +1350,22 @@ serve(async (req) => {
 
           sendEvent('error', { message: clientErrorMsg });
         } finally {
-          // Clean orphan tags from completed text
-          if (inlineQuizzes.length === 0) finalText = finalText.replace(/\[QUIZ_\d+\]/g, '').trim();
-          if (inlineSnapshots.length === 0) finalText = finalText.replace(/\[SNAPSHOT_\d+\]/g, '').trim();
-          if (inlineFlashcards.length === 0) finalText = finalText.replace(/\[FLASHCARD_\d+\]/g, '').trim();
+          // If an unrecoverable stream error occurred, suppress 'done' event completely
+          if (!hasStreamError) {
+            if (inlineQuizzes.length === 0) finalText = finalText.replace(/\[QUIZ_\d+\]/g, '').trim();
+            if (inlineSnapshots.length === 0) finalText = finalText.replace(/\[SNAPSHOT_\d+\]/g, '').trim();
+            if (inlineFlashcards.length === 0) finalText = finalText.replace(/\[FLASHCARD_\d+\]/g, '').trim();
 
-          console.log(`🏁 [MIRON COMPLETED] Total request runtime: ${elapsed()} | Final text: ${finalText.length} chars | Flashcards: ${inlineFlashcards.length}`);
+            console.log(`🏁 [MIRON COMPLETED] Total request runtime: ${elapsed()} | Final text: ${finalText.length} chars | Flashcards: ${inlineFlashcards.length}`);
 
-          sendEvent('done', {
-            snapshots: inlineSnapshots,
-            quizzes: inlineQuizzes,
-            flashcards: inlineFlashcards,
-            ui_command: uiCommand,
-            thoughts: extractedThoughts
-          });
+            sendEvent('done', {
+              snapshots: inlineSnapshots,
+              quizzes: inlineQuizzes,
+              flashcards: inlineFlashcards,
+              ui_command: uiCommand,
+              thoughts: extractedThoughts
+            });
+          }
 
           controller.close();
         }
