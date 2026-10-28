@@ -33,7 +33,7 @@ INSTRUCTIONS:
 - If mathematical formulas or scientific variables are involved, format them strictly in standard LaTeX ($...$ inline, $...$ display).
 - Do NOT generate quizzes, flashcards, snapshots, or bracketed commands. Keep your response strictly explanatory.`;
 
-const MIRON_SYSTEM_PROMPT = `You are Miron Athena, an exceptional, articulate, and supportive academic study companion for university students.
+const MIRON_SYSTEM_PROMPT = `You are Miron, an exceptional, articulate, and supportive academic study companion for university students.
 You communicate naturally, with warmth, clarity, and genuine conversational intelligence. You explain complex ideas with intuitive depth, adapt seamlessly to the student's learning pace, and never sound robotic, scripted, or overly formal.
 
 AVAILABLE COURSE TEXTBOOKS (Internal course_code key to textbook title):
@@ -463,12 +463,7 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    const { history, prompt, context, mode, lang } = await req.json();
-
-    const isAmharicChat = (lang || 'am') === 'am';
-    const activeSystemPrompt = isAmharicChat
-      ? `${MIRON_SYSTEM_PROMPT}${MIRON_AMHARIC_ADDENDUM}`
-      : MIRON_SYSTEM_PROMPT;
+    const { history, prompt, context, mode, lang, sex } = await req.json();
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Prompt text is required." }), { 
@@ -491,14 +486,35 @@ serve(async (req) => {
       }), { status: isBroke ? 402 : 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3. Inspect user Pro status for conditional refund tracking
+        // 3. Inspect user Pro status and gender identity for pronoun resolution
     const { data: userProfile } = await supabase
       .from('profiles')
-      .select('is_pro, pro_expires_at')
+      .select('is_pro, pro_expires_at, sex')
       .eq('id', userId)
       .maybeSingle();
-      
+
     const isPro = Boolean(userProfile?.is_pro && (!userProfile?.pro_expires_at || new Date(userProfile.pro_expires_at) > new Date()));
+
+    const resolvedSex = (userProfile?.sex || sex || '').toLowerCase().trim();
+    let genderDirective = '';
+    if (resolvedSex === 'female' || resolvedSex === 'f') {
+      genderDirective = `\n\nSTUDENT GENDER & GRAMMATICAL DIRECTIVE:
+- The student is female. Always address her using feminine grammatical forms and pronouns.
+- In Amharic, strictly use feminine conjugations and pronouns (e.g., አንቺ, -ሽ such as እንዴት ነሽ, ተረድተሻል, አስታውሺ, ይገባሻል).`;
+    } else if (resolvedSex === 'male' || resolvedSex === 'm') {
+      genderDirective = `\n\nSTUDENT GENDER & GRAMMATICAL DIRECTIVE:
+- The student is male. Always address him using masculine grammatical forms and pronouns.
+- In Amharic, strictly use masculine conjugations and pronouns (e.g., አንተ, -ክ such as እንዴት ነህ, ተረድተሃል, አስታውስ, ይገባሃል).`;
+    }
+
+    const isAmharicChat = (lang || 'am') === 'am';
+    let activeSystemPrompt = isAmharicChat
+      ? `${MIRON_SYSTEM_PROMPT}${MIRON_AMHARIC_ADDENDUM}`
+      : MIRON_SYSTEM_PROMPT;
+
+    if (genderDirective) {
+      activeSystemPrompt += genderDirective;
+    }
 
     // 1. API Key Round-Robin Engine (Groq & Gemini)
     async function getApiKey(service: 'groq' | 'gemini') {
