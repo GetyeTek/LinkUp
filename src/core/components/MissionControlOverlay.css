@@ -22,6 +22,129 @@
 .claim-btn.claimed { background-color: var(--accent-teal); color: var(--bg-dark); }
 
 /* --- SQUAD NETWORK (REFERRALS) UI --- */
+.ref-milestones-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.ref-milestone-card {
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 11px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.25s ease;
+}
+
+.ref-milestone-card.unlocked {
+    border-color: rgba(241, 196, 15, 0.5);
+    background: linear-gradient(135deg, rgba(241, 196, 15, 0.1) 0%, rgba(20, 15, 5, 0.6) 100%);
+    box-shadow: 0 4px 18px rgba(241, 196, 15, 0.15);
+}
+
+.ref-milestone-card.claimed {
+    border-color: rgba(66, 215, 184, 0.35);
+    background: rgba(66, 215, 184, 0.04);
+}
+
+.ref-m-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ref-m-tag {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ref-m-reward {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--linkoin-gold, #f1c40f);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ref-milestone-card.claimed .ref-m-reward {
+    color: var(--accent-teal, #42d7b8);
+}
+
+.ref-m-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
+    overflow: hidden;
+    position: relative;
+}
+
+.ref-m-fill {
+    height: 100%;
+    background: var(--linkoin-gold, #f1c40f);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+.ref-milestone-card.claimed .ref-m-fill {
+    background: var(--accent-teal, #42d7b8);
+}
+
+.ref-m-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ref-m-count {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.72rem;
+    color: #888;
+    font-weight: 600;
+}
+
+.ref-m-btn {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: default;
+}
+
+.ref-m-btn.locked {
+    background: rgba(255, 255, 255, 0.05);
+    color: #666;
+}
+
+.ref-m-btn.claimable {
+    background: var(--linkoin-gold, #f1c40f);
+    color: #0c0805;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(241, 196, 15, 0.3);
+}
+
+.ref-m-btn.claimable:active {
+    transform: scale(0.96);
+}
+
+.ref-m-btn.claimed {
+    background: rgba(66, 215, 184, 0.15);
+    color: var(--accent-teal, #42d7b8);
+}
 .invite-card-premium {
     background: linear-gradient(145deg, rgba(30, 30, 30, 0.8), rgba(12, 12, 12, 0.9));
     border: 1px solid var(--linkoin-gold);
