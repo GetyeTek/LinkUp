@@ -221,6 +221,7 @@ const MironChat = ({
     const [isTyping, setIsTyping] = useState(false);
     const [isLoadingMessages, setIsLoadingMessages] = useState(true);
     const [activeBoardPayload, setActiveBoardPayload] = useState(null);
+    const [lang, setLang] = useState('am');
     const flowRef = useRef(null);
     const scrollAnchorRef = useRef(null);
     const isAutoScrollEnabled = useRef(true);
@@ -749,7 +750,8 @@ const MironChat = ({
             await invokeMironStream({
                 prompt: textToSend,
                 history: messages.slice(-10),
-                context: currentThread?.context_passage || initialContext
+                context: currentThread?.context_passage || initialContext,
+                lang
             }, {
                 onStatus: (statusMessage) => {
                     setMessages(prev => prev.map(m => m.id === mironTempId ? { ...m, status: statusMessage } : m));
@@ -858,13 +860,15 @@ const MironChat = ({
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <button
-                        className={`athena-dev-copy-btn ${isThreadCopied ? 'copied' : ''}`}
-                        onClick={handleCopyFullThread}
-                        title={isThreadCopied ? t('miron_thread_copied', 'Thread Copied!') : t('miron_copy_thread', 'Copy Full Thread')}
-                        disabled={messages.length === 0}
+                    <button 
+                        type="button" 
+                        className={`mini-lang-toggle-btn ${lang === 'am' ? 'am-active' : 'en-active'}`}
+                        onClick={() => setLang(prev => prev === 'am' ? 'en' : 'am')}
+                        disabled={isTyping}
+                        title={lang === 'am' ? t('mini_switch_en', null, "Switch to English") : t('mini_switch_am', null, "Switch to Amharic")}
                     >
-                        <i className={`fa-${isThreadCopied ? 'solid fa-check' : 'regular fa-clipboard'}`}></i>
+                        <span className="mini-lang-flag">{lang === 'am' ? '🇪🇹' : '🇬🇧'}</span>
+                        <span className="mini-lang-label">{lang === 'am' ? 'አማርኛ' : 'EN'}</span>
                     </button>
                     <button 
                         className="athena-live-btn"
