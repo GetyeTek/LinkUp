@@ -20,7 +20,6 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     const [view, setView] = useState('pricing');
     const [plan, setPlan] = useState('annual');
     const [selectedMethod, setSelectedMethod] = useState('cbe'); // 'cbe' | 'telebirr'
-    const [useCredits, setUseCredits] = useState(true); // Auto-applied by default for instant gratification
     const [quote, setQuote] = useState(null);
     const [quoteLoading, setQuoteLoading] = useState(true);
     const [quoteError, setQuoteError] = useState(null);
@@ -141,14 +140,14 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
         setReceiptPreview(URL.createObjectURL(file));
     };
 
-    // Fetch quote from backend whenever plan or credit toggle changes
+    // Fetch quote from backend whenever plan changes
     useEffect(() => {
         if (!sessionUser?.id || !isActive) return;
         setQuoteLoading(true);
         setQuoteError(null);
         supabase.rpc('calculate_membership_quote', {
             p_plan: plan,
-            p_use_credits: useCredits
+            p_use_credits: false
         }).then(({ data, error }) => {
             if (error) {
                 setQuoteError(error.message || "Failed to retrieve pricing.");
@@ -162,7 +161,7 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
         }).finally(() => {
             setQuoteLoading(false);
         });
-    }, [plan, useCredits, sessionUser?.id, isActive]);
+    }, [plan, sessionUser?.id, isActive]);
 
     // 1-Tap Copy Helper
     const copyToClipboard = (text, key) => {
@@ -205,15 +204,13 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
             }
 
             const amount = amountDue;
-            const creditsUsed = (useCredits && quote?.credits_applied) ? quote.credits_applied : 0;
-            const discountApplied = (useCredits && quote?.discount_amount) ? quote.discount_amount : 0;
 
             const payload = {
                 user_id: sessionUser.id,
                 plan,
                 amount,
-                credits_applied: creditsUsed,
-                discount_applied: discountApplied,
+                credits_applied: 0,
+                discount_applied: 0,
                 payment_method: selectedMethod,
                 transaction_ref: txnRef.trim() || null,
                 sms_text: smsText.trim() || null,
@@ -248,12 +245,9 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     const annualPlan = quote?.plans?.annual;
     const currentPlanDetails = plan === 'semester' ? semesterPlan : annualPlan;
 
-    const discount = (useCredits && currentPlanDetails?.discount_amount) ? currentPlanDetails.discount_amount : ((useCredits && quote?.discount_amount) ? quote.discount_amount : 0);
-    const semesterBase = semesterPlan?.base_price ?? (plan === 'semester' ? quote?.base_price : null);
-    const annualBase = annualPlan?.base_price ?? (plan === 'annual' ? quote?.base_price : null);
-    const semesterFinal = semesterPlan?.final_price ?? (semesterBase !== null ? Math.max(0, semesterBase - discount) : null);
-    const annualFinal = annualPlan?.final_price ?? (annualBase !== null ? Math.max(0, annualBase - discount) : null);
-    const amountDue = currentPlanDetails?.final_price ?? (plan === 'semester' ? semesterFinal : annualFinal) ?? quote?.final_price;
+    const semesterFinal = semesterPlan?.final_price ?? 199;
+    const annualFinal = annualPlan?.final_price ?? 299;
+    const amountDue = currentPlanDetails?.final_price ?? (plan === 'semester' ? semesterFinal : annualFinal) ?? 199;
 
     return (
         <div className={`pu-overlay-wrapper ${isActive ? 'is-active' : ''}`} onClick={onClose}>
@@ -331,32 +325,14 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     className={`pu-plan-card ${plan === 'semester' ? 'active' : ''}`} 
                                     onClick={() => setPlan('semester')}
                                 >
-                                    {discount > 0 && (
-                                        <div className="pu-plan-ribbon credit-ribbon">
-                                            <i className="fa-solid fa-coins"></i> -{discount} ETB Credits
-                                        </div>
-                                    )}
                                     <div className="pu-plan-tag">{semesterPlan?.title || t('premium_plan_sem', userProfile?.sex, 'Semester Pass')}</div>
                                     
                                     {quoteLoading ? (
                                         <div style={{ padding: '1rem 0', color: 'var(--gold-main)', textAlign: 'center' }}><i className="fas fa-circle-notch fa-spin"></i></div>
-                                    ) : discount > 0 ? (
-                                        <div className="pu-formula-box">
-                                            <div className="pu-math-row">
-                                                <span className="pu-base-struck">{semesterBase} ETB</span>
-                                                <span className="pu-math-sub">-{discount} ETB</span>
-                                            </div>
-                                            <div className="pu-plan-price">
-                                                {semesterFinal} <span>ETB</span>
-                                            </div>
-                                            <span className="pu-credits-used-note">
-                                                <i className="fa-solid fa-circle-check"></i> <span dangerouslySetInnerHTML={{ __html: t('premium_credits_used', userProfile?.sex, '<u>{credits} credits</u> applied from your wallet').replace('{credits}', `<u>${quote?.credits_applied}</u>`) }}></span>
-                                            </span>
-                                        </div>
                                     ) : (
                                         <div className="pu-formula-box">
                                             <div className="pu-plan-price">
-                                                {semesterBase ?? '---'} <span>ETB</span>
+                                                {semesterFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-plan-period-note">{semesterPlan?.period || 'Single semester'}</span>
                                         </div>
@@ -367,34 +343,17 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     className={`pu-plan-card ${plan === 'annual' ? 'active' : ''}`} 
                                     onClick={() => setPlan('annual')}
                                 >
-                                    <div className={`pu-plan-ribbon ${discount > 0 ? 'fused-ribbon' : 'annual-ribbon'}`}>
-                                        {discount > 0 ? (
-                                            <><i className="fa-solid fa-bolt"></i> -{discount} ETB + {annualPlan?.savings_pct || 35}%</>
-                                        ) : (
-                                            t('premium_save_pct', userProfile?.sex, 'Save {pct}%').replace('{pct}', String(annualPlan?.savings_pct || 35))
-                                        )}
+                                    <div className="pu-plan-ribbon annual-ribbon">
+                                        {t('premium_save_pct', userProfile?.sex, 'Save {pct}%').replace('{pct}', String(annualPlan?.savings_pct || 35))}
                                     </div>
                                     <div className="pu-plan-tag">{annualPlan?.title || t('premium_plan_ann', userProfile?.sex, 'Annual Pass')}</div>
 
                                     {quoteLoading ? (
                                         <div style={{ padding: '1rem 0', color: 'var(--gold-main)', textAlign: 'center' }}><i className="fas fa-circle-notch fa-spin"></i></div>
-                                    ) : discount > 0 ? (
-                                        <div className="pu-formula-box">
-                                            <div className="pu-math-row">
-                                                <span className="pu-base-struck">{annualBase} ETB</span>
-                                                <span className="pu-math-sub">-{discount} ETB</span>
-                                            </div>
-                                            <div className="pu-plan-price">
-                                                {annualFinal} <span>ETB</span>
-                                            </div>
-                                            <span className="pu-credits-used-note">
-                                                <i className="fa-solid fa-circle-check"></i> <span dangerouslySetInnerHTML={{ __html: t('premium_credits_used', userProfile?.sex, '<u>{credits} credits</u> applied from your wallet').replace('{credits}', `<u>${quote?.credits_applied}</u>`) }}></span>
-                                            </span>
-                                        </div>
                                     ) : (
                                         <div className="pu-formula-box">
                                             <div className="pu-plan-price">
-                                                {annualBase ?? '---'} <span>ETB</span>
+                                                {annualFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-plan-period-note">{annualPlan?.period || 'Full academic year'}</span>
                                         </div>
@@ -402,34 +361,11 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                 </div>
                             </div>
 
-                            {quote && quote.credits_available > 0 && (
-                                <div className="pu-wallet-footnote">
-                                    <span className="pu-footnote-text">
-                                        <i className="fa-solid fa-coins" style={{ color: 'var(--gold-main)', marginRight: '6px' }}></i>
-                                        {useCredits && quote.credits_applied > 0
-                                            ? `${t('premium_credits_used', userProfile?.sex, '{credits} credits applied from your wallet').replace('{credits}', quote.credits_applied)} (${quote.credits_remaining} saved)`
-                                            : t('premium_credits_saved', userProfile?.sex, '{credits} credits saved in your wallet').replace('{credits}', quote.credits_available)}
-                                    </span>
-                                    <button 
-                                        type="button" 
-                                        className="pu-footnote-toggle-btn"
-                                        onClick={() => setUseCredits(!useCredits)}
-                                    >
-                                        {useCredits ? t('premium_btn_save', userProfile?.sex, 'Save for later') : t('premium_btn_apply', userProfile?.sex, 'Apply credits')}
-                                    </button>
-                                </div>
-                            )}
-
                             <button className="pu-cta-gold-btn" onClick={() => setView('methods')} disabled={quoteLoading || !amountDue || !!quoteError}>
                                 {quoteLoading ? (
                                     <><i className="fas fa-circle-notch fa-spin"></i> {t('premium_calc', userProfile?.sex, 'Calculating Price...')}</>
                                 ) : !amountDue || quoteError ? (
                                     <span>{t('premium_unavail', userProfile?.sex, 'Pricing Unavailable')}</span>
-                                ) : discount > 0 ? (
-                                    <>
-                                        <span>{t('premium_proceed_saved', userProfile?.sex, 'Proceed • Pay {amount} ETB (Saved {discount} ETB)').replace('{amount}', amountDue).replace('{discount}', discount)}</span>
-                                        <i className="fa-solid fa-sparkles"></i>
-                                    </>
                                 ) : (
                                     <>
                                         <span>{t('premium_proceed', userProfile?.sex, 'Proceed to Payment • {amount} ETB').replace('{amount}', amountDue)}</span>
@@ -708,11 +644,6 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
 
                             <div className="pu-status-card">
                                 <div><strong>{t('premium_plan_lbl', userProfile?.sex, 'Plan:')}</strong> {existingSubmission?.plan === 'annual' ? t('premium_plan_ann', userProfile?.sex, 'Annual Pass') : t('premium_plan_sem', userProfile?.sex, 'Semester Pass')} ({existingSubmission?.amount || amountDue} ETB)</div>
-                                {existingSubmission?.discount_applied > 0 && (
-                                    <div style={{ marginTop: '4px', color: 'var(--green-accent)' }}>
-                                        <strong>Credits Applied:</strong> {existingSubmission.credits_applied} (-{existingSubmission.discount_applied} ETB)
-                                    </div>
-                                )}
                                 {existingSubmission?.transaction_ref && (
                                     <div style={{ marginTop: '4px' }}><strong>Txn Ref:</strong> {existingSubmission.transaction_ref}</div>
                                 )}
