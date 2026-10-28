@@ -178,6 +178,11 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
             return;
         }
 
+        if (!amountDue) {
+            alert("Pricing could not be verified from the server. Please check your connection and retry.");
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             let uploadedImageUrl = existingSubmission?.screenshot_url || null;
@@ -245,9 +250,9 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
     const annualPlan = quote?.plans?.annual;
     const currentPlanDetails = plan === 'semester' ? semesterPlan : annualPlan;
 
-    const semesterFinal = semesterPlan?.final_price ?? 199;
-    const annualFinal = annualPlan?.final_price ?? 299;
-    const amountDue = currentPlanDetails?.final_price ?? (plan === 'semester' ? semesterFinal : annualFinal) ?? 199;
+    const semesterFinal = semesterPlan?.final_price ?? null;
+    const annualFinal = annualPlan?.final_price ?? null;
+    const amountDue = currentPlanDetails?.final_price ?? (plan === 'semester' ? semesterFinal : annualFinal) ?? null;
 
     return (
         <div className={`pu-overlay-wrapper ${isActive ? 'is-active' : ''}`} onClick={onClose}>
@@ -329,12 +334,19 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     
                                     {quoteLoading ? (
                                         <div style={{ padding: '1rem 0', color: 'var(--gold-main)', textAlign: 'center' }}><i className="fas fa-circle-notch fa-spin"></i></div>
-                                    ) : (
+                                    ) : semesterFinal !== null ? (
                                         <div className="pu-formula-box">
                                             <div className="pu-plan-price">
                                                 {semesterFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-plan-period-note">{semesterPlan?.period || 'Single semester'}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="pu-formula-box">
+                                            <div className="pu-plan-price" style={{ color: '#888' }}>
+                                                --- <span>ETB</span>
+                                            </div>
+                                            <span className="pu-plan-period-note" style={{ color: '#ff6b6b' }}>{t('premium_unavail', userProfile?.sex, 'Pricing Unavailable')}</span>
                                         </div>
                                     )}
                                 </div>
@@ -343,19 +355,28 @@ const PremiumUpgradeOverlay = ({ isActive, onClose }) => {
                                     className={`pu-plan-card ${plan === 'annual' ? 'active' : ''}`} 
                                     onClick={() => setPlan('annual')}
                                 >
-                                    <div className="pu-plan-ribbon annual-ribbon">
-                                        {t('premium_save_pct', userProfile?.sex, 'Save {pct}%').replace('{pct}', String(annualPlan?.savings_pct || 35))}
-                                    </div>
+                                    {annualPlan?.savings_pct ? (
+                                        <div className="pu-plan-ribbon annual-ribbon">
+                                            {t('premium_save_pct', userProfile?.sex, 'Save {pct}%').replace('{pct}', String(annualPlan.savings_pct))}
+                                        </div>
+                                    ) : null}
                                     <div className="pu-plan-tag">{annualPlan?.title || t('premium_plan_ann', userProfile?.sex, 'Annual Pass')}</div>
 
                                     {quoteLoading ? (
                                         <div style={{ padding: '1rem 0', color: 'var(--gold-main)', textAlign: 'center' }}><i className="fas fa-circle-notch fa-spin"></i></div>
-                                    ) : (
+                                    ) : annualFinal !== null ? (
                                         <div className="pu-formula-box">
                                             <div className="pu-plan-price">
                                                 {annualFinal} <span>ETB</span>
                                             </div>
                                             <span className="pu-plan-period-note">{annualPlan?.period || 'Full academic year'}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="pu-formula-box">
+                                            <div className="pu-plan-price" style={{ color: '#888' }}>
+                                                --- <span>ETB</span>
+                                            </div>
+                                            <span className="pu-plan-period-note" style={{ color: '#ff6b6b' }}>{t('premium_unavail', userProfile?.sex, 'Pricing Unavailable')}</span>
                                         </div>
                                     )}
                                 </div>
