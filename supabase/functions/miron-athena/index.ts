@@ -1317,79 +1317,35 @@ serve(async (req) => {
           }
 
         } catch (geminiErr: any) {
-          console.warn(`[MIRON GEMINI STREAM FAILED] ${geminiErr.message}. Executing Groq streaming fallback...`, geminiErr);
-          try {
-            sendEvent('status', { message: 'Switching cognitive engine...' });
-            const groqMessages: any[] = [
-              { role: "system", content: activeSystemPrompt }
-            ];
-            const trimmed = history.slice(-6);
-            trimmed.forEach((m: any) => groqMessages.push({ role: m.side === 'user' ? 'user' : 'assistant', content: m.text }));
-            groqMessages.push({ role: "user", content: prompt });
-
-            const keyRecord = await getApiKey('groq');
-            const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${keyRecord.api_key}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                model: GROQ_MODEL,
-                messages: groqMessages,
-                temperature: 0.6,
-                stream: true
-              })
-            });
-
-            if (groqRes.ok && groqRes.body) {
-              const reader = groqRes.body.getReader();
-              const decoder = new TextDecoder();
-              let sseBuf = '';
-              while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                sseBuf += decoder.decode(value, { stream: true });
-                const lines = sseBuf.split('\n');
-                sseBuf = lines.pop() || '';
-                for (const l of lines) {
-                  const tr = l.trim();
-                  if (!tr.startsWith('data:')) continue;
-                  const jsonStr = tr.slice(5).trim();
-                  if (jsonStr === '[DONE]') break;
-                  try {
-                    const parsed = JSON.parse(jsonStr);
-                    const deltaContent = parsed.choices?.[0]?.delta?.content || '';
-                    if (deltaContent) {
-                      finalText += deltaContent;
-                      sendEvent('chunk', { delta: deltaContent });
-                    }
-                  } catch (_) {}
-                }
-              }
-            } else {
-              const groqFallback = await callGroq(groqMessages, []);
-              finalText = groqFallback.choices?.[0]?.message?.content || "Here is the response.";
-              sendEvent('chunk', { delta: finalText });
+          console.error(`[MIRON GEMINI FAILED] ${geminiErr.message}. Groq fallback disabled for main chat.`);
+          // Refund credits immediately if charged
+          if (!isPro) {
+            try {
+              await supabase.from('linkoin_transactions').insert({
+                user_id: userId,
+                amount: 5,
+                transaction_type: 'refund',
+                description: 'Miron Gemini Generation Failed',
+                idempotency_key: `refund_text_${crypto.randomUUID()}`
+              });
+            } catch (refundErr) {
+              console.error("[Miron Athena] Refund failed to execute:", refundErr);
             }
-          } catch (err: any) {
-            console.error(`[MIRON CATASTROPHIC FAILURE] Both engines failed. Evaluating refund...`, err);
-            // Only refund if the user was non-pro and actually paid credits
-            if (!isPro) {
-              try {
-                await supabase.from('linkoin_transactions').insert({
-                  user_id: userId,
-                  amount: 5,
-                  transaction_type: 'refund',
-                  description: 'Miron Text Generation Failed',
-                  idempotency_key: `refund_text_${crypto.randomUUID()}`
-                });
-              } catch (refundErr) {
-                console.error("[Miron Athena] Refund failed to execute:", refundErr);
-              }
-            }
-            sendEvent('error', { message: err.message });
           }
+
+          const errStr = String(geminiErr?.message || '').toLowerCase();
+          const isUnavailable = errStr.includes('503') || 
+                                errStr.includes('unavailable') || 
+                                errStr.includes('overloaded') || 
+                                errStr.includes('capacity') || 
+                                errStr.includes('resource_exhausted') || 
+                                errStr.includes('429');
+
+          const clientErrorMsg = isUnavailable 
+            ? "MODEL_UNAVAILABLE_503: Miron is currently experiencing high campus traffic. The model is temporarily unavailable. Please tap retry in a moment."
+            : (geminiErr.message || "An unexpected error occurred.");
+
+          sendEvent('error', { message: clientErrorMsg });
         } finally {
           // Clean orphan tags from completed text
           if (inlineQuizzes.length === 0) finalText = finalText.replace(/\[QUIZ_\d+\]/g, '').trim();
