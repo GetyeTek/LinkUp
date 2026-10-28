@@ -465,6 +465,11 @@ serve(async (req) => {
     const userId = user.id;
     const { history, prompt, context, mode, lang } = await req.json();
 
+    const isAmharicChat = (lang || 'am') === 'am';
+    const activeSystemPrompt = isAmharicChat
+      ? `${MIRON_SYSTEM_PROMPT}${MIRON_AMHARIC_ADDENDUM}`
+      : MIRON_SYSTEM_PROMPT;
+
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Prompt text is required." }), { 
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } 
@@ -1205,11 +1210,6 @@ serve(async (req) => {
           }
 
           console.log(`[MIRON STREAM] Initiating real-time turn with primary model: Gemini (${GEMINI_MODEL})`);
-
-          const isAmharicChat = (lang || 'am') === 'am';
-          const activeSystemPrompt = isAmharicChat
-            ? `${MIRON_SYSTEM_PROMPT}${MIRON_AMHARIC_ADDENDUM}`
-            : MIRON_SYSTEM_PROMPT;
 
           let geminiMessages: any[] = [];
           if (context) {
