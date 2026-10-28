@@ -673,10 +673,7 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                     courseCode={book?.course_code}
                     friendlyName={book?.friendly_name}
                     bookTitle={book?.title}
-                    language={viewMode === 'visual_am' ? 'am' : 'en'}
-                    onSwitchLanguage={(targetLang) => {
-                        setViewMode(targetLang === 'am' ? 'visual_am' : 'visual_en');
-                    }}
+                    language="am"
                     currentPage={currentDisplayPage}
                     onCloseVariant={() => setViewMode('text')}
                     onSyncTextbookPage={(pageNum) => {
