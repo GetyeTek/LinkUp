@@ -751,7 +751,8 @@ const MironChat = ({
                 prompt: textToSend,
                 history: messages.slice(-10),
                 context: currentThread?.context_passage || initialContext,
-                lang
+                lang,
+                sex: userProfile?.sex || null
             }, {
                 onStatus: (statusMessage) => {
                     setMessages(prev => prev.map(m => m.id === mironTempId ? { ...m, status: statusMessage } : m));
