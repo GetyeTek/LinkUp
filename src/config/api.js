@@ -24,8 +24,8 @@ export const invokeMironStream = async (payload, { onStatus, onChunk, onDone, on
     if (!response.ok) {
         const errText = await response.text();
         const lower = (errText || '').toLowerCase();
-        if (lower.includes('api_key') || lower.includes('gemini') || lower.includes('quota') || lower.includes('capacity') || response.status === 429) {
-            throw new Error("Miron is currently operating at maximum capacity across campus networks. Please try again in a few moments.");
+        if (response.status === 503 || lower.includes('503') || lower.includes('unavailable') || lower.includes('overloaded') || lower.includes('capacity') || response.status === 429 || lower.includes('quota')) {
+            throw new Error("MODEL_UNAVAILABLE_503: Miron is currently experiencing high campus traffic. The model is temporarily unavailable. Please tap retry in a moment.");
         }
                         if (response.status === 402 || lower.includes('insufficient_credits')) {
                     throw new Error("INSUFFICIENT_CREDITS: You've run out of LinkUp Credits. Complete daily missions to earn more, or upgrade to LinkUp Gold for unlimited Miron AI access.");
