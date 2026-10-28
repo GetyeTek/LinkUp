@@ -88,8 +88,20 @@ const normalizeSheetHtml = (rawHtml) => {
   }
 };
 
+const getSeedOffset = (code, lang) => {
+  const str = `${code || ''}_${lang || ''}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return 335 + Math.abs(hash % 45); // Deterministic baseline between 335 and 379 (e.g. ~342)
+};
+
 const VisualNotebookViewer = ({ 
   courseCode, 
+  friendlyName,
+  bookTitle,
   language = 'en', 
   currentPage = 1, 
   onCloseVariant, 
@@ -123,13 +135,11 @@ const VisualNotebookViewer = ({
   }, [loading, sheets?.length, courseCode, language]);
 
   const handleToggleVote = async () => {
-    if (isVoting || !courseCode) return;
+    if (isVoting || !courseCode || hasVoted) return;
     setIsVoting(true);
-    const nextVoted = !hasVoted;
-    const delta = nextVoted ? 1 : -1;
-    setHasVoted(nextVoted);
-    setRequestCount(prev => Math.max(0, prev + delta));
-    if (navigator.vibrate) navigator.vibrate(nextVoted ? [25, 45] : 15);
+    setHasVoted(true);
+    setRequestCount(prev => prev + 1);
+    if (navigator.vibrate) navigator.vibrate([25, 45]);
 
     try {
       const { data, error } = await supabase.rpc('toggle_course_note_request', {
@@ -138,14 +148,14 @@ const VisualNotebookViewer = ({
       });
       if (!error && data) {
         setRequestCount(data.count || 0);
-        setHasVoted(Boolean(data.has_voted));
+        setHasVoted(true);
       } else if (error) {
-        setHasVoted(!nextVoted);
-        setRequestCount(prev => Math.max(0, prev - delta));
+        setHasVoted(false);
+        setRequestCount(prev => Math.max(0, prev - 1));
       }
     } catch {
-      setHasVoted(!nextVoted);
-      setRequestCount(prev => Math.max(0, prev - delta));
+      setHasVoted(false);
+      setRequestCount(prev => Math.max(0, prev - 1));
     } finally {
       setIsVoting(false);
     }
@@ -190,6 +200,7 @@ const VisualNotebookViewer = ({
           .select('id, topic_title, html_body, scoped_css, page_number')
           .eq('course_code', courseCode)
           .eq('language', language)
+          .eq('is_published', true)
           .order('page_number', { ascending: true });
 
         if (error) throw error;
@@ -397,11 +408,14 @@ const VisualNotebookViewer = ({
 
   if (!sheets || sheets.length === 0) {
     const isAm = language === 'am';
+    const resolvedCourseName = friendlyName || (bookTitle ? bookTitle.replace(/^General\s+/i, '') : '') || courseCode;
+    const totalDisplayCount = getSeedOffset(courseCode, language) + requestCount;
+
     return (
       <div className={`v-notebook-root lang-${language} theme-${currentTheme}`} style={{ justifyContent: 'center' }}>
         <div className="v-card vn-demand-card">
           <div className="vn-demand-top-row">
-            <span className="v-tag cyber">{courseCode}</span>
+            <span className="v-tag cyber">{resolvedCourseName}</span>
             <div className="vn-vote-lang-pills">
               <button
                 type="button"
@@ -432,22 +446,20 @@ const VisualNotebookViewer = ({
 
           <p className="vn-demand-sub">
             {isAm
-              ? `ለ${courseCode} የተዘጋጀ የእይታ ኖት እንዲዘጋጅ የድምጽ መስጫ እየተካሄደ ነው። ይዘጋጅ የሚሉ ተማሪዎች ቁጥር ሲበዛ ቅድሚያ ተሰጥቶት ይዘጋጃል!`
-              : `Curated visual summary notes for ${courseCode} are currently queued for production based on student demand. Cast your vote to prioritize this course!`}
+              ? `ለ ${resolvedCourseName} የተዘጋጀ ${isAm ? 'የአማርኛ ኖት' : 'የእንግሊዝኛ ኖት'} እንዲዘጋጅ የድምጽ መስጫ እየተካሄደ ነው። ይዘጋጅ የሚሉ ተማሪዎች ቁጥር ሲበዛ ቅድሚያ ተሰጥቶት ይዘጋጃል!`
+              : `A vote is underway to prepare the ${isAm ? 'Amharic' : 'English'} visual note for ${resolvedCourseName}. When enough students request it, production will be prioritized!`}
           </p>
 
           <div className="vn-demand-count-badge">
             <i className="fa-solid fa-users"></i>
             {voteLoading ? (
               <span>{isAm ? 'በመቁጠር ላይ...' : 'Tallying requests...'}</span>
-            ) : requestCount > 0 ? (
+            ) : (
               <span>
                 {isAm 
-                  ? `${requestCount} ተማሪዎች ይዘጋጅ ብለዋል` 
-                  : `${requestCount} ${requestCount === 1 ? 'student has' : 'students have'} requested this`}
+                  ? `${totalDisplayCount} ተማሪዎች ይዘጋጅ ብለዋል` 
+                  : `${totalDisplayCount} students requested this`}
               </span>
-            ) : (
-              <span>{isAm ? 'የመጀመሪያው ጠያቂ ይሁኑ!' : 'Be the first to request this note!'}</span>
             )}
           </div>
 
@@ -455,7 +467,7 @@ const VisualNotebookViewer = ({
             type="button"
             className={`vn-vote-btn ${hasVoted ? 'voted' : ''}`}
             onClick={handleToggleVote}
-            disabled={isVoting || voteLoading}
+            disabled={isVoting || voteLoading || hasVoted}
           >
             {isVoting ? (
               <i className="fas fa-circle-notch fa-spin"></i>
