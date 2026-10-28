@@ -195,13 +195,10 @@ const VisualNotebookViewer = ({
 
     const loadSheets = async () => {
       try {
-        const { data, error } = await supabase
-          .from('course_visual_notebooks')
-          .select('id, topic_title, html_body, scoped_css, page_number, chapter_number')
-          .eq('course_code', courseCode)
-          .eq('language', language)
-          .eq('is_published', true)
-          .order('page_number', { ascending: true });
+        const { data, error } = await supabase.rpc('get_visual_notebook_sheets', {
+          p_course_code: courseCode,
+          p_language: language
+        });
 
         if (error) throw error;
 
