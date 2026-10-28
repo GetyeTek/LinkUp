@@ -94,64 +94,25 @@ const BookReaderUI = ({
                         </button>
                     </div>
 
-                    {/* Adaptive Mode Switcher */}
-                    {(() => {
-                        const hasBoth = visualLangs.includes('en') && visualLangs.includes('am');
-                        const singleTarget = visualLangs.includes('en') && !visualLangs.includes('am') ? 'visual_en' : 'visual_am';
-                        const isVisualActive = viewMode === 'visual_en' || viewMode === 'visual_am';
-
-                        if (hasBoth) {
-                            return (
-                                <div className="header-variant-toggle">
-                                    <button 
-                                        className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
-                                        onClick={() => setViewMode('text')}
-                                        title={t('reader_book', 'Book')}
-                                    >
-                                        <i className="fas fa-book-open"></i>
-                                        <span className="variant-label">{t('reader_book', 'Book')}</span>
-                                    </button>
-                                    <button 
-                                        className={`variant-toggle-btn ${viewMode === 'visual_en' ? 'active' : ''}`}
-                                        onClick={() => setViewMode('visual_en')}
-                                        title={t('reader_english_note', 'English Note')}
-                                    >
-                                        <span className="variant-flag">🇬🇧</span>
-                                        <span className="variant-label">{t('reader_english_note', 'English Note')}</span>
-                                    </button>
-                                    <button 
-                                        className={`variant-toggle-btn ${viewMode === 'visual_am' ? 'am-active' : ''}`}
-                                        onClick={() => setViewMode('visual_am')}
-                                        title={t('reader_amharic_note', 'Amharic Note')}
-                                    >
-                                        <span className="variant-flag">🇪🇹</span>
-                                        <span className="variant-label">{t('reader_amharic_note', 'Amharic Note')}</span>
-                                    </button>
-                                </div>
-                            );
-                        }
-
-                        return (
-                            <div className="header-variant-toggle">
-                                <button 
-                                    className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
-                                    onClick={() => setViewMode('text')}
-                                    title={t('reader_book', 'Book')}
-                                >
-                                    <i className="fas fa-book-open"></i>
-                                    <span className="variant-label">{t('reader_book', 'Book')}</span>
-                                </button>
-                                <button 
-                                    className={`variant-toggle-btn ${isVisualActive ? (singleTarget === 'visual_am' ? 'am-active' : 'active') : ''}`}
-                                    onClick={() => setViewMode(singleTarget)}
-                                    title={singleTarget === 'visual_am' ? t('reader_amharic_note', 'Amharic Note') : t('reader_english_note', 'English Note')}
-                                >
-                                    <span className="variant-flag">{singleTarget === 'visual_am' ? '🇪🇹' : '🇬🇧'}</span>
-                                    <span className="variant-label">{singleTarget === 'visual_am' ? t('reader_amharic_note', 'Amharic Note') : t('reader_english_note', 'English Note')}</span>
-                                </button>
-                            </div>
-                        );
-                    })()}
+                    {/* 2-Way Mode Switcher: Book vs Amharic Visual Note */}
+                    <div className="header-variant-toggle">
+                        <button 
+                            className={`variant-toggle-btn ${viewMode === 'text' ? 'active' : ''}`}
+                            onClick={() => setViewMode('text')}
+                            title={t('reader_book', 'Book')}
+                        >
+                            <i className="fas fa-book-open"></i>
+                            <span className="variant-label">{t('reader_book', 'Book')}</span>
+                        </button>
+                        <button 
+                            className={`variant-toggle-btn ${viewMode === 'visual_am' ? 'am-active' : ''}`}
+                            onClick={() => setViewMode('visual_am')}
+                            title={t('reader_amharic_note', 'Amharic Note')}
+                        >
+                            <span className="variant-flag">🇪🇹</span>
+                            <span className="variant-label">{t('reader_amharic_note', 'Amharic Note')}</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="ui-bar reader-footer">
