@@ -341,7 +341,7 @@ const Home = () => {
                             <button 
                                 type="button"
                                 className="miron-chip-btn"
-                                onClick={() => shell.openMiron("Generate 3 practice quiz questions from my textbooks", true)}
+                                onClick={() => shell.openMiron("Generate 5 practice quiz questions from my textbooks", true)}
                             >
                                 <i className="fas fa-brain"></i>
                                 <span>{t('home_quiz_me', userProfile?.sex, 'Quiz Me')}</span>
