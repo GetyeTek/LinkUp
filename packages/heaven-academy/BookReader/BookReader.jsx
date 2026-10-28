@@ -264,6 +264,7 @@ const BookReader = ({ book, onClose, targetPageNumber, targetBlockIndex, zIndexO
             .from('course_visual_notebooks')
             .select('language')
             .eq('course_code', book.course_code)
+            .eq('is_published', true)
             .limit(10)
             .then(({ data, error }) => {
                 if (!error && data) {
@@ -670,6 +671,8 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
             {viewMode !== 'text' && (
                 <VisualNotebookViewer 
                     courseCode={book?.course_code}
+                    friendlyName={book?.friendly_name}
+                    bookTitle={book?.title}
                     language={viewMode === 'visual_am' ? 'am' : 'en'}
                     onSwitchLanguage={(targetLang) => {
                         setViewMode(targetLang === 'am' ? 'visual_am' : 'visual_en');
