@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DOMPurify from 'dompurify';
-import { supabase } from '@linkup-platform/sdk-core';
+import { supabase, usePlatform } from '@linkup-platform/sdk-core';
 import './VisualNotebookViewer.css';
 
 // Session-level in-memory cache: key = `${courseCode}_${language}`
@@ -112,6 +112,7 @@ const VisualNotebookViewer = ({
   targetSheetIndex = null,
   currentTheme = 'dark'
 }) => {
+  const { user: userProfile } = usePlatform();
   const [requestCount, setRequestCount] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
@@ -196,7 +197,7 @@ const VisualNotebookViewer = ({
       try {
         const { data, error } = await supabase
           .from('course_visual_notebooks')
-          .select('id, topic_title, html_body, scoped_css, page_number')
+          .select('id, topic_title, html_body, scoped_css, page_number, chapter_number')
           .eq('course_code', courseCode)
           .eq('language', language)
           .eq('is_published', true)
@@ -405,8 +406,9 @@ const VisualNotebookViewer = ({
     );
   }
 
+  const resolvedCourseName = friendlyName || (bookTitle ? bookTitle.replace(/^General\s+/i, '') : '') || courseCode;
+
   if (!sheets || sheets.length === 0) {
-    const resolvedCourseName = friendlyName || (bookTitle ? bookTitle.replace(/^General\s+/i, '') : '') || courseCode;
     const totalDisplayCount = getSeedOffset(courseCode) + requestCount;
 
     return (
@@ -484,10 +486,13 @@ const VisualNotebookViewer = ({
             transition: 'scale 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
-        {sheets.map((sheet, sIdx) => (
+        {sheets.map((sheet, sIdx) => {
+          const isLocked = !userProfile?.is_pro && sheet.chapter_number > 1;
+
+          return (
           <article 
             key={sheet.id || sheet.page_number}
-            className="v-notebook-sheet"
+            className={`v-notebook-sheet ${isLocked ? 'is-gated' : ''}`}
             id={`vn-sheet-page-${sheet.page_number}`}
             data-page-number={sheet.page_number}
             data-sheet-index={sIdx}
@@ -497,18 +502,58 @@ const VisualNotebookViewer = ({
                 <i className="fas fa-bookmark"></i> Textbook Page {sheet.page_number}
               </span>
               {sheet.topic_title && (
-                <span className="anchor-title">{sheet.topic_title}</span>
+                <span className="anchor-title">
+                  {sheet.topic_title}
+                  {isLocked && <span className="vn-outline-lock" style={{marginLeft: '8px', color: 'rgba(241, 196, 15, 0.8)'}} title="Requires LinkUp Gold"><i className="fa-solid fa-lock"></i></span>}
+                </span>
               )}
             </div>
 
-            <div 
-              className="v-notebook-content-body"
-              dangerouslySetInnerHTML={{ 
-                __html: sheet.normalized_html || normalizeSheetHtml(sheet.html_body || '')
-              }}
-            />
+            {isLocked ? (
+              <div className="vn-gated-blur-overlay">
+                <div className="vn-gated-orb">
+                  <i className="fa-solid fa-lock"></i>
+                </div>
+                <div className="vn-gated-badge">
+                  <i className="fa-solid fa-crown"></i> 
+                  <span>LinkUp Gold Privilege</span>
+                </div>
+                
+                <h2 className="vn-gated-title">የምዕራፍ 1 ነጻ ሙከራ አብቅቷል!</h2>
+                <p className="vn-gated-sub">
+                  የ{resolvedCourseName} ቀጣዮቹን ምዕራፎች፣ የተጠቃለሉ የቀመር ገጾች እና ሙሉ የእይታ ማስታወሻዎችን ለማግኘት ወደ LinkUp Gold ያሳድጉ።
+                </p>
+                
+                <div className="vn-gated-actions">
+                  <button 
+                    className="vn-gated-upgrade-btn"
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-premium-modal'))}
+                  >
+                    <i className="fa-solid fa-crown"></i> ሙሉውን ማስታወሻ ክፈት (Unlock)
+                  </button>
+                  <button 
+                    className="vn-gated-back-btn"
+                    onClick={() => {
+                        if (containerRef.current) {
+                            const el = containerRef.current.querySelector('[data-sheet-index="0"]');
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }}
+                  >
+                    <i className="fa-solid fa-arrow-left"></i> ወደ ምዕራፍ 1 ተመለስ (Back)
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div 
+                className="v-notebook-content-body"
+                dangerouslySetInnerHTML={{ 
+                  __html: sheet.normalized_html || normalizeSheetHtml(sheet.html_body || '')
+                }}
+              />
+            )}
           </article>
-        ))}
+        )})}
       </div>
     </div>
   );
