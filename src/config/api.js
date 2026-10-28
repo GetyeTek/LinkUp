@@ -48,26 +48,32 @@ export const invokeMironStream = async (payload, { onStatus, onChunk, onDone, on
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data:')) continue;
-            const jsonStr = trimmed.slice(5).trim();
-            if (!jsonStr) continue;
-            try {
-                const event = JSON.parse(jsonStr);
+                    for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith('data:')) continue;
+                const jsonStr = trimmed.slice(5).trim();
+                if (!jsonStr) continue;
+
+                let event;
+                try {
+                    event = JSON.parse(jsonStr);
+                } catch (e) {
+                    console.warn('Failed to parse SSE JSON:', jsonStr, e);
+                    continue;
+                }
+
                 if (event.type === 'status' && onStatus) {
                     onStatus(event.message);
                 } else if (event.type === 'chunk' && onChunk) {
                     onChunk(event.delta);
                 } else if (event.type === 'done' && onDone) {
                     onDone(event);
-                } else if (event.type === 'error' && onError) {
-                    onError(event.message);
+                } else if (event.type === 'error') {
+                    const errorMsg = event.message || 'Miron stream error';
+                    if (onError) onError(errorMsg);
+                    throw new Error(errorMsg);
                 }
-            } catch (e) {
-                console.warn('Failed to parse SSE line:', jsonStr, e);
             }
-        }
     }
 };
 
