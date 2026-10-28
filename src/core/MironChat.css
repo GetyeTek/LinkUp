@@ -730,6 +730,93 @@
     50% { opacity: 0; }
 }
 
+/* --- MIRON HIGH TRAFFIC (503) CARD --- */
+.miron-high-traffic-card {
+    background: linear-gradient(135deg, rgba(30, 20, 10, 0.95) 0%, rgba(20, 15, 12, 0.98) 100%);
+    border: 1px solid rgba(255, 171, 64, 0.4);
+    border-radius: 20px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 171, 64, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 480px;
+    position: relative;
+    overflow: hidden;
+    animation: popModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    margin: 8px 0;
+}
+
+.miron-high-traffic-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, #ffab40, transparent);
+}
+
+.mhtc-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mhtc-icon-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 171, 64, 0.2);
+    border: 1px solid #ffab40;
+    color: #ffab40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(255, 171, 64, 0.3);
+}
+
+.mhtc-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #ffab40;
+}
+
+.mhtc-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #e5e5eb;
+    margin: 0;
+}
+
+.mhtc-retry-btn {
+    background: linear-gradient(135deg, #ffd180 0%, #ffab40 100%);
+    color: #0c0805;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 6px 20px rgba(255, 171, 64, 0.35);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    width: fit-content;
+}
+
+.mhtc-retry-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 171, 64, 0.5);
+}
+
+.mhtc-retry-btn:active {
+    transform: scale(0.97);
+}
+
 /* --- MIRON CREDIT EXHAUSTION CARD --- */
 .miron-credit-out-card {
     background: linear-gradient(135deg, rgba(35, 22, 5, 0.95) 0%, rgba(20, 14, 8, 0.98) 100%);
