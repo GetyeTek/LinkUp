@@ -22,6 +22,8 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
     const [referrals, setReferrals] = useState([]);
     const [loadingReferrals, setLoadingReferrals] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
+    const [milestonesData, setMilestonesData] = useState(null);
+    const [claimingTier, setClaimingTier] = useState(null);
 
     // Streak Milestone States
     const [streakData, setStreakData] = useState(null);
@@ -220,16 +222,50 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
         }
     };
 
-    // Load Referrals when the Network tab is active
-    useEffect(() => {
-        if (isActive && activeMissionTab === 'network') {
-            setLoadingReferrals(true);
-            supabase.rpc('get_my_referrals').then(({ data }) => {
-                if (data) setReferrals(data);
-                setLoadingReferrals(false);
-            });
+    // Load Referrals and Milestone Quests when Network tab is active
+    const loadReferralsAndMilestones = useCallback(async () => {
+        if (!isActive || activeMissionTab !== 'network') return;
+        setLoadingReferrals(true);
+        try {
+            const [refRes, mileRes] = await Promise.all([
+                supabase.rpc('get_my_referrals'),
+                supabase.rpc('get_referral_milestones')
+            ]);
+            if (refRes.data) setReferrals(refRes.data);
+            if (mileRes.data) setMilestonesData(mileRes.data);
+        } catch (err) {
+            console.error("Referral fetch error:", err);
+        } finally {
+            setLoadingReferrals(false);
         }
     }, [isActive, activeMissionTab]);
+
+    useEffect(() => {
+        loadReferralsAndMilestones();
+    }, [loadReferralsAndMilestones]);
+
+    const handleClaimReferralMilestone = async (tier) => {
+        setClaimingTier(tier);
+        try {
+            const { data, error } = await supabase.rpc('claim_referral_milestone', { p_tier: tier });
+            if (error) throw error;
+            if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+            await loadReferralsAndMilestones();
+            setNoticeModal({
+                title: "LinkUp Gold Unlocked! 👑",
+                msg: `Congratulations! You unlocked ${data?.duration || ''} of LinkUp Gold for free!`,
+                isSuccess: true
+            });
+        } catch (err) {
+            setNoticeModal({
+                title: "Claim Failed",
+                msg: err.message || "Failed to claim milestone.",
+                isSuccess: false
+            });
+        } finally {
+            setClaimingTier(null);
+        }
+    };
 
     const getBaseUrl = () => {
         const cleanBase = (window.location.origin + window.location.pathname).split('?')[0].replace(/\/$/, '');
@@ -237,7 +273,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
     };
 
     const referralLink = userProfile?.username ? `${getBaseUrl()}?ref=${userProfile.username}` : '';
-    const shareMessage = `Yo! Join me on LinkUp for freshman prep, exam pavilion files, and study sessions with Miron AI. Use my link to get a free +100 Credits welcome boost:\n`;
+    const shareMessage = `Yo! Join me on LinkUp for freshman prep, university exam pavilion archives, and 24/7 AI tutoring with Miron. Use my link to get started:\n`;
 
     const handleCopyLink = () => {
         navigator.clipboard.writeText(referralLink);
@@ -386,15 +422,61 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
 
                         {activeMissionTab === 'network' && (
                             <div className="tasks-list active" style={{ padding: '1rem 0' }}>
+                                {/* Hero Referral Quest Card */}
                                 <div className="invite-card-premium">
                                     <div className="ic-header">
-                                        <i className="fas fa-gem" style={{ color: 'var(--linkoin-gold)', fontSize: '1.2rem' }}></i>
-                                        <h3>{t('mission_invite_friends', 'Invite Friends, Earn Together')}</h3>
+                                        <i className="fa-solid fa-crown" style={{ color: 'var(--linkoin-gold)', fontSize: '1.25rem' }}></i>
+                                        <h3>{t('mission_invite_friends', 'Invite Friends, Get Free Gold')}</h3>
                                     </div>
                                     <div className="ic-body">
-                                        {t('mission_invite_desc', 'Earn +30 Credits for every classmate who joins and verifies their phone. They get a +100 welcome boost too!')}
+                                        {t('mission_invite_desc', 'Invite verified classmates to unlock up to a full year of LinkUp Gold for free!')}
                                     </div>
-                                    <div className="ic-link-box">
+
+                                    {/* 3 / 7 / 15 Milestone Quest Badges */}
+                                    <div className="ref-milestones-grid">
+                                        {(milestonesData?.milestones || [
+                                            { tier: 3, duration_label: '1 Month Free', is_unlocked: false, is_claimed: false },
+                                            { tier: 7, duration_label: '1 Semester Free', is_unlocked: false, is_claimed: false },
+                                            { tier: 15, duration_label: '1 Year Free', is_unlocked: false, is_claimed: false }
+                                        ]).map(m => {
+                                            const completed = milestonesData?.completed_count || 0;
+                                            const pct = Math.min(100, Math.round((completed / m.tier) * 100));
+                                            const isClaiming = claimingTier === m.tier;
+
+                                            return (
+                                                <div key={m.tier} className={`ref-milestone-card ${m.is_claimed ? 'claimed' : m.is_unlocked ? 'unlocked' : ''}`}>
+                                                    <div className="ref-m-top">
+                                                        <span className="ref-m-tag">{m.tier} {t('missions_friends_tag', 'Friends')}</span>
+                                                        <span className="ref-m-reward"><i className="fa-solid fa-gift"></i> {m.duration_label}</span>
+                                                    </div>
+                                                    
+                                                    <div className="ref-m-progress-bar">
+                                                        <div className="ref-m-fill" style={{ width: `${pct}%` }}></div>
+                                                    </div>
+
+                                                    <div className="ref-m-bottom">
+                                                        <span className="ref-m-count">{Math.min(completed, m.tier)} / {m.tier}</span>
+                                                        {m.is_claimed ? (
+                                                            <span className="ref-m-btn claimed"><i className="fa-solid fa-check"></i> {t('ref_claimed', 'Claimed')}</span>
+                                                        ) : m.is_unlocked ? (
+                                                            <button 
+                                                                type="button"
+                                                                className="ref-m-btn claimable gold-pulse" 
+                                                                onClick={() => handleClaimReferralMilestone(m.tier)}
+                                                                disabled={isClaiming}
+                                                            >
+                                                                {isClaiming ? <i className="fas fa-circle-notch fa-spin"></i> : <><i className="fa-solid fa-crown"></i> {t('ref_claim_gold', 'Claim Gold')}</>}
+                                                            </button>
+                                                        ) : (
+                                                            <span className="ref-m-btn locked"><i className="fa-solid fa-lock"></i> {t('missions_in_progress', 'In Progress')}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="ic-link-box" style={{ marginTop: '1.25rem' }}>
                                         <div className="ic-link-text">{referralLink || t('common_loading', 'Loading link...')}</div>
                                         <button className="ic-copy-btn" onClick={handleCopyLink} disabled={!referralLink}>
                                             {copySuccess ? <><i className="fas fa-check"></i> {t('common_copied', 'Copied')}</> : <><i className="fas fa-copy"></i> {t('common_copy', 'Copy')}</>}
@@ -416,7 +498,7 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                 ) : referrals.length === 0 ? (
                                     <div style={{ textAlign: 'center', padding: '2rem', color: '#666', fontStyle: 'italic', fontSize: '0.85rem' }}>
                                         <i className="fas fa-users-slash" style={{ fontSize: '2rem', display: 'block', marginBottom: '10px', opacity: 0.5 }}></i>
-                                        Your network is currently empty.<br/>Share your link to start earning!
+                                        Your network is currently empty.<br/>Share your link to start unlocking Gold!
                                     </div>
                                 ) : (
                                     referrals.map(ref => (
@@ -425,12 +507,9 @@ const MissionControlOverlay = ({ isActive, onClose }) => {
                                             <div className="ref-info">
                                                 <div className="ref-name">{ref.referee_name} (@{ref.referee_username})</div>
                                                 <div className="ref-time">Joined {timeAgo(ref.created_at)}</div>
-                                                {ref.status === 'completed' && (
-                                                    <div className="ref-ledger-id">TX_ID: ref_bonus_referrer_{ref.id.split('-')[0]}</div>
-                                                )}
                                             </div>
                                             <div className={`ref-status-badge ${ref.status}`}>
-                                                {ref.status === 'completed' ? <><i className="fas fa-coins"></i> +30</> : <><i className="fas fa-hourglass-half"></i> Pending</>}
+                                                {ref.status === 'completed' ? <><i className="fa-solid fa-circle-check"></i> Verified</> : <><i className="fas fa-hourglass-half"></i> Pending</>}
                                             </div>
                                         </div>
                                     ))
