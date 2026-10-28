@@ -467,10 +467,10 @@ serve(async (req) => {
       });
     }
 
-    // 2. Server-Side Hard Paywall & Credit Metering (2 Credits per turn)
+    // 2. Server-Side Hard Paywall & Credit Metering (5 Credits per turn)
     // Enforced strictly BEFORE touching any LLM, embedding model, or database query
     const { error: creditErr } = await supabase.rpc('consume_miron_credits', {
-      p_cost: 2,
+      p_cost: 5,
       p_user_id: userId
     });
 
@@ -1342,7 +1342,7 @@ serve(async (req) => {
               try {
                 await supabase.from('linkoin_transactions').insert({
                   user_id: userId,
-                  amount: 2,
+                  amount: 5,
                   transaction_type: 'refund',
                   description: 'Miron Text Generation Failed',
                   idempotency_key: `refund_text_${crypto.randomUUID()}`
