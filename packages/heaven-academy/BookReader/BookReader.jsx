@@ -671,6 +671,9 @@ ${fullPageText ? `Surrounding Page Context:\n"""\n${fullPageText.slice(0, 1800)}
                 <VisualNotebookViewer 
                     courseCode={book?.course_code}
                     language={viewMode === 'visual_am' ? 'am' : 'en'}
+                    onSwitchLanguage={(targetLang) => {
+                        setViewMode(targetLang === 'am' ? 'visual_am' : 'visual_en');
+                    }}
                     currentPage={currentDisplayPage}
                     onCloseVariant={() => setViewMode('text')}
                     onSyncTextbookPage={(pageNum) => {
