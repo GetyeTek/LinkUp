@@ -459,6 +459,8 @@ export class GeminiLiveAgent {
     this.leasedGeminiKey = null;
     this.setupCompletePromise = null;
     this.resolveSetupComplete = null;
+    this.translatingTurnId = null;
+    this.translatingTurnId = null;
 
     // Restore persistent log ring and active rooms across DO hibernation
     this.ctx.blockConcurrencyWhile(async () => {
@@ -738,6 +740,8 @@ export class GeminiLiveAgent {
 
     this.isGeminiTranslating = true;
     this.startTurnAudit("reading_chunk_translation", chunkText);
+    const thisTurnId = this.activeTurn?.id;
+    this.translatingTurnId = thisTurnId;
 
     // Notify client of current chunk target coordinate upfront
     this.broadcast(JSON.stringify({
@@ -751,15 +755,17 @@ export class GeminiLiveAgent {
         target_coordinate: chunkTarget
     });
 
-    // Stuck Chunk Watchdog: If Gemini fails to return turnComplete within 14s, force-advance
+    // Stuck Chunk Watchdog: 35s safety timeout for true hangs
     if (this.chunkWatchdogTimer) clearTimeout(this.chunkWatchdogTimer);
     this.chunkWatchdogTimer = setTimeout(() => {
-        if (this.isGeminiTranslating && this.currentTranslatingChunkIndex === chunkIdx) {
-            this.emitLog("CHUNK_TIMEOUT", `⏰ [WATCHDOG TIMEOUT] Chunk #${chunkIdx + 1} timed out after 14s without turnComplete! Force-clearing gate to unblock remaining ${this.translationQueue.length} chunks.`);
+        if (this.isGeminiTranslating && this.translatingTurnId === thisTurnId) {
+            this.emitLog("CHUNK_TIMEOUT", `⏰ [WATCHDOG TIMEOUT] Chunk #${chunkIdx + 1} timed out after 35s without turnComplete! Force-clearing gate to unblock remaining ${this.translationQueue.length} chunks.`);
+            this.turnEpoch++;
+            this.translatingTurnId = null;
             this.isGeminiTranslating = false;
             this.processTranslationQueue();
         }
-    }, 14000);
+    }, 35000);
     
     const prompt = `Translate to natural Amharic and speak directly to ${this.studentName} in your informal peer tone (keeping any English quotes verbatim):\n\n${chunkText}`;
     
@@ -886,16 +892,17 @@ export class GeminiLiveAgent {
 - CO-READING ILLUSION: You and ${this.studentName} are looking at the exact same physical textbook page on screen. Ground your speech directly on the text in front of you ("Look right here on page...", "As you can see in this line...", "Notice how it defines...").
 - Formulate your entire response in clear, concise English. Do NOT generate in Amharic script.
 - DETERMINISTIC COORDINATE TARGETING ARCHITECTURE:
+  * Deliver the page breakdown in EXACTLY 3 TO 5 SUBSTANTIVE CONCEPT CHUNKS total. NEVER output dozens of micro-chunks.
   * Wrap each spoken thought unit in <chunk target="...">...</chunk> tags.
   * The 'target' attribute MUST be the exact coordinate code from the textbook script provided (e.g. <chunk target="B8_body_1"> or <chunk target="B1_title_0">).
   * TARGET RULE (STRICT):
     - Select ONLY the specific sentence or item coordinate that your current spoken chunk explains.
     - Never invent coordinate codes. Choose exclusively from the bracketed coordinates (e.g. [B8_body_1]) provided in the page text.
-    - If explaining a dense concept, break it down one piece at a time across sequential chunks with their respective coordinates.
+    - DO NOT narrate structural metadata, letter labels (e.g., 'Section B', 'part 1'), headings, exercise prompts, or diagram boxes. Ignore pure structural markers and teach ONLY the core substantive concepts!
   * VERBATIM CO-READING CITATION:
-    - Whenever you target a coordinate, quote or reference the sentence in clear English, followed immediately by your peer explanation and intuitive breakdown.
+    - Whenever you target a coordinate, quote or reference the key phrase in clear English, followed immediately by your peer explanation and intuitive breakdown.
   * If a chunk is purely conversational, a quick encouragement, or an application question not tied to a specific line, omit the target attribute: <chunk>...</chunk>.
-  * TEACHING CHUNK PACING: Deliver substantive concept chunks (2-3 sentences per chunk). Explain ideas thoroughly and naturally so speech flows smoothly without choppy single-sentence halts.
+  * TEACHING CHUNK PACING: Deliver substantive, paced concept chunks (2-4 rich sentences per chunk). Explain ideas thoroughly and naturally so speech flows smoothly without choppy single-sentence halts.
 - ADVANCING PAGES & FLUFF HANDLING:
   * When finishing a dense concept page, ask ${this.studentName} if everything makes sense or if they want to move to the next page, reminding them they can speak or type questions directly in chat.
   * If a page is merely introductory filler, syllabus outlines, or generic learning objectives with no testable concepts, DO NOT ask if they understand! State what the page covers in one quick sentence, silently call "advance_to_next_page", and advance straight to the real material.
@@ -1160,6 +1167,19 @@ export class GeminiLiveAgent {
           }));
           this.emitLog("GROQ_WARN", `⚠️ No <chunk> tags found in Groq output. Split into ${rawChunks.length} chunks via fallback.`);
       }
+
+      // Chunk Coalescence Engine: Merge micro-fragments (< 130 chars) into substantive concept units
+      const coalesced = [];
+      for (const ch of rawChunks) {
+          if (coalesced.length > 0 && (ch.text.length < 130 || coalesced[coalesced.length - 1].text.length < 130)) {
+              const prev = coalesced[coalesced.length - 1];
+              prev.text = `${prev.text} ${ch.text}`;
+              if (!prev.target && ch.target) prev.target = ch.target;
+          } else {
+              coalesced.push({ ...ch });
+          }
+      }
+      rawChunks = coalesced.map((c, idx) => ({ ...c, index: idx }));
 
       this.totalExpectedChunks = rawChunks.length;
       this.deliveredChunksCount = 0;
@@ -2487,8 +2507,20 @@ CRITICAL OPERATIONAL RULES:
                     if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
                     if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
 
-                    // High Priority: Instantly advance reading chunk queue without absorption traps
+                    // High Priority: Instantly advance reading chunk queue with epoch/turn verification
                     if (this.isGeminiTranslating) {
+                        // Trailing Turn Guard: If turnComplete arrives within 850ms of chunk dispatch, it is from the previous turn!
+                        const turnAge = this.activeTurn ? (Date.now() - this.activeTurn.startTime) : 0;
+                        if (this.activeTurn && this.activeTurn.audioChunksReceived === 0 && turnAge < 850) {
+                            this.emitLog("TURN_SYNC", `🛡️ Absorbed trailing turnComplete (${turnAge}ms old) for previous turn. Active chunk #${this.currentTranslatingChunkIndex + 1} remains active.`);
+                            return;
+                        }
+
+                        if (this.chunkWatchdogTimer) {
+                            clearTimeout(this.chunkWatchdogTimer);
+                            this.chunkWatchdogTimer = null;
+                        }
+
                         this.deliveredChunksCount++;
                         this.emitLog("CHUNK_DELIVERED", `✅ [DELIVERED ${this.deliveredChunksCount}/${this.totalExpectedChunks}] Chunk #${this.currentTranslatingChunkIndex + 1} audio complete. Advancing to next chunk immediately...`, {
                             delivered_count: this.deliveredChunksCount,
@@ -2496,6 +2528,7 @@ CRITICAL OPERATIONAL RULES:
                             remaining_in_queue: this.translationQueue.length
                         });
                         this.isGeminiTranslating = false;
+                        this.translatingTurnId = null;
                         this.activeTurn = null;
                         this.pendingTurnCompletions = 0;
                         this.processTranslationQueue();
