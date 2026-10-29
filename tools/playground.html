@@ -427,20 +427,57 @@
 
             <!-- Transcription Output Card -->
             <div id="transcriptOutputCard" class="hidden bg-cardbg rounded-2xl p-4 border border-gray-800 shadow-md space-y-3">
-                <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 pb-2">
                     <h2 class="text-sm font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
                         <span>📄</span> Transcript Result
                     </h2>
-                    <div class="flex items-center gap-2">
-                        <button id="copyTranscriptBtn" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-2.5 py-1 rounded-lg border border-gray-700 transition">
-                            📋 Copy
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <button id="playLyricsBtn" class="text-xs bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-gray-950 font-bold px-2.5 py-1 rounded-lg shadow transition flex items-center gap-1">
+                            <span>▶️</span> Play Synced Lyrics
                         </button>
-                        <button id="downloadTranscriptBtn" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-2.5 py-1 rounded-lg border border-gray-700 transition">
-                            ⬇️ Save .txt
+                        <button id="copyTranscriptBtn" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-2 py-1 rounded-lg border border-gray-700 transition">
+                            📋 Text
+                        </button>
+                        <button id="copyRawJsonBtn" class="text-xs bg-gray-800 hover:bg-cyan-900/60 text-cyan-300 px-2 py-1 rounded-lg border border-cyan-800/60 transition">
+                            📋 Copy JSON
+                        </button>
+                        <button id="downloadTranscriptBtn" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-2 py-1 rounded-lg border border-gray-700 transition">
+                            ⬇️ .txt
+                        </button>
+                        <button id="togglePasteJsonBtn" class="text-xs text-gray-400 hover:text-white px-1.5 py-1 transition text-[11px]">
+                            ⚙️ Test JSON
                         </button>
                     </div>
                 </div>
-                <div id="transcriptTextDisplay" class="bg-inputbg p-3.5 rounded-xl text-sm text-gray-200 leading-relaxed font-mono whitespace-pre-wrap max-h-80 overflow-y-auto border border-gray-800"></div>
+
+                <!-- Interactive Synced Karaoke / Lyrics Display -->
+                <div id="karaokeWrapper" class="space-y-2">
+                    <div class="flex items-center justify-between text-xs text-gray-400 font-medium">
+                        <span class="flex items-center gap-1 text-cyan-400"><span>🎵</span> Synced Lyrics (Click any word to seek audio)</span>
+                        <span id="activeWordOffsetBadge" class="font-mono text-[11px] text-gray-500">0.00s</span>
+                    </div>
+                    <div id="karaokeContainer" class="bg-inputbg p-4 rounded-xl border border-gray-700/80 min-h-[90px] flex flex-wrap gap-2 items-center text-sm leading-relaxed overflow-y-auto max-h-48 scroll-smooth">
+                        <span class="text-xs text-gray-500 italic">Word timestamps will appear here when audio is transcribed.</span>
+                    </div>
+                </div>
+
+                <!-- Full Formatted Transcript Text -->
+                <div class="space-y-1">
+                    <span class="block text-xs font-semibold uppercase tracking-wider text-gray-400">Verbatim Text Display</span>
+                    <div id="transcriptTextDisplay" class="bg-inputbg p-3 rounded-xl text-xs text-gray-300 leading-relaxed font-mono whitespace-pre-wrap max-h-40 overflow-y-auto border border-gray-800"></div>
+                </div>
+
+                <!-- Collapsible Test / Paste JSON Drawer -->
+                <div id="pasteJsonSection" class="hidden pt-2 border-t border-gray-800 space-y-2">
+                    <label for="pasteJsonInput" class="block text-xs font-medium text-gray-400">
+                        Paste Gemini Transcribe Response JSON to test sync instantly:
+                    </label>
+                    <textarea id="pasteJsonInput" rows="3" placeholder="Paste response JSON with audioTranscription.words here..."
+                        class="w-full bg-[#171717] text-xs text-cyan-300 font-mono p-2 rounded-lg border border-gray-700 focus:outline-none focus:border-cyan-500"></textarea>
+                    <button id="loadPastedJsonBtn" class="w-full bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium py-1.5 rounded-lg border border-gray-700 transition">
+                        ⚡ Render Synced Lyrics from Pasted JSON
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -518,10 +555,20 @@
         const transcriptOutputCard = document.getElementById('transcriptOutputCard');
         const transcriptTextDisplay = document.getElementById('transcriptTextDisplay');
         const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
+        const copyRawJsonBtn = document.getElementById('copyRawJsonBtn');
         const downloadTranscriptBtn = document.getElementById('downloadTranscriptBtn');
+        const playLyricsBtn = document.getElementById('playLyricsBtn');
+        const karaokeContainer = document.getElementById('karaokeContainer');
+        const activeWordOffsetBadge = document.getElementById('activeWordOffsetBadge');
+        const togglePasteJsonBtn = document.getElementById('togglePasteJsonBtn');
+        const pasteJsonSection = document.getElementById('pasteJsonSection');
+        const pasteJsonInput = document.getElementById('pasteJsonInput');
+        const loadPastedJsonBtn = document.getElementById('loadPastedJsonBtn');
 
         let loadedAudioBase64 = null;
         let loadedAudioMime = null;
+        let lastTranscribeRawJson = null;
+        let activeWordTimestamps = [];
 
         // Common API elements
         const apiKeyInput = document.getElementById('apiKey');
@@ -1203,6 +1250,7 @@
                 });
 
                 const data = await response.json();
+                lastTranscribeRawJson = data;
 
                 // Unveil raw response in inspector immediately
                 responseInspector.textContent = JSON.stringify(data, null, 2);
@@ -1290,8 +1338,11 @@
                 const finalTranscript = extractedLines.join('\n\n');
                 transcriptTextDisplay.textContent = finalTranscript;
                 transcriptOutputCard.classList.remove('hidden');
-                showMessage('Audio transcribed successfully!', 'success');
 
+                // Render real-time word-synchronized lyrics
+                extractAndRenderKaraoke(data);
+
+                showMessage('Audio transcribed successfully!', 'success');
                 transcriptOutputCard.scrollIntoView({ behavior: 'smooth' });
 
             } catch (err) {
@@ -1308,7 +1359,7 @@
             }
         });
 
-        // Copy Transcript
+        // Copy Plain Text Transcript
         copyTranscriptBtn.addEventListener('click', () => {
             const text = transcriptTextDisplay.textContent;
             if (text) {
@@ -1320,7 +1371,21 @@
             }
         });
 
-        // Download Transcript
+        // Copy Raw JSON Response
+        copyRawJsonBtn.addEventListener('click', () => {
+            if (!lastTranscribeRawJson) {
+                showMessage('No raw JSON response is available to copy yet.', 'error');
+                return;
+            }
+            const jsonStr = JSON.stringify(lastTranscribeRawJson, null, 2);
+            navigator.clipboard.writeText(jsonStr).then(() => {
+                const originalText = copyRawJsonBtn.textContent;
+                copyRawJsonBtn.textContent = '✅ Copied JSON!';
+                setTimeout(() => copyRawJsonBtn.textContent = originalText, 1800);
+            });
+        });
+
+        // Download Transcript File
         downloadTranscriptBtn.addEventListener('click', () => {
             const text = transcriptTextDisplay.textContent;
             if (!text) return;
@@ -1331,6 +1396,135 @@
             a.download = 'gemini_transcription.txt';
             a.click();
             URL.revokeObjectURL(url);
+        });
+
+        // Synced Lyrics Parsing and Rendering Function
+        function extractAndRenderKaraoke(data) {
+            activeWordTimestamps = [];
+            karaokeContainer.innerHTML = '';
+
+            const parts = data.candidates?.[0]?.content?.parts || [];
+            for (const part of parts) {
+                const words = part.audioTranscription?.words;
+                if (Array.isArray(words)) {
+                    for (const item of words) {
+                        const start = parseFloat(item.startOffset || '0');
+                        const end = parseFloat(item.endOffset || start);
+                        const wordText = item.word || item.text || '';
+                        if (wordText) {
+                            activeWordTimestamps.push({ word: wordText, start, end });
+                        }
+                    }
+                }
+            }
+
+            if (activeWordTimestamps.length === 0) {
+                karaokeContainer.innerHTML = '<span class="text-xs text-gray-500 italic">No word-level offset timestamps detected in this response.</span>';
+                return;
+            }
+
+            // Generate clickable word badges
+            activeWordTimestamps.forEach((wt, idx) => {
+                const span = document.createElement('span');
+                span.className = 'karaoke-word cursor-pointer px-2 py-1 rounded-lg text-gray-300 bg-gray-800/80 hover:bg-gray-700 transition-all text-xs font-mono select-none inline-block border border-gray-700/60';
+                span.textContent = wt.word;
+                span.setAttribute('data-index', idx);
+                span.setAttribute('data-start', wt.start);
+                span.setAttribute('data-end', wt.end);
+                span.title = `${wt.word} [${wt.start.toFixed(2)}s - ${wt.end.toFixed(2)}s] (Click to seek)`;
+
+                span.addEventListener('click', () => {
+                    if (audioPreviewPlayer.src) {
+                        audioPreviewPlayer.currentTime = wt.start;
+                        audioPreviewPlayer.play().catch(() => {});
+                    }
+                });
+
+                karaokeContainer.appendChild(span);
+            });
+        }
+
+        // Toggle / Play Synced Lyrics Button
+        playLyricsBtn.addEventListener('click', () => {
+            if (!audioPreviewPlayer.src) {
+                showMessage('Please select an audio file first to play synced lyrics.', 'error');
+                return;
+            }
+
+            if (audioPreviewPlayer.paused) {
+                audioPreviewPlayer.play().catch(e => showMessage(`Playback failed: ${e.message}`, 'error'));
+                playLyricsBtn.innerHTML = '<span>⏸️</span> Pause Lyrics';
+            } else {
+                audioPreviewPlayer.pause();
+                playLyricsBtn.innerHTML = '<span>▶️</span> Play Synced Lyrics';
+            }
+        });
+
+        audioPreviewPlayer.addEventListener('play', () => {
+            playLyricsBtn.innerHTML = '<span>⏸️</span> Pause Lyrics';
+        });
+
+        audioPreviewPlayer.addEventListener('pause', () => {
+            playLyricsBtn.innerHTML = '<span>▶️</span> Play Synced Lyrics';
+        });
+
+        audioPreviewPlayer.addEventListener('ended', () => {
+            playLyricsBtn.innerHTML = '<span>▶️</span> Play Synced Lyrics';
+        });
+
+        // Real-time Audio Sync highlighting
+        audioPreviewPlayer.addEventListener('timeupdate', () => {
+            const curTime = audioPreviewPlayer.currentTime;
+            activeWordOffsetBadge.textContent = `${curTime.toFixed(2)}s`;
+
+            const wordNodes = karaokeContainer.querySelectorAll('.karaoke-word');
+            wordNodes.forEach(node => {
+                const start = parseFloat(node.getAttribute('data-start'));
+                const end = parseFloat(node.getAttribute('data-end'));
+
+                // Highlight word when playback is between its start and end offsets
+                if (curTime >= start && curTime <= end) {
+                    if (!node.classList.contains('active-lyric')) {
+                        node.classList.add('active-lyric', 'bg-cyan-500', 'text-gray-950', 'font-bold', 'scale-110', 'shadow-lg', 'shadow-cyan-500/50', 'border-cyan-300');
+                        node.classList.remove('text-gray-300', 'bg-gray-800/80');
+                        node.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                } else {
+                    node.classList.remove('active-lyric', 'bg-cyan-500', 'text-gray-950', 'font-bold', 'scale-110', 'shadow-lg', 'shadow-cyan-500/50', 'border-cyan-300');
+                    node.classList.add('text-gray-300', 'bg-gray-800/80');
+                }
+            });
+        });
+
+        // Expand / Collapse Paste JSON Drawer
+        togglePasteJsonBtn.addEventListener('click', () => {
+            pasteJsonSection.classList.toggle('hidden');
+        });
+
+        // Load & Render Pasted JSON Immediately
+        loadPastedJsonBtn.addEventListener('click', () => {
+            hideMessage();
+            const raw = pasteJsonInput.value.trim();
+            if (!raw) {
+                showMessage('Please paste a Gemini response JSON first.', 'error');
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(raw);
+                lastTranscribeRawJson = parsed;
+
+                const textPart = parsed.candidates?.[0]?.content?.parts?.[0]?.audioTranscription?.text ||
+                                 parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                transcriptTextDisplay.textContent = textPart;
+                transcriptOutputCard.classList.remove('hidden');
+
+                extractAndRenderKaraoke(parsed);
+                showMessage('Pasted JSON loaded! Press "Play Synced Lyrics" to test.', 'success');
+                transcriptOutputCard.scrollIntoView({ behavior: 'smooth' });
+            } catch (err) {
+                showMessage(`Invalid JSON: ${err.message}`, 'error');
+            }
         });
 
         // Fetch Live Models dynamically
