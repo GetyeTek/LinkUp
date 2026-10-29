@@ -161,7 +161,7 @@ const applyCoordinateHighlight = (targetCoord, pageBlocks) => {
     }
 
     console.groupEnd();
-};</find>
+};
 
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const { sessionUser, t } = usePlatform();
