@@ -5,12 +5,13 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
     const nextStartTimeRef = useRef(0);
     const isMicActiveRef = useRef(isMicActive);
     const activeSourcesRef = useRef(new Set());
+    const scheduledTimersRef = useRef([]);
 
     useEffect(() => {
         isMicActiveRef.current = isMicActive;
     }, [isMicActive]);
 
-    const playAudioChunk = (base64Data) => {
+    const playAudioChunk = (base64Data, options = null) => {
         if (!base64Data) return;
 
         if (!audioContextRef.current) {
@@ -53,22 +54,40 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
         activeSourcesRef.current.add(source);
         source.onended = () => {
             activeSourcesRef.current.delete(source);
+            if (options?.onEnded) options.onEnded();
         };
 
         // 4. Adaptive Jitter Buffer Scheduling (120ms Pre-Roll Safety Cushion)
         const currentTime = ctx.currentTime;
-        const INITIAL_BUFFER_OFFSET = 0.12; // 120ms lookahead absorbs packet latency variations
+        const INITIAL_BUFFER_OFFSET = 0.12;
 
         if (nextStartTimeRef.current < currentTime) {
-            // Buffer starved or idle: inject lookahead cushion
             nextStartTimeRef.current = currentTime + INITIAL_BUFFER_OFFSET;
         }
 
-        source.start(nextStartTimeRef.current);
+        const scheduledStartTime = nextStartTimeRef.current;
+
+        // 5. Hardware-Locked Callback Synchronization
+        if (options?.onStart) {
+            const delayMs = Math.max(0, (scheduledStartTime - currentTime) * 1000);
+            console.log(`⏱️ [AudioClock] Scheduling onStart for target [${options.id || 'chunk'}] in ${delayMs.toFixed(1)}ms (AudioContext: ${currentTime.toFixed(3)}s -> ${scheduledStartTime.toFixed(3)}s)`);
+            const timerId = setTimeout(() => {
+                console.log(`⚡ [AudioClock] Fired hardware-locked onStart for [${options.id || 'chunk'}] at AudioContext time ${ctx.currentTime.toFixed(3)}s`);
+                options.onStart();
+            }, delayMs);
+            scheduledTimersRef.current.push(timerId);
+        }
+
+        source.start(scheduledStartTime);
         nextStartTimeRef.current += buffer.duration;
     };
 
     const stopAudio = () => {
+        const timerCount = scheduledTimersRef.current.length;
+        scheduledTimersRef.current.forEach(t => clearTimeout(t));
+        scheduledTimersRef.current = [];
+
+        const sourceCount = activeSourcesRef.current.size;
         activeSourcesRef.current.forEach(source => {
             try {
                 source.stop();
@@ -82,6 +101,7 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
         } else {
             nextStartTimeRef.current = 0;
         }
+        console.log(`🛑 [AudioClock] stopAudio executed: Purged ${sourceCount} active audio buffer source(s) and canceled ${timerCount} scheduled highlight timer(s).`);
     };
 
     useEffect(() => {
