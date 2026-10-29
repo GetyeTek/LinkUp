@@ -54,6 +54,81 @@ const splitIntoSentencesClient = (rawText) => {
     return matches ? matches.map(s => s.trim()).filter(Boolean) : [clean];
 };
 
+const findSentenceRangeInBlock = (blockEl, sentenceText) => {
+    if (!blockEl || !sentenceText) return null;
+
+    const cleanSnippet = sentenceText
+        .toLowerCase()
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (cleanSnippet.length < 2) return null;
+
+    const walker = document.createTreeWalker(blockEl, NodeFilter.SHOW_TEXT, null, false);
+    const charStream = [];
+    let n;
+
+    while ((n = walker.nextNode())) {
+        if (n.parentNode && (n.parentNode.nodeName === 'SCRIPT' || n.parentNode.nodeName === 'STYLE')) continue;
+        const val = n.nodeValue;
+        for (let i = 0; i < val.length; i++) {
+            charStream.push({ char: val[i], node: n, offset: i });
+        }
+    }
+
+    if (charStream.length === 0) return null;
+
+    // Build collapsed string while preserving 1:1 mapped character pointers
+    let collapsed = "";
+    const map = [];
+    let inSpace = false;
+
+    for (let i = 0; i < charStream.length; i++) {
+        const rawChar = charStream[i].char;
+        if (/\s/.test(rawChar)) {
+            if (!inSpace && collapsed.length > 0) {
+                collapsed += " ";
+                map.push(charStream[i]);
+                inSpace = true;
+            }
+        } else {
+            inSpace = false;
+            let c = rawChar.toLowerCase();
+            if (c === '\u2018' || c === '\u2019') c = "'";
+            if (c === '\u201C' || c === '\u201D') c = '"';
+            collapsed += c;
+            map.push(charStream[i]);
+        }
+    }
+
+    // 1. Try full sentence match
+    let matchIdx = collapsed.indexOf(cleanSnippet);
+    let matchLen = cleanSnippet.length;
+
+    // 2. Prefix fallback if trailing punctuation or quotation marks vary slightly
+    if (matchIdx === -1 && cleanSnippet.length > 25) {
+        const prefix = cleanSnippet.slice(0, Math.min(cleanSnippet.length, 45)).trim();
+        matchIdx = collapsed.indexOf(prefix);
+        if (matchIdx !== -1) {
+            matchLen = Math.min(cleanSnippet.length, collapsed.length - matchIdx);
+        }
+    }
+
+    if (matchIdx !== -1 && map[matchIdx] && map[matchIdx + matchLen - 1]) {
+        const startObj = map[matchIdx];
+        const endObj = map[matchIdx + matchLen - 1];
+
+        const range = document.createRange();
+        range.setStart(startObj.node, startObj.offset);
+        range.setEnd(endObj.node, endObj.offset + 1);
+        return range;
+    }
+
+    return null;
+};
+
 const applyCoordinateHighlight = (targetCoord, pageBlocks) => {
     if (!targetCoord) {
         clearCoordinateHighlights();
@@ -62,13 +137,12 @@ const applyCoordinateHighlight = (targetCoord, pageBlocks) => {
 
     console.group(`🎯 [Miron Coordinate Sync] Target: "${targetCoord}"`);
 
-    const parts = targetCoord.match(/^B(\d+)_(.+)_(d+)$/);
+    // Universal Coordinate Matcher: B{idx}_{key}_{sIdx} or B{idx}_{key}
+    const parts = targetCoord.match(/^B(\d+)_(.+?)(?:_(\d+))?$/);
     if (!parts) {
-        // Fallback: simple B{idx} block coordinate
         const simpleBlock = targetCoord.match(/^B(\d+)/i);
         if (simpleBlock) {
             const bIdx = parseInt(simpleBlock[1], 10);
-            console.log(`ℹ️ Block-level coordinate detected: Block #${bIdx}`);
             const blockEl = document.getElementById(`ml-block-${bIdx}`);
             if (blockEl) {
                 blockEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -80,7 +154,7 @@ const applyCoordinateHighlight = (targetCoord, pageBlocks) => {
 
     const bIdx = parseInt(parts[1], 10);
     const unitKey = parts[2];
-    const sIdx = parseInt(parts[3], 10);
+    const sIdx = parts[3] !== undefined ? parseInt(parts[3], 10) : 0;
 
     const block = pageBlocks && pageBlocks[bIdx];
     if (!block) {
@@ -90,7 +164,7 @@ const applyCoordinateHighlight = (targetCoord, pageBlocks) => {
     }
 
     const units = extractBlockUnitsClient(block);
-    const targetUnit = units.find(u => u.key === unitKey);
+    const targetUnit = units.find(u => u.key === unitKey) || units[0];
     if (!targetUnit) {
         console.warn(`⚠️ Unit key "${unitKey}" not found in Block #${bIdx}.`);
         console.groupEnd();
@@ -98,14 +172,14 @@ const applyCoordinateHighlight = (targetCoord, pageBlocks) => {
     }
 
     const sentences = splitIntoSentencesClient(targetUnit.text);
-    const sentenceText = sentences[sIdx];
+    const sentenceText = sentences[sIdx] || sentences[0];
     if (!sentenceText) {
-        console.warn(`⚠️ Sentence #${sIdx} not found in Unit "${unitKey}". Total sentences: ${sentences.length}`);
+        console.warn(`⚠️ Sentence index #${sIdx} not found in Unit "${unitKey}". Total: ${sentences.length}`);
         console.groupEnd();
         return;
     }
 
-    console.log(`Found Sentence (${sentenceText.length} chars): "${sentenceText}"`);
+    console.log(`Target Sentence: "${sentenceText}"`);
 
     const blockEl = document.getElementById(`ml-block-${bIdx}`);
     if (!blockEl) {
@@ -114,50 +188,23 @@ const applyCoordinateHighlight = (targetCoord, pageBlocks) => {
         return;
     }
 
-    // Scroll block into view smoothly
     blockEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    // CSS Custom Highlight API Registration
     if (typeof CSS !== 'undefined' && CSS.highlights) {
         try {
-            // Find text range inside block element
-            const walker = document.createTreeWalker(blockEl, NodeFilter.SHOW_TEXT, null, false);
-            const textNodes = [];
-            let fullText = "";
-            let n;
-            while ((n = walker.nextNode())) {
-                const start = fullText.length;
-                fullText += n.nodeValue;
-                textNodes.push({ node: n, start, end: fullText.length });
-            }
-
-            const cleanSnippet = sentenceText.slice(0, Math.min(sentenceText.length, 60)).replace(/\s+/g, ' ').trim();
-            const normFull = fullText.replace(/\s+/g, ' ');
-            const foundIdx = normFull.indexOf(cleanSnippet);
-
-            if (foundIdx !== -1) {
-                // Find matching text nodes
-                const startNodeObj = textNodes.find(tn => tn.end >= foundIdx);
-                const endNodeObj = textNodes.find(tn => tn.end >= foundIdx + cleanSnippet.length) || textNodes[textNodes.length - 1];
-
-                if (startNodeObj && endNodeObj) {
-                    const range = document.createRange();
-                    const localStart = Math.max(0, foundIdx - startNodeObj.start);
-                    const localEnd = Math.min(endNodeObj.node.nodeValue.length, (foundIdx + cleanSnippet.length) - endNodeObj.start);
-
-                    range.setStart(startNodeObj.node, Math.min(localStart, startNodeObj.node.nodeValue.length));
-                    range.setEnd(endNodeObj.node, Math.max(0, Math.min(localEnd, endNodeObj.node.nodeValue.length)));
-
-                    const highlight = new Highlight(range);
-                    CSS.highlights.set('miron-active-sentence', highlight);
-                    console.log(`✅ [CSS.highlights] Active highlight registered for sentence: "${cleanSnippet}"`);
-                }
+            const range = findSentenceRangeInBlock(blockEl, sentenceText);
+            if (range) {
+                const highlight = new Highlight(range);
+                CSS.highlights.set('miron-active-sentence', highlight);
+                console.log(`✅ [CSS.highlights] Successfully highlighted sentence in DOM (${sentenceText.length} chars).`);
             } else {
-                console.log(`ℹ️ Exact text range offset missed. Relying on active block wrapper border.`);
+                console.log(`ℹ️ Exact text snippet offset missed. Active block accent remains armed.`);
             }
         } catch (e) {
             console.warn(`CSS.highlights registration warning:`, e.message);
         }
+    } else {
+        console.warn("⚠️ CSS.highlights API not supported on this browser engine.");
     }
 
     console.groupEnd();
