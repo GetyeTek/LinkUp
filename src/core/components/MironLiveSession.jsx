@@ -369,6 +369,15 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const { playAudioChunk, stopAudio } = useGeminiAudio(wsRef, micActive);
     const renderBookBlock = getComponent('book-block-renderer');
 
+    const cancelAndSilence = () => {
+        if (stopAudio) stopAudio();
+        setIsMironSpeaking(false);
+        clearTimeout(speakingTimeout.current);
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ action: "interrupt" }));
+        }
+    };
+
     // 1. Hydrate Course Books (Fast cache hit + fresh DB fetch)
     useEffect(() => {
         try {
@@ -1049,13 +1058,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
     // --- NAVIGATION FLOW HANDLERS ---
     const handleSelectCourse = (book) => {
-        if (stopAudio) stopAudio();
+        cancelAndSilence();
         setSelectedBook(book);
         setStage('toc_select');
         setExpandedChapters(new Set([0]));
         setIsTocRevealed(false);
-        setIsMironSpeaking(false);
-        clearTimeout(speakingTimeout.current);
         clearTimeout(tocTimeoutRef.current);
         tocTimeoutRef.current = setTimeout(() => {
             if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -1082,15 +1089,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     };
 
     const handleSelectSection = (sectionNode, parentChapterTitle) => {
-        if (stopAudio) stopAudio();
+        cancelAndSilence();
         setSelectedSection({
             ...sectionNode,
             parentTitle: parentChapterTitle
         });
         setStage('section_confirm');
         setIsConfirmRevealed(false);
-        setIsMironSpeaking(false);
-        clearTimeout(speakingTimeout.current);
         clearTimeout(confirmTimeoutRef.current);
         confirmTimeoutRef.current = setTimeout(() => {
             if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -1111,12 +1116,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
     const handleConfirmStartReading = async () => {
         if (!selectedBook || !selectedSection || isLoadingPages) return;
-        if (stopAudio) stopAudio();
-        setIsMironSpeaking(false);
-        clearTimeout(speakingTimeout.current);
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ action: "interrupt" }));
-        }
+        cancelAndSilence();
         setIsLoadingPages(true);
 
         const offset = selectedBook.page_offset || 0;
@@ -1184,6 +1184,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const handleSendText = () => {
         if (!textInput.trim()) return;
         const text = textInput.trim();
+        cancelAndSilence();
         setTextInput('');
         setTranscripts(prev => [...prev, { id: Date.now(), role: 'user', text, isFinal: true }]);
         emitVoicePrompt(text);
@@ -1227,6 +1228,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         <button 
                             className="ml-back-btn" 
                             onClick={() => {
+                                cancelAndSilence();
                                 if (stage === 'reading') setStage('section_confirm');
                                 else if (stage === 'section_confirm') setStage('toc_select');
                                 else if (stage === 'toc_select') setStage('course_select');
@@ -1501,7 +1503,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             </p>
 
                                             <div className="ml-confirm-actions-row">
-                                                <button className="ml-btn-back-toc" onClick={() => setStage('toc_select')}>
+                                                <button className="ml-btn-back-toc" onClick={() => {
+                                                    cancelAndSilence();
+                                                    setStage('toc_select');
+                                                }}>
                                                     <i className="fas fa-chevron-left"></i> {t('miron_change_topic', 'Change Topic')}
                                                 </button>
                                                 <button 
