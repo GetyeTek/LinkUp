@@ -378,7 +378,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     };
 
-    const { playAudioChunk, stopAudio } = useGeminiAudio(wsRef, micActive);
+    const { playAudioChunk, stopAudio, resyncActiveAudioState } = useGeminiAudio(wsRef, micActive);
     const renderBookBlock = getComponent('book-block-renderer');
 
     const cancelAndSilence = () => {
@@ -428,6 +428,17 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             });
         }
     }, [transcripts]);
+
+    // Hardware Audio Timeline Re-Sync (Defeats Mobile Background Tab Throttling)
+    useEffect(() => {
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible' && resyncActiveAudioState) {
+                resyncActiveAudioState();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, [resyncActiveAudioState]);
 
     // 3. Deterministic Coordinate Highlight Synchronization
     useEffect(() => {
@@ -944,13 +955,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 const targetCoord = currentChunkMetaRef.current.target;
                                 const isFirst = isFirstAudioPacketOfChunkRef.current;
 
-                                if (isFirst && targetCoord) {
+                                if (isFirst) {
                                     isFirstAudioPacketOfChunkRef.current = false;
                                     playAudioChunk(part.inlineData.data, {
                                         id: targetCoord,
+                                        target: targetCoord,
                                         onStart: () => {
-                                            console.log(`🟢 [AudioClock->UI] Triggering highlight for coordinate: ${targetCoord}`);
-                                            setActiveTargetCoordinate(targetCoord);
+                                            console.log(`🟢 [AudioClock->UI] Triggering highlight for coordinate: ${targetCoord || 'NONE'}`);
+                                            setActiveTargetCoordinate(targetCoord || null);
                                         }
                                     });
                                 } else {
