@@ -1606,6 +1606,10 @@ OPERATIONAL RULES:
                     this.totalExpectedChunks = 0;
                     this.deliveredChunksCount = 0;
                     if (this.chunkWatchdogTimer) clearTimeout(this.chunkWatchdogTimer);
+                    if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
+                    if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
+                    this.activeTurn = null;
+                    this.broadcast(JSON.stringify({ type: "stop_audio" }));
 
                     const bookId = this.currentBookId;
                     const pageNum = this.currentPageNumber;
@@ -1675,6 +1679,7 @@ Start our co-study session by directly referencing this page out loud to ${this.
                 if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
                 if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
                 this.activeTurn = null;
+                this.broadcast(JSON.stringify({ type: "stop_audio" }));
                 return;
             }
 
