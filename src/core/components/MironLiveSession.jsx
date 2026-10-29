@@ -291,7 +291,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         const totalHeight = totalUnscaledH * fitScale * scale;
 
         const clampedX = pW <= cW ? (cW - pW) / 2 : Math.min(16, Math.max(cW - pW - 16, x));
-        const clampedY = totalHeight <= cH ? Math.max(16, (cH - totalHeight) / 2) : Math.min(24, Math.max(cH - totalHeight - 48, y));
+        const clampedY = totalHeight <= cH ? 20 : Math.min(20, Math.max(cH - totalHeight - 48, y));
         return { x: clampedX, y: clampedY };
     };
 
@@ -346,7 +346,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             const targetScale = 1.0;
             const pW = 794 * fitScale;
             const x0 = (rect.width - pW) / 2;
-            transformRef.current = { scale: targetScale, x: x0, y: 16 };
+            transformRef.current = { scale: targetScale, x: x0, y: 20 };
             applyTransform(true);
             setZoomMultiplier(1.0);
         } else {
@@ -441,19 +441,15 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [stage, selectedBook]);
 
-    // 3.2. Auto-Fit A4 Scale Calculator (Fit Full A4 Aspect Ratio)
+    // 3.2. Auto-Fit A4 Scale Calculator (BookReader Fidelity: 100% Desktop, Width-Fitted Mobile)
     useEffect(() => {
         if (stage !== 'reading' || viewState !== 'full' || !pageContainerRef.current) return;
 
         const updateFitScale = () => {
             if (!pageContainerRef.current) return;
             const containerW = pageContainerRef.current.clientWidth;
-            const containerH = pageContainerRef.current.clientHeight;
-            const paddingW = containerW < 600 ? 16 : 36;
-            const paddingH = 32;
-            const scaleW = (containerW - paddingW) / 794;
-            const scaleH = (containerH - paddingH) / 1123;
-            const computed = Math.min(scaleW, scaleH, 1.0);
+            const paddingW = containerW < 600 ? 16 : 48;
+            const computed = Math.min((containerW - paddingW) / 794, 1.0);
             setFitScale(Math.max(0.35, computed));
         };
 
@@ -482,12 +478,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
         // Synchronously compute container dimensions to prevent any unscaled frame
         const cW = container.clientWidth;
-        const cH = container.clientHeight;
-        const paddingW = cW < 600 ? 16 : 36;
-        const paddingH = 32;
-        const scaleW = (cW - paddingW) / 794;
-        const scaleH = (cH - paddingH) / 1123;
-        const computedFit = Math.max(0.35, Math.min(scaleW, scaleH, 1.0));
+        const paddingW = cW < 600 ? 16 : 48;
+        const computedFit = Math.max(0.35, Math.min((cW - paddingW) / 794, 1.0));
         if (computedFit !== fitScale) {
             setFitScale(computedFit);
         }
@@ -495,12 +487,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         container.scrollTop = 0;
         container.scrollLeft = 0;
 
-        // Reset to perfectly centered A4 sheet on page change, resize, or restore
+        // Reset to centered BookReader position (top at 20px)
         const pW = 794 * computedFit;
-        const pH = 1123 * computedFit;
         const x0 = Math.max(0, (cW - pW) / 2);
-        const y0 = Math.max(16, (cH - pH) / 2);
-        transformRef.current = { scale: 1.0, x: x0, y: y0 };
+        transformRef.current = { scale: 1.0, x: x0, y: 20 };
         applyTransform(false, computedFit);
         setZoomMultiplier(1.0);
 
@@ -547,11 +537,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     if (transformRef.current.scale > 1.2) {
                         const targetScale = 1.0;
                         const initialW = 794 * fitScale;
-                        const currentScale = transformRef.current.scale;
-                        const py = (tapY - transformRef.current.y) / (currentScale * fitScale);
                         const nx = (cRect.width - initialW) / 2;
-                        const ny = tapY - py * (targetScale * fitScale);
-                        const clamped = clampPosition(nx, ny, targetScale);
+                        const clamped = clampPosition(nx, 20, targetScale);
                         transformRef.current = { scale: targetScale, x: clamped.x, y: clamped.y };
                         applyTransform(true);
                         setZoomMultiplier(1.0);
