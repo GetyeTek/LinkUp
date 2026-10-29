@@ -735,11 +735,7 @@ export class GeminiLiveAgent {
         }
     }, 14000);
     
-    const prompt = `Translate and speak the following explanation to ${this.studentName} in an authentic university peer tone.
-CRITICAL CO-READING VERBATIM RULE:
-- When the text contains a textbook quotation in English (e.g., 'Here our book says: "..."' or enclosed in quotation marks), DO NOT translate that quoted sentence into Amharic! Speak that quoted English sentence out loud EXACTLY as written in clear English.
-- Immediately after the English quote, deliver the explanation that follows in natural, grounded Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms.
-Speak the response directly:\n\n${chunkText}`;
+    const prompt = `Translate to natural Amharic and speak directly to ${this.studentName} in your informal peer tone (keeping any English quotes verbatim):\n\n${chunkText}`;
     
     const payload = JSON.stringify({
         clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
@@ -873,7 +869,7 @@ Speak the response directly:\n\n${chunkText}`;
   * VERBATIM CO-READING CITATION:
     - Whenever you target a coordinate, quote or reference the sentence in clear English, followed immediately by your peer explanation and intuitive breakdown.
   * If a chunk is purely conversational, a quick encouragement, or an application question not tied to a specific line, omit the target attribute: <chunk>...</chunk>.
-  * MULTI-CHUNK RULE: Deliver paced, progressive chunks (1-2 sentences each).
+  * TEACHING CHUNK PACING: Deliver substantive concept chunks (2-3 sentences per chunk). Explain ideas thoroughly and naturally so speech flows smoothly without choppy single-sentence halts.
 - ADVANCING PAGES & FLUFF HANDLING:
   * When finishing a dense concept page, ask ${this.studentName} if everything makes sense or if they want to move to the next page, reminding them they can speak or type questions directly in chat.
   * If a page is merely introductory filler, syllabus outlines, or generic learning objectives with no testable concepts, DO NOT ask if they understand! State what the page covers in one quick sentence, silently call "advance_to_next_page", and advance straight to the real material.
@@ -1270,6 +1266,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
     }
 
     function copyAllLogs() {
+      var nl = String.fromCharCode(10);
       var items = Array.from(document.querySelectorAll('.log-item'));
       if (items.length === 0) {
         alert("Log console is empty.");
@@ -1279,9 +1276,9 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
         var meta = el.querySelector('.log-meta-bar') ? el.querySelector('.log-meta-bar').innerText : '';
         var msg = el.querySelector('.log-msg') ? el.querySelector('.log-msg').innerText : '';
         var jsonEl = el.querySelector('.json-data');
-        var json = jsonEl ? '\n' + jsonEl.innerText : '';
-        return '[' + meta + ']\n' + msg + json;
-      }).join('\n\n========================================\n\n');
+        var json = jsonEl ? nl + jsonEl.innerText : '';
+        return '[' + meta + ']' + nl + msg + json;
+      }).join(nl + nl + '========================================' + nl + nl);
 
       navigator.clipboard.writeText(fullText).then(function() {
         var btn = document.getElementById('copy-btn');
@@ -2433,11 +2430,34 @@ CRITICAL OPERATIONAL RULES:
 
                 // Turn completed: Audit Dead-Air vs Completion
                 if (this.isOneOnOne && parsed.serverContent?.turnComplete) {
+                    if (this.chunkWatchdogTimer) {
+                        clearTimeout(this.chunkWatchdogTimer);
+                        this.chunkWatchdogTimer = null;
+                    }
+
+                    if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
+                    if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
+
+                    // High Priority: Instantly advance reading chunk queue without absorption traps
+                    if (this.isGeminiTranslating) {
+                        this.deliveredChunksCount++;
+                        this.emitLog("CHUNK_DELIVERED", `✅ [DELIVERED ${this.deliveredChunksCount}/${this.totalExpectedChunks}] Chunk #${this.currentTranslatingChunkIndex + 1} audio complete. Advancing to next chunk immediately...`, {
+                            delivered_count: this.deliveredChunksCount,
+                            total_expected: this.totalExpectedChunks,
+                            remaining_in_queue: this.translationQueue.length
+                        });
+                        this.isGeminiTranslating = false;
+                        this.activeTurn = null;
+                        this.pendingTurnCompletions = 0;
+                        this.processTranslationQueue();
+                        return;
+                    }
+
                     // Shield 1: Absorb trailing turnComplete from superceded turn
                     if (this.pendingTurnCompletions > 0) {
                         this.pendingTurnCompletions--;
                         this.emitLog("TURN_SYNC", `🛡️ Absorbed trailing turnComplete from superceded turn. Active turn [${this.activeTurn?.type || 'none'}] remains armed. Pending completions remaining: ${this.pendingTurnCompletions}`);
-                        return; // Keep activeTurn and speaking gates open!
+                        return;
                     }
 
                     // Shield 2: Sub-750ms Phantom Guard
@@ -2445,30 +2465,14 @@ CRITICAL OPERATIONAL RULES:
                         const totalTurnTime = Date.now() - this.activeTurn.startTime;
                         if (totalTurnTime < 750) {
                             this.emitLog("TURN_SYNC", `⚡ Sub-750ms phantom turnComplete detected (${totalTurnTime}ms). Absorbing artifact without disarming [${this.activeTurn.type}].`);
-                            return; // Mathematically impossible to be the new turn
+                            return;
                         }
                     }
-
-                    if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
-                    if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
 
                     if (this.activeTurn) {
                         const totalTurnTime = Date.now() - this.activeTurn.startTime;
-                        if (this.activeTurn.audioChunksReceived === 0) {
-                            this.emitLog("DEAD_AIR", `💀 DEAD AIR: Google completed [${this.activeTurn.type}] without outputting any audio (${totalTurnTime}ms). Check prompt formatting or safety filtering.`, {
-                                turn_id: this.activeTurn.id,
-                                total_turn_ms: totalTurnTime,
-                                server_content: parsed.serverContent
-                            });
-                        } else {
-                            this.emitLog("GEMINI", `✅ Finished turn [${this.activeTurn.type}]: ${this.activeTurn.audioChunksReceived} audio chunks across ${totalTurnTime}ms.`);
-                        }
+                        this.emitLog("GEMINI", `✅ Finished turn [${this.activeTurn.type}]: ${this.activeTurn.audioChunksReceived} audio chunks across ${totalTurnTime}ms.`);
                         this.activeTurn = null;
-                    }
-
-                    if (this.chunkWatchdogTimer) {
-                        clearTimeout(this.chunkWatchdogTimer);
-                        this.chunkWatchdogTimer = null;
                     }
 
                     if (this.isSpeakingTemplate) {
@@ -2477,15 +2481,6 @@ CRITICAL OPERATIONAL RULES:
                         this.isGeneratingSectionSummary = false;
                     } else if (this.isGeminiFallbackActive) {
                         this.isGeminiFallbackActive = false;
-                    } else if (this.isGeminiTranslating) {
-                        this.deliveredChunksCount++;
-                        this.emitLog("CHUNK_DELIVERED", `✅ [DELIVERED ${this.deliveredChunksCount}/${this.totalExpectedChunks}] Chunk #${this.currentTranslatingChunkIndex + 1} audio turn completed. Loading next chunk...`, {
-                            delivered_count: this.deliveredChunksCount,
-                            total_expected: this.totalExpectedChunks,
-                            remaining_in_queue: this.translationQueue.length
-                        });
-                        this.isGeminiTranslating = false;
-                        this.processTranslationQueue(); // Load next chunk
                     }
                 }
                 
