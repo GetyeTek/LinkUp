@@ -1164,7 +1164,7 @@ Speak the response directly:\n\n${chunkText}`;
       // Queue indexed chunks with target coordinates for translation & speech
       this.translationQueue.push(...rawChunks);
       
-      this.emitLog("GEMINI", `[STAGE 3/5 | QUEUE_ENGAGED] Enqueued ${indexedChunks.length} chunks for voice translation. Starting vocalization pipeline...`);
+      this.emitLog("GEMINI", `[STAGE 3/5 | QUEUE_ENGAGED] Enqueued ${rawChunks.length} chunks for voice translation. Starting vocalization pipeline...`);
       this.processTranslationQueue();
     } catch (e) {
       this.translationQueue = [];
@@ -1270,24 +1270,25 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
     }
 
     function copyAllLogs() {
-      const items = Array.from(document.querySelectorAll('.log-item'));
+      var items = Array.from(document.querySelectorAll('.log-item'));
       if (items.length === 0) {
         alert("Log console is empty.");
         return;
       }
-      const fullText = items.map(el => {
-        const meta = el.querySelector('.log-meta-bar')?.innerText || '';
-        const msg = el.querySelector('.log-msg')?.innerText || '';
-        const json = el.querySelector('.json-data')?.innerText || '';
-        return `[${meta}]\n${msg}${json ? '\n' + json : ''}`;
+      var fullText = items.map(function(el) {
+        var meta = el.querySelector('.log-meta-bar') ? el.querySelector('.log-meta-bar').innerText : '';
+        var msg = el.querySelector('.log-msg') ? el.querySelector('.log-msg').innerText : '';
+        var jsonEl = el.querySelector('.json-data');
+        var json = jsonEl ? '\n' + jsonEl.innerText : '';
+        return '[' + meta + ']\n' + msg + json;
       }).join('\n\n========================================\n\n');
 
-      navigator.clipboard.writeText(fullText).then(() => {
-        const btn = document.getElementById('copy-btn');
-        const orig = btn.innerText;
+      navigator.clipboard.writeText(fullText).then(function() {
+        var btn = document.getElementById('copy-btn');
+        var orig = btn.innerText;
         btn.innerText = '✅ Copied!';
-        setTimeout(() => btn.innerText = orig, 1800);
-      }).catch(err => {
+        setTimeout(function() { btn.innerText = orig; }, 1800);
+      }).catch(function(err) {
         alert("Clipboard copy failed: " + err.message);
       });
     }
