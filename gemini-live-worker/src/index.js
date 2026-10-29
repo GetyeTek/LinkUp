@@ -363,6 +363,7 @@ export class GeminiLiveAgent {
     this.turnWatchdogTimer = null;
     this.turnDeadlineTimer = null;
     this.pendingTurnCompletions = 0;
+    this.turnEpoch = 0;
 
     // --- 1-ON-1 COGNITIVE PIPELINE STATE (GROQ BRAIN + GEMINI VOICE) ---
     this.pendingUserSpeech = "";
@@ -517,6 +518,8 @@ export class GeminiLiveAgent {
   }
 
   startTurnAudit(turnType, previewText) {
+    this.turnEpoch++;
+    const currentEpoch = this.turnEpoch;
     const startTime = Date.now();
 
     // Shield 1: Queue trailing turnComplete absorption if previous turn was still active
@@ -527,6 +530,7 @@ export class GeminiLiveAgent {
 
     this.activeTurn = {
       id: crypto.randomUUID().slice(0, 8),
+      epoch: currentEpoch,
       type: turnType,
       preview: (previewText || "").slice(0, 80),
       startTime,
@@ -1543,6 +1547,12 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
             if (parsed.action === "course_selected") {
                 console.log(`[Agent|DO|STATE] Intercepted course_selected for ${this.conversationId} (course: ${parsed.course_name})`);
                 if (this.isOneOnOne) {
+                    this.turnEpoch++;
+                    this.broadcast(JSON.stringify({ type: "stop_audio" }));
+                    this.isGeneratingSectionSummary = false;
+                    this.translationQueue = [];
+                    this.isGeminiTranslating = false;
+                    this.activeTurn = null;
                     const result = pickCourseResponse(parsed.course_name, this.userSex, this.lastCourseTemplate);
                     this.lastCourseTemplate = result.raw;
                     this.speakPreformattedAmharic(result.spoken, "course_select");
@@ -1553,6 +1563,12 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
             if (parsed.action === "section_selected") {
                 console.log(`[Agent|DO|STATE] Intercepted section_selected for ${this.conversationId} (${parsed.section_title})`);
                 if (this.isOneOnOne) {
+                    this.turnEpoch++;
+                    this.broadcast(JSON.stringify({ type: "stop_audio" }));
+                    this.isSpeakingTemplate = false;
+                    this.translationQueue = [];
+                    this.isGeminiTranslating = false;
+                    this.activeTurn = null;
                     this.isGeneratingSectionSummary = true;
                     this.startTurnAudit("section_select", parsed.section_title);
                     const courseName = parsed.course_name || (this.currentCourseCode || "our course");
@@ -1672,9 +1688,11 @@ Start our co-study session by directly referencing this page out loud to ${this.
 
             if (parsed.action === "interrupt") {
                 console.log(`[Agent|DO|STATE] Intercepted client interrupt for ${this.conversationId}`);
+                this.turnEpoch++;
                 this.isSpeakingTemplate = false;
                 this.isGeneratingSectionSummary = false;
                 this.translationQueue = [];
+                this.isGeminiTranslating = false;
                 this.pendingTurnCompletions = 0;
                 if (this.turnWatchdogTimer) clearTimeout(this.turnWatchdogTimer);
                 if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
@@ -1760,7 +1778,13 @@ Start our co-study session by directly referencing this page out loud to ${this.
                     this.currentPageNumber = parseInt(pageMatch[1], 10);
                 }
                 this.emitLog("USER", oneOnOneText);
+                this.turnEpoch++;
+                this.broadcast(JSON.stringify({ type: "stop_audio" }));
                 this.translationQueue = []; // INTERRUPT: Clear pending translation chunks
+                this.isSpeakingTemplate = false;
+                this.isGeneratingSectionSummary = false;
+                this.isGeminiTranslating = false;
+                this.activeTurn = null;
                 this.ctx.waitUntil(this.executeGroqCognitiveTurn(oneOnOneText));
                 return; // Do NOT forward user text directly to Gemini Live
             }
@@ -1882,6 +1906,7 @@ Start our co-study session by directly referencing this page out loud to ${this.
     if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
     this.activeTurn = null;
     this.pendingTurnCompletions = 0;
+    this.turnEpoch = 0;
 
     if (this.geminiWs) {
       console.log("[Agent|DO|CLEANUP] Closing upstream Gemini WS.");
@@ -2205,6 +2230,8 @@ CRITICAL OPERATIONAL RULES:
                 // --- 1-ON-1 VOICE INPUT: INTERCEPT STT TRANSCRIPTION FOR GROQ ---
                 if (this.isOneOnOne && parsed.serverContent?.inputTranscription?.text) {
                     const speechChunk = parsed.serverContent.inputTranscription.text;
+                    this.turnEpoch++;
+                    this.broadcast(JSON.stringify({ type: "stop_audio" }));
                     if (this.translationQueue.length > 0) {
                         this.emitLog("INTERRUPT", `🛑 [BARGE-IN / ECHO DETECTED] Reading queue interrupted by incoming audio transcription! Wiped ${this.translationQueue.length} remaining chunks. Heard: "${speechChunk}"`, {
                             wiped_chunks: this.translationQueue.length,
@@ -2216,6 +2243,8 @@ CRITICAL OPERATIONAL RULES:
                     this.translationQueue = []; // INTERRUPT: Nuke the remaining script if user barges in!
                     this.isSpeakingTemplate = false;
                     this.isGeneratingSectionSummary = false;
+                    this.isGeminiTranslating = false;
+                    this.activeTurn = null;
                     if (this.chunkWatchdogTimer) clearTimeout(this.chunkWatchdogTimer);
 
                     this.pendingUserSpeech = (this.pendingUserSpeech || "") + speechChunk;
@@ -2252,6 +2281,11 @@ CRITICAL OPERATIONAL RULES:
 
                 // Check for Audio Output & TTFA Audit
                 if (parsed.serverContent?.modelTurn?.parts) {
+                    // Stale Epoch / Ghost Frame Invalidation
+                    if (this.isOneOnOne && (!this.activeTurn || this.activeTurn.epoch !== this.turnEpoch)) {
+                        return; // Discard ghost frame from cancelled or superceded turn
+                    }
+
                     let hasAudio = false;
                     for (const part of parsed.serverContent.modelTurn.parts) {
                         if (part.inlineData?.data) {
