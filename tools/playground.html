@@ -424,7 +424,7 @@
         </section>
 
         <!-- Message Box / Alerts -->
-        <div id="messageBox" class="hidden p-3.5 rounded-xl text-sm border"></div>
+        <div id="messageBox" class="hidden p-3.5 rounded-xl text-xs font-mono border whitespace-pre-wrap break-all max-h-60 overflow-y-auto"></div>
 
         <!-- Debug & Payload Inspector Accordion -->
         <div class="bg-cardbg rounded-2xl border border-gray-800 shadow-md overflow-hidden">
@@ -1105,42 +1105,60 @@
             transcribeBtnSpinner.classList.remove('hidden');
 
             const cleanModel = model.replace(/^models\//, '');
+            const isTranscribeModel = cleanModel.toLowerCase().includes('transcribe');
             const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
             endpointDisplay.textContent = `POST https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
 
             // Build tailored transcription prompt
             let promptText = "Generate a verbatim transcript of the entire speech in this audio.";
             if (withTimestamps) {
-                promptText += " Include precise start timestamps for each speech segment or turn formatted clearly like [MM:SS].";
+                promptText += " Include precise start timestamps for each speech segment formatted clearly like [MM:SS].";
             }
             if (withDiarization) {
                 promptText += " Differentiate between speakers by labeling them clearly (e.g., Speaker 1, Speaker 2).";
             }
-            promptText += " Maintain natural punctuation, capitalization, and accurate language rendering.";
+            promptText += " Maintain natural punctuation and capitalization.";
 
-            // Official Google Gemini generateContent payload for inline media
-            const payload = {
-                contents: [
-                    {
-                        parts: [
-                            { text: promptText },
-                            {
-                                inlineData: {
-                                    mimeType: loadedAudioMime || 'audio/mp3',
-                                    data: loadedAudioBase64
-                                }
-                            }
-                        ]
+            // Base parts payload
+            const contentParts = [
+                { text: promptText },
+                {
+                    inlineData: {
+                        mimeType: loadedAudioMime || 'audio/mp3',
+                        data: loadedAudioBase64
                     }
-                ],
-                generationConfig: {
-                    temperature: 0.2
                 }
+            ];
+
+            const payload = {
+                contents: [{ parts: contentParts }]
             };
+
+            // Dedicated Speech-to-Text models (e.g. gemini-3.5-transcribe) support audioTranscriptionConfig
+            if (isTranscribeModel) {
+                payload.generationConfig = {
+                    audioTranscriptionConfig: {
+                        mode: "VERBATIM"
+                    }
+                };
+                if (withTimestamps) {
+                    payload.generationConfig.audioTranscriptionConfig.wordTimestamp = true;
+                }
+                if (withDiarization) {
+                    payload.generationConfig.audioTranscriptionConfig.diarization = true;
+                }
+            } else {
+                payload.generationConfig = {
+                    temperature: 0.2
+                };
+            }
 
             // Truncate inspector base64 preview so it doesn't freeze the DOM
             const inspectorPayload = JSON.parse(JSON.stringify(payload));
-            inspectorPayload.contents[0].parts[1].inlineData.data = `<base64 data: ${loadedAudioBase64.length} chars>`;
+            const audioPartIndex = inspectorPayload.contents[0].parts.findIndex(p => p.inlineData);
+            if (audioPartIndex !== -1) {
+                inspectorPayload.contents[0].parts[audioPartIndex].inlineData.data = `<base64 data: ${loadedAudioBase64.length} chars>`;
+            }
             requestInspector.textContent = JSON.stringify(inspectorPayload, null, 2);
             responseInspector.textContent = 'Uploading and processing audio with Gemini...';
 
@@ -1153,22 +1171,91 @@
 
                 const data = await response.json();
 
+                // Unveil raw response in inspector immediately
+                responseInspector.textContent = JSON.stringify(data, null, 2);
+
                 if (!response.ok) {
-                    throw new Error(data.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+                    const errMsg = data.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+                    throw new Error(`Gemini API Error (${response.status}):\n${errMsg}`);
                 }
 
-                responseInspector.textContent = JSON.stringify({
-                    status: response.status,
-                    usageMetadata: data.usageMetadata || "N/A",
-                    fullResponse: data
-                }, null, 2);
-
-                const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!textResult) {
-                    throw new Error('No transcript text returned from the model response.');
+                // 1. Check for prompt safety blocks
+                if (data.promptFeedback?.blockReason) {
+                    throw new Error(`Prompt was blocked by Gemini: ${data.promptFeedback.blockReason}`);
                 }
 
-                transcriptTextDisplay.textContent = textResult;
+                const candidate = data.candidates?.[0];
+                if (!candidate) {
+                    throw new Error(`Gemini returned 0 candidates. Full Response:\n${JSON.stringify(data, null, 2)}`);
+                }
+
+                // 2. Extract transcript from all parts (supporting audioTranscription, text, and word timestamps)
+                const parts = candidate.content?.parts || [];
+                const extractedLines = [];
+
+                for (const part of parts) {
+                    // A. Dedicated audioTranscription object (used by gemini-3.5-transcribe)
+                    if (part.audioTranscription) {
+                        const at = part.audioTranscription;
+                        let line = '';
+
+                        if (at.speakerLabel) {
+                            line += `[${at.speakerLabel}] `;
+                        }
+
+                        if (at.text) {
+                            line += at.text;
+                        } else if (Array.isArray(at.words) && at.words.length > 0) {
+                            line += at.words.map(w => {
+                                if (w.startOffset) {
+                                    const sec = parseFloat(w.startOffset);
+                                    const mm = Math.floor(sec / 60).toString().padStart(2, '0');
+                                    const ss = Math.floor(sec % 60).toString().padStart(2, '0');
+                                    return `[${mm}:${ss}] ${w.word || w.text || ''}`;
+                                }
+                                return w.word || w.text || '';
+                            }).join(' ');
+                        }
+
+                        if (line.trim()) extractedLines.push(line.trim());
+                    }
+                    // B. Standard text parts (used by gemini-2.5-flash, gemini-3.8-flash, etc.)
+                    else if (typeof part.text === 'string' && part.text.trim()) {
+                        if (!part.thought) {
+                            extractedLines.push(part.text.trim());
+                        }
+                    }
+                }
+
+                // Fallback: If non-thought text was empty, check if any text part exists
+                if (extractedLines.length === 0) {
+                    for (const part of parts) {
+                        if (typeof part.text === 'string' && part.text.trim()) {
+                            extractedLines.push(part.text.trim());
+                        }
+                    }
+                }
+
+                // 3. If STILL empty, reveal the exact raw response and finishReason
+                if (extractedLines.length === 0) {
+                    const finishReason = candidate.finishReason || 'UNKNOWN';
+                    const safety = candidate.safetyRatings ? JSON.stringify(candidate.safetyRatings, null, 2) : 'None';
+                    const rawContent = JSON.stringify(candidate.content || {}, null, 2);
+
+                    payloadContent.classList.remove('hidden');
+                    accordionIcon.textContent = '▼';
+
+                    throw new Error(
+                        `Gemini returned empty parts without text or audioTranscription.\n\n` +
+                        `• finishReason: ${finishReason}\n` +
+                        `• Candidate parts: ${rawContent}\n` +
+                        `• Safety ratings: ${safety}\n\n` +
+                        `Check "Protocol & Payload Inspector" below for raw server JSON.`
+                    );
+                }
+
+                const finalTranscript = extractedLines.join('\n\n');
+                transcriptTextDisplay.textContent = finalTranscript;
                 transcriptOutputCard.classList.remove('hidden');
                 showMessage('Audio transcribed successfully!', 'success');
 
@@ -1176,8 +1263,10 @@
 
             } catch (err) {
                 console.error("Transcription Error:", err);
-                showMessage(err.message || 'Failed to transcribe audio. Check API key/model support.', 'error');
-                responseInspector.textContent = `Error: ${err.message}`;
+                // Automatically open debug inspector so nothing is hidden
+                payloadContent.classList.remove('hidden');
+                accordionIcon.textContent = '▼';
+                showMessage(err.message, 'error');
             } finally {
                 transcribeBtn.disabled = false;
                 transcribeBtnIcon.classList.remove('hidden');
