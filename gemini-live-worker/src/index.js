@@ -9,6 +9,91 @@ const sanitizeForSpeech = (txt) => {
     return txt.replace(/\[print\]/gi, '').replace(/\{[uhpbit]\}/gi, '');
 };
 
+// ==============================================================================
+// 19-COURSE POLYMORPHIC TEXT EXTRACTOR & COORDINATE ENGINE
+// ==============================================================================
+const extractBlockUnits = (block, bIdx) => {
+    if (!block || block.type === 'spacer' || block.type === 'footer') return [];
+    const units = [];
+
+    // 1. Primary string properties
+    const stringKeys = ['title', 'body', 'label', 'subtitle', 'caption', 'prompt', 'instruction', 'solution', 'quote', 'note', 'objective', 'text', 'main', 'sub', 'latex', 'formula'];
+    for (const key of stringKeys) {
+        if (typeof block[key] === 'string' && block[key].trim()) {
+            units.push({ key, text: block[key].trim() });
+        }
+    }
+
+    // 2. Structured Array properties (Lists, Questions, Steps, Logic)
+    const arrayKeys = ['items', 'questions', 'points', 'steps', 'lines', 'premises', 'conclusion', 'equations'];
+    for (const key of arrayKeys) {
+        if (Array.isArray(block[key])) {
+            block[key].forEach((item, i) => {
+                const txt = typeof item === 'string' ? item : (item?.text || item?.body || '');
+                if (txt && txt.trim()) {
+                    units.push({ key: `${key}_${i}`, text: txt.trim() });
+                }
+            });
+        }
+    }
+
+    // 3. Tables (rows)
+    if (Array.isArray(block.rows)) {
+        block.rows.forEach((row, rIdx) => {
+            if (Array.isArray(row)) {
+                const rowText = row.filter(cell => typeof cell === 'string' && cell.trim()).join(' | ');
+                if (rowText.trim()) {
+                    units.push({ key: `row_${rIdx}`, text: rowText });
+                }
+            }
+        });
+    }
+
+    return units;
+};
+
+const splitIntoSentences = (rawText) => {
+    if (!rawText) return [];
+    // Strip raw HTML tags (<b>, <i>, <br>) and normalize whitespace
+    const clean = rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!clean) return [];
+    const matches = clean.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
+    return matches ? matches.map(s => s.trim()).filter(Boolean) : [clean];
+};
+
+const buildPageCoordinateScript = (rawContentJson) => {
+    // Normalization: Guard against non-array anomaly (e.g. Geography pages 11-17)
+    const blocks = Array.isArray(rawContentJson) 
+        ? rawContentJson 
+        : (rawContentJson?.blocks || rawContentJson?.content || Object.values(rawContentJson || {}));
+
+    const coordinateLines = [];
+    const coordinateManifest = [];
+
+    blocks.forEach((block, bIdx) => {
+        const units = extractBlockUnits(block, bIdx);
+        units.forEach(u => {
+            const sentences = splitIntoSentences(u.text);
+            sentences.forEach((sText, sIdx) => {
+                const coord = `B${bIdx}_${u.key}_${sIdx}`;
+                coordinateLines.push(`[${coord}] ${sText}`);
+                coordinateManifest.push({
+                    target: coord,
+                    block_index: bIdx,
+                    unit_key: u.key,
+                    sentence_index: sIdx,
+                    text: sText
+                });
+            });
+        });
+    });
+
+    return {
+        scriptText: coordinateLines.join('\n'),
+        manifest: coordinateManifest
+    };
+};
+
 const GREETING_TEMPLATES = {
   male: [
     "ሰላም ${name}፣ እንዴት ነህ? ዛሬ አብረን እንድናጠና የምትፈልገውን ኮርስ ከታች ምረጥ።",
@@ -622,10 +707,23 @@ export class GeminiLiveAgent {
     const item = this.translationQueue.shift();
     const chunkText = typeof item === 'object' ? item.text : item;
     const chunkIdx = typeof item === 'object' ? item.index : 0;
+    const chunkTarget = typeof item === 'object' ? item.target : null;
     this.currentTranslatingChunkIndex = chunkIdx;
 
     this.isGeminiTranslating = true;
     this.startTurnAudit("reading_chunk_translation", chunkText);
+
+    // Notify client of current chunk target coordinate upfront
+    this.broadcast(JSON.stringify({
+        type: "reading_chunk_meta",
+        chunk_index: chunkIdx,
+        target: chunkTarget
+    }));
+
+    this.emitLog("COORDINATE", `🎯 [CHUNK #${chunkIdx + 1}/${this.totalExpectedChunks}] Target Anchor Coordinate: "${chunkTarget || 'NONE'}"`, {
+        chunk_index: chunkIdx,
+        target_coordinate: chunkTarget
+    });
 
     // Stuck Chunk Watchdog: If Gemini fails to return turnComplete within 14s, force-advance
     if (this.chunkWatchdogTimer) clearTimeout(this.chunkWatchdogTimer);
@@ -708,30 +806,20 @@ Speak the response directly:\n\n${chunkText}`;
         const pages = await pageRes.json();
 
         if (pages && pages.length > 0) {
-          const extractTextFromBlockArray = (blocks) => {
-            return (blocks || []).map(b => {
-              if (!b) return '';
-              let text = [];
-              if (b.main) text.push(b.main);
-              if (b.sub) text.push(b.sub);
-              if (b.title) text.push(b.title);
-              if (b.body) text.push(b.body);
-              if (b.text) text.push(b.text);
-              if (b.items && Array.isArray(b.items)) text.push(b.items.join(' '));
-              if (b.premises) text.push(b.premises.join(' '));
-              if (b.conclusion) text.push(b.conclusion);
-              if (b.question) text.push(b.question);
-              return text.join(' ').replace(/<[^>]+>/g, '').trim(); 
-            }).filter(Boolean).join('\n');
-          };
+          const { scriptText, manifest } = buildPageCoordinateScript(pages[0].content_json);
+          const sliced = this.sliceTextToTokenBudget(scriptText, 2400, "\n\n[...Page content truncated to protect TPM budget...]");
+          
+          this.emitLog("COORDINATE_MAP", `📖 Advanced to Page ${pageToFetch}: Extracted ${manifest.length} coordinate anchors across blocks.`);
+          this.broadcast(JSON.stringify({
+            type: "preload_coordinates",
+            manifest
+          }));
 
-          const rawPageText = extractTextFromBlockArray(pages[0].content_json || []);
-          const sliced = this.sliceTextToTokenBudget(rawPageText, 2200, "\n\n[...Page content truncated to protect TPM budget...]");
           result = {
             status: "success",
             page_number: pageToFetch,
             text: sliced.text || "Page content loaded.",
-            instruction: `The student's viewport has scrolled to Page ${pageToFetch}. Ground your next explanation directly on this new page text. Remember to wrap verbatim snippets in <chunk highlight="...">.`
+            instruction: `The student's viewport has scrolled to Page ${pageToFetch}. Ground your next explanation directly on this new page coordinate script. Remember to wrap every spoken thought in <chunk target="B{blockIdx}_{key}_{sIdx}">.`
           };
         } else {
           result = {
@@ -775,19 +863,17 @@ Speak the response directly:\n\n${chunkText}`;
 - STRICT COURSE NAME RULE: NEVER mention, write, or reveal course codes (e.g. 'PHYS 1011', 'BIOL 1012') in your speech. Always use the friendly, natural course name (e.g. 'Physics', 'Biology'). Course codes are strictly for internal tool arguments.
 - CO-READING ILLUSION: You and ${this.studentName} are looking at the exact same physical textbook page on screen. Ground your speech directly on the text in front of you ("Look right here on page...", "As you can see in this line...", "Notice how it defines...").
 - Formulate your entire response in clear, concise English. Do NOT generate in Amharic script.
-- CHUNKING & HIGHLIGHT ARCHITECTURE:
-  * Wrap each spoken thought unit in <chunk highlight="...">...</chunk> tags.
-  * KEY FOCUS SENTENCE RULE (STRICT):
-    - Highlight ONLY the specific key sentence, title/heading, definition, single question raised, or formula that your current spoken chunk revolves around (typically 5 to 25 words).
-    - NEVER highlight an entire paragraph or lump multiple questions/bullet points into one highlight attribute.
-    - If explaining a dense or long concept, break it down one piece at a time across sequential chunks.
-    - The 'highlight' attribute MUST be an EXACT, VERBATIM quote copy-pasted directly from the textbook page text provided. Never paraphrase or alter punctuation.
-  * VERBATIM CO-READING CITATION (MANDATORY WHEN HIGHLIGHTING):
-    - Whenever you output a <chunk highlight="..."> tag, you MUST start the spoken content of that chunk by reading the highlighted quote verbatim in English: e.g. 'Here our book says: "<exact highlight quote>"' or 'Notice what our textbook states: "<exact highlight quote>"'.
-    - Follow that exact English quotation immediately with your peer explanation and intuitive breakdown.
-  * If a chunk is purely conversational, an encouraging check-in, or an application question that doesn't quote a line on the page, omit the highlight attribute: <chunk>...</chunk>.
-  * SINGLE CHUNK RULE: If your response is short (greeting, quick answer, acknowledgment), put it in a single <chunk>.
-  * MULTI-CHUNK RULE: For teaching and concept breakdowns, use sequential paced chunks (1-2 sentences each).
+- DETERMINISTIC COORDINATE TARGETING ARCHITECTURE:
+  * Wrap each spoken thought unit in <chunk target="...">...</chunk> tags.
+  * The 'target' attribute MUST be the exact coordinate code from the textbook script provided (e.g. <chunk target="B8_body_1"> or <chunk target="B1_title_0">).
+  * TARGET RULE (STRICT):
+    - Select ONLY the specific sentence or item coordinate that your current spoken chunk explains.
+    - Never invent coordinate codes. Choose exclusively from the bracketed coordinates (e.g. [B8_body_1]) provided in the page text.
+    - If explaining a dense concept, break it down one piece at a time across sequential chunks with their respective coordinates.
+  * VERBATIM CO-READING CITATION:
+    - Whenever you target a coordinate, quote or reference the sentence in clear English, followed immediately by your peer explanation and intuitive breakdown.
+  * If a chunk is purely conversational, a quick encouragement, or an application question not tied to a specific line, omit the target attribute: <chunk>...</chunk>.
+  * MULTI-CHUNK RULE: Deliver paced, progressive chunks (1-2 sentences each).
 - ADVANCING PAGES & FLUFF HANDLING:
   * When finishing a dense concept page, ask ${this.studentName} if everything makes sense or if they want to move to the next page, reminding them they can speak or type questions directly in chat.
   * If a page is merely introductory filler, syllabus outlines, or generic learning objectives with no testable concepts, DO NOT ask if they understand! State what the page covers in one quick sentence, silently call "advance_to_next_page", and advance straight to the real material.
@@ -1024,70 +1110,59 @@ Speak the response directly:\n\n${chunkText}`;
         raw_text: rawContent
       });
 
-      let chunks = [];
-      let highlightQueue = [];
-      const chunkRegex = /<chunk(?:\s+highlight=["']([\s\S]*?)["'])?[^>]*>([\s\S]*?)<\/chunk>/gi;
+      let rawChunks = [];
+      const chunkRegex = /<chunk(?:\s+(?:target|highlight)=["']([\s\S]*?)["'])?[^>]*>([\s\S]*?)<\/chunk>/gi;
       let cMatch;
       let cIdx = 0;
       while ((cMatch = chunkRegex.exec(rawContent)) !== null) {
-          const hl = cMatch[1] ? cMatch[1].trim() : null;
+          const targetCoord = cMatch[1] ? cMatch[1].trim() : null;
           const text = cMatch[2] ? cMatch[2].trim() : "";
           if (text) {
-              chunks.push(text);
-              if (hl) {
-                  highlightQueue.push({ chunk_index: cIdx, highlight: hl });
-              }
+              rawChunks.push({
+                  index: cIdx,
+                  target: targetCoord,
+                  text: sanitizeForSpeech(text)
+              });
               cIdx++;
           }
       }
 
-      // Bulletproof Fallback: If model omitted <chunk> tags, split naturally on paragraph breaks
-      if (chunks.length === 0) {
+      // Fallback: If model omitted <chunk> tags, split on paragraph breaks
+      if (rawChunks.length === 0) {
           const cleanRaw = rawContent.replace(/<[^>]+>/g, '').trim();
-          chunks = cleanRaw.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
-          this.emitLog("GROQ_WARN", `⚠️ No <chunk> tags found in Groq output. Split into ${chunks.length} paragraph chunks via fallback.`);
+          const fallbackParas = cleanRaw.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+          rawChunks = fallbackParas.map((p, idx) => ({
+              index: idx,
+              target: null,
+              text: sanitizeForSpeech(p)
+          }));
+          this.emitLog("GROQ_WARN", `⚠️ No <chunk> tags found in Groq output. Split into ${rawChunks.length} chunks via fallback.`);
       }
 
-      const sanitizedChunks = chunks.map(c => sanitizeForSpeech(c)).filter(Boolean);
-      this.totalExpectedChunks = sanitizedChunks.length;
+      this.totalExpectedChunks = rawChunks.length;
       this.deliveredChunksCount = 0;
 
-      // 2. Detailed Per-Chunk Audit Manifest (Expected vs Delivered)
-      sanitizedChunks.forEach((cText, idx) => {
-          const matchingHl = highlightQueue.find(h => h.chunk_index === idx);
-          this.emitLog("CHUNK_AUDIT", `📋 [EXPECTED ${idx + 1}/${sanitizedChunks.length}] Quote: ${matchingHl ? `"${matchingHl.highlight}"` : '(None)'} | Text: "${cText.slice(0, 90)}${cText.length > 90 ? '...' : ''}"`, {
+      rawChunks.forEach((item, idx) => {
+          this.emitLog("CHUNK_AUDIT", `📋 [EXPECTED ${idx + 1}/${rawChunks.length}] Coordinate: [${item.target || 'NONE'}] | Text: "${item.text.slice(0, 90)}${item.text.length > 90 ? '...' : ''}"`, {
               chunk_index: idx,
-              has_highlight: Boolean(matchingHl),
-              highlight: matchingHl?.highlight || null,
-              char_count: cText.length,
-              full_chunk_text: cText
+              target_coordinate: item.target,
+              char_count: item.text.length
           });
       });
 
-      this.emitLog("GROQ", `[STAGE 3/5 | CHUNKS_PARSED] 📦 Extracted ${sanitizedChunks.length} chunks (${highlightQueue.length} with exact highlights) in ${finalTokens} tokens total.`, {
+      this.emitLog("GROQ", `[STAGE 3/5 | CHUNKS_PARSED] 📦 Extracted ${rawChunks.length} chunks with deterministic coordinates.`, {
         finish_reason: finishReason,
         total_tokens: finalTokens,
-        spoken_chunks_count: sanitizedChunks.length,
-        preloaded_highlights: highlightQueue.length
+        spoken_chunks_count: rawChunks.length
       });
-
-      // 3. Instantly preload the highlights manifest into the frontend queue (0ms visual sync preparation)
-      if (highlightQueue.length > 0) {
-          this.emitLog("HIGHLIGHT", `[STAGE 3/5 | PRELOAD_SENT] 📋 Sent preload_highlights manifest to client (${highlightQueue.length} items).`);
-          this.broadcast(JSON.stringify({
-              type: "preload_highlights",
-              queue: highlightQueue
-          }));
-      }
 
       this.broadcast(JSON.stringify({
         type: "miron_thought",
-        text: sanitizedChunks.join(' ')
+        text: rawChunks.map(c => c.text).join(' ')
       }));
 
-      // 4. Queue chunks with indexed markers so Green Light pulses can fire in lockstep
-      const indexedChunks = sanitizedChunks.map((text, idx) => ({ index: idx, text }));
-      this.translationQueue.push(...indexedChunks);
+      // Queue indexed chunks with target coordinates for translation & speech
+      this.translationQueue.push(...rawChunks);
       
       this.emitLog("GEMINI", `[STAGE 3/5 | QUEUE_ENGAGED] Enqueued ${indexedChunks.length} chunks for voice translation. Starting vocalization pipeline...`);
       this.processTranslationQueue();
@@ -1172,6 +1247,7 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
   <footer>
     <span id="status">Connecting to DO SSE...</span>
     <div>
+      <button id="copy-btn" onclick="copyAllLogs()">📋 Copy All Logs</button>
       <button onclick="clearLogs()">Clear</button>
       <button id="scroll-btn" onclick="toggleScroll()">Auto-scroll: ON</button>
     </div>
@@ -1191,6 +1267,29 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
 
     function clearLogs() {
       container.innerHTML = "";
+    }
+
+    function copyAllLogs() {
+      const items = Array.from(document.querySelectorAll('.log-item'));
+      if (items.length === 0) {
+        alert("Log console is empty.");
+        return;
+      }
+      const fullText = items.map(el => {
+        const meta = el.querySelector('.log-meta-bar')?.innerText || '';
+        const msg = el.querySelector('.log-msg')?.innerText || '';
+        const json = el.querySelector('.json-data')?.innerText || '';
+        return `[${meta}]\n${msg}${json ? '\n' + json : ''}`;
+      }).join('\n\n========================================\n\n');
+
+      navigator.clipboard.writeText(fullText).then(() => {
+        const btn = document.getElementById('copy-btn');
+        const orig = btn.innerText;
+        btn.innerText = '✅ Copied!';
+        setTimeout(() => btn.innerText = orig, 1800);
+      }).catch(err => {
+        alert("Clipboard copy failed: " + err.message);
+      });
     }
 
     function addLog(item) {
@@ -1645,40 +1744,33 @@ OPERATIONAL RULES (STRICT DURATION & FORMAT):
                                 'Authorization': `Bearer ${this.env.SUPABASE_SERVICE_ROLE_KEY}`
                             };
 
-                            let pageText = "";
+                            let pageScript = "";
+                            let pageManifest = [];
                             if (bookId) {
                                 const pageRes = await fetch(`${this.env.SUPABASE_URL}/rest/v1/book_pages?book_id=eq.${bookId}&page_number=eq.${pageNum}&select=content_json`, { headers: authHeaders });
                                 const pages = await pageRes.json();
                                 if (pages && pages.length > 0) {
-                                    const extractTextFromBlockArray = (blocks) => {
-                                        return (blocks || []).map(b => {
-                                            if (!b) return '';
-                                            let text = [];
-                                            if (b.main) text.push(b.main);
-                                            if (b.sub) text.push(b.sub);
-                                            if (b.title) text.push(b.title);
-                                            if (b.body) text.push(b.body);
-                                            if (b.text) text.push(b.text);
-                                            if (b.items && Array.isArray(b.items)) text.push(b.items.join(' '));
-                                            if (b.premises) text.push(b.premises.join(' '));
-                                            if (b.conclusion) text.push(b.conclusion);
-                                            if (b.question) text.push(b.question);
-                                            return text.join(' ').replace(/<[^>]+>/g, '').trim(); 
-                                        }).filter(Boolean).join('\n');
-                                    };
-                                    pageText = extractTextFromBlockArray(pages[0].content_json || []);
+                                    const { scriptText, manifest } = buildPageCoordinateScript(pages[0].content_json);
+                                    pageScript = scriptText;
+                                    pageManifest = manifest;
                                 }
                             }
 
-                            this.emitLog("TOOL", `[STAGE 1/5 | DB_PAGE] 📄 Retrieved Page ${pageNum} text (${pageText.length} chars). Slicing token budget...`);
-                            const sliced = this.sliceTextToTokenBudget(pageText || `Welcome to ${sectionTitle}.`, 2200);
+                            this.emitLog("COORDINATE_MAP", `📄 [PAGE ${pageNum}] Compiled coordinate manifest with ${pageManifest.length} distinct targetable anchors.`);
+                            this.broadcast(JSON.stringify({
+                                type: "preload_coordinates",
+                                manifest: pageManifest
+                            }));
+
+                            const sliced = this.sliceTextToTokenBudget(pageScript || `Welcome to ${sectionTitle}.`, 2400);
 
                             const internalKickoffDirective = `[CO-STUDY COMMENCEMENT]
 We are now sitting together looking at Page ${pageNum} for "${sectionTitle}" in ${courseCode}.
-Here is the raw textbook text on this page:
+Here is the coordinate-indexed textbook text for this page:
 """${sliced.text}"""
 
-Start our co-study session by directly referencing this page out loud to ${this.studentName}. Introduce the section briefly, then dissect the first key concept step by step. Remember to highlight ONLY the specific key sentence, heading, or question being discussed using <chunk highlight="..."> (never whole paragraphs or combined lines).`;
+Start our co-study session by directly referencing this page out loud to ${this.studentName}. Introduce the section briefly, then dissect the first key concept step by step.
+MANDATORY: Tag each spoken explanation chunk with its corresponding coordinate from the script above using <chunk target="B{blockIdx}_{key}_{sIdx}">.`;
 
                             this.emitLog("GROQ", `[STAGE 1/5 | DIRECTIVE_READY] Dispathing co-study prompt to Groq Brain (${sliced.finalTokens} tokens)...`);
                             await this.executeGroqCognitiveTurn(internalKickoffDirective);
