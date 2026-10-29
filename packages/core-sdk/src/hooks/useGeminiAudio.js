@@ -4,6 +4,7 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
     const audioContextRef = useRef(null);
     const nextStartTimeRef = useRef(0);
     const isMicActiveRef = useRef(isMicActive);
+    const activeSourcesRef = useRef(new Set());
 
     useEffect(() => {
         isMicActiveRef.current = isMicActive;
@@ -49,6 +50,11 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
         source.buffer = buffer;
         source.connect(ctx.destination);
 
+        activeSourcesRef.current.add(source);
+        source.onended = () => {
+            activeSourcesRef.current.delete(source);
+        };
+
         // 4. Adaptive Jitter Buffer Scheduling (120ms Pre-Roll Safety Cushion)
         const currentTime = ctx.currentTime;
         const INITIAL_BUFFER_OFFSET = 0.12; // 120ms lookahead absorbs packet latency variations
@@ -61,6 +67,34 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
         source.start(nextStartTimeRef.current);
         nextStartTimeRef.current += buffer.duration;
     };
+
+    const stopAudio = () => {
+        activeSourcesRef.current.forEach(source => {
+            try {
+                source.stop();
+                source.disconnect();
+            } catch (e) {}
+        });
+        activeSourcesRef.current.clear();
+
+        if (audioContextRef.current) {
+            nextStartTimeRef.current = audioContextRef.current.currentTime;
+        } else {
+            nextStartTimeRef.current = 0;
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            activeSourcesRef.current.forEach(source => {
+                try {
+                    source.stop();
+                    source.disconnect();
+                } catch (e) {}
+            });
+            activeSourcesRef.current.clear();
+        };
+    }, []);
 
     useEffect(() => {
         let stream, ctx, processor;
@@ -125,5 +159,5 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
         };
     }, [isMicActive, wsRef]);
 
-    return { playAudioChunk };
+    return { playAudioChunk, stopAudio };
 };
