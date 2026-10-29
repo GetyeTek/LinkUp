@@ -192,7 +192,6 @@ const applyDOMHighlight = (root, searchText) => {
         });
 
         if (firstMark) {
-            firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
             console.log(`✅ [${matchMethod}] Successfully highlighted across ${matchingNodes.length} DOM text node(s) (${matchEnd - matchStart} chars).`);
         }
     } else {
@@ -442,15 +441,19 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [stage, selectedBook]);
 
-    // 3.2. Auto-Fit A4 Scale Calculator
+    // 3.2. Auto-Fit A4 Scale Calculator (Fit Full A4 Aspect Ratio)
     useEffect(() => {
         if (stage !== 'reading' || viewState !== 'full' || !pageContainerRef.current) return;
 
         const updateFitScale = () => {
             if (!pageContainerRef.current) return;
             const containerW = pageContainerRef.current.clientWidth;
-            const padding = containerW < 600 ? 16 : 32;
-            const computed = Math.min((containerW - padding) / 794, 1.2);
+            const containerH = pageContainerRef.current.clientHeight;
+            const paddingW = containerW < 600 ? 16 : 36;
+            const paddingH = 32;
+            const scaleW = (containerW - paddingW) / 794;
+            const scaleH = (containerH - paddingH) / 1123;
+            const computed = Math.min(scaleW, scaleH, 1.0);
             setFitScale(Math.max(0.35, computed));
         };
 
@@ -479,16 +482,25 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
         // Synchronously compute container dimensions to prevent any unscaled frame
         const cW = container.clientWidth;
-        const padding = cW < 600 ? 16 : 32;
-        const computedFit = Math.max(0.35, Math.min((cW - padding) / 794, 1.2));
+        const cH = container.clientHeight;
+        const paddingW = cW < 600 ? 16 : 36;
+        const paddingH = 32;
+        const scaleW = (cW - paddingW) / 794;
+        const scaleH = (cH - paddingH) / 1123;
+        const computedFit = Math.max(0.35, Math.min(scaleW, scaleH, 1.0));
         if (computedFit !== fitScale) {
             setFitScale(computedFit);
         }
 
-        // Reset to centered fit on page change, resize, or restore from orb
+        container.scrollTop = 0;
+        container.scrollLeft = 0;
+
+        // Reset to perfectly centered A4 sheet on page change, resize, or restore
         const pW = 794 * computedFit;
+        const pH = 1123 * computedFit;
         const x0 = Math.max(0, (cW - pW) / 2);
-        transformRef.current = { scale: 1.0, x: x0, y: 16 };
+        const y0 = Math.max(16, (cH - pH) / 2);
+        transformRef.current = { scale: 1.0, x: x0, y: y0 };
         applyTransform(false, computedFit);
         setZoomMultiplier(1.0);
 
@@ -1146,11 +1158,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             setIsReadingRevealed(false);
             bufferedHighlightsRef.current = [];
 
-            clearTimeout(readingTimeoutRef.current);
-            readingTimeoutRef.current = setTimeout(() => {
-                setIsReadingRevealed(true);
-            }, 6000);
-
             // Semantic handoff: Backend DO takes full ownership of kickoff orchestration
             if (wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify({
@@ -1542,8 +1549,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                     <div className="ml-skeleton-box" style={{ width: '98%', height: '13px', marginBottom: '8px' }}></div>
                                                     <div className="ml-skeleton-box" style={{ width: '94%', height: '13px', marginBottom: '8px' }}></div>
                                                     <div className="ml-skeleton-box" style={{ width: '91%', height: '13px', marginBottom: '8px' }}></div>
-                                                    <div className="ml-skeleton-box" style={{ width: '65%', height: '13px', marginBottom: '28px' }}></div>
-                                                    <div className="ml-skeleton-box ml-skeleton-formula-box" style={{ width: '100%', height: '96px', marginBottom: '28px', borderRadius: '10px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '65%', height: '13px', marginBottom: '18px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '96%', height: '13px', marginBottom: '8px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '92%', height: '13px', marginBottom: '8px' }}></div>
+                                                    <div className="ml-skeleton-box" style={{ width: '89%', height: '13px', marginBottom: '18px' }}></div>
                                                     <div className="ml-skeleton-box" style={{ width: '97%', height: '13px', marginBottom: '8px' }}></div>
                                                     <div className="ml-skeleton-box" style={{ width: '93%', height: '13px', marginBottom: '8px' }}></div>
                                                     <div className="ml-skeleton-box" style={{ width: '88%', height: '13px', marginBottom: '8px' }}></div>
