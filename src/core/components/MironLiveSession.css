@@ -508,6 +508,37 @@
     }
 }
 
+/* Global Full-Bleed Reading Mode (Matches BookReader) */
+.reading-stage-active.toc-split-stage {
+    padding: 0 !important;
+    max-width: 100% !important;
+    height: 100% !important;
+}
+.reading-stage-active .ml-toc-split-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    gap: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+.reading-stage-active .ml-toc-book-showcase {
+    display: none !important;
+}
+.reading-stage-active .ml-toc-interactive-pane {
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+.reading-stage-active .ml-reader-workspace {
+    border: none !important;
+    border-radius: 0 !important;
+    background: #08080a !important;
+    height: 100% !important;
+    flex: 1 !important;
+}
+
 /* Left Column: Prominent Book Showcase */
 .ml-toc-book-showcase {
     background: linear-gradient(165deg, rgba(22, 22, 28, 0.95) 0%, rgba(12, 12, 16, 0.98) 100%);
