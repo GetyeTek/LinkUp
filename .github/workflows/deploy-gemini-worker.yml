@@ -27,6 +27,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: gemini-live-worker
           wranglerVersion: '4.107.0'
+          command: deploy --config wrangler.jsonc
           secrets: |
             SUPABASE_SERVICE_ROLE_KEY
         env:
