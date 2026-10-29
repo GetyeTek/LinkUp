@@ -973,12 +973,17 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
                     // E. Deterministic Coordinate Metadata & Chunk Transitions
                     if (payload.type === "reading_chunk_meta") {
+                        setIsReadingRevealed(true);
                         console.log(`📥 [Miron Frontend] Received reading_chunk_meta: Chunk #${payload.chunk_index + 1} -> Target: "${payload.target || 'NONE'}"`);
                         currentChunkMetaRef.current = {
                             target: payload.target,
                             chunk_index: payload.chunk_index
                         };
                         isFirstAudioPacketOfChunkRef.current = true;
+                    }
+
+                    if (payload.type === "green_light_chunk") {
+                        setIsReadingRevealed(true);
                     }
 
                     if (payload.type === "preload_coordinates" && Array.isArray(payload.manifest)) {
@@ -1195,6 +1200,12 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 setActiveTargetCoordinate(null);
                 setActiveBlockIndex(null);
                 clearCoordinateHighlights();
+
+                // Safety fallback: Never keep the user locked in skeleton shimmer if speech has delay
+                clearTimeout(readingTimeoutRef.current);
+                readingTimeoutRef.current = setTimeout(() => {
+                    setIsReadingRevealed(true);
+                }, 3500);
 
                 // Semantic handoff: Backend DO takes full ownership of kickoff orchestration
             if (wsRef.current?.readyState === WebSocket.OPEN) {
