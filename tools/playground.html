@@ -298,9 +298,7 @@
                     <h2 class="text-sm font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
                         <span>🔊</span> Audio Result
                     </h2>
-                    <a id="downloadBtn" download="gemini_tts_output.wav" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg border border-gray-700 font-medium transition-colors cursor-pointer flex items-center gap-1">
-                        ⬇️ Download WAV
-                    </a>
+                    <span class="text-xs text-gray-500 font-mono">24kHz WAV</span>
                 </div>
 
                 <!-- Visualizer Canvas -->
@@ -308,8 +306,16 @@
                     <canvas id="visualizerCanvas" class="w-full h-full block"></canvas>
                 </div>
 
-                <!-- HTML5 Audio Control -->
-                <audio id="audioPlayer" controls class="w-full rounded-lg"></audio>
+                <!-- Audio Controls & Download Section -->
+                <div class="space-y-3">
+                    <!-- HTML5 Audio Control (Only playback speed inside three-dots menu) -->
+                    <audio id="audioPlayer" controls controlsList="nodownload" class="w-full rounded-lg"></audio>
+
+                    <!-- Dedicated Download Audio Button -->
+                    <a id="downloadBtn" download="gemini_tts_output.wav" class="w-full bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-gray-950 font-bold py-2.5 px-4 rounded-xl shadow transition flex items-center justify-center gap-2 text-sm cursor-pointer">
+                        <span>⬇️</span> Download Audio
+                    </a>
+                </div>
             </div>
         </section>
 
