@@ -91,12 +91,15 @@
         </div>
 
         <!-- Navigation Tabs -->
-        <div class="flex bg-cardbg p-1 rounded-xl border border-gray-800 shadow-md">
-            <button id="tabLiveBtn" class="flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-white bg-cyan-600 shadow flex items-center justify-center gap-1.5">
-                <span>🎙️</span> Live Realtime Model
+        <div class="flex bg-cardbg p-1 rounded-xl border border-gray-800 shadow-md gap-1">
+            <button id="tabLiveBtn" class="flex-1 py-2 px-2 text-xs font-semibold rounded-lg transition-all text-white bg-cyan-600 shadow flex items-center justify-center gap-1">
+                <span>🎙️</span> Live Realtime
             </button>
-            <button id="tabTtsBtn" class="flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1.5">
-                <span>⚡</span> Batch TTS (REST)
+            <button id="tabTtsBtn" class="flex-1 py-2 px-2 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
+                <span>⚡</span> Batch TTS
+            </button>
+            <button id="tabTranscribeBtn" class="flex-1 py-2 px-2 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
+                <span>📝</span> Transcribe
             </button>
         </div>
 
@@ -117,9 +120,14 @@
                 <!-- Live Model Selection -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label for="liveModelSelect" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
-                            Live Model
-                        </label>
+                        <div class="flex items-center justify-between mb-1">
+                            <label for="liveModelInput" class="block text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                Live Model
+                            </label>
+                            <button type="button" id="refreshLiveModelsBtn" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1">
+                                🔄 Fetch Models
+                            </button>
+                        </div>
                         <input type="text" id="liveModelInput" value="gemini-2.5-flash" list="liveModelSuggestions"
                             class="w-full bg-inputbg text-sm text-white px-3 py-2 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 font-mono transition-colors">
                         <datalist id="liveModelSuggestions">
@@ -127,6 +135,7 @@
                             <option value="gemini-2.0-flash-exp">
                             <option value="gemini-2.0-flash">
                             <option value="gemini-3.8-flash-live">
+                            <option value="gemini-3.5-transcribe-live">
                             <option value="gemini-3.8-flash-tts">
                         </datalist>
                     </div>
@@ -304,6 +313,110 @@
             </div>
         </section>
 
+        <!-- ========================================== -->
+        <!-- TAB 3: AUDIO TRANSCRIPTION (generateContent) -->
+        <!-- ========================================== -->
+        <section id="transcribeSection" class="space-y-4 hidden">
+            <!-- Model & Audio Input Card -->
+            <div class="bg-cardbg rounded-2xl p-4 border border-gray-800 shadow-md space-y-3">
+                <div class="flex items-center justify-between mb-1">
+                    <label for="transcribeModelInput" class="block text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Transcription Model
+                    </label>
+                    <button type="button" id="refreshTranscribeModelsBtn" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1">
+                        🔄 Fetch Models
+                    </button>
+                </div>
+                <input type="text" id="transcribeModelInput" value="gemini-3.5-transcribe" list="transcribeModelSuggestions"
+                    class="w-full bg-inputbg text-sm text-white px-3 py-2.5 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 font-mono transition-colors">
+                <datalist id="transcribeModelSuggestions">
+                    <option value="gemini-3.5-transcribe">
+                    <option value="gemini-3.8-flash">
+                    <option value="gemini-3.5-flash">
+                    <option value="gemini-2.5-flash">
+                    <option value="gemini-2.0-flash">
+                </datalist>
+
+                <!-- Audio File Upload Drop Area -->
+                <div class="pt-1">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                        Upload Audio File (WAV, MP3, M4A, OGG, WEBM, FLAC)
+                    </label>
+                    <div id="dropZone" class="border-2 border-dashed border-gray-700 hover:border-cyan-500/70 bg-inputbg rounded-xl p-4 text-center cursor-pointer transition-colors group">
+                        <input type="file" id="audioFileInput" accept="audio/*" class="hidden">
+                        <div class="space-y-1">
+                            <span class="text-2xl block group-hover:scale-110 transition-transform">📁</span>
+                            <p class="text-xs text-gray-300 font-medium" id="dropZoneText">Click or drag & drop audio here</p>
+                            <p class="text-[11px] text-gray-500" id="fileInfoText">Max inline size: 20MB</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selected Audio Player Preview -->
+                <div id="transcribeAudioPreview" class="hidden pt-1">
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-cyan-400 mb-1">
+                        Preview Selected Audio
+                    </label>
+                    <audio id="audioPreviewPlayer" controls class="w-full rounded-lg"></audio>
+                </div>
+
+                <!-- Transcription Options Grid -->
+                <div class="pt-2 border-t border-gray-800 space-y-2">
+                    <div class="flex items-center justify-between bg-inputbg p-2.5 rounded-xl border border-gray-700">
+                        <div class="pr-2">
+                            <span class="text-xs font-medium text-white block">Include Timestamps</span>
+                            <span class="text-[11px] text-gray-400 block">Generates segment timecodes [MM:SS] throughout speech</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="timestampToggle" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between bg-inputbg p-2.5 rounded-xl border border-gray-700">
+                        <div class="pr-2">
+                            <span class="text-xs font-medium text-white block">Speaker Attribution (Diarization)</span>
+                            <span class="text-[11px] text-gray-400 block">Distinguishes and labels multiple speakers (e.g. Speaker 1)</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="diarizationToggle" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transcribe Action Button -->
+            <button id="transcribeBtn" class="w-full bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-gray-950 font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all duration-150 flex items-center justify-center space-x-2 text-base">
+                <span id="transcribeBtnIcon">📝</span>
+                <span id="transcribeBtnText">Transcribe Audio</span>
+                <span id="transcribeBtnSpinner" class="hidden">
+                    <svg class="animate-spin h-5 w-5 text-gray-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </span>
+            </button>
+
+            <!-- Transcription Output Card -->
+            <div id="transcriptOutputCard" class="hidden bg-cardbg rounded-2xl p-4 border border-gray-800 shadow-md space-y-3">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                        <span>📄</span> Transcript Result
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <button id="copyTranscriptBtn" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-2.5 py-1 rounded-lg border border-gray-700 transition">
+                            📋 Copy
+                        </button>
+                        <button id="downloadTranscriptBtn" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-2.5 py-1 rounded-lg border border-gray-700 transition">
+                            ⬇️ Save .txt
+                        </button>
+                    </div>
+                </div>
+                <div id="transcriptTextDisplay" class="bg-inputbg p-3.5 rounded-xl text-sm text-gray-200 leading-relaxed font-mono whitespace-pre-wrap max-h-80 overflow-y-auto border border-gray-800"></div>
+            </div>
+        </section>
+
         <!-- Message Box / Alerts -->
         <div id="messageBox" class="hidden p-3.5 rounded-xl text-sm border"></div>
 
@@ -338,8 +451,38 @@
         // Tab switching elements
         const tabLiveBtn = document.getElementById('tabLiveBtn');
         const tabTtsBtn = document.getElementById('tabTtsBtn');
+        const tabTranscribeBtn = document.getElementById('tabTranscribeBtn');
         const liveSection = document.getElementById('liveSection');
         const ttsSection = document.getElementById('ttsSection');
+        const transcribeSection = document.getElementById('transcribeSection');
+
+        // Live Realtime Elements
+        const refreshLiveModelsBtn = document.getElementById('refreshLiveModelsBtn');
+        const liveModelSuggestions = document.getElementById('liveModelSuggestions');
+
+        // Transcribe Audio Elements
+        const refreshTranscribeModelsBtn = document.getElementById('refreshTranscribeModelsBtn');
+        const transcribeModelInput = document.getElementById('transcribeModelInput');
+        const transcribeModelSuggestions = document.getElementById('transcribeModelSuggestions');
+        const dropZone = document.getElementById('dropZone');
+        const audioFileInput = document.getElementById('audioFileInput');
+        const dropZoneText = document.getElementById('dropZoneText');
+        const fileInfoText = document.getElementById('fileInfoText');
+        const transcribeAudioPreview = document.getElementById('transcribeAudioPreview');
+        const audioPreviewPlayer = document.getElementById('audioPreviewPlayer');
+        const timestampToggle = document.getElementById('timestampToggle');
+        const diarizationToggle = document.getElementById('diarizationToggle');
+        const transcribeBtn = document.getElementById('transcribeBtn');
+        const transcribeBtnIcon = document.getElementById('transcribeBtnIcon');
+        const transcribeBtnText = document.getElementById('transcribeBtnText');
+        const transcribeBtnSpinner = document.getElementById('transcribeBtnSpinner');
+        const transcriptOutputCard = document.getElementById('transcriptOutputCard');
+        const transcriptTextDisplay = document.getElementById('transcriptTextDisplay');
+        const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
+        const downloadTranscriptBtn = document.getElementById('downloadTranscriptBtn');
+
+        let loadedAudioBase64 = null;
+        let loadedAudioMime = null;
 
         // Common API elements
         const apiKeyInput = document.getElementById('apiKey');
@@ -382,22 +525,24 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const visualizerCanvas = document.getElementById('visualizerCanvas');
 
-        // Tab Navigation
-        tabLiveBtn.addEventListener('click', () => {
-            tabLiveBtn.className = "flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-white bg-cyan-600 shadow flex items-center justify-center gap-1.5";
-            tabTtsBtn.className = "flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1.5";
-            liveSection.classList.remove('hidden');
-            ttsSection.classList.add('hidden');
-            resizeCanvases();
-        });
+        // Tab Navigation Helper
+        function switchTab(activeTab) {
+            const activeClass = "flex-1 py-2 px-2 text-xs font-semibold rounded-lg transition-all text-white bg-cyan-600 shadow flex items-center justify-center gap-1";
+            const inactiveClass = "flex-1 py-2 px-2 text-xs font-semibold rounded-lg transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1";
 
-        tabTtsBtn.addEventListener('click', () => {
-            tabTtsBtn.className = "flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-white bg-cyan-600 shadow flex items-center justify-center gap-1.5";
-            tabLiveBtn.className = "flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1.5";
-            ttsSection.classList.remove('hidden');
-            liveSection.classList.add('hidden');
+            tabLiveBtn.className = activeTab === 'live' ? activeClass : inactiveClass;
+            tabTtsBtn.className = activeTab === 'tts' ? activeClass : inactiveClass;
+            tabTranscribeBtn.className = activeTab === 'transcribe' ? activeClass : inactiveClass;
+
+            liveSection.classList.toggle('hidden', activeTab !== 'live');
+            ttsSection.classList.toggle('hidden', activeTab !== 'tts');
+            transcribeSection.classList.toggle('hidden', activeTab !== 'transcribe');
             resizeCanvases();
-        });
+        }
+
+        tabLiveBtn.addEventListener('click', () => switchTab('live'));
+        tabTtsBtn.addEventListener('click', () => switchTab('tts'));
+        tabTranscribeBtn.addEventListener('click', () => switchTab('transcribe'));
 
         // Auto Load API Key
         window.addEventListener('DOMContentLoaded', () => {
@@ -790,6 +935,275 @@
         // =======================================================
         let audioCtx, analyser, sourceNode, animFrameId;
         const canvasCtx = visualizerCanvas.getContext('2d');
+
+        // Dynamic Fetch Models for Live WebSocket
+        refreshLiveModelsBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showMessage('Enter an API key to fetch live models.', 'error');
+                return;
+            }
+
+            refreshLiveModelsBtn.textContent = '⏳ Fetching...';
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+                const data = await res.json();
+
+                if (data.models && data.models.length > 0) {
+                    liveModelSuggestions.innerHTML = '';
+                    const liveCandidates = data.models.filter(m => 
+                        m.name.includes('flash') || 
+                        m.name.includes('live') || 
+                        m.name.includes('bidi') || 
+                        m.name.includes('audio')
+                    );
+                    const list = liveCandidates.length > 0 ? liveCandidates : data.models;
+
+                    list.forEach(m => {
+                        const cleanName = m.name.replace('models/', '');
+                        const opt = document.createElement('option');
+                        opt.value = cleanName;
+                        liveModelSuggestions.appendChild(opt);
+                    });
+
+                    showMessage(`Loaded ${list.length} models for Live interaction.`, 'success');
+                } else {
+                    throw new Error(data.error?.message || 'No models returned from API.');
+                }
+            } catch (err) {
+                showMessage(`Failed to fetch live models: ${err.message}`, 'error');
+            } finally {
+                refreshLiveModelsBtn.textContent = '🔄 Fetch Models';
+            }
+        });
+
+        // Dynamic Fetch Models for Audio Transcription
+        refreshTranscribeModelsBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showMessage('Enter an API key to fetch models.', 'error');
+                return;
+            }
+
+            refreshTranscribeModelsBtn.textContent = '⏳ Fetching...';
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+                const data = await res.json();
+
+                if (data.models && data.models.length > 0) {
+                    transcribeModelSuggestions.innerHTML = '';
+                    const transcribeModels = data.models.filter(m => 
+                        m.name.includes('transcribe') || 
+                        m.name.includes('flash') || 
+                        m.name.includes('audio') ||
+                        m.name.includes('pro')
+                    );
+                    const list = transcribeModels.length > 0 ? transcribeModels : data.models;
+
+                    list.forEach(m => {
+                        const cleanName = m.name.replace('models/', '');
+                        const opt = document.createElement('option');
+                        opt.value = cleanName;
+                        transcribeModelSuggestions.appendChild(opt);
+                    });
+
+                    showMessage(`Loaded ${list.length} models for transcription.`, 'success');
+                } else {
+                    throw new Error(data.error?.message || 'No models returned from API.');
+                }
+            } catch (err) {
+                showMessage(`Failed to fetch models: ${err.message}`, 'error');
+            } finally {
+                refreshTranscribeModelsBtn.textContent = '🔄 Fetch Models';
+            }
+        });
+
+        // Audio File Upload Handling
+        dropZone.addEventListener('click', () => audioFileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-cyan-500');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-cyan-500'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-cyan-500');
+            if (e.dataTransfer.files?.length > 0) {
+                handleAudioFile(e.dataTransfer.files[0]);
+            }
+        });
+        audioFileInput.addEventListener('change', (e) => {
+            if (e.target.files?.length > 0) {
+                handleAudioFile(e.target.files[0]);
+            }
+        });
+
+        function handleAudioFile(file) {
+            if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|m4a|ogg|webm|flac|aac)$/i)) {
+                showMessage('Please upload a valid audio file.', 'error');
+                return;
+            }
+
+            const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+            if (file.size > 20 * 1024 * 1024) {
+                showMessage(`File size is ${sizeMb}MB. Gemini inline API requests are capped at 20MB.`, 'error');
+                return;
+            }
+
+            dropZoneText.textContent = `Selected: ${file.name}`;
+            fileInfoText.textContent = `${file.type || 'audio'} • ${sizeMb} MB`;
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const dataUrl = ev.target.result;
+                const base64Index = dataUrl.indexOf(';base64,');
+                if (base64Index !== -1) {
+                    loadedAudioMime = file.type || dataUrl.substring(5, base64Index);
+                    loadedAudioBase64 = dataUrl.substring(base64Index + 8);
+                }
+                audioPreviewPlayer.src = dataUrl;
+                transcribeAudioPreview.classList.remove('hidden');
+                showMessage(`Audio file "${file.name}" ready for transcription.`, 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Transcribe Button API Trigger
+        transcribeBtn.addEventListener('click', async () => {
+            hideMessage();
+            const apiKey = apiKeyInput.value.trim();
+            const model = transcribeModelInput.value.trim();
+            const withTimestamps = timestampToggle.checked;
+            const withDiarization = diarizationToggle.checked;
+
+            if (!apiKey) {
+                showMessage('Please enter your Gemini API Key.', 'error');
+                return;
+            }
+
+            if (!model) {
+                showMessage('Please enter or select a transcription model.', 'error');
+                return;
+            }
+
+            if (!loadedAudioBase64) {
+                showMessage('Please upload an audio file first.', 'error');
+                return;
+            }
+
+            localStorage.setItem('gemini_tts_key', apiKey);
+
+            transcribeBtn.disabled = true;
+            transcribeBtnIcon.classList.add('hidden');
+            transcribeBtnText.textContent = 'Transcribing Audio...';
+            transcribeBtnSpinner.classList.remove('hidden');
+
+            const cleanModel = model.replace(/^models\//, '');
+            const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
+            endpointDisplay.textContent = `POST https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
+
+            // Build tailored transcription prompt
+            let promptText = "Generate a verbatim transcript of the entire speech in this audio.";
+            if (withTimestamps) {
+                promptText += " Include precise start timestamps for each speech segment or turn formatted clearly like [MM:SS].";
+            }
+            if (withDiarization) {
+                promptText += " Differentiate between speakers by labeling them clearly (e.g., Speaker 1, Speaker 2).";
+            }
+            promptText += " Maintain natural punctuation, capitalization, and accurate language rendering.";
+
+            // Official Google Gemini generateContent payload for inline media
+            const payload = {
+                contents: [
+                    {
+                        parts: [
+                            { text: promptText },
+                            {
+                                inlineData: {
+                                    mimeType: loadedAudioMime || 'audio/mp3',
+                                    data: loadedAudioBase64
+                                }
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.2
+                }
+            };
+
+            // Truncate inspector base64 preview so it doesn't freeze the DOM
+            const inspectorPayload = JSON.parse(JSON.stringify(payload));
+            inspectorPayload.contents[0].parts[1].inlineData.data = `<base64 data: ${loadedAudioBase64.length} chars>`;
+            requestInspector.textContent = JSON.stringify(inspectorPayload, null, 2);
+            responseInspector.textContent = 'Uploading and processing audio with Gemini...';
+
+            try {
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                responseInspector.textContent = JSON.stringify({
+                    status: response.status,
+                    usageMetadata: data.usageMetadata || "N/A",
+                    fullResponse: data
+                }, null, 2);
+
+                const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!textResult) {
+                    throw new Error('No transcript text returned from the model response.');
+                }
+
+                transcriptTextDisplay.textContent = textResult;
+                transcriptOutputCard.classList.remove('hidden');
+                showMessage('Audio transcribed successfully!', 'success');
+
+                transcriptOutputCard.scrollIntoView({ behavior: 'smooth' });
+
+            } catch (err) {
+                console.error("Transcription Error:", err);
+                showMessage(err.message || 'Failed to transcribe audio. Check API key/model support.', 'error');
+                responseInspector.textContent = `Error: ${err.message}`;
+            } finally {
+                transcribeBtn.disabled = false;
+                transcribeBtnIcon.classList.remove('hidden');
+                transcribeBtnText.textContent = 'Transcribe Audio';
+                transcribeBtnSpinner.classList.add('hidden');
+            }
+        });
+
+        // Copy Transcript
+        copyTranscriptBtn.addEventListener('click', () => {
+            const text = transcriptTextDisplay.textContent;
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const originalText = copyTranscriptBtn.textContent;
+                    copyTranscriptBtn.textContent = '✅ Copied!';
+                    setTimeout(() => copyTranscriptBtn.textContent = originalText, 1800);
+                });
+            }
+        });
+
+        // Download Transcript
+        downloadTranscriptBtn.addEventListener('click', () => {
+            const text = transcriptTextDisplay.textContent;
+            if (!text) return;
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'gemini_transcription.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
 
         // Fetch Live Models dynamically
         refreshModelsBtn.addEventListener('click', async () => {
