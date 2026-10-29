@@ -4,202 +4,164 @@ import FloatingMironOrb from './FloatingMironOrb.jsx';
 import MironConnectionRing from './MironConnectionRing.jsx';
 import './MironLiveSession.css';
 
-// DOM Range Highlighter for active textbook page
-const clearDOMHighlights = (root) => {
-    if (!root) return;
-    const marks = root.querySelectorAll('mark.miron-live-highlight');
-    marks.forEach(m => {
-        const parent = m.parentNode;
-        while (m.firstChild) parent.insertBefore(m.firstChild, m);
-        parent.removeChild(m);
-        parent.normalize();
-    });
+// ==============================================================================
+// DETERMINISTIC COORDINATE HIGHLIGHT ENGINE (CSS HIGHLIGHT API + DOM RANGE)
+// ==============================================================================
+const clearCoordinateHighlights = () => {
+    if (typeof CSS !== 'undefined' && CSS.highlights) {
+        CSS.highlights.delete('miron-active-sentence');
+    }
 };
 
-const calculateLevenshtein = (s1, s2) => {
-    if (s1 === s2) return 0;
-    if (!s1.length) return s2.length;
-    if (!s2.length) return s1.length;
-
-    let v0 = new Array(s2.length + 1);
-    let v1 = new Array(s2.length + 1);
-
-    for (let i = 0; i <= s2.length; i++) v0[i] = i;
-
-    for (let i = 0; i < s1.length; i++) {
-        v1[0] = i + 1;
-        for (let j = 0; j < s2.length; j++) {
-            const cost = s1[i] === s2[j] ? 0 : 1;
-            v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+const extractBlockUnitsClient = (block) => {
+    if (!block || block.type === 'spacer' || block.type === 'footer') return [];
+    const units = [];
+    const stringKeys = ['title', 'body', 'label', 'subtitle', 'caption', 'prompt', 'instruction', 'solution', 'quote', 'note', 'objective', 'text', 'main', 'sub', 'latex', 'formula'];
+    for (const key of stringKeys) {
+        if (typeof block[key] === 'string' && block[key].trim()) {
+            units.push({ key, text: block[key].trim() });
         }
-        for (let j = 0; j <= s2.length; j++) v0[j] = v1[j];
     }
-    return v1[s2.length];
+    const arrayKeys = ['items', 'questions', 'points', 'steps', 'lines', 'premises', 'conclusion', 'equations'];
+    for (const key of arrayKeys) {
+        if (Array.isArray(block[key])) {
+            block[key].forEach((item, i) => {
+                const txt = typeof item === 'string' ? item : (item?.text || item?.body || '');
+                if (txt && txt.trim()) {
+                    units.push({ key: `${key}_${i}`, text: txt.trim() });
+                }
+            });
+        }
+    }
+    if (Array.isArray(block.rows)) {
+        block.rows.forEach((row, rIdx) => {
+            if (Array.isArray(row)) {
+                const rowText = row.filter(cell => typeof cell === 'string' && cell.trim()).join(' | ');
+                if (rowText.trim()) {
+                    units.push({ key: `row_${rIdx}`, text: rowText });
+                }
+            }
+        });
+    }
+    return units;
 };
 
-const calculateStringSimilarity = (s1, s2) => {
-    const maxLen = Math.max(s1.length, s2.length);
-    if (maxLen === 0) return 1.0;
-    const dist = calculateLevenshtein(s1, s2);
-    return 1.0 - (dist / maxLen);
+const splitIntoSentencesClient = (rawText) => {
+    if (!rawText) return [];
+    const clean = rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!clean) return [];
+    const matches = clean.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
+    return matches ? matches.map(s => s.trim()).filter(Boolean) : [clean];
 };
 
-const applyDOMHighlight = (root, searchText) => {
-    if (!root || !searchText || searchText.trim().length < 3) return;
-    clearDOMHighlights(root);
-
-    const cleanSearch = searchText.trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '');
-    if (cleanSearch.length === 0) return;
-
-    console.groupCollapsed(`🎨 [Miron Highlight Engine] Searching for: "${cleanSearch.slice(0, 80)}${cleanSearch.length > 80 ? '...' : ''}"`);
-    console.log(`Target Anchor (${cleanSearch.length} chars):`, cleanSearch);
-
-    // 1. Flatten all text nodes in the page canvas into a continuous virtual linear stream
-    const textNodes = [];
-    let fullStream = "";
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
-    let n;
-
-    while ((n = walker.nextNode())) {
-        if (n.parentNode && (n.parentNode.nodeName === 'SCRIPT' || n.parentNode.nodeName === 'STYLE')) continue;
-        const val = n.nodeValue;
-        const start = fullStream.length;
-        fullStream += val;
-        textNodes.push({ node: n, start, end: fullStream.length });
+const applyCoordinateHighlight = (targetCoord, pageBlocks) => {
+    if (!targetCoord) {
+        clearCoordinateHighlights();
+        return;
     }
 
-    if (textNodes.length === 0 || fullStream.length === 0) {
-        console.warn("⚠️ Page canvas has no readable text nodes.");
+    console.group(`🎯 [Miron Coordinate Sync] Target: "${targetCoord}"`);
+
+    const parts = targetCoord.match(/^B(\d+)_(.+)_(d+)$/);
+    if (!parts) {
+        // Fallback: simple B{idx} block coordinate
+        const simpleBlock = targetCoord.match(/^B(\d+)/i);
+        if (simpleBlock) {
+            const bIdx = parseInt(simpleBlock[1], 10);
+            console.log(`ℹ️ Block-level coordinate detected: Block #${bIdx}`);
+            const blockEl = document.getElementById(`ml-block-${bIdx}`);
+            if (blockEl) {
+                blockEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
         console.groupEnd();
         return;
     }
 
-    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => '\\' + c);
+    const bIdx = parseInt(parts[1], 10);
+    const unitKey = parts[2];
+    const sIdx = parseInt(parts[3], 10);
 
-    let matchStart = -1;
-    let matchEnd = -1;
-    let matchMethod = "";
-
-    // 2. Pass A: Direct IndexOf / Exact Match in Stream
-    const exactIndex = fullStream.indexOf(cleanSearch);
-    if (exactIndex !== -1) {
-        matchStart = exactIndex;
-        matchEnd = exactIndex + cleanSearch.length;
-        matchMethod = "Exact Stream Substring";
+    const block = pageBlocks && pageBlocks[bIdx];
+    if (!block) {
+        console.warn(`⚠️ Block index #${bIdx} not found in active page model.`);
+        console.groupEnd();
+        return;
     }
 
-    // 3. Pass B: Flexible Hyphen-Folded & Whitespace-Agnostic Pattern
-    if (matchStart === -1) {
-        // Split on whitespace or slashes, preserving alphanumeric words, section numbers (1.1.1), and punctuation
-        const rawTokens = cleanSearch.split(/[\s—–]+/).filter(Boolean);
-        if (rawTokens.length > 0) {
-            const tokenPatterns = rawTokens.map(tok => {
-                const subWords = tok.split(/[/]+/).filter(Boolean);
-                const subPatterns = subWords.map(sw => {
-                    const cleanWord = sw.replace(/^[^\w\d.]+|[^\w\d.]+$/g, '');
-                    if (!cleanWord) return escapeRegExp(sw);
-                    // Insert optional line-break hyphen between word characters to match line-wraps (ori-gins, com-pound)
-                    const foldedChars = cleanWord.split('').map(escapeRegExp).join('(?:-[\\s\\n]*)?');
-                    return foldedChars;
-                });
-                return subPatterns.join('[\\/\\s]+');
-            });
-
-            const streamRegexPattern = tokenPatterns.join('[\\s\\n\\r—–-]+');
-            try {
-                const streamRegex = new RegExp(streamRegexPattern, 'iu');
-                const streamMatch = streamRegex.exec(fullStream);
-                if (streamMatch) {
-                    matchStart = streamMatch.index;
-                    matchEnd = streamMatch.index + streamMatch[0].length;
-                    matchMethod = "Hyphen-Folded Stream Match";
-                }
-            } catch (reErr) {
-                console.warn("Regex compilation failed for pattern:", reErr.message);
-            }
-        }
+    const units = extractBlockUnitsClient(block);
+    const targetUnit = units.find(u => u.key === unitKey);
+    if (!targetUnit) {
+        console.warn(`⚠️ Unit key "${unitKey}" not found in Block #${bIdx}.`);
+        console.groupEnd();
+        return;
     }
 
-    // 4. Pass C: Whole-String Levenshtein Distance (>= 90% Similarity Threshold)
-    if (matchStart === -1 && cleanSearch.length >= 10) {
-        console.log("ℹ️ Standard pattern missed. Executing holistic 90% Levenshtein scan...");
-        const normTarget = cleanSearch.toLowerCase().replace(/[\s\n\r—–-]+/g, ' ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').trim();
-        
-        // Use the first 2 significant words to identify candidate anchor positions in the stream
-        const anchorWords = cleanSearch.split(/\s+/).filter(w => w.length > 2).slice(0, 2);
-        const anchorQuery = anchorWords.map(escapeRegExp).join('[\\s\\n\\r-]+');
-        
+    const sentences = splitIntoSentencesClient(targetUnit.text);
+    const sentenceText = sentences[sIdx];
+    if (!sentenceText) {
+        console.warn(`⚠️ Sentence #${sIdx} not found in Unit "${unitKey}". Total sentences: ${sentences.length}`);
+        console.groupEnd();
+        return;
+    }
+
+    console.log(`Found Sentence (${sentenceText.length} chars): "${sentenceText}"`);
+
+    const blockEl = document.getElementById(`ml-block-${bIdx}`);
+    if (!blockEl) {
+        console.warn(`⚠️ DOM element #ml-block-${bIdx} not mounted yet.`);
+        console.groupEnd();
+        return;
+    }
+
+    // Scroll block into view smoothly
+    blockEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // CSS Custom Highlight API Registration
+    if (typeof CSS !== 'undefined' && CSS.highlights) {
         try {
-            const anchorRegex = new RegExp(anchorQuery, 'giu');
-            let aMatch;
-            let bestSim = 0;
-            let bestRange = null;
+            // Find text range inside block element
+            const walker = document.createTreeWalker(blockEl, NodeFilter.SHOW_TEXT, null, false);
+            const textNodes = [];
+            let fullText = "";
+            let n;
+            while ((n = walker.nextNode())) {
+                const start = fullText.length;
+                fullText += n.nodeValue;
+                textNodes.push({ node: n, start, end: fullText.length });
+            }
 
-            while ((aMatch = anchorRegex.exec(fullStream)) !== null) {
-                const candStart = aMatch.index;
-                const candEnd = Math.min(fullStream.length, candStart + Math.round(cleanSearch.length * 1.15));
-                const rawSlice = fullStream.substring(candStart, candEnd);
-                const normSlice = rawSlice.toLowerCase().replace(/[\s\n\r—–-]+/g, ' ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').trim();
-                
-                // Compare substring of equivalent length
-                const compareSlice = normSlice.substring(0, Math.min(normSlice.length, normTarget.length));
-                const sim = calculateStringSimilarity(normTarget, compareSlice);
+            const cleanSnippet = sentenceText.slice(0, Math.min(sentenceText.length, 60)).replace(/\s+/g, ' ').trim();
+            const normFull = fullText.replace(/\s+/g, ' ');
+            const foundIdx = normFull.indexOf(cleanSnippet);
 
-                if (sim > bestSim) {
-                    bestSim = sim;
-                    bestRange = {
-                        start: candStart,
-                        end: Math.min(fullStream.length, candStart + cleanSearch.length)
-                    };
+            if (foundIdx !== -1) {
+                // Find matching text nodes
+                const startNodeObj = textNodes.find(tn => tn.end >= foundIdx);
+                const endNodeObj = textNodes.find(tn => tn.end >= foundIdx + cleanSnippet.length) || textNodes[textNodes.length - 1];
+
+                if (startNodeObj && endNodeObj) {
+                    const range = document.createRange();
+                    const localStart = Math.max(0, foundIdx - startNodeObj.start);
+                    const localEnd = Math.min(endNodeObj.node.nodeValue.length, (foundIdx + cleanSnippet.length) - endNodeObj.start);
+
+                    range.setStart(startNodeObj.node, Math.min(localStart, startNodeObj.node.nodeValue.length));
+                    range.setEnd(endNodeObj.node, Math.max(0, Math.min(localEnd, endNodeObj.node.nodeValue.length)));
+
+                    const highlight = new Highlight(range);
+                    CSS.highlights.set('miron-active-sentence', highlight);
+                    console.log(`✅ [CSS.highlights] Active highlight registered for sentence: "${cleanSnippet}"`);
                 }
+            } else {
+                console.log(`ℹ️ Exact text range offset missed. Relying on active block wrapper border.`);
             }
-
-            if (bestSim >= 0.90 && bestRange) {
-                matchStart = bestRange.start;
-                matchEnd = bestRange.end;
-                matchMethod = `Holistic Levenshtein (${(bestSim * 100).toFixed(1)}% match)`;
-            } else if (bestSim > 0) {
-                console.log(`Closest candidate scored ${(bestSim * 100).toFixed(1)}% (below 90% threshold).`);
-            }
-        } catch (levErr) {
-            console.warn("Levenshtein candidate search failed:", levErr.message);
+        } catch (e) {
+            console.warn(`CSS.highlights registration warning:`, e.message);
         }
-    }
-
-    // 5. Multi-Node Range Slicing & Visual Strikethrough
-    if (matchStart !== -1 && matchEnd > matchStart) {
-        const matchingNodes = textNodes.filter(tn => tn.end > matchStart && tn.start < matchEnd);
-        let firstMark = null;
-
-        matchingNodes.forEach(tn => {
-            const localStart = Math.max(0, matchStart - tn.start);
-            const localEnd = Math.min(tn.node.nodeValue.length, matchEnd - tn.start);
-            if (localStart >= localEnd) return;
-
-            try {
-                const range = document.createRange();
-                range.setStart(tn.node, localStart);
-                range.setEnd(tn.node, localEnd);
-
-                const mark = document.createElement('mark');
-                mark.className = 'miron-live-highlight';
-                range.surroundContents(mark);
-
-                if (!firstMark) firstMark = mark;
-            } catch (e) {
-                console.warn("Failed to highlight text node slice:", e.message);
-            }
-        });
-
-        if (firstMark) {
-            console.log(`✅ [${matchMethod}] Successfully highlighted across ${matchingNodes.length} DOM text node(s) (${matchEnd - matchStart} chars).`);
-        }
-    } else {
-        console.warn(`⚠️ [Highlight Mismatch] Could not locate anchor on active page canvas:`, cleanSearch);
     }
 
     console.groupEnd();
-};
+};</find>
 
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const { sessionUser, t } = usePlatform();
@@ -223,6 +185,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [activePageIndex, setActivePageIndex] = useState(0);
     const [activePageNum, setActivePageNum] = useState(null);
     const [activeHighlight, setActiveHighlight] = useState(null);
+    const [activeTargetCoordinate, setActiveTargetCoordinate] = useState(null);
+    const [activeBlockIndex, setActiveBlockIndex] = useState(null);
     const [isLoadingPages, setIsLoadingPages] = useState(false);
     const [showTranscriptDrawer, setShowTranscriptDrawer] = useState(false);
     const [isCatalogRevealed, setIsCatalogRevealed] = useState(false);
@@ -253,7 +217,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const a4LayerRef = useRef(null);
     const isHangingUpRef = useRef(false);
     const hasSentReadyRef = useRef(false);
-    const bufferedHighlightsRef = useRef([]);
+    const currentChunkMetaRef = useRef({ target: null, chunk_index: null });
+    const isFirstAudioPacketOfChunkRef = useRef(true);
 
     // Gesture Matrix State (Ref-based for 120fps direct DOM manipulation)
     const transformRef = useRef({ scale: 1.0, x: 0, y: 16 });
@@ -372,6 +337,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (stopAudio) stopAudio();
         setIsMironSpeaking(false);
         clearTimeout(speakingTimeout.current);
+        setActiveTargetCoordinate(null);
+        setActiveBlockIndex(null);
+        clearCoordinateHighlights();
+        currentChunkMetaRef.current = { target: null, chunk_index: null };
+        isFirstAudioPacketOfChunkRef.current = true;
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ action: "interrupt" }));
         }
@@ -411,12 +381,25 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     }, [transcripts]);
 
-    // 3. Live Highlight Synchronization
+    // 3. Deterministic Coordinate Highlight Synchronization
     useEffect(() => {
-        if (stage === 'reading' && pageContainerRef.current && activeHighlight) {
-            applyDOMHighlight(pageContainerRef.current, activeHighlight);
+        if (stage === 'reading' && activeTargetCoordinate) {
+            const rawContent = sectionPages[activePageIndex]?.content_json;
+            const blocks = Array.isArray(rawContent) 
+                ? rawContent 
+                : (rawContent?.blocks || rawContent?.content || Object.values(rawContent || {}));
+
+            applyCoordinateHighlight(activeTargetCoordinate, blocks);
+
+            const bMatch = activeTargetCoordinate.match(/^B(\d+)/i);
+            if (bMatch) {
+                setActiveBlockIndex(parseInt(bMatch[1], 10));
+            }
+        } else if (!activeTargetCoordinate) {
+            clearCoordinateHighlights();
+            setActiveBlockIndex(null);
         }
-    }, [activeHighlight, activePageIndex, stage]);
+    }, [activeTargetCoordinate, activePageIndex, stage, sectionPages]);
 
     // 3.1. Dynamic Custom Book CSS Injection (High-Fidelity Rendering)
     useEffect(() => {
@@ -906,11 +889,26 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         });
                     }
 
-                    // D. Voice Output Audio Chunks
+                    // D. Voice Output Audio Chunks with Hardware-Synchronized Playback
                     if (payload.serverContent?.modelTurn?.parts) {
                         for (const part of payload.serverContent.modelTurn.parts) {
                             if (part.inlineData?.data) {
-                                playAudioChunk(part.inlineData.data);
+                                const targetCoord = currentChunkMetaRef.current.target;
+                                const isFirst = isFirstAudioPacketOfChunkRef.current;
+
+                                if (isFirst && targetCoord) {
+                                    isFirstAudioPacketOfChunkRef.current = false;
+                                    playAudioChunk(part.inlineData.data, {
+                                        id: targetCoord,
+                                        onStart: () => {
+                                            console.log(`🟢 [AudioClock->UI] Triggering highlight for coordinate: ${targetCoord}`);
+                                            setActiveTargetCoordinate(targetCoord);
+                                        }
+                                    });
+                                } else {
+                                    playAudioChunk(part.inlineData.data);
+                                }
+
                                 setIsMironSpeaking(true);
                                 clearTimeout(speakingTimeout.current);
                                 speakingTimeout.current = setTimeout(() => setIsMironSpeaking(false), 800);
@@ -925,26 +923,18 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         clearTimeout(speakingTimeout.current);
                     }
 
-                    // E. Live Highlight Preload Queue & Green Light Synchronization
-                    if (payload.type === "preload_highlights" && Array.isArray(payload.queue)) {
-                        bufferedHighlightsRef.current = payload.queue;
-                        console.groupCollapsed(`📋 [Miron Frontend] Preloaded ${payload.queue.length} Highlight Anchors`);
-                        console.log("Full Anchor Queue:", payload.queue);
-                        console.groupEnd();
+                    // E. Deterministic Coordinate Metadata & Chunk Transitions
+                    if (payload.type === "reading_chunk_meta") {
+                        console.log(`📥 [Miron Frontend] Received reading_chunk_meta: Chunk #${payload.chunk_index + 1} -> Target: "${payload.target || 'NONE'}"`);
+                        currentChunkMetaRef.current = {
+                            target: payload.target,
+                            chunk_index: payload.chunk_index
+                        };
+                        isFirstAudioPacketOfChunkRef.current = true;
                     }
 
-                    if (payload.type === "green_light_chunk" && payload.chunk_index !== undefined) {
-                        const chunkIdx = payload.chunk_index;
-                        const match = (bufferedHighlightsRef.current || []).find(h => h.chunk_index === chunkIdx);
-                        console.groupCollapsed(`🟢 [Miron Frontend] Green Light Received for Chunk #${chunkIdx + 1}`);
-                        if (match && match.highlight) {
-                            console.log(`🎯 Key Focus Anchor: "${match.highlight}"`);
-                            setActiveHighlight(match.highlight);
-                        } else {
-                            console.log(`ℹ️ Chunk #${chunkIdx + 1} has no assigned highlight (conversational / peer explanation).`);
-                            setActiveHighlight(null);
-                        }
-                        console.groupEnd();
+                    if (payload.type === "preload_coordinates" && Array.isArray(payload.manifest)) {
+                        console.log(`📋 [Miron Frontend] Preloaded coordinate manifest with ${payload.manifest.length} anchors.`);
                     }
 
                     if (payload.type === "page_turn" && payload.page_number) {
@@ -952,6 +942,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         console.log(`📖 [Miron Frontend] Page Turn Event: Navigating to Page ${targetPageNum} (reason: ${payload.reason || 'N/A'})`);
                         setActivePageNum(targetPageNum);
                         setActiveHighlight(null);
+                        setActiveTargetCoordinate(null);
+                        setActiveBlockIndex(null);
+                        clearCoordinateHighlights();
 
                         setSectionPages(prevPages => {
                             const exists = prevPages.some(p => p.page_number === targetPageNum);
@@ -1567,30 +1560,42 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                                 transition: 'opacity 0.18s ease'
                                                             }}
                                                         >
-                                                            {sectionPages.map((page, pIdx) => (
-                                                                <div 
-                                                                    key={page.id || pIdx} 
-                                                                    className="ml-continuous-page"
-                                                                    data-page-number={page.page_number}
-                                                                >
-                                                                    <div className="ml-page-number-strip">
-                                                                        <span>Page {page.page_number}</span>
-                                                                    </div>
-                                                                    <div className={`page-wrapper ${engineClass}`} data-page-number={page.page_number}>
-                                                                        <div className={`page-canvas ${engineClass}`}>
-                                                                            {(page.content_json || []).map((block, idx) => (
-                                                                                <div key={idx} className="block-target-wrapper">
-                                                                                    {renderBookBlock ? (
-                                                                                        renderBookBlock(block, idx, { bookTitle: selectedBook?.title, courseCode: selectedBook?.course_code })
-                                                                                    ) : (
-                                                                                        <p>{block.body || block.text || block.main || ''}</p>
-                                                                                    )}
-                                                                                </div>
-                                                                            ))}
+                                                            {sectionPages.map((page, pIdx) => {
+                                                                const rawContent = page.content_json;
+                                                                const safeBlocks = Array.isArray(rawContent) 
+                                                                    ? rawContent 
+                                                                    : (rawContent?.blocks || rawContent?.content || Object.values(rawContent || {}));
+
+                                                                return (
+                                                                    <div 
+                                                                        key={page.id || pIdx} 
+                                                                        className="ml-continuous-page"
+                                                                        data-page-number={page.page_number}
+                                                                    >
+                                                                        <div className="ml-page-number-strip">
+                                                                            <span>Page {page.page_number}</span>
+                                                                        </div>
+                                                                        <div className={`page-wrapper ${engineClass}`} data-page-number={page.page_number}>
+                                                                            <div className={`page-canvas ${engineClass}`}>
+                                                                                {safeBlocks.map((block, idx) => (
+                                                                                    <div 
+                                                                                        key={idx} 
+                                                                                        id={`ml-block-${idx}`}
+                                                                                        data-block-index={idx}
+                                                                                        className={`block-target-wrapper ${activeBlockIndex === idx ? 'miron-block-active' : ''}`}
+                                                                                    >
+                                                                                        {renderBookBlock ? (
+                                                                                            renderBookBlock(block, idx, { bookTitle: selectedBook?.title, courseCode: selectedBook?.course_code })
+                                                                                        ) : (
+                                                                                            <p>{block.body || block.text || block.main || ''}</p>
+                                                                                        )}
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </div>
                                                     );
                                                 })()
