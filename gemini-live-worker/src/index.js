@@ -456,6 +456,9 @@ export class GeminiLiveAgent {
     this.translationQueue = [];
     this.isGeminiTranslating = false;
     this.isGeminiFallbackActive = false;
+    this.leasedGeminiKey = null;
+    this.setupCompletePromise = null;
+    this.resolveSetupComplete = null;
 
     // Restore persistent log ring and active rooms across DO hibernation
     this.ctx.blockConcurrencyWhile(async () => {
@@ -661,11 +664,29 @@ export class GeminiLiveAgent {
     }
   }
 
+  async ensureGeminiLiveSession(timeoutMs = 8000) {
+    if (this.geminiWs && this.geminiWs.readyState === WebSocket.OPEN && this.isGeminiSetupComplete) {
+      return true;
+    }
+
+    if (!this.isInitializingGemini && (!this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN)) {
+      this.initSharedGemini();
+    }
+
+    if (this.setupCompletePromise) {
+      const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(false), timeoutMs));
+      return await Promise.race([this.setupCompletePromise, timeoutPromise]);
+    }
+
+    return this.isGeminiSetupComplete;
+  }
+
   speakPreformattedAmharic(amharicText, turnType = "template_speech") {
     if (!amharicText) return;
     if (!this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN || !this.isGeminiSetupComplete) {
       console.log(`[Agent|DO|TEMPLATE] Upstream not ready yet. Queuing preformatted speech: "${amharicText.slice(0, 40)}..."`);
       this.pendingTemplateSpeech = amharicText;
+      this.ensureGeminiLiveSession();
       return;
     }
 
@@ -688,10 +709,15 @@ export class GeminiLiveAgent {
     }));
   }
 
-  processTranslationQueue() {
+  async processTranslationQueue() {
     if (!this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN || !this.isGeminiSetupComplete) {
-        this.emitLog("GEMINI_WARN", `⚠️ processTranslationQueue halted: Gemini WS readyState=${this.geminiWs?.readyState ?? -1}, setupComplete=${this.isGeminiSetupComplete}`);
-        return;
+        this.emitLog("GEMINI", `⏳ processTranslationQueue: Gemini WS not ready (readyState=${this.geminiWs?.readyState ?? -1}, setupComplete=${this.isGeminiSetupComplete}). Ensuring live connection...`);
+        const isReady = await this.ensureGeminiLiveSession();
+        if (!isReady || !this.geminiWs || this.geminiWs.readyState !== WebSocket.OPEN || !this.isGeminiSetupComplete) {
+            this.emitLog("GEMINI_WARN", `⚠️ processTranslationQueue halted: Failed to establish Gemini Live WS.`);
+            return;
+        }
+        this.emitLog("GEMINI", `🟢 Gemini Live WS ready! Resuming translation queue processing...`);
     }
     if (this.isGeminiTranslating) {
         this.emitLog("GEMINI_WARN", `⏳ processTranslationQueue paused: currently translating chunk #${this.currentTranslatingChunkIndex}. Queue depth: ${this.translationQueue.length}`);
@@ -1705,6 +1731,7 @@ OPERATIONAL RULES (STRICT DURATION & FORMAT):
                         this.geminiWs.send(payload);
                     } else {
                         this.pendingTemplateSpeech = prompt;
+                        this.ensureGeminiLiveSession();
                     }
                     this.emitLog("GEMINI", `🎙️ Generating dynamic section preview for: "${sectionTitle}"`);
                 }
@@ -1729,6 +1756,9 @@ OPERATIONAL RULES (STRICT DURATION & FORMAT):
                     if (this.turnDeadlineTimer) clearTimeout(this.turnDeadlineTimer);
                     this.activeTurn = null;
                     this.broadcast(JSON.stringify({ type: "stop_audio" }));
+
+                    // Pre-warm Gemini Live in parallel while Groq is thinking
+                    this.ensureGeminiLiveSession();
 
                     const bookId = this.currentBookId;
                     const pageNum = this.currentPageNumber;
@@ -1946,9 +1976,11 @@ MANDATORY: Tag each spoken explanation chunk with its corresponding coordinate f
     } else {
       if (isString && message.includes('"realtimeInput"')) {
          console.log(`[Agent|DO|DROP] Dropping realtime audio frame. Gemini not ready.`);
+         this.ensureGeminiLiveSession();
       } else {
          console.log(`[Agent|DO|QUEUE] ⏳ Upstream not ready. Queueing message. Queue size: ${this.messageQueue.length + 1}`);
          this.messageQueue.push(message);
+         this.ensureGeminiLiveSession();
       }
     }
   }
@@ -1975,6 +2007,9 @@ MANDATORY: Tag each spoken explanation chunk with its corresponding coordinate f
     this.isGroqSynthesizing = false;
     this.isGeminiFallbackActive = false;
     this.groqChatHistory = [];
+    this.leasedGeminiKey = null;
+    this.setupCompletePromise = null;
+    this.resolveSetupComplete = null;
     this.readingQueue = [];
     this.currentChunkIndex = 0;
     this.stageState = "idle";
@@ -2113,97 +2148,107 @@ MANDATORY: Tag each spoken explanation chunk with its corresponding coordinate f
   }
 
   async initSharedGemini() {
+    if (this.isInitializingGemini) return;
     this.isInitializingGemini = true;
+    this.isGeminiSetupComplete = false;
+    this.setupCompletePromise = new Promise((resolve) => {
+      this.resolveSetupComplete = resolve;
+    });
     console.log(`[Agent|GEMINI|INIT] 🚀 Starting Gemini initialization sequence for DO: ${this.id}`);
 
-    let geminiKey;
+    let geminiKey = this.leasedGeminiKey;
     try {
-      const supabaseUrl = this.env?.SUPABASE_URL;
-      const serviceRoleKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
-      console.log(`[Agent|GEMINI|DB] Fetching key. Env status -> SUPABASE_URL: ${!!supabaseUrl}, SUPABASE_SERVICE_ROLE_KEY: ${!!serviceRoleKey}`);
-      
-      if (!supabaseUrl || !serviceRoleKey) {
-         throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in Worker environment variables.");
-      }
-
-      // Determine the billable host/user (Group stages MUST bill host; 1-on-1 bills user)
-      let billableUserId = null;
-      if (this.isOneOnOne) {
-          billableUserId = this.userId;
-          if (this.userId) {
-              try {
-                  const profRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${this.userId}&select=sex,full_name`, {
-                      headers: { 'apikey': serviceRoleKey, 'Authorization': `Bearer ${serviceRoleKey}` }
-                  });
-                  if (profRes.ok) {
-                      const profData = await profRes.json();
-                      if (profData && profData.length > 0) {
-                          this.userSex = profData[0].sex;
-                          if (!this.studentName || this.studentName === 'Scholar') {
-                              this.studentName = (profData[0].full_name || 'Scholar').split(' ')[0];
-                          }
-                          console.log(`[Agent|GEMINI|PROFILE] Resolved student sex: ${this.userSex}, name: ${this.studentName}`);
-                      }
-                  }
-              } catch (profErr) {
-                  console.error("[Agent|GEMINI|PROFILE] Failed to fetch student sex:", profErr.message);
-              }
-          }
-      } else if (this.conversationId) {
-          try {
-              const res = await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}&select=metadata`, {
-                  headers: { 'apikey': serviceRoleKey, 'Authorization': `Bearer ${serviceRoleKey}` }
-              });
-              const rows = await res.json();
-              if (rows && rows.length > 0) {
-                  billableUserId = rows[0].metadata?.live_host_id;
-              }
-          } catch (e) {
-              console.error("[Agent|GEMINI|DB] Failed to resolve stage host:", e.message);
-          }
-      }
-
-      if (!billableUserId) {
-          console.error(`[Agent|GEMINI|DB] ❌ No billable host resolved for session ${this.conversationId}`);
-          this.broadcast(JSON.stringify({ event: "billing_error", error: "Unable to verify stage host billing credentials." }));
-          throw new Error("No billable user resolved for session.");
-      }
-
-      const rpcUrl = `${supabaseUrl}/rest/v1/rpc/lease_gemini_api_key`;
-      console.log(`[Agent|GEMINI|DB] Executing POST request to Supabase RPC: ${rpcUrl}`);
-
-      const sessionCost = this.isOneOnOne ? 10 : 20;
-      const dbResponse = await fetch(rpcUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": serviceRoleKey,
-          "Authorization": `Bearer ${serviceRoleKey}`
-        },
-        body: JSON.stringify({ p_user_id: billableUserId || null, p_cost: sessionCost })
-      });
-
-      console.log(`[Agent|GEMINI|DB] Supabase response status: ${dbResponse.status} ${dbResponse.statusText}`);
-
-      if (!dbResponse.ok) {
-        const errText = await dbResponse.text();
-        console.error(`[Agent|GEMINI|DB] ❌ RPC Error Response Body: ${errText}`);
-        if (errText.includes('INSUFFICIENT_CREDITS')) {
-            this.broadcast(JSON.stringify({ event: "billing_error", error: "Insufficient LinkUp Credits to start a live AI session." }));
+      if (!geminiKey) {
+        const supabaseUrl = this.env?.SUPABASE_URL;
+        const serviceRoleKey = this.env?.SUPABASE_SERVICE_ROLE_KEY;
+        console.log(`[Agent|GEMINI|DB] Fetching key. Env status -> SUPABASE_URL: ${!!supabaseUrl}, SUPABASE_SERVICE_ROLE_KEY: ${!!serviceRoleKey}`);
+        
+        if (!supabaseUrl || !serviceRoleKey) {
+           throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in Worker environment variables.");
         }
-        throw new Error(`Supabase RPC HTTP ${dbResponse.status}: ${errText}`);
-      }
 
-      const dbData = await dbResponse.json();
-      console.log(`[Agent|GEMINI|DB] RPC JSON Parsed successfully. Array length: ${dbData?.length || 0}`);
-      
-      if (!dbData || !dbData[0] || !dbData[0].api_key) {
-         console.error(`[Agent|GEMINI|DB] ❌ Invalid payload structure:`, JSON.stringify(dbData));
-         throw new Error("RPC returned empty or invalid key payload: " + JSON.stringify(dbData));
+        // Determine the billable host/user (Group stages MUST bill host; 1-on-1 bills user)
+        let billableUserId = null;
+        if (this.isOneOnOne) {
+            billableUserId = this.userId;
+            if (this.userId) {
+                try {
+                    const profRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${this.userId}&select=sex,full_name`, {
+                        headers: { 'apikey': serviceRoleKey, 'Authorization': `Bearer ${serviceRoleKey}` }
+                    });
+                    if (profRes.ok) {
+                        const profData = await profRes.json();
+                        if (profData && profData.length > 0) {
+                            this.userSex = profData[0].sex;
+                            if (!this.studentName || this.studentName === 'Scholar') {
+                                this.studentName = (profData[0].full_name || 'Scholar').split(' ')[0];
+                            }
+                            console.log(`[Agent|GEMINI|PROFILE] Resolved student sex: ${this.userSex}, name: ${this.studentName}`);
+                        }
+                    }
+                } catch (profErr) {
+                    console.error("[Agent|GEMINI|PROFILE] Failed to fetch student sex:", profErr.message);
+                }
+            }
+        } else if (this.conversationId) {
+            try {
+                const res = await fetch(`${supabaseUrl}/rest/v1/conversations?id=eq.${this.conversationId}&select=metadata`, {
+                    headers: { 'apikey': serviceRoleKey, 'Authorization': `Bearer ${serviceRoleKey}` }
+                });
+                const rows = await res.json();
+                if (rows && rows.length > 0) {
+                    billableUserId = rows[0].metadata?.live_host_id;
+                }
+            } catch (e) {
+                console.error("[Agent|GEMINI|DB] Failed to resolve stage host:", e.message);
+            }
+        }
+
+        if (!billableUserId) {
+            console.error(`[Agent|GEMINI|DB] ❌ No billable host resolved for session ${this.conversationId}`);
+            this.broadcast(JSON.stringify({ event: "billing_error", error: "Unable to verify stage host billing credentials." }));
+            throw new Error("No billable user resolved for session.");
+        }
+
+        const rpcUrl = `${supabaseUrl}/rest/v1/rpc/lease_gemini_api_key`;
+        console.log(`[Agent|GEMINI|DB] Executing POST request to Supabase RPC: ${rpcUrl}`);
+
+        const sessionCost = this.isOneOnOne ? 10 : 20;
+        const dbResponse = await fetch(rpcUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": serviceRoleKey,
+            "Authorization": `Bearer ${serviceRoleKey}`
+          },
+          body: JSON.stringify({ p_user_id: billableUserId || null, p_cost: sessionCost })
+        });
+
+        console.log(`[Agent|GEMINI|DB] Supabase response status: ${dbResponse.status} ${dbResponse.statusText}`);
+
+        if (!dbResponse.ok) {
+          const errText = await dbResponse.text();
+          console.error(`[Agent|GEMINI|DB] ❌ RPC Error Response Body: ${errText}`);
+          if (errText.includes('INSUFFICIENT_CREDITS')) {
+              this.broadcast(JSON.stringify({ event: "billing_error", error: "Insufficient LinkUp Credits to start a live AI session." }));
+          }
+          throw new Error(`Supabase RPC HTTP ${dbResponse.status}: ${errText}`);
+        }
+
+        const dbData = await dbResponse.json();
+        console.log(`[Agent|GEMINI|DB] RPC JSON Parsed successfully. Array length: ${dbData?.length || 0}`);
+        
+        if (!dbData || !dbData[0] || !dbData[0].api_key) {
+           console.error(`[Agent|GEMINI|DB] ❌ Invalid payload structure:`, JSON.stringify(dbData));
+           throw new Error("RPC returned empty or invalid key payload: " + JSON.stringify(dbData));
+        }
+        
+        geminiKey = dbData[0].api_key;
+        this.leasedGeminiKey = geminiKey;
+        console.log(`[Agent|GEMINI|DB] ✅ Successfully leased Gemini API Key. Masked: ${geminiKey.substring(0, 4)}...${geminiKey.substring(geminiKey.length - 4)}`);
+      } else {
+        console.log(`[Agent|GEMINI|DB] ⚡ Reusing active leased Gemini key for reconnect. Masked: ${geminiKey.substring(0, 4)}...${geminiKey.substring(geminiKey.length - 4)}`);
       }
-      
-      geminiKey = dbData[0].api_key;
-      console.log(`[Agent|GEMINI|DB] ✅ Successfully leased Gemini API Key. Masked: ${geminiKey.substring(0, 4)}...${geminiKey.substring(geminiKey.length - 4)}`);
     } catch (err) {
       console.error(`[Agent|GEMINI|DB] ❌ Failed to lease key:`, err.message, err.stack);
       const friendlyMsg = err.message?.includes('INSUFFICIENT_CREDITS')
@@ -2211,6 +2256,10 @@ MANDATORY: Tag each spoken explanation chunk with its corresponding coordinate f
         : "Miron is currently operating at maximum capacity across campus networks. Please try again in a few moments.";
       this.broadcast(JSON.stringify({ error: friendlyMsg }));
       this.isInitializingGemini = false;
+      if (this.resolveSetupComplete) {
+        this.resolveSetupComplete(false);
+        this.resolveSetupComplete = null;
+      }
       return;
     }
 
@@ -2717,11 +2766,21 @@ CRITICAL OPERATIONAL RULES:
         if (typeof data === 'string' && data.includes('"setupComplete"')) {
           console.log("[Agent|GEMINI|WS] 🟢 SetupComplete received! Gemini is fully ready. Unlocking queues...");
           this.isGeminiSetupComplete = true;
+          if (this.resolveSetupComplete) {
+            this.resolveSetupComplete(true);
+            this.resolveSetupComplete = null;
+          }
 
           if (this.pendingTemplateSpeech) {
             const speech = this.pendingTemplateSpeech;
             this.pendingTemplateSpeech = null;
             this.speakPreformattedAmharic(speech);
+          }
+
+          // Unblock queued reading chunks if any arrived before setupComplete
+          if (this.translationQueue.length > 0 && !this.isGeminiTranslating) {
+            console.log(`[Agent|GEMINI|WS] 🚀 SetupComplete triggering translationQueue processing (${this.translationQueue.length} pending chunks)...`);
+            this.processTranslationQueue();
           }
 
           console.log(`[Agent|GEMINI|WS] Flushing ${this.messageQueue.length} queued messages...`);
@@ -2749,12 +2808,20 @@ CRITICAL OPERATIONAL RULES:
         console.log(`[Agent|GEMINI|WS] Was Clean: ${event.wasClean}`);
         this.geminiWs = null;
         this.isGeminiSetupComplete = false;
-        this.broadcast(JSON.stringify({ 
-          event: "stage_closed", 
-          reason: "Gemini ended session",
-          code: event.code,
-          details: event.reason
-        }));
+        if (this.resolveSetupComplete) {
+          this.resolveSetupComplete(false);
+          this.resolveSetupComplete = null;
+        }
+        if (!this.isOneOnOne) {
+          this.broadcast(JSON.stringify({ 
+            event: "stage_closed", 
+            reason: "Gemini ended session",
+            code: event.code,
+            details: event.reason
+          }));
+        } else {
+          this.emitLog("GEMINI", `ℹ️ Upstream voice link closed (code ${event.code}). Will re-open on next voice request.`);
+        }
       });
 
       ws.addEventListener("error", (err) => {
