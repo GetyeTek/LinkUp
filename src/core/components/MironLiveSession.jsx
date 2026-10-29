@@ -1227,52 +1227,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 else if (stage === 'section_confirm') setStage('toc_select');
                                 else if (stage === 'toc_select') setStage('course_select');
                             }}
+                            title={t('back', 'Back')}
                         >
                             <i className="fas fa-chevron-left"></i>
                         </button>
                     )}
-                    <button className="athena-close" onClick={() => setViewState('minimized')}>
-                        <i className="fas fa-chevron-down"></i>
-                    </button>
                 </div>
 
-                <div className="ml-status">
-                    <span className="live-dot" style={!isConnected ? { background: '#f59e0b', boxShadow: '0 0 8px #f59e0b' } : {}}></span>
-                    {stage === 'reading' ? (
-                        <div className="ml-reading-header-controls">
-                            <span className="ml-hdr-page-title">
-                                {selectedBook?.course_code || t('reader_book', 'Book')}
-                                {activePageNum ? ` • p.${activePageNum}` : (sectionPages[0]?.page_number ? ` • p.${sectionPages[0].page_number}` : '')}
-                            </span>
-                        </div>
-                    ) : (
-                        <span>
-                            {!isConnected ? t('miron_connecting', 'Connecting to Miron...') :
-                             stage === 'course_select' ? t('miron_what_studying_today', 'Select a Course') : 
-                             stage === 'toc_select' ? (selectedBook?.course_code || selectedBook?.title) :
-                             t('miron_ready_to_study', 'Ready to Study')}
-                        </span>
-                    )}
-                    {isConnected && stage !== 'reading' && (
-                        <span className="ml-voice-status-pill">
-                            <i className="fas fa-headphones-simple"></i>
-                            <span>{t('miron_live_voice', 'Live Voice')}</span>
-                        </span>
-                    )}
-                </div>
-
-                <div className="ml-header-right">
-                    <button className="athena-close" onClick={handleHangup} style={{ color: '#ff5f5f' }}>
-                        <i className="fas fa-phone-slash"></i>
-                    </button>
-                </div>
-            </header>
-
-            {/* Interactive Workspace */}
-            <main className={`ml-classroom-body ${stage}`}>
-
-                {/* Compact Miron Avatar Strip */}
-                <div className={`ml-avatar-strip ${stage}`}>
+                <div className="ml-header-center">
                     <div className="ml-avatar-mini-container">
                         <MironConnectionRing isConnected={isConnected} />
                         {isConnected && !isConsulting && isMironSpeaking && (
@@ -1295,12 +1257,57 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             </div>
                         )}
                     </div>
+
+                    <div className="ml-status">
+                        <span className="live-dot" style={!isConnected ? { background: '#f59e0b', boxShadow: '0 0 8px #f59e0b' } : {}}></span>
+                        {stage === 'reading' ? (
+                            <div className="ml-reading-header-controls">
+                                <span className="ml-hdr-page-title">
+                                    {selectedBook?.course_code || t('reader_book', 'Book')}
+                                    {activePageNum ? ` • p.${activePageNum}` : (sectionPages[0]?.page_number ? ` • p.${sectionPages[0].page_number}` : '')}
+                                </span>
+                            </div>
+                        ) : (
+                            <span>
+                                {!isConnected ? t('miron_connecting', 'Connecting to Miron...') :
+                                 stage === 'course_select' ? t('miron_what_studying_today', 'Select a Course') : 
+                                 stage === 'toc_select' ? (selectedBook?.course_code || selectedBook?.title) :
+                                 t('miron_ready_to_study', 'Ready to Study')}
+                            </span>
+                        )}
+                        {isConnected && stage !== 'reading' && (
+                            <span className="ml-voice-status-pill">
+                                <i className="fas fa-headphones-simple"></i>
+                                <span>{t('miron_live_voice', 'Live Voice')}</span>
+                            </span>
+                        )}
+                    </div>
+
                     {isConsulting && (
                         <span className="ml-consulting-badge">
-                            <i className="fas fa-circle-notch fa-spin"></i> {t('miron_consulting_textbook', 'Consulting textbook...')}
+                            <i className="fas fa-circle-notch fa-spin"></i>
                         </span>
                     )}
                 </div>
+
+                <div className="ml-header-right">
+                    <button className="athena-close" onClick={handleHangup} style={{ color: '#ff5f5f' }} title={t('end_session', 'End Session')}>
+                        <i className="fas fa-phone-slash"></i>
+                    </button>
+                </div>
+            </header>
+
+            {/* Interactive Workspace */}
+            <main className={`ml-classroom-body ${stage}`}>
+                {/* Dedicated Floating Collapse Button */}
+                <button 
+                    className="ml-page-collapse-btn" 
+                    onClick={() => setViewState('minimized')}
+                    title={t('minimize_to_orb', 'Minimize to Floating Orb')}
+                    aria-label="Minimize"
+                >
+                    <i className="fas fa-compress-alt"></i>
+                </button>
 
                 {/* STAGE 0: COURSE SELECT GRID */}
                 {stage === 'course_select' && (
