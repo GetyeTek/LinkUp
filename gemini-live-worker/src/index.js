@@ -637,7 +637,11 @@ export class GeminiLiveAgent {
         }
     }, 14000);
     
-    const prompt = `Translate and speak the following explanation in natural, authentic Amharic (using the Ge'ez/Fidel alphabet) with a normal, grounded peer tone, blended smoothly with English technical terms to ${this.studentName}. Sound like an authentic university peer studying together in an authentic normal tone. Speak the translation directly:\n\n${chunkText}`;
+    const prompt = `Translate and speak the following explanation to ${this.studentName} in an authentic university peer tone.
+CRITICAL CO-READING VERBATIM RULE:
+- When the text contains a textbook quotation in English (e.g., 'Here our book says: "..."' or enclosed in quotation marks), DO NOT translate that quoted sentence into Amharic! Speak that quoted English sentence out loud EXACTLY as written in clear English.
+- Immediately after the English quote, deliver the explanation that follows in natural, grounded Amharic (using the Ge'ez/Fidel alphabet) blended smoothly with English technical terms.
+Speak the response directly:\n\n${chunkText}`;
     
     const payload = JSON.stringify({
         clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true }
@@ -778,6 +782,9 @@ export class GeminiLiveAgent {
     - NEVER highlight an entire paragraph or lump multiple questions/bullet points into one highlight attribute.
     - If explaining a dense or long concept, break it down one piece at a time across sequential chunks.
     - The 'highlight' attribute MUST be an EXACT, VERBATIM quote copy-pasted directly from the textbook page text provided. Never paraphrase or alter punctuation.
+  * VERBATIM CO-READING CITATION (MANDATORY WHEN HIGHLIGHTING):
+    - Whenever you output a <chunk highlight="..."> tag, you MUST start the spoken content of that chunk by reading the highlighted quote verbatim in English: e.g. 'Here our book says: "<exact highlight quote>"' or 'Notice what our textbook states: "<exact highlight quote>"'.
+    - Follow that exact English quotation immediately with your peer explanation and intuitive breakdown.
   * If a chunk is purely conversational, an encouraging check-in, or an application question that doesn't quote a line on the page, omit the highlight attribute: <chunk>...</chunk>.
   * SINGLE CHUNK RULE: If your response is short (greeting, quick answer, acknowledgment), put it in a single <chunk>.
   * MULTI-CHUNK RULE: For teaching and concept breakdowns, use sequential paced chunks (1-2 sentences each).
@@ -1581,15 +1588,14 @@ CRITICAL LINGUISTIC RULES (GEMINI FALLBACK):
                         : "The student is male. Use masculine Amharic conjugations (e.g. ዝግጁ ከሆንክ እንጀምር, ተዘጋጅተሃል, አብረን እንግባበት, etc.).";
 
                     const prompt = `[VOICE DIRECTIVE: TOPIC PREVIEW]
-You are Miron, an authentic university study partner speaking directly to ${this.studentName} in natural, grounded Addis campus Amharic (using the Ge'ez/Fidel alphabet).
+You are Miron, an authentic university study partner speaking directly to ${this.studentName}.
 The student just selected: "${sectionTitle}" under "${chapterTitle}" in ${courseName}.
 ${genderRule}
 
-OPERATIONAL RULES:
-1. Tone: Warm, grounded, articulate, and encouraging peer tone. You are two university classmates gearing up to master this topic together.
-2. Substance & Overview: Give a comfortable, insightful breakdown (3 to 4 paced sentences). Unpack what this specific topic covers—mention the core concepts, principles, or formulas we will encounter and why mastering them matters.
-3. Natural Peer Nudge : Conclude by naturally hyping ${this.studentName} to jump into the study session (e.g. "ዝግጁ ከሆንክ እንጀምር!", "ተዘጋጅተሃል? እንጀምር?"). 
-4. Language: Speak directly in authentic Amharic, blending English technical terms seamlessly when appropriate. Zero English preambles or conversational filler.`;
+OPERATIONAL RULES (STRICT DURATION & FORMAT):
+1. Step 1 (Verbatim English Title): First, read and pronounce the selected section title out loud in English EXACTLY as written: "${sectionTitle}". Do NOT translate the title into Amharic.
+2. Step 2 (Single-Sentence Amharic Hook): Immediately follow with EXACTLY ONE crisp, engaging sentence in natural Amharic summarizing what we will tackle in this topic, concluded with a quick peer nudge (e.g. "ዝግጁ ከሆንክ እንጀምር!" or "ተዘጋጅተሻል? እንግባበት!").
+3. Tone: Warm, grounded, articulate, and concise peer tone. Do NOT generate long overviews or multi-sentence lectures. Keep the entire spoken response under 4 seconds total.`;
 
                     const payload = JSON.stringify({
                         clientContent: {
@@ -2185,7 +2191,7 @@ CRITICAL OPERATIONAL RULES:
 2. Your sole task when user microphone audio arrives is real-time transcription via inputAudioTranscription.
 3. You ONLY generate audio speech when you receive an explicit text turn instructing you to speak.
 4. If an incoming text turn contains preformatted Amharic text under a [VOICE SYNTHESIS DIRECTIVE], read and speak it directly with authentic, warm peer prosody. Never translate it into English or add commentary.
-5. If an incoming text turn contains English explanations, translate them into natural, authentic Amharic (using the Ge'ez/Fidel alphabet) with a grounded peer tone, blended smoothly with English technical terms, and speak them directly. Never mention course codes, instructions, prompts, or backend systems.`
+5. If an incoming text turn contains English explanations, translate them into natural, authentic Amharic (using the Ge'ez/Fidel alphabet) with a grounded peer tone, blended smoothly with English technical terms. When an English textbook quote is cited (e.g., 'our book says: "..."'), speak that quoted English sentence verbatim in English without translating it. Never mention course codes, instructions, prompts, or backend systems.`
               }]
           };
       }
