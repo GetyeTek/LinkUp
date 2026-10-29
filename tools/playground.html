@@ -368,6 +368,37 @@
 
                 <!-- Transcription Options Grid -->
                 <div class="pt-2 border-t border-gray-800 space-y-2">
+                    <!-- Language BCP-47 Input & Quick Chips -->
+                    <div class="bg-inputbg p-2.5 rounded-xl border border-gray-700 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label for="languageCodesInput" class="text-xs font-medium text-white block">
+                                Spoken Language Codes (BCP-47)
+                            </label>
+                            <span class="text-[10px] text-gray-400">Comma-separated</span>
+                        </div>
+                        <input type="text" id="languageCodesInput" value="am-ET, en-US" placeholder="e.g. am-ET, en-US (or empty for auto)"
+                            class="w-full bg-[#1e1e1e] text-xs text-white px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-cyan-500 font-mono transition-colors">
+                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            <span class="text-[10px] text-gray-500">Presets:</span>
+                            <button type="button" class="lang-preset text-[10px] bg-gray-800 hover:bg-gray-700 text-cyan-400 px-2 py-0.5 rounded border border-gray-700 transition" data-lang="am-ET, en-US">🇪🇹 am-ET + en-US</button>
+                            <button type="button" class="lang-preset text-[10px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded border border-gray-700 transition" data-lang="am-ET">🇪🇹 am-ET only</button>
+                            <button type="button" class="lang-preset text-[10px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded border border-gray-700 transition" data-lang="en-US">🇺🇸 en-US only</button>
+                            <button type="button" class="lang-preset text-[10px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded border border-gray-700 transition" data-lang="">Auto</button>
+                        </div>
+                    </div>
+
+                    <!-- Amharic / Multilingual Ge'ez Enforcement Toggle -->
+                    <div class="flex items-center justify-between bg-inputbg p-2.5 rounded-xl border border-gray-700">
+                        <div class="pr-2">
+                            <span class="text-xs font-medium text-white block">Amharic Ge'ez (ፊደል) Force-Detection</span>
+                            <span class="text-[11px] text-gray-400 block">Forces verbatim Amharic Fidel script capture & prevents dropping mixed speech</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="amharicFidelToggle" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+                        </label>
+                    </div>
+
                     <div class="flex items-center justify-between bg-inputbg p-2.5 rounded-xl border border-gray-700">
                         <div class="pr-2">
                             <span class="text-xs font-medium text-white block">Include Timestamps</span>
@@ -478,7 +509,16 @@
         const audioPreviewPlayer = document.getElementById('audioPreviewPlayer');
         const timestampToggle = document.getElementById('timestampToggle');
         const diarizationToggle = document.getElementById('diarizationToggle');
+        const languageCodesInput = document.getElementById('languageCodesInput');
+        const amharicFidelToggle = document.getElementById('amharicFidelToggle');
         const transcribeBtn = document.getElementById('transcribeBtn');
+
+        // Language code preset buttons
+        document.querySelectorAll('.lang-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                languageCodesInput.value = btn.getAttribute('data-lang');
+            });
+        });
         const transcribeBtnIcon = document.getElementById('transcribeBtnIcon');
         const transcribeBtnText = document.getElementById('transcribeBtnText');
         const transcribeBtnSpinner = document.getElementById('transcribeBtnSpinner');
@@ -1109,8 +1149,16 @@
             const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
             endpointDisplay.textContent = `POST https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
 
-            // Build tailored transcription prompt
+            // Parse BCP-47 language codes
+            const rawLangs = languageCodesInput.value.trim();
+            const langCodes = rawLangs ? rawLangs.split(',').map(s => s.trim()).filter(Boolean) : [];
+            const forceAmharic = amharicFidelToggle.checked;
+
+            // Build tailored transcription prompt with Ge'ez Fidel enforcement
             let promptText = "Generate a verbatim transcript of the entire speech in this audio.";
+            if (forceAmharic || langCodes.some(c => c.toLowerCase().includes('am'))) {
+                promptText += " The audio contains Ethiopian Amharic (አማርኛ) or mixed English-Amharic speech. You MUST transcribe all Amharic speech verbatim using native Ge'ez Fidel script (ፊደል). Do NOT translate Amharic into English. Do NOT omit or skip Amharic words or phrases.";
+            }
             if (withTimestamps) {
                 promptText += " Include precise start timestamps for each speech segment formatted clearly like [MM:SS].";
             }
@@ -1141,6 +1189,9 @@
                         mode: "VERBATIM"
                     }
                 };
+                if (langCodes.length > 0) {
+                    payload.generationConfig.audioTranscriptionConfig.languageCodes = langCodes;
+                }
                 if (withTimestamps) {
                     payload.generationConfig.audioTranscriptionConfig.wordTimestamp = true;
                 }
@@ -1149,7 +1200,7 @@
                 }
             } else {
                 payload.generationConfig = {
-                    temperature: 0.2
+                    temperature: 0.1
                 };
             }
 
