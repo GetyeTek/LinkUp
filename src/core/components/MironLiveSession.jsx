@@ -219,6 +219,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const hasSentReadyRef = useRef(false);
     const currentChunkMetaRef = useRef({ target: null, chunk_index: null });
     const isFirstAudioPacketOfChunkRef = useRef(true);
+    const bufferedHighlightsRef = useRef([]);
 
     // Gesture Matrix State (Ref-based for 120fps direct DOM manipulation)
     const transformRef = useRef({ scale: 1.0, x: 0, y: 16 });
@@ -995,7 +996,12 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             setSelectedSection(null);
                             setSectionPages([]);
                             setActiveHighlight(null);
+                            setActiveTargetCoordinate(null);
+                            setActiveBlockIndex(null);
+                            clearCoordinateHighlights();
                             bufferedHighlightsRef.current = [];
+                            currentChunkMetaRef.current = { target: null, chunk_index: null };
+                            isFirstAudioPacketOfChunkRef.current = true;
                         }
                     }
 
@@ -1130,15 +1136,20 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 { id: 'blank', page_number: physicalStart, content_json: [{ type: 'paragraph', body: `Welcome to ${selectedSection.title}. Let's begin the review.` }] }
             ];
 
-            setSectionPages(validPages);
-            setActivePageIndex(0);
-            setActivePageNum(validPages[0]?.page_number || null);
-            setIsLoadingPages(false);
-            setStage('reading');
-            setIsReadingRevealed(false);
-            bufferedHighlightsRef.current = [];
+                            setSectionPages(validPages);
+                setActivePageIndex(0);
+                setActivePageNum(validPages[0]?.page_number || null);
+                setIsLoadingPages(false);
+                setStage('reading');
+                setIsReadingRevealed(false);
+                bufferedHighlightsRef.current = [];
+                currentChunkMetaRef.current = { target: null, chunk_index: null };
+                isFirstAudioPacketOfChunkRef.current = true;
+                setActiveTargetCoordinate(null);
+                setActiveBlockIndex(null);
+                clearCoordinateHighlights();
 
-            // Semantic handoff: Backend DO takes full ownership of kickoff orchestration
+                // Semantic handoff: Backend DO takes full ownership of kickoff orchestration
             if (wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify({
                     action: "confirm_start_reading",
