@@ -366,7 +366,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     };
 
-    const { playAudioChunk } = useGeminiAudio(wsRef, micActive);
+    const { playAudioChunk, stopAudio } = useGeminiAudio(wsRef, micActive);
     const renderBookBlock = getComponent('book-block-renderer');
 
     // 1. Hydrate Course Books (Fast cache hit + fresh DB fetch)
@@ -910,6 +910,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         }
                     }
 
+                    // D1. Remote Hard Audio Stop
+                    if (payload.type === "stop_audio") {
+                        if (stopAudio) stopAudio();
+                        setIsMironSpeaking(false);
+                        clearTimeout(speakingTimeout.current);
+                    }
+
                     // E. Live Highlight Preload Queue & Green Light Synchronization
                     if (payload.type === "preload_highlights" && Array.isArray(payload.queue)) {
                         bufferedHighlightsRef.current = payload.queue;
@@ -1042,6 +1049,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
     // --- NAVIGATION FLOW HANDLERS ---
     const handleSelectCourse = (book) => {
+        if (stopAudio) stopAudio();
         setSelectedBook(book);
         setStage('toc_select');
         setExpandedChapters(new Set([0]));
@@ -1074,6 +1082,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     };
 
     const handleSelectSection = (sectionNode, parentChapterTitle) => {
+        if (stopAudio) stopAudio();
         setSelectedSection({
             ...sectionNode,
             parentTitle: parentChapterTitle
@@ -1102,6 +1111,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
     const handleConfirmStartReading = async () => {
         if (!selectedBook || !selectedSection || isLoadingPages) return;
+        if (stopAudio) stopAudio();
+        setIsMironSpeaking(false);
+        clearTimeout(speakingTimeout.current);
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ action: "interrupt" }));
         }
@@ -1178,6 +1190,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     };
 
     const handleHangup = () => {
+        if (stopAudio) stopAudio();
+        setIsMironSpeaking(false);
+        clearTimeout(speakingTimeout.current);
         isHangingUpRef.current = true;
         hasSentReadyRef.current = false;
         clearTimeout(tocTimeoutRef.current);
