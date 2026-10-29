@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gemini Voice & Live Realtime Playground</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#121212',
+                        cardbg: '#1E1E1E',
+                        inputbg: '#2A2A2A',
+                        accent: '#06B6D4', // Cyan accent
+                        accentHover: '#0891B2',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #E5E7EB;
+            touch-action: manipulation;
+        }
+        pre, code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1E1E1E;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #06B6D4;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .pulse-indicator {
+            animation: pulse-ring 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-12">
+
+    <!-- Sticky Top Header -->
+    <header class="sticky top-0 z-50 bg-[#121212]/95 backdrop-blur-md border-b border-gray-800 px-4 py-3 flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-2">
+            <div class="w-3 h-3 rounded-full bg-cyan-500 animate-pulse"></div>
+            <h1 class="text-base font-bold tracking-tight text-white sm:text-lg">
+                Gemini <span class="text-cyan-400">Voice Playground</span>
+            </h1>
+        </div>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-xs text-cyan-400 hover:text-cyan-300 underline font-medium">
+            Get API Key
+        </a>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 w-full max-w-xl mx-auto px-4 pt-4 space-y-4">
+
+        <!-- Universal API Key Card (Shared between tabs) -->
+        <div class="bg-cardbg rounded-2xl p-4 border border-gray-800 shadow-md">
+            <label for="apiKey" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                Gemini API Key
+            </label>
+            <div class="relative">
+                <input type="password" id="apiKey" placeholder="AIzaSy..." 
+                    class="w-full bg-inputbg text-sm text-white px-3 py-2.5 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 pr-10 font-mono transition-colors">
+                <button type="button" id="toggleKeyBtn" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 text-xs">
+                    👁️
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex bg-cardbg p-1 rounded-xl border border-gray-800 shadow-md">
+            <button id="tabLiveBtn" class="flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-white bg-cyan-600 shadow flex items-center justify-center gap-1.5">
+                <span>🎙️</span> Live Realtime Model
+            </button>
+            <button id="tabTtsBtn" class="flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1.5">
+                <span>⚡</span> Batch TTS (REST)
+            </button>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 1: LIVE REALTIME INTERACTION (WEBSOCKET) -->
+        <!-- ========================================== -->
+        <section id="liveSection" class="space-y-4">
+            
+            <!-- Connection & Model Config -->
+            <div class="bg-cardbg rounded-2xl p-4 border border-gray-800 shadow-md space-y-3">
+                <div class="flex items-center justify-between pb-1 border-b border-gray-800">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Live Session Setup</span>
+                    <div id="liveStatusBadge" class="flex items-center gap-1.5 text-xs font-mono text-gray-400 bg-inputbg px-2.5 py-1 rounded-full border border-gray-700">
+                        <span class="w-2 h-2 rounded-full bg-gray-500"></span> Disconnected
+                    </div>
+                </div>
+
+                <!-- Live Model Selection -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="liveModelSelect" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                            Live Model
+                        </label>
+                        <input type="text" id="liveModelInput" value="gemini-2.5-flash" list="liveModelSuggestions"
+                            class="w-full bg-inputbg text-sm text-white px-3 py-2 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 font-mono transition-colors">
+                        <datalist id="liveModelSuggestions">
+                            <option value="gemini-2.5-flash">
+                            <option value="gemini-2.0-flash-exp">
+                            <option value="gemini-2.0-flash">
+                            <option value="gemini-3.8-flash-live">
+                            <option value="gemini-3.8-flash-tts">
+                        </datalist>
+                    </div>
+
+                    <div>
+                        <label for="liveVoiceSelect" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                            Voice Persona
+                        </label>
+                        <select id="liveVoiceSelect" class="w-full bg-inputbg text-sm text-white px-3 py-2 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 transition-colors">
+                            <option value="Aoede" selected>Aoede (Warm / Conversational)</option>
+                            <option value="Charon">Charon (Deep / Calm)</option>
+                            <option value="Fenrir">Fenrir (Authoritative)</option>
+                            <option value="Kore">Kore (Clear / Crisp)</option>
+                            <option value="Puck">Puck (Upbeat / Energetic)</option>
+                            <option value="Callisto">Callisto (Expressive)</option>
+                            <option value="Ursa">Ursa (Friendly)</option>
+                            <option value="Zephyr">Zephyr (Bright)</option>
+                            <option value="Pegasus">Pegasus (Soft)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="liveSystemPrompt" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                        System Instructions / Persona
+                    </label>
+                    <input type="text" id="liveSystemPrompt" value="You are a lively, helpful AI conversational assistant. Answer concisely and expressively."
+                        class="w-full bg-inputbg text-sm text-white px-3 py-2 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 transition-colors">
+                </div>
+
+                <!-- Connect/Disconnect Toggle -->
+                <div class="flex gap-2 pt-1">
+                    <button id="connectLiveBtn" class="flex-1 bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-gray-950 font-bold py-2.5 px-4 rounded-xl shadow transition text-sm flex items-center justify-center gap-2">
+                        <span>🔌</span> Connect Session
+                    </button>
+                    <button id="disconnectLiveBtn" disabled class="bg-gray-800 hover:bg-red-900/60 disabled:opacity-40 disabled:hover:bg-gray-800 text-red-300 font-medium py-2.5 px-4 rounded-xl border border-gray-700 transition text-sm">
+                        Disconnect
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Visualizer & Output Monitoring -->
+            <div class="bg-cardbg rounded-2xl p-4 border border-gray-800 shadow-md space-y-3">
+                <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-cyan-400">
+                    <span class="flex items-center gap-1.5"><span>🔊</span> Realtime Audio Stream (24kHz PCM)</span>
+                    <button id="interruptBtn" disabled class="text-[11px] bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-gray-300 px-2.5 py-1 rounded-lg border border-gray-700">
+                        ⏹ Stop Audio
+                    </button>
+                </div>
+
+                <!-- Visualizer Canvas -->
+                <div class="relative bg-inputbg rounded-xl h-20 flex items-center justify-center overflow-hidden border border-gray-800">
+                    <canvas id="liveVisualizerCanvas" class="w-full h-full block"></canvas>
+                </div>
+
+                <!-- Conversation History Box -->
+                <div id="liveChatBox" class="h-64 overflow-y-auto space-y-3 bg-[#171717] p-3 rounded-xl border border-gray-800 text-sm">
+                    <div class="text-xs text-gray-500 text-center italic py-2">
+                        Connect to the live session, then type text to talk and listen in real-time.
+                    </div>
+                </div>
+
+                <!-- Text Chat Input & Send -->
+                <form id="liveChatForm" class="flex gap-2">
+                    <input type="text" id="liveTextInput" placeholder="Type a message to Gemini..." disabled
+                        class="flex-1 bg-inputbg text-sm text-white px-3 py-2.5 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 transition-colors disabled:opacity-50">
+                    <button type="submit" id="liveSendBtn" disabled class="bg-cyan-500 hover:bg-cyan-600 disabled:opacity-40 disabled:hover:bg-cyan-500 text-gray-950 font-bold px-4 rounded-xl transition flex items-center justify-center text-sm">
+                        Send
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: BATCH TTS SCRIPT GENERATION (REST) -->
+        <!-- ========================================== -->
+        <section id="ttsSection" class="space-y-4 hidden">
+            <!-- Model & Voice Grid -->
+            <div class="bg-cardbg rounded-2xl p-4 border border-gray-800 shadow-md space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label for="modelSelect" class="block text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                Model
+                            </label>
+                            <button type="button" id="refreshModelsBtn" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1">
+                                🔄 Fetch Models
+                            </button>
+                        </div>
+                        <select id="modelSelect" class="w-full bg-inputbg text-sm text-white px-3 py-2.5 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 transition-colors">
+                            <option value="gemini-3.8-flash-tts" selected>gemini-3.8-flash-tts</option>
+                            <option value="gemini-3.8-flash-lite-tts">gemini-3.8-flash-lite-tts</option>
+                            <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="voiceSelect" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                            Prebuilt Voice
+                        </label>
+                        <select id="voiceSelect" class="w-full bg-inputbg text-sm text-white px-3 py-2.5 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 transition-colors">
+                            <option value="Aoede" selected>Aoede (Warm / Conversational)</option>
+                            <option value="Charon">Charon (Deep / Calm)</option>
+                            <option value="Fenrir">Fenrir (Authoritative)</option>
+                            <option value="Kore">Kore (Firm / Clear)</option>
+                            <option value="Puck">Puck (Upbeat / Energetic)</option>
+                            <option value="Callisto">Callisto (Expressive)</option>
+                            <option value="Ursa">Ursa (Friendly)</option>
+                            <option value="Leto">Leto (Smooth)</option>
+                            <option value="Orpheus">Orpheus (Confident)</option>
+                            <option value="Zephyr">Zephyr (Bright)</option>
+                            <option value="Pegasus">Pegasus (Soft)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="customVoiceInput" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                        Custom Voice Name / Speaker Tag <span class="text-gray-500 normal-case font-normal">(optional override)</span>
+                    </label>
+                    <input type="text" id="customVoiceInput" placeholder="e.g. CustomVoice01"
+                        class="w-full bg-inputbg text-sm text-white px-3 py-2 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 font-mono transition-colors">
+                </div>
+            </div>
+
+            <!-- Directing & Script Controls -->
+            <div class="bg-cardbg rounded-2xl p-4 border border-gray-800 shadow-md space-y-3">
+                <div>
+                    <label for="styleInput" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                        Style / Directing Cue <span class="text-gray-500 normal-case font-normal">(prepended to prompt)</span>
+                    </label>
+                    <input type="text" id="styleInput" placeholder="e.g. Warm, expressive and friendly tone" value="Warm, expressive and friendly tone"
+                        class="w-full bg-inputbg text-sm text-white px-3 py-2.5 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 transition-colors">
+                </div>
+
+                <div>
+                    <label for="textInput" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                        Script / Input Text
+                    </label>
+                    <textarea id="textInput" rows="4" placeholder="Type text here..."
+                        class="w-full bg-inputbg text-sm text-white p-3 rounded-xl border border-gray-700 focus:outline-none focus:border-cyan-500 transition-colors leading-relaxed">ሰላም! እንዴት ነህ? Let's test this speech generation with Gemini 3.8 Flash TTS! <sighs> It works remarkably fast.</textarea>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button id="generateBtn" class="w-full bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-gray-950 font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all duration-150 flex items-center justify-center space-x-2 text-base">
+                <span id="btnIcon">⚡</span>
+                <span id="btnText">Generate Speech</span>
+                <span id="btnSpinner" class="hidden">
+                    <svg class="animate-spin h-5 w-5 text-gray-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </span>
+            </button>
+
+            <!-- TTS Audio Output Card -->
+            <div id="outputSection" class="hidden bg-cardbg rounded-2xl p-4 border border-gray-800 shadow-md space-y-4">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                        <span>🔊</span> Audio Result
+                    </h2>
+                    <a id="downloadBtn" download="gemini_tts_output.wav" class="text-xs bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg border border-gray-700 font-medium transition-colors cursor-pointer flex items-center gap-1">
+                        ⬇️ Download WAV
+                    </a>
+                </div>
+
+                <!-- Visualizer Canvas -->
+                <div class="relative bg-inputbg rounded-xl p-2 h-20 flex items-center justify-center overflow-hidden border border-gray-800">
+                    <canvas id="visualizerCanvas" class="w-full h-full block"></canvas>
+                </div>
+
+                <!-- HTML5 Audio Control -->
+                <audio id="audioPlayer" controls class="w-full rounded-lg"></audio>
+            </div>
+        </section>
+
+        <!-- Message Box / Alerts -->
+        <div id="messageBox" class="hidden p-3.5 rounded-xl text-sm border"></div>
+
+        <!-- Debug & Payload Inspector Accordion -->
+        <div class="bg-cardbg rounded-2xl border border-gray-800 shadow-md overflow-hidden">
+            <button id="togglePayloadBtn" class="w-full px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center justify-between hover:bg-inputbg transition-colors">
+                <span>🔍 Protocol & Payload Inspector</span>
+                <span id="accordionIcon" class="text-sm">►</span>
+            </button>
+            <div id="payloadContent" class="hidden border-t border-gray-800 p-4 space-y-3">
+                <div>
+                    <p class="text-xs text-gray-400 mb-1 font-semibold">Active Endpoint / Socket:</p>
+                    <div id="endpointDisplay" class="bg-inputbg p-2 rounded-lg text-xs font-mono text-cyan-300 overflow-x-auto break-all">
+                        Ready
+                    </div>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 mb-1 font-semibold">Last Sent Frame / Payload:</p>
+                    <pre id="requestInspector" class="bg-inputbg p-3 rounded-lg text-xs font-mono text-gray-300 overflow-x-auto max-h-48 border border-gray-800">{}</pre>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 mb-1 font-semibold">Last Server Message / Status:</p>
+                    <pre id="responseInspector" class="bg-inputbg p-3 rounded-lg text-xs font-mono text-gray-300 overflow-x-auto max-h-48 border border-gray-800">None</pre>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Client-Side JavaScript Application -->
+    <script>
+        // Tab switching elements
+        const tabLiveBtn = document.getElementById('tabLiveBtn');
+        const tabTtsBtn = document.getElementById('tabTtsBtn');
+        const liveSection = document.getElementById('liveSection');
+        const ttsSection = document.getElementById('ttsSection');
+
+        // Common API elements
+        const apiKeyInput = document.getElementById('apiKey');
+        const toggleKeyBtn = document.getElementById('toggleKeyBtn');
+        const messageBox = document.getElementById('messageBox');
+        const togglePayloadBtn = document.getElementById('togglePayloadBtn');
+        const payloadContent = document.getElementById('payloadContent');
+        const accordionIcon = document.getElementById('accordionIcon');
+        const endpointDisplay = document.getElementById('endpointDisplay');
+        const requestInspector = document.getElementById('requestInspector');
+        const responseInspector = document.getElementById('responseInspector');
+
+        // Live Realtime Elements
+        const liveModelInput = document.getElementById('liveModelInput');
+        const liveVoiceSelect = document.getElementById('liveVoiceSelect');
+        const liveSystemPrompt = document.getElementById('liveSystemPrompt');
+        const liveStatusBadge = document.getElementById('liveStatusBadge');
+        const connectLiveBtn = document.getElementById('connectLiveBtn');
+        const disconnectLiveBtn = document.getElementById('disconnectLiveBtn');
+        const liveVisualizerCanvas = document.getElementById('liveVisualizerCanvas');
+        const liveChatBox = document.getElementById('liveChatBox');
+        const liveChatForm = document.getElementById('liveChatForm');
+        const liveTextInput = document.getElementById('liveTextInput');
+        const liveSendBtn = document.getElementById('liveSendBtn');
+        const interruptBtn = document.getElementById('interruptBtn');
+
+        // Batch TTS Elements
+        const refreshModelsBtn = document.getElementById('refreshModelsBtn');
+        const modelSelect = document.getElementById('modelSelect');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const customVoiceInput = document.getElementById('customVoiceInput');
+        const styleInput = document.getElementById('styleInput');
+        const textInput = document.getElementById('textInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const btnIcon = document.getElementById('btnIcon');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const outputSection = document.getElementById('outputSection');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const visualizerCanvas = document.getElementById('visualizerCanvas');
+
+        // Tab Navigation
+        tabLiveBtn.addEventListener('click', () => {
+            tabLiveBtn.className = "flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-white bg-cyan-600 shadow flex items-center justify-center gap-1.5";
+            tabTtsBtn.className = "flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1.5";
+            liveSection.classList.remove('hidden');
+            ttsSection.classList.add('hidden');
+            resizeCanvases();
+        });
+
+        tabTtsBtn.addEventListener('click', () => {
+            tabTtsBtn.className = "flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-white bg-cyan-600 shadow flex items-center justify-center gap-1.5";
+            tabLiveBtn.className = "flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1.5";
+            ttsSection.classList.remove('hidden');
+            liveSection.classList.add('hidden');
+            resizeCanvases();
+        });
+
+        // Auto Load API Key
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('gemini_tts_key');
+            if (savedKey) apiKeyInput.value = savedKey;
+            resizeCanvases();
+            window.addEventListener('resize', resizeCanvases);
+        });
+
+        apiKeyInput.addEventListener('change', () => {
+            const val = apiKeyInput.value.trim();
+            if (val) localStorage.setItem('gemini_tts_key', val);
+        });
+
+        function resizeCanvases() {
+            [visualizerCanvas, liveVisualizerCanvas].forEach(c => {
+                if (c && c.offsetWidth > 0) {
+                    c.width = c.offsetWidth * (window.devicePixelRatio || 1);
+                    c.height = c.offsetHeight * (window.devicePixelRatio || 1);
+                }
+            });
+        }
+
+        // Toggle Key Visibility
+        toggleKeyBtn.addEventListener('click', () => {
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                toggleKeyBtn.textContent = '🙈';
+            } else {
+                apiKeyInput.type = 'password';
+                toggleKeyBtn.textContent = '👁️';
+            }
+        });
+
+        // Toggle Inspector
+        togglePayloadBtn.addEventListener('click', () => {
+            const isHidden = payloadContent.classList.contains('hidden');
+            if (isHidden) {
+                payloadContent.classList.remove('hidden');
+                accordionIcon.textContent = '▼';
+            } else {
+                payloadContent.classList.add('hidden');
+                accordionIcon.textContent = '►';
+            }
+        });
+
+        function showMessage(text, type = 'error') {
+            messageBox.classList.remove('hidden', 'bg-red-950/80', 'border-red-700', 'text-red-200', 'bg-green-950/80', 'border-green-700', 'text-green-200');
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-950/80', 'border-red-700', 'text-red-200');
+            } else {
+                messageBox.classList.add('bg-green-950/80', 'border-green-700', 'text-green-200');
+            }
+            messageBox.textContent = text;
+        }
+
+        function hideMessage() {
+            messageBox.classList.add('hidden');
+        }
+
+        // =======================================================
+        // LIVE REALTIME WEBSOCKET & WEB AUDIO IMPLEMENTATION
+        // =======================================================
+        let liveWs = null;
+        let liveAudioCtx = null;
+        let liveAudioAnalyser = null;
+        let liveVisualizerAnimId = null;
+        let nextPlayTime = 0;
+        let activeAudioSources = [];
+        let currentBotBubble = null;
+
+        function setLiveStatus(state, label) {
+            const badge = liveStatusBadge;
+            badge.className = "flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-full border";
+            if (state === 'connected') {
+                badge.classList.add('text-green-400', 'border-green-700/80', 'bg-green-950/40');
+                badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500 pulse-indicator"></span> ' + label;
+                connectLiveBtn.disabled = true;
+                disconnectLiveBtn.disabled = false;
+                liveTextInput.disabled = false;
+                liveSendBtn.disabled = false;
+                interruptBtn.disabled = false;
+            } else if (state === 'connecting') {
+                badge.classList.add('text-yellow-400', 'border-yellow-700/80', 'bg-yellow-950/40');
+                badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-spin"></span> ' + label;
+                connectLiveBtn.disabled = true;
+                disconnectLiveBtn.disabled = false;
+            } else {
+                badge.classList.add('text-gray-400', 'border-gray-700', 'bg-inputbg');
+                badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-500"></span> Disconnected';
+                connectLiveBtn.disabled = false;
+                disconnectLiveBtn.disabled = true;
+                liveTextInput.disabled = true;
+                liveSendBtn.disabled = true;
+                interruptBtn.disabled = true;
+            }
+        }
+
+        function initLiveAudioContext() {
+            if (!liveAudioCtx) {
+                liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                liveAudioAnalyser = liveAudioCtx.createAnalyser();
+                liveAudioAnalyser.fftSize = 64;
+                liveAudioAnalyser.connect(liveAudioCtx.destination);
+            }
+            if (liveAudioCtx.state === 'suspended') {
+                liveAudioCtx.resume();
+            }
+            startLiveVisualizer();
+        }
+
+        function startLiveVisualizer() {
+            if (liveVisualizerAnimId) return;
+            const canvas = liveVisualizerCanvas;
+            const ctx = canvas.getContext('2d');
+            const dataArray = new Uint8Array(liveAudioAnalyser.frequencyBinCount);
+
+            function draw() {
+                liveVisualizerAnimId = requestAnimationFrame(draw);
+                liveAudioAnalyser.getByteFrequencyData(dataArray);
+                const w = canvas.width;
+                const h = canvas.height;
+                ctx.clearRect(0, 0, w, h);
+
+                const barWidth = (w / dataArray.length) * 1.5;
+                let x = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    const barHeight = (dataArray[i] / 255) * h;
+                    const grad = ctx.createLinearGradient(0, h, 0, 0);
+                    grad.addColorStop(0, '#06B6D4');
+                    grad.addColorStop(1, '#38BDF8');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(x, h - barHeight, barWidth - 2, barHeight);
+                    x += barWidth;
+                }
+            }
+            draw();
+        }
+
+        // Play incoming raw 16-bit PCM (24kHz Little Endian)
+        function playPcmChunk(base64Data) {
+            initLiveAudioContext();
+
+            const binaryStr = atob(base64Data);
+            const len = binaryStr.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+            }
+            
+            const int16Array = new Int16Array(bytes.buffer);
+            const float32Array = new Float32Array(int16Array.length);
+            for (let i = 0; i < int16Array.length; i++) {
+                float32Array[i] = int16Array[i] / 32768.0;
+            }
+
+            const audioBuffer = liveAudioCtx.createBuffer(1, float32Array.length, 24000);
+            audioBuffer.copyToChannel(float32Array, 0);
+
+            const source = liveAudioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(liveAudioAnalyser);
+
+            if (nextPlayTime < liveAudioCtx.currentTime) {
+                nextPlayTime = liveAudioCtx.currentTime;
+            }
+            source.start(nextPlayTime);
+            nextPlayTime += audioBuffer.duration;
+
+            activeAudioSources.push(source);
+            source.onended = () => {
+                const idx = activeAudioSources.indexOf(source);
+                if (idx !== -1) activeAudioSources.splice(idx, 1);
+            };
+        }
+
+        function stopLiveAudio() {
+            activeAudioSources.forEach(s => {
+                try { s.stop(); } catch(e) {}
+            });
+            activeAudioSources = [];
+            if (liveAudioCtx) {
+                nextPlayTime = liveAudioCtx.currentTime;
+            }
+        }
+
+        interruptBtn.addEventListener('click', stopLiveAudio);
+
+        // Chat Bubble Helpers
+        function appendChatMessage(role, text = '') {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex flex-col ${role === 'user' ? 'items-end' : 'items-start'} space-y-1`;
+            
+            const roleLabel = document.createElement('span');
+            roleLabel.className = 'text-[10px] text-gray-500 font-mono uppercase';
+            roleLabel.textContent = role === 'user' ? 'You' : `${liveModelInput.value} (Live)`;
+
+            const bubble = document.createElement('div');
+            bubble.className = role === 'user' 
+                ? 'bg-cyan-600 text-white px-3.5 py-2 rounded-2xl rounded-tr-sm text-sm max-w-[85%] break-words shadow'
+                : 'bg-inputbg border border-gray-700 text-gray-200 px-3.5 py-2 rounded-2xl rounded-tl-sm text-sm max-w-[85%] break-words shadow';
+            bubble.textContent = text;
+
+            msgDiv.appendChild(roleLabel);
+            msgDiv.appendChild(bubble);
+            liveChatBox.appendChild(msgDiv);
+            liveChatBox.scrollTop = liveChatBox.scrollHeight;
+            return bubble;
+        }
+
+        // Connect to Gemini Multimodal Live API via WebSocket
+        connectLiveBtn.addEventListener('click', () => {
+            hideMessage();
+            const apiKey = apiKeyInput.value.trim();
+            const rawModel = liveModelInput.value.trim();
+            const voice = liveVoiceSelect.value;
+            const systemPrompt = liveSystemPrompt.value.trim();
+
+            if (!apiKey) {
+                showMessage('Please enter your Gemini API Key.', 'error');
+                return;
+            }
+
+            if (!rawModel) {
+                showMessage('Please select or specify a model name.', 'error');
+                return;
+            }
+
+            localStorage.setItem('gemini_tts_key', apiKey);
+            initLiveAudioContext();
+
+            // Supported Live WebSocket Endpoint
+            const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+            endpointDisplay.textContent = `WSS wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent`;
+
+            setLiveStatus('connecting', 'Connecting...');
+
+            try {
+                liveWs = new WebSocket(wsUrl);
+
+                liveWs.onopen = () => {
+                    setLiveStatus('connecting', 'Configuring Setup...');
+
+                    // Clean model formatting (e.g., 'models/gemini-2.5-flash')
+                    const formattedModel = rawModel.startsWith('models/') ? rawModel : `models/${rawModel}`;
+
+                    // Gemini Multimodal Live BidiGenerateContentSetup Payload
+                    const setupPayload = {
+                        setup: {
+                            model: formattedModel,
+                            generationConfig: {
+                                responseModalities: ["AUDIO"],
+                                speechConfig: {
+                                    voiceConfig: {
+                                        prebuiltVoiceConfig: {
+                                            voiceName: voice
+                                        }
+                                    }
+                                }
+                            },
+                            systemInstruction: systemPrompt ? {
+                                parts: [{ text: systemPrompt }]
+                            } : undefined
+                        }
+                    };
+
+                    requestInspector.textContent = JSON.stringify(setupPayload, null, 2);
+                    liveWs.send(JSON.stringify(setupPayload));
+                };
+
+                liveWs.onmessage = async (event) => {
+                    let messageData = event.data;
+                    if (messageData instanceof Blob) {
+                        messageData = await messageData.text();
+                    }
+
+                    try {
+                        const parsed = JSON.parse(messageData);
+                        responseInspector.textContent = JSON.stringify(parsed, null, 2);
+
+                        // Handshake confirmation
+                        if (parsed.setupComplete) {
+                            setLiveStatus('connected', 'Live & Ready');
+                            showMessage(`Connected to ${rawModel} via Live WebSocket!`, 'success');
+                            return;
+                        }
+
+                        // Handle Server Responses (Audio PCM chunks & Transcriptions)
+                        if (parsed.serverContent) {
+                            const sc = parsed.serverContent;
+
+                            if (sc.interrupted) {
+                                stopLiveAudio();
+                            }
+
+                            if (sc.modelTurn?.parts) {
+                                for (const part of sc.modelTurn.parts) {
+                                    if (part.text) {
+                                        if (!currentBotBubble) {
+                                            currentBotBubble = appendChatMessage('model', '');
+                                        }
+                                        currentBotBubble.textContent += part.text;
+                                        liveChatBox.scrollTop = liveChatBox.scrollHeight;
+                                    }
+
+                                    if (part.inlineData && part.inlineData.data) {
+                                        playPcmChunk(part.inlineData.data);
+                                    }
+                                }
+                            }
+
+                            if (sc.outputTranscription?.text) {
+                                if (!currentBotBubble) {
+                                    currentBotBubble = appendChatMessage('model', '');
+                                }
+                                currentBotBubble.textContent += sc.outputTranscription.text;
+                                liveChatBox.scrollTop = liveChatBox.scrollHeight;
+                            }
+
+                            if (sc.turnComplete) {
+                                currentBotBubble = null;
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Failed to parse WS server frame:', err);
+                    }
+                };
+
+                liveWs.onerror = (err) => {
+                    console.error('WebSocket Error:', err);
+                    showMessage('WebSocket error occurred. Verify API Key and model accessibility.', 'error');
+                };
+
+                liveWs.onclose = (event) => {
+                    setLiveStatus('disconnected', 'Disconnected');
+                    stopLiveAudio();
+                    currentBotBubble = null;
+                    if (event.code !== 1000) {
+                        showMessage(`Session closed (Code: ${event.code}${event.reason ? ' - ' + event.reason : ''}).`, 'error');
+                    }
+                };
+
+            } catch (err) {
+                setLiveStatus('disconnected', 'Disconnected');
+                showMessage(`Could not connect: ${err.message}`, 'error');
+            }
+        });
+
+        // Disconnect Live Session
+        disconnectLiveBtn.addEventListener('click', () => {
+            if (liveWs) {
+                liveWs.close(1000, "User clicked Disconnect");
+            }
+            stopLiveAudio();
+            setLiveStatus('disconnected', 'Disconnected');
+        });
+
+        // Send Text Prompt over Live WebSocket
+        liveChatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = liveTextInput.value.trim();
+            if (!text || !liveWs || liveWs.readyState !== WebSocket.OPEN) return;
+
+            appendChatMessage('user', text);
+            liveTextInput.value = '';
+            currentBotBubble = null;
+
+            // Stop any previous speech playback on new user turn
+            stopLiveAudio();
+
+            // Official BidiGenerateContentClientMessage turn frame
+            const clientMsg = {
+                clientContent: {
+                    turns: [
+                        {
+                            role: "user",
+                            parts: [{ text: text }]
+                        }
+                    ],
+                    turnComplete: true
+                }
+            };
+
+            requestInspector.textContent = JSON.stringify(clientMsg, null, 2);
+            liveWs.send(JSON.stringify(clientMsg));
+        });
+
+        // =======================================================
+        // BATCH TTS (REST GENERATECONTENT) IMPLEMENTATION
+        // =======================================================
+        let audioCtx, analyser, sourceNode, animFrameId;
+        const canvasCtx = visualizerCanvas.getContext('2d');
+
+        // Fetch Live Models dynamically
+        refreshModelsBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showMessage('Enter an API key to fetch live models.', 'error');
+                return;
+            }
+
+            refreshModelsBtn.textContent = '⏳ Fetching...';
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+                const data = await res.json();
+
+                if (data.models && data.models.length > 0) {
+                    modelSelect.innerHTML = '';
+                    const ttsModels = data.models.filter(m => m.name.includes('tts') || m.name.includes('flash') || m.name.includes('audio'));
+                    const modelsToDisplay = ttsModels.length > 0 ? ttsModels : data.models;
+
+                    modelsToDisplay.forEach(m => {
+                        const cleanName = m.name.replace('models/', '');
+                        const opt = document.createElement('option');
+                        opt.value = cleanName;
+                        opt.textContent = cleanName;
+                        if (cleanName === 'gemini-3.8-flash-tts') opt.selected = true;
+                        modelSelect.appendChild(opt);
+                    });
+
+                    showMessage(`Loaded ${modelsToDisplay.length} models dynamically from API.`, 'success');
+                } else {
+                    throw new Error(data.error?.message || 'No models returned from API.');
+                }
+            } catch (err) {
+                showMessage(`Failed to fetch models: ${err.message}`, 'error');
+            } finally {
+                refreshModelsBtn.textContent = '🔄 Fetch Models';
+            }
+        });
+
+        function base64ToWavBlob(base64Data, sampleRate = 24000) {
+            const binaryString = window.atob(base64Data);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            if (len > 4 && String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) === 'RIFF') {
+                return new Blob([bytes.buffer], { type: 'audio/wav' });
+            }
+
+            const pcmBuffer = bytes.buffer;
+            const wavHeader = createWavHeader(pcmBuffer.byteLength, sampleRate, 1, 16);
+            const wavBuffer = new Uint8Array(wavHeader.byteLength + pcmBuffer.byteLength);
+            
+            wavBuffer.set(new Uint8Array(wavHeader), 0);
+            wavBuffer.set(new Uint8Array(pcmBuffer), wavHeader.byteLength);
+
+            return new Blob([wavBuffer.buffer], { type: 'audio/wav' });
+        }
+
+        function createWavHeader(dataSize, sampleRate = 24000, numChannels = 1, bitsPerSample = 16) {
+            const buffer = new ArrayBuffer(44);
+            const view = new DataView(buffer);
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
+            view.setUint16(32, numChannels * (bitsPerSample / 8), true);
+            view.setUint16(34, bitsPerSample, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+            return buffer;
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        function setupAudioVisualizer() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (!sourceNode) {
+                sourceNode = audioCtx.createMediaElementSource(audioPlayer);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 64;
+                sourceNode.connect(analyser);
+                analyser.connect(audioCtx.destination);
+            }
+
+            drawVisualizer();
+        }
+
+        function drawVisualizer() {
+            if (!analyser) return;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            const render = () => {
+                animFrameId = requestAnimationFrame(render);
+                analyser.getByteFrequencyData(dataArray);
+
+                const width = visualizerCanvas.width;
+                const height = visualizerCanvas.height;
+                canvasCtx.clearRect(0, 0, width, height);
+
+                const barWidth = (width / bufferLength) * 1.5;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const barHeight = (dataArray[i] / 255) * height;
+                    const gradient = canvasCtx.createLinearGradient(0, height, 0, 0);
+                    gradient.addColorStop(0, '#06B6D4');
+                    gradient.addColorStop(1, '#67E8F9');
+
+                    canvasCtx.fillStyle = gradient;
+                    canvasCtx.fillRect(x, height - barHeight, barWidth - 2, barHeight);
+                    x += barWidth;
+                }
+            };
+            render();
+        }
+
+        audioPlayer.addEventListener('play', () => {
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            setupAudioVisualizer();
+        });
+
+        audioPlayer.addEventListener('pause', () => {
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+        });
+
+        // Standard Batch TTS API Call
+        generateBtn.addEventListener('click', async () => {
+            hideMessage();
+
+            const apiKey = apiKeyInput.value.trim();
+            const model = modelSelect.value;
+            const selectedVoice = customVoiceInput.value.trim() || voiceSelect.value;
+            const style = styleInput.value.trim();
+            const text = textInput.value.trim();
+
+            if (!apiKey) {
+                showMessage('Please enter your Gemini API Key.', 'error');
+                return;
+            }
+
+            if (!text) {
+                showMessage('Please enter script text to generate audio.', 'error');
+                return;
+            }
+
+            localStorage.setItem('gemini_tts_key', apiKey);
+
+            generateBtn.disabled = true;
+            btnIcon.classList.add('hidden');
+            btnText.textContent = 'Generating Audio...';
+            btnSpinner.classList.remove('hidden');
+
+            const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            endpointDisplay.textContent = `POST https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+            const fullTextPrompt = style ? `[Tone/Style Instructions: ${style}]\n\n${text}` : text;
+
+            const payload = {
+                contents: [
+                    {
+                        parts: [
+                            { text: fullTextPrompt }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: selectedVoice
+                            }
+                        }
+                    }
+                }
+            };
+
+            requestInspector.textContent = JSON.stringify(payload, null, 2);
+            responseInspector.textContent = 'Sending request to Google Gemini API...';
+
+            try {
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                responseInspector.textContent = JSON.stringify({
+                    status: response.status,
+                    candidates: data.candidates ? data.candidates.length : 0,
+                    usageMetadata: data.usageMetadata || "N/A",
+                    fullResponse: data
+                }, null, 2);
+
+                const candidatePart = data.candidates?.[0]?.content?.parts?.[0];
+                let audioBase64 = null;
+
+                if (candidatePart?.inlineData?.data) {
+                    audioBase64 = candidatePart.inlineData.data;
+                } else if (candidatePart?.audioData) {
+                    audioBase64 = candidatePart.audioData;
+                }
+
+                if (!audioBase64) {
+                    throw new Error('No audio data payload returned in the model response.');
+                }
+
+                const wavBlob = base64ToWavBlob(audioBase64, 24000);
+                const audioUrl = URL.createObjectURL(wavBlob);
+
+                audioPlayer.src = audioUrl;
+                downloadBtn.href = audioUrl;
+
+                outputSection.classList.remove('hidden');
+                showMessage('Audio generated successfully!', 'success');
+
+                audioPlayer.play().catch(() => {});
+
+            } catch (err) {
+                console.error("TTS Generation Error:", err);
+                showMessage(err.message || 'Failed to generate audio. Check console/API key.', 'error');
+                responseInspector.textContent = `Error: ${err.message}`;
+            } finally {
+                generateBtn.disabled = false;
+                btnIcon.classList.remove('hidden');
+                btnText.textContent = 'Generate Speech';
+                btnSpinner.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
