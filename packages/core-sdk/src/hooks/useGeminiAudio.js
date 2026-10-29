@@ -6,10 +6,34 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
     const isMicActiveRef = useRef(isMicActive);
     const activeSourcesRef = useRef(new Set());
     const scheduledTimersRef = useRef([]);
+    const scheduledTimelineRef = useRef([]);
 
     useEffect(() => {
         isMicActiveRef.current = isMicActive;
     }, [isMicActive]);
+
+    const resyncActiveAudioState = () => {
+        if (!audioContextRef.current) return null;
+        const now = audioContextRef.current.currentTime;
+        // Prune expired timeline entries older than 1 second
+        scheduledTimelineRef.current = scheduledTimelineRef.current.filter(item => item.end > now - 1.0);
+        const activeEntry = scheduledTimelineRef.current.find(item => now >= item.start && now < item.end);
+        if (activeEntry && activeEntry.onStart) {
+            activeEntry.onStart();
+            return activeEntry.target;
+        }
+        return null;
+    };
+
+    useEffect(() => {
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                resyncActiveAudioState();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, []);
 
     const playAudioChunk = (base64Data, options = null) => {
         if (!base64Data) return;
@@ -67,25 +91,39 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
 
         const scheduledStartTime = nextStartTimeRef.current;
 
-        // 5. Hardware-Locked Callback Synchronization
-        if (options?.onStart) {
-            const delayMs = Math.max(0, (scheduledStartTime - currentTime) * 1000);
-            console.log(`⏱️ [AudioClock] Scheduling onStart for target [${options.id || 'chunk'}] in ${delayMs.toFixed(1)}ms (AudioContext: ${currentTime.toFixed(3)}s -> ${scheduledStartTime.toFixed(3)}s)`);
-            const timerId = setTimeout(() => {
-                console.log(`⚡ [AudioClock] Fired hardware-locked onStart for [${options.id || 'chunk'}] at AudioContext time ${ctx.currentTime.toFixed(3)}s`);
-                options.onStart();
-            }, delayMs);
-            scheduledTimersRef.current.push(timerId);
+        const chunkDuration = buffer.duration;
+        const scheduledEndTime = scheduledStartTime + chunkDuration;
+
+        // 5. Hardware-Locked Callback Synchronization & Timeline Entry
+        if (options?.onStart || options?.target || options?.id) {
+            const targetCoord = options.target || options.id || null;
+            scheduledTimelineRef.current.push({
+                start: scheduledStartTime,
+                end: scheduledEndTime,
+                target: targetCoord,
+                onStart: options.onStart
+            });
+
+            if (options.onStart) {
+                const delayMs = Math.max(0, (scheduledStartTime - currentTime) * 1000);
+                console.log(`⏱️ [AudioClock] Scheduling onStart for target [${targetCoord || 'chunk'}] in ${delayMs.toFixed(1)}ms (AudioContext: ${currentTime.toFixed(3)}s -> ${scheduledStartTime.toFixed(3)}s)`);
+                const timerId = setTimeout(() => {
+                    console.log(`⚡ [AudioClock] Fired hardware-locked onStart for [${targetCoord || 'chunk'}] at AudioContext time ${ctx.currentTime.toFixed(3)}s`);
+                    options.onStart();
+                }, delayMs);
+                scheduledTimersRef.current.push(timerId);
+            }
         }
 
         source.start(scheduledStartTime);
-        nextStartTimeRef.current += buffer.duration;
+        nextStartTimeRef.current += chunkDuration;
     };
 
     const stopAudio = () => {
         const timerCount = scheduledTimersRef.current.length;
         scheduledTimersRef.current.forEach(t => clearTimeout(t));
         scheduledTimersRef.current = [];
+        scheduledTimelineRef.current = [];
 
         const sourceCount = activeSourcesRef.current.size;
         activeSourcesRef.current.forEach(source => {
@@ -179,5 +217,5 @@ export const useGeminiAudio = (wsRef, isMicActive) => {
         };
     }, [isMicActive, wsRef]);
 
-    return { playAudioChunk, stopAudio };
+    return { playAudioChunk, stopAudio, resyncActiveAudioState };
 };
