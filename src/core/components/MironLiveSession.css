@@ -22,6 +22,21 @@
 }
 .ml-header-left, .ml-header-right {
     display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    min-width: 36px;
+}
+.ml-header-center {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    flex: 1; min-width: 0;
+}
+.ml-header-center .ml-avatar-mini-container {
+    width: 36px; height: 36px; position: relative; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.ml-header-center .ml-speaking-eq-pill {
+    bottom: -5px; height: 10px; padding: 1px 4px; gap: 2px;
+}
+.ml-header-center .ml-speaking-eq-pill .ml-eq-bar {
+    width: 2px;
 }
 
 /* Unified Reading Header Controls */
@@ -180,17 +195,30 @@
     position: relative; z-index: 10;
 }
 
-/* Avatar Strip: Compact Top bar */
-.ml-avatar-strip {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    padding: 8px 12px; flex-shrink: 0; z-index: 20;
-    transition: all 0.3s ease;
+/* Dedicated Page Space Collapse Button */
+.ml-page-collapse-btn {
+    position: absolute; bottom: 20px; left: 20px; z-index: 25;
+    background: rgba(22, 22, 28, 0.88); border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #ccc; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 0.95rem;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.ml-avatar-strip.course_select {
-    padding-top: 14px;
+.ml-page-collapse-btn:hover {
+    background: rgba(66, 215, 184, 0.15);
+    border-color: var(--accent-teal, #42d7b8);
+    color: var(--accent-teal, #42d7b8);
+    transform: scale(1.08);
+    box-shadow: 0 8px 25px rgba(66, 215, 184, 0.3);
 }
+.ml-page-collapse-btn:active {
+    transform: scale(0.93);
+}
+
 .ml-avatar-mini-container {
-    position: relative; width: 48px; height: 48px; border-radius: 50%;
+    position: relative; width: 36px; height: 36px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
 }
 
@@ -870,8 +898,14 @@
     .ml-toc-accordion {
         grid-template-columns: 1fr;
     }
-    .ml-avatar-strip:not(.course_select) {
-        display: none;
+    .ml-page-collapse-btn {
+        bottom: 14px; left: 14px; width: 36px; height: 36px; font-size: 0.85rem;
+    }
+    .ml-header-center .ml-avatar-mini-container {
+        width: 30px; height: 30px;
+    }
+    .ml-header-center {
+        gap: 8px;
     }
     .ml-toc-book-showcase {
         flex: none;
