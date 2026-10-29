@@ -1233,9 +1233,16 @@
 
 /* REAL-TIME DYNAMIC HIGHLIGHT GLOW (CSS CUSTOM HIGHLIGHT API + BLOCK FOCUS) */
 ::highlight(miron-active-sentence) {
-    background-color: rgba(66, 215, 184, 0.38);
+    background-color: rgba(66, 215, 184, 0.45);
     color: #ffffff;
-    text-decoration: underline 2px rgba(66, 215, 184, 0.8);
+    text-decoration: underline 2px rgba(66, 215, 184, 0.95);
+    text-underline-offset: 3px;
+}
+
+.theme-light ::highlight(miron-active-sentence) {
+    background-color: rgba(20, 160, 133, 0.35);
+    color: #111827;
+    text-decoration: underline 2px #14a085;
     text-underline-offset: 3px;
 }
 
