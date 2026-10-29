@@ -1231,7 +1231,28 @@
     color: var(--text-primary-dark);
 }
 
-/* REAL-TIME DYNAMIC HIGHLIGHT GLOW */
+/* REAL-TIME DYNAMIC HIGHLIGHT GLOW (CSS CUSTOM HIGHLIGHT API + BLOCK FOCUS) */
+::highlight(miron-active-sentence) {
+    background-color: rgba(66, 215, 184, 0.38);
+    color: #ffffff;
+    text-decoration: underline 2px rgba(66, 215, 184, 0.8);
+    text-underline-offset: 3px;
+}
+
+.block-target-wrapper {
+    transition: background-color 0.28s ease, border-color 0.28s ease, box-shadow 0.28s ease;
+    border-radius: 6px;
+    border-left: 3px solid transparent;
+    padding-left: 6px;
+    margin-left: -9px;
+}
+
+.block-target-wrapper.miron-block-active {
+    background-color: rgba(66, 215, 184, 0.06);
+    border-left-color: var(--accent-teal, #42d7b8);
+    box-shadow: 0 0 20px rgba(66, 215, 184, 0.12);
+}
+
 mark.miron-live-highlight {
     background: rgba(66, 215, 184, 0.35) !important;
     color: inherit !important;
