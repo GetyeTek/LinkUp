@@ -1,0 +1,14 @@
+{
+  "name": "autocomplete-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers AI edge predictive autocomplete engine",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --config wrangler.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "^4.107.0"
+  }
+}
