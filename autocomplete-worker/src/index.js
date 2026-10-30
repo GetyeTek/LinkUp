@@ -48,6 +48,59 @@ export default {
       }
     }
 
+    // === ROUTE: /transform (Native Android In-Place Text Editor) ===
+    if (url.pathname === "/transform") {
+      let text = "";
+      let mode = "fix";
+
+      try {
+        const body = await request.json();
+        text = (body.text || "").trim();
+        mode = (body.mode || "fix").toLowerCase();
+      } catch {
+        text = (await request.text()).trim();
+      }
+
+      if (!text) {
+        return new Response("", {
+          status: 200,
+          headers: { ...CORS_HEADERS, "Content-Type": "text/plain; charset=utf-8" }
+        });
+      }
+
+      const instruction = mode === "expand"
+        ? "You are a prompt expander and creative writing assistant. Expand the provided text into a vivid, detailed, high-quality prompt while keeping the original core concept intact. Output ONLY the expanded text with no preamble, quotes, or markdown."
+        : "You are an expert copyeditor. Fix all typos, spelling mistakes, awkward grammar, and punctuation while strictly preserving the author's original meaning, voice, and casual nuances. Output ONLY the corrected text. Do NOT add conversational filler, explanations, preface, or quotation marks.";
+
+      try {
+        const aiResponse = await env.AI.run("@cf/meta/llama-3.2-3b-instruct", {
+          messages: [
+            { role: "system", content: instruction },
+            { role: "user", content: text }
+          ],
+          max_tokens: 600,
+          temperature: 0.3
+        });
+
+        let result = (aiResponse && aiResponse.response) ? aiResponse.response.trim() : text;
+        result = result.replace(/^["'`]+|["'`]+$/g, "");
+        result = result.replace(/^(Here is the (corrected|polished|revised) text:?\s*)/i, "").trim();
+
+        return new Response(result, {
+          status: 200,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "text/plain; charset=utf-8"
+          }
+        });
+      } catch (err) {
+        return new Response(text, {
+          status: 500,
+          headers: { ...CORS_HEADERS, "Content-Type": "text/plain; charset=utf-8" }
+        });
+      }
+    }
+
     try {
       let body = {};
       try {
