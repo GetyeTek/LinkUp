@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Text Studio - Edge Autocomplete</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card: #131b2e;
+      --card-border: #1e293b;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --ghost: #64748b;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--accent), #2563eb);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: #fff;
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .badge {
+      background: #1e293b;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      background: #0b1120;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    .editor-wrapper {
+      position: relative;
+      width: 100%;
+      height: 340px;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      background: #070a13;
+      overflow: hidden;
+    }
+
+    .editor-wrapper:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+    }
+
+    .editor-mirror,
+    .editor-input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+      font-size: 1.05rem;
+      line-height: 1.6;
+      padding: 1.25rem;
+      box-sizing: border-box;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-y: auto;
+    }
+
+    .editor-mirror {
+      pointer-events: none;
+      z-index: 1;
+      color: transparent;
+      user-select: none;
+    }
+
+    .ghost-text {
+      color: var(--ghost);
+      font-style: italic;
+      background: rgba(100, 116, 139, 0.12);
+      border-radius: 4px;
+      padding: 0 2px;
+      pointer-events: none;
+    }
+
+    .editor-input {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      resize: none;
+      outline: none;
+      z-index: 2;
+      caret-color: var(--accent);
+    }
+
+    .hud-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .shortcuts-pill {
+      display: inline-flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    kbd {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 0.15rem 0.4rem;
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-family: monospace;
+    }
+
+    .latency-pill {
+      font-family: monospace;
+      font-weight: 600;
+      color: var(--success);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button {
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 0.65rem 1.25rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary {
+      background: #1e293b;
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">⚡</div>
+        <h1>Ghost Text Studio</h1>
+      </div>
+      <span class="badge">Llama 3.2 Edge Autocomplete</span>
+    </header>
+
+    <div class="card">
+      <div class="settings-grid">
+        <div>
+          <label for="workerUrl">Edge Worker URL</label>
+          <input type="text" id="workerUrl" placeholder="https://autocomplete-worker.your-subdomain.workers.dev" />
+        </div>
+        <div>
+          <label for="modelSelect">Speed Profile</label>
+          <select id="modelSelect">
+            <option value="1b" selected>Llama 3.2 1B (Ultra Fast: ~70ms)</option>
+            <option value="3b">Llama 3.2 3B (Higher Precision: ~150ms)</option>
+          </select>
+        </div>
+        <div>
+          <label for="authKey">Auth Key (Optional)</label>
+          <input type="text" id="authKey" placeholder="Optional token" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="editor-wrapper">
+        <div id="editorMirror" class="editor-mirror"><span id="renderedText"></span><span id="ghostSpan" class="ghost-text"></span></div>
+        <textarea id="editorInput" class="editor-input" placeholder="Start typing a sentence, prompt, or code description here..." spellcheck="false"></textarea>
+      </div>
+
+      <div class="hud-bar">
+        <div class="shortcuts-pill">
+          <span>Accept: <kbd>Tab</kbd> or <kbd>→</kbd></span>
+          <span>Dismiss: <kbd>Esc</kbd></span>
+        </div>
+        <div>
+          <span id="statusIndicator">Idle</span>
+          <span id="latencyDisplay" class="latency-pill" style="margin-left: 0.75rem;"></span>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button id="sampleBtn" class="btn-secondary">Insert Sample Prompt</button>
+        <button id="clearBtn" class="btn-secondary">Clear Editor</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const workerUrlInput = document.getElementById("workerUrl");
+    const modelSelect = document.getElementById("modelSelect");
+    const authKeyInput = document.getElementById("authKey");
+    const editorInput = document.getElementById("editorInput");
+    const editorMirror = document.getElementById("editorMirror");
+    const renderedText = document.getElementById("renderedText");
+    const ghostSpan = document.getElementById("ghostSpan");
+    const statusIndicator = document.getElementById("statusIndicator");
+    const latencyDisplay = document.getElementById("latencyDisplay");
+    const sampleBtn = document.getElementById("sampleBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    let currentGhost = "";
+    let debounceTimer = null;
+    let inFlightAbort = null;
+
+    // Load saved preferences
+    workerUrlInput.value = localStorage.getItem("cf_autocomplete_url") || "";
+    authKeyInput.value = localStorage.getItem("cf_autocomplete_key") || "";
+
+    workerUrlInput.addEventListener("change", () => {
+      localStorage.setItem("cf_autocomplete_url", workerUrlInput.value.trim());
+    });
+
+    authKeyInput.addEventListener("change", () => {
+      localStorage.setItem("cf_autocomplete_key", authKeyInput.value.trim());
+    });
+
+    // Sync scroll
+    editorInput.addEventListener("scroll", () => {
+      editorMirror.scrollTop = editorInput.scrollTop;
+      editorMirror.scrollLeft = editorInput.scrollLeft;
+    });
+
+    function clearGhost() {
+      currentGhost = "";
+      ghostSpan.textContent = "";
+      statusIndicator.textContent = "Idle";
+    }
+
+    function syncMirror() {
+      renderedText.textContent = editorInput.value;
+    }
+
+    editorInput.addEventListener("input", () => {
+      syncMirror();
+      clearGhost();
+
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (inFlightAbort) inFlightAbort.abort();
+
+      const text = editorInput.value;
+      if (!text.trim()) return;
+
+      statusIndicator.textContent = "Waiting for pause...";
+
+      debounceTimer = setTimeout(() => {
+        fetchPrediction(text);
+      }, 260);
+    });
+
+    async function fetchPrediction(text) {
+      const endpoint = workerUrlInput.value.trim();
+      if (!endpoint) {
+        statusIndicator.textContent = "Enter Worker URL above";
+        return;
+      }
+
+      statusIndicator.textContent = "Predicting...";
+      inFlightAbort = new AbortController();
+
+      const startTime = performance.now();
+
+      try {
+        const headers = { "Content-Type": "application/json" };
+        const key = authKeyInput.value.trim();
+        if (key) headers["X-Auth-Key"] = key;
+
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify({
+            text: text,
+            model: modelSelect.value
+          }),
+          signal: inFlightAbort.signal
+        });
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+
+        const data = await res.json();
+        const elapsed = Math.round(performance.now() - startTime);
+
+        if (data.prediction && editorInput.value === text) {
+          currentGhost = data.prediction;
+          ghostSpan.textContent = currentGhost;
+          statusIndicator.textContent = "Suggestion ready";
+          latencyDisplay.textContent = `${elapsed}ms (Edge: ${data.inference_ms || 0}ms)`;
+        } else {
+          clearGhost();
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          statusIndicator.textContent = "Failed";
+          console.error("Autocomplete error:", err);
+        }
+      }
+    }
+
+    // Tab / Arrow acceptance handler
+    editorInput.addEventListener("keydown", (e) => {
+      const isAtEnd = editorInput.selectionStart === editorInput.value.length;
+
+      if ((e.key === "Tab" || (e.key === "ArrowRight" && isAtEnd)) && currentGhost) {
+        e.preventDefault();
+        const insertText = currentGhost;
+        editorInput.value += insertText;
+        syncMirror();
+        clearGhost();
+        // Fire fresh event for continued predictive typing
+        editorInput.dispatchEvent(new Event("input"));
+        return;
+      }
+
+      if (e.key === "Escape" && currentGhost) {
+        e.preventDefault();
+        clearGhost();
+        return;
+      }
+    });
+
+    sampleBtn.addEventListener("click", () => {
+      editorInput.value = "Create a modern landing page for an AI robotics company that specializes in";
+      syncMirror();
+      editorInput.focus();
+      editorInput.dispatchEvent(new Event("input"));
+    });
+
+    clearBtn.addEventListener("click", () => {
+      editorInput.value = "";
+      syncMirror();
+      clearGhost();
+      latencyDisplay.textContent = "";
+      editorInput.focus();
+    });
+  </script>
+</body>
+</html>
