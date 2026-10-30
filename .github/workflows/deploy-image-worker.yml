@@ -1,0 +1,35 @@
+name: Deploy Image Generation Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - conduit-dev
+    paths:
+      - 'image-worker/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/conduit-dev' || github.event_name == 'workflow_dispatch'
+    name: Deploy to Cloudflare Workers
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Worker Dependencies
+        run: npm install
+        working-directory: image-worker
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: image-worker
+          wranglerVersion: '4.107.0'
+          command: deploy --config wrangler.jsonc
