@@ -26,6 +26,12 @@ jobs:
         run: npm install
         working-directory: flux-image-worker
 
+      - name: Ensure R2 Bucket Exists
+        run: npx wrangler r2 bucket create linkup-course-images || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        working-directory: flux-image-worker
+
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
