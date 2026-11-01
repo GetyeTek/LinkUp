@@ -37,7 +37,7 @@ function getSupabaseConfig(env, body = {}) {
 async function generateSingleImage(ai, prompt) {
   const result = await ai.run('@cf/black-forest-labs/flux-1-schnell', {
     prompt: prompt,
-    num_steps: 4,
+    steps: 4,
   });
 
   if (result && result.image) {
