@@ -287,6 +287,45 @@
       border-color: var(--success);
     }
 
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .icon-btn {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.72rem;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+      touch-action: manipulation;
+      flex-shrink: 0;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.94);
+    }
+
+    .icon-btn:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .icon-btn.copied {
+      background: var(--success);
+      color: #fff;
+      border-color: var(--success);
+    }
+
     /* Hierarchy visual indents */
     .level-0 { margin-left: 0px; border-left: 3px solid var(--level-0); }
     .level-1 { margin-left: 12px; border-left: 3px solid var(--level-1); }
@@ -348,7 +387,10 @@
       </svg>
       <span>Course Section Slicer</span>
     </div>
-    <label class="badge" style="cursor:pointer;" for="fileInput">Change ZIP</label>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span id="cacheBadge" class="badge hidden" style="color:var(--success); border-color:rgba(16,185,129,0.3);">Saved</span>
+      <label class="badge" style="cursor:pointer;" for="fileInput">Change ZIP</label>
+    </div>
     <input type="file" id="fileInput" accept=".zip,.txt,.json" class="hidden">
   </header>
 
@@ -410,22 +452,60 @@
     const activeBookTitle = document.getElementById('activeBookTitle');
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toastMsg');
+    const cacheBadge = document.getElementById('cacheBadge');
 
-    // Handle ZIP Upload
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    // --- IndexedDB Persistence Engine ---
+    const DB_NAME = 'CourseSectionSlicerDB';
+    const DB_STORE = 'zip_cache';
 
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function cacheZip(fileName, arrayBuffer) {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).put({ fileName, buffer: arrayBuffer }, 'active_file');
+      } catch (e) {
+        console.warn('Could not cache file:', e);
+      }
+    }
+
+    async function getCachedZip() {
+      try {
+        const db = await openDB();
+        return new Promise((resolve) => {
+          const tx = db.transaction(DB_STORE, 'readonly');
+          const req = tx.objectStore(DB_STORE).get('active_file');
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function processFilePayload(fileOrBuffer, fileName, saveToCache = true) {
       showToast("Loading & unpacking courses...");
-
       try {
         courses = [];
-        if (file.name.endsWith('.zip')) {
-          const zip = await JSZip.loadAsync(file);
-          const entries = Object.keys(zip.files);
+        let buffer;
+        if (fileOrBuffer instanceof ArrayBuffer) {
+          buffer = fileOrBuffer;
+        } else {
+          buffer = await fileOrBuffer.arrayBuffer();
+        }
 
+        if (fileName.endsWith('.zip')) {
+          const zip = await JSZip.loadAsync(buffer);
+          const entries = Object.keys(zip.files);
           for (const name of entries) {
-            // Ignore macOS metadata & non-text files
             if (name.includes('__MACOSX') || name.startsWith('.') || (!name.endsWith('.txt') && !name.endsWith('.json'))) {
               continue;
             }
@@ -440,23 +520,46 @@
             }
           }
         } else {
-          // Direct JSON / TXT file upload
-          const content = await file.text();
-          const parsed = JSON.parse(content);
+          const text = new TextDecoder().decode(buffer);
+          const parsed = JSON.parse(text);
           if (parsed.book && parsed.pages) {
-            courses.push({ filename: file.name, data: parsed });
+            courses.push({ filename: fileName, data: parsed });
           }
         }
 
         if (courses.length === 0) {
-          alert("No valid course JSON files found in this archive.");
+          alert("No valid course JSON files found.");
           return;
+        }
+
+        if (saveToCache) {
+          await cacheZip(fileName, buffer);
+        }
+
+        if (cacheBadge) {
+          cacheBadge.classList.remove('hidden');
+          cacheBadge.textContent = fileName.length > 12 ? fileName.slice(0, 10) + '…' : fileName;
         }
 
         renderBookList();
       } catch (err) {
-        alert("Error reading file: " + err.message);
+        alert("Error loading file: " + err.message);
       }
+    }
+
+    // Auto-restore file from cache on reload
+    window.addEventListener('DOMContentLoaded', async () => {
+      const cached = await getCachedZip();
+      if (cached && cached.buffer) {
+        await processFilePayload(cached.buffer, cached.fileName, false);
+        showToast(`Restored "${cached.fileName}"`);
+      }
+    });
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      await processFilePayload(file, file.name, true);
     });
 
     function renderBookList() {
@@ -638,13 +741,22 @@
               ${node.children && node.children.length ? `<span>•</span><span>${node.children.length} sub-items</span>` : ''}
             </div>
           </div>
-          <button class="copy-btn" id="btn-${idx}" onclick="copySectionJSON(event, ${idx})">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <span>Copy</span>
-          </button>
+          <div class="btn-group">
+            <button class="copy-btn" id="btn-${idx}" onclick="copySectionJSON(event, ${idx}, 0)" title="Copy Section JSON">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              <span>Copy</span>
+            </button>
+            <button class="icon-btn" id="btn-plus-${idx}" onclick="copySectionJSON(event, ${idx}, 1)" title="Copy Section + 1 Next Page (Spillover Tail)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>+1p</span>
+            </button>
+          </div>
         `;
         tocTree.appendChild(card);
       });
@@ -663,9 +775,9 @@
     }
 
     // --- Action: Slice & Copy JSON ---
-    async function copySectionJSON(event, entryIdx) {
+    async function copySectionJSON(event, entryIdx, extraPages = 0) {
       event.stopPropagation();
-      const btn = document.getElementById(`btn-${entryIdx}`);
+      const btn = document.getElementById(extraPages > 0 ? `btn-plus-${entryIdx}` : `btn-${entryIdx}`);
       const entry = flatTOC[entryIdx];
       const node = entry.node;
       const pages = activeCourse.data.pages || [];
@@ -682,7 +794,12 @@
         endIdx = Math.min(startIdx + 1, pages.length);
       }
       const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
-      const safeEnd = Math.max(safeStart + 1, endIdx);
+      let safeEnd = Math.max(safeStart + 1, endIdx);
+
+      // Append spillover page(s) if requested
+      if (extraPages > 0) {
+        safeEnd = Math.min(pages.length, safeEnd + extraPages);
+      }
 
       // 3. Slice all encompassed pages
       const slicedPages = pages.slice(safeStart, safeEnd);
@@ -696,7 +813,8 @@
           page_offset: book.page_offset,
           selected_section: node.title,
           section_start_page: node.page,
-          section_end_page: boundaryNode ? boundaryNode.page : (pages[pages.length - 1]?.page_number || "End")
+          section_end_page: boundaryNode ? boundaryNode.page : (pages[pages.length - 1]?.page_number || "End"),
+          extra_spillover_pages: extraPages
         },
         section_node: node,
         page_count: slicedPages.length,
@@ -726,22 +844,17 @@
 
         // Visual button feedback
         btn.classList.add('copied');
-        btn.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>Copied!</span>
-        `;
+        const origHTML = btn.innerHTML;
+        btn.innerHTML = extraPages > 0
+          ? `<span>✓ +1p</span>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Copied!</span>`;
 
-        showToast(`Copied "${node.title.slice(0, 24)}..." (${slicedPages.length} Pages)`);
+        const spillMsg = extraPages > 0 ? ` (+1 spillover, ${slicedPages.length} pgs)` : ` (${slicedPages.length} pgs)`;
+        showToast(`Copied "${node.title.slice(0, 20)}..."${spillMsg}`);
 
         setTimeout(() => {
           btn.classList.remove('copied');
-          btn.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <span>Copy</span>
-          `;
+          btn.innerHTML = origHTML;
         }, 1800);
 
       } catch (err) {
