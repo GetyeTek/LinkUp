@@ -2,16 +2,11 @@ name: Deploy Flux Image Worker
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - conduit-dev
-    paths:
-      - 'flux-image-worker/**'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/conduit-dev' || github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/conduit-dev'
     name: Deploy to Cloudflare Workers
     steps:
       - name: Checkout
@@ -33,3 +28,9 @@ jobs:
           workingDirectory: flux-image-worker
           wranglerVersion: '4.107.0'
           command: deploy --config wrangler.jsonc
+          secrets: |
+            SUPABASE_URL
+            SUPABASE_SERVICE_ROLE_KEY
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
