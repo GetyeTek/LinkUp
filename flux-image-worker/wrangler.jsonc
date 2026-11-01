@@ -6,13 +6,7 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "ai": {
-    "binding": "AI"
-  },
-  "r2_buckets": [
-    {
-      "binding": "IMAGES_BUCKET",
-      "bucket_name": "linkup-course-images"
+      "ai": {
+      "binding": "AI"
     }
-  ]
-}
+  }
