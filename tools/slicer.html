@@ -915,6 +915,37 @@
     }
 
     // --- Block-Level Spillover Detector ---
+    function getBlockText(b) {
+      if (!b) return "";
+      let txt = clean(b.body || b.title || b.label || "");
+      if (Array.isArray(b.items)) {
+        txt += " " + b.items.map(clean).join(" ");
+      }
+      if (Array.isArray(b.questions)) {
+        txt += " " + b.questions.map(clean).join(" ");
+      }
+      return txt.trim();
+    }
+
+    function isBoundaryHeader(block, boundaryTitle) {
+      if (!block || !boundaryTitle) return false;
+      const bType = String(block.type || "").toLowerCase();
+      const isHeaderType = bType.includes("header") || bType.includes("title") || bType.includes("sub");
+      if (!isHeaderType) return false;
+
+      const headerText = clean(block.body || block.title || "").toLowerCase();
+      const targetText = clean(boundaryTitle).toLowerCase();
+
+      if (headerText === targetText) return true;
+
+      // Strip numeric and chapter prefixes for robust comparison
+      const stripPrefix = (str) => str.replace(/^(?:(?:chapter|unit)[\s\-]+[0-9a-zivxlcdm]+|(?:\d+(?:\.\s*\d+)*))[:\.\s\-]*/i, "").trim();
+      const normH = stripPrefix(headerText);
+      const normT = stripPrefix(targetText);
+
+      return Boolean(normH && normT && (normH === normT || normH.includes(normT) || normT.includes(normH)));
+    }
+
     function detectTailSpillover(pages, safeEnd, boundaryNode) {
       if (!pages || safeEnd >= pages.length || !boundaryNode) {
         return false;
@@ -924,26 +955,54 @@
       const blocks = boundaryPage.content_json || [];
       if (blocks.length === 0) return false;
 
-      let substantiveBlocksBeforeHeader = 0;
+      const boundaryTitle = boundaryNode.title || "";
+      let boundaryIndex = -1;
 
-      for (const b of blocks) {
-        if (!b) continue;
-        const bType = String(b.type || '').toLowerCase();
-        const isHeader = bType.includes('header') || bType.includes('title') || bType.includes('sub');
-        const text = clean(b.body || b.title || b.label || '');
-
-        // If we reached a header, stop checking
-        if (isHeader && text.length > 0) {
+      // 1. Locate the exact block where the next section begins
+      for (let i = 0; i < blocks.length; i++) {
+        if (isBoundaryHeader(blocks[i], boundaryTitle)) {
+          boundaryIndex = i;
           break;
-        }
-
-        const isBenign = bType.includes('spacer') || bType.includes('footer') || bType.includes('graphic');
-        if (!isBenign && text.length > 5) {
-          substantiveBlocksBeforeHeader++;
         }
       }
 
-      return substantiveBlocksBeforeHeader > 0;
+      // 2. If boundary header is found, check if substantive blocks exist before it
+      if (boundaryIndex !== -1) {
+        for (let i = 0; i < boundaryIndex; i++) {
+          const b = blocks[i];
+          const bType = String(b.type || "").toLowerCase();
+          const isBenign = bType.includes("spacer") || bType.includes("footer") || bType.includes("graphic");
+          const text = getBlockText(b);
+
+          if (!isBenign && text.length > 5) {
+            return true; // Tail detected: substantive content precedes next section's header
+          }
+        }
+        return false; // Boundary header is sitting right at the top
+      }
+
+      // 3. Fallback: If boundary title wasn't found by exact name,
+      // find the first section header on the page and audit pre-header blocks
+      let firstHeaderIdx = -1;
+      for (let i = 0; i < blocks.length; i++) {
+        const bType = String(blocks[i].type || "").toLowerCase();
+        if (bType.includes("header") || bType.includes("title")) {
+          firstHeaderIdx = i;
+          break;
+        }
+      }
+
+      if (firstHeaderIdx > 0) {
+        for (let i = 0; i < firstHeaderIdx; i++) {
+          const bType = String(blocks[i].type || "").toLowerCase();
+          const isBenign = bType.includes("spacer") || bType.includes("footer") || bType.includes("graphic");
+          if (!isBenign && getBlockText(blocks[i]).length > 5) {
+            return true;
+          }
+        }
+      }
+
+      return false;
     }
 
     function renderTOCTree(items) {
