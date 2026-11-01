@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkUp Flux &amp; R2 Studio</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #121826;
+      --border: #232d42;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --emerald: #10b981;
+      --rose: #f43f5e;
+      --amber: #f59e0b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; }
+    .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+    
+    header { display: flex; justify-content: space-between; align-items: center; border-b: 1px solid var(--border); padding-bottom: 16px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+    .badge { background: #1e293b; color: var(--accent); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+
+    .nav-tabs { display: flex; gap: 8px; background: var(--card-bg); padding: 4px; border-radius: 8px; border: 1px solid var(--border); width: fit-content; }
+    .tab-btn { background: transparent; border: none; color: var(--text-muted); padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { background: var(--accent); color: #fff; }
+
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .row { display: flex; gap: 16px; align-items: center; }
+    .col { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    input, textarea, select { background: #0b0f19; border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px 14px; font-size: 14px; outline: none; }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { font-family: monospace; font-size: 13px; resize: vertical; min-height: 160px; }
+
+    .btn { background: var(--accent); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; justify-content: center; }
+    .btn:hover { background: var(--accent-hover); }
+    .btn-secondary { background: #1e293b; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #27354f; }
+    .btn-emerald { background: var(--emerald); }
+    .btn-emerald:hover { background: #059669; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* Progress & Queue */
+    .progress-bar-container { width: 100%; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; display: none; }
+    .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+
+    /* Grid of Generation Items */
+    .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .item-card { background: #0b0f19; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+    .item-preview { height: 200px; background: #070a10; display: flex; align-items: center; justify-content: center; position: relative; }
+    .item-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .item-preview .placeholder { color: var(--text-muted); font-size: 12px; text-align: center; padding: 12px; }
+    .item-details { padding: 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .item-title { font-size: 13px; font-weight: 600; word-break: break-all; }
+    .item-desc { font-size: 11px; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .item-status { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; width: fit-content; }
+    .status-pending { background: #334155; color: #cbd5e1; }
+    .status-running { background: #1e3a8a; color: #93c5fd; }
+    .status-success { background: #064e3b; color: #6ee7b7; }
+    .status-error { background: #4c0519; color: #fca5a5; }
+
+    /* Modal */
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 24px; }
+    .modal.active { display: flex; }
+    .modal-content { max-width: 900px; max-height: 90vh; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+    .modal-content img { width: 100%; max-height: calc(90vh - 100px); object-fit: contain; background: #000; }
+    .modal-footer { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="brand">
+      <h1>LinkUp Flux &amp; R2 Studio</h1>
+      <span class="badge">Workers AI + R2</span>
+    </div>
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('generator')">Batch Generator</button>
+      <button class="tab-btn" onclick="switchTab('browser')">R2 Storage Browser</button>
+    </div>
+  </header>
+
+  <!-- WORKER ENDPOINT SETTINGS -->
+  <div class="card" style="padding: 14px 20px;">
+    <div class="row">
+      <div class="col" style="flex: 2;">
+        <label>Cloudflare Worker Endpoint</label>
+        <input type="text" id="workerUrl" value="https://flux-image-worker.getyeteklu2.workers.dev" placeholder="https://your-worker.workers.dev" />
+      </div>
+      <div class="col" style="flex: 1;">
+        <label>Target Course Code (Folder)</label>
+        <input type="text" id="courseCode" value="ANTH 1012" placeholder="e.g. ANTH 1012" />
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 1: BATCH GENERATOR -->
+  <div id="generatorTab" class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <label>Paste JSON Prompts List</label>
+      <button class="btn btn-secondary btn-sm" onclick="loadSampleData()">Load Anthro Unit 1 Preset (8 Prompts)</button>
+    </div>
+    <textarea id="jsonInput" placeholder='[
+  { "name": "U01_01_sec1.1_scope_human_diversity.png", "description": "High contrast scene showing arctic inuit vs desert nomad..." },
+  ...
+]'></textarea>
+
+    <div class="row" style="justify-content: space-between;">
+      <div class="row">
+        <button class="btn btn-secondary" onclick="parseJson()">1. Parse &amp; Review Queue</button>
+        <button class="btn btn-emerald" id="btnConcurrent" onclick="startGeneration('concurrent')" disabled>⚡ Run Concurrent (Workers Burst)</button>
+        <button class="btn" id="btnSequential" onclick="startGeneration('sequential')" disabled>⏳ Run Sequential (Safe Pace)</button>
+      </div>
+      <span id="queueCount" style="font-size: 13px; color: var(--text-muted);">Queue: 0 items</span>
+    </div>
+
+    <div class="progress-bar-container" id="progressContainer">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="item-grid" id="generationGrid"></div>
+  </div>
+
+  <!-- TAB 2: R2 BROWSER -->
+  <div id="browserTab" class="card" style="display: none;">
+    <div class="row" style="justify-content: space-between;">
+      <div class="row" style="flex: 1;">
+        <div class="col" style="flex: 1;">
+          <label>Browse Folder (Course Prefix)</label>
+          <input type="text" id="browsePrefix" value="ANTH_1012" placeholder="Leave empty for all" />
+        </div>
+        <button class="btn btn-secondary" style="margin-top: 22px;" onclick="fetchR2Gallery()">Refresh Gallery</button>
+      </div>
+      <span id="r2Status" style="font-size: 13px; color: var(--text-muted); margin-top: 22px;"></span>
+    </div>
+
+    <div class="item-grid" id="r2Grid"></div>
+  </div>
+</div>
+
+<!-- LIGHTBOX MODAL -->
+<div class="modal" id="previewModal" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <img id="modalImg" src="" alt="Preview" />
+    <div class="modal-footer">
+      <span id="modalTitle" style="font-size: 13px; font-weight: 600;"></span>
+      <div class="row">
+        <button class="btn btn-secondary btn-sm" onclick="copyModalUrl()">Copy Image URL</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let parsedQueue = [];
+  let currentModalUrl = '';
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    if (tab === 'generator') {
+      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      document.getElementById('generatorTab').style.display = 'flex';
+      document.getElementById('browserTab').style.display = 'none';
+    } else {
+      document.querySelectorAll('.tab-btn')[1].classList.add('active');
+      document.getElementById('generatorTab').style.display = 'none';
+      document.getElementById('browserTab').style.display = 'flex';
+      fetchR2Gallery();
+    }
+  }
+
+  function loadSampleData() {
+    const sample = {
+      course_code: "ANTH 1012",
+      images: [
+        {
+          name: "U01_01_sec1.1_scope_human_diversity.png",
+          description: "Photorealistic contrasting split montage representing human environmental adaptation: Arctic Inuit hunter in traditional warm fur parka facing icy tundra, alongside an African pastoralist in vivid woven cloth in vast arid sunlit savanna, highly detailed, dramatic lighting."
+        },
+        {
+          name: "U01_02_sec1.2.1_paleo_fossil_excavation.png",
+          description: "Close-up macro documentary shot of a paleoanthropologist carefully brushing sediment off an ancient hominid fossil skull embedded in dry African excavation soil trench, paleontological tools, intense focus."
+        },
+        {
+          name: "U01_03_sec1.2.1_primatology_field_observation.png",
+          description: "Documentary wildlife scene: A primatologist quietly sitting in deep lush tropical forest holding binoculars and notebook, observing a family of wild chimpanzees interacting in the trees, natural cinematic lighting."
+        },
+        {
+          name: "U01_04_sec1.2.2_archaeology_artifact_feature.png",
+          description: "Archaeological excavation pit showing in-situ material remains: ancient crafted chipped stone tools and pottery shards resting beside an uncovered ancient stone foundation wall, measuring scale ruler visible."
+        },
+        {
+          name: "U01_05_sec1.2.3_linguistic_oral_fieldwork.png",
+          description: "Linguistic anthropologist holding a field microphone, sitting outside a traditional village dwelling with a wise elder sharing oral stories, expressive hand gestures, warm golden hour."
+        },
+        {
+          name: "U01_06_sec1.2.4_ethnography_participant_observation.png",
+          description: "Ethnographer actively participating in daily village activities, sitting with a circle of indigenous community members sharing tea and conversation, genuine authentic interaction, ethnographic field research."
+        },
+        {
+          name: "U01_07_sec1.4_misconceptions_urban_fieldwork.png",
+          description: "Modern urban anthropology: A researcher with clipboard interviewing a young vendor in a dense, bustling neon-lit night market in a contemporary metropolis, vibrant atmosphere."
+        },
+        {
+          name: "U01_08_sec1.6_applied_community_development.png",
+          description: "Applied anthropology in action: Anthropologist facilitator sitting in a participatory community meeting under a large shade tree with local community members discussing village project plans."
+        }
+      ]
+    };
+    document.getElementById('jsonInput').value = JSON.stringify(sample, null, 2);
+    parseJson();
+  }
+
+  function parseJson() {
+    const raw = document.getElementById('jsonInput').value.trim();
+    if (!raw) return alert('Paste JSON first!');
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed.course_code) {
+        document.getElementById('courseCode').value = parsed.course_code;
+      }
+      parsedQueue = Array.isArray(parsed) ? parsed : (parsed.images || []);
+      
+      if (!parsedQueue.length) {
+        return alert('Could not find image objects in JSON. Format: [{ name, description }]');
+      }
+
+      document.getElementById('queueCount').innerText = `Queue: ${parsedQueue.length} items`;
+      document.getElementById('btnConcurrent').disabled = false;
+      document.getElementById('btnSequential').disabled = false;
+
+      renderQueueCards();
+    } catch (e) {
+      alert('Invalid JSON syntax: ' + e.message);
+    }
+  }
+
+  function renderQueueCards() {
+    const grid = document.getElementById('generationGrid');
+    grid.innerHTML = '';
+    parsedQueue.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.id = `card-${index}`;
+      card.innerHTML = `
+        <div class="item-preview" id="preview-${index}">
+          <span class="placeholder">Waiting to generate...</span>
+        </div>
+        <div class="item-details">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div class="item-title">${item.name || 'Image ' + (index+1)}</div>
+            <span class="item-status status-pending" id="status-${index}">Pending</span>
+          </div>
+          <div class="item-desc">${item.prompt || item.description || ''}</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  async function startGeneration(mode) {
+    const workerUrl = document.getElementById('workerUrl').value.replace(/\/$/, '');
+    const courseCode = document.getElementById('courseCode').value.trim() || 'MISC';
+
+    const pContainer = document.getElementById('progressContainer');
+    const pBar = document.getElementById('progressBar');
+    pContainer.style.display = 'block';
+    pBar.style.width = '0%';
+
+    document.getElementById('btnConcurrent').disabled = true;
+    document.getElementById('btnSequential').disabled = true;
+
+    if (mode === 'concurrent') {
+      // Send the whole batch in one shot to worker's Promise.allSettled endpoint
+      try {
+        parsedQueue.forEach((_, idx) => updateStatus(idx, 'Generating (Parallel)...', 'status-running'));
+        pBar.style.width = '40%';
+
+        const res = await fetch(`${workerUrl}/api/batch-generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ course_code: courseCode, images: parsedQueue })
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Server error');
+
+        pBar.style.width = '100%';
+        data.results.forEach((r, idx) => {
+          if (r.status === 'fulfilled') {
+            updateSuccess(idx, `${workerUrl}${r.url}`);
+          } else {
+            updateStatus(idx, 'Failed: ' + (r.error || 'Error'), 'status-error');
+          }
+        });
+      } catch (err) {
+        alert('Batch Concurrent Error: ' + err.message);
+        parsedQueue.forEach((_, idx) => updateStatus(idx, 'Failed', 'status-error'));
+      }
+    } else {
+      // Sequential client-driven mode
+      let completed = 0;
+      for (let i = 0; i < parsedQueue.length; i++) {
+        updateStatus(i, 'Generating...', 'status-running');
+        try {
+          const item = parsedQueue[i];
+          const res = await fetch(`${workerUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              course_code: courseCode,
+              name: item.name,
+              prompt: item.prompt || item.description
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed');
+
+          updateSuccess(i, `${workerUrl}${data.url}`);
+        } catch (err) {
+          updateStatus(i, 'Error: ' + err.message, 'status-error');
+        }
+        completed++;
+        pBar.style.width = `${Math.round((completed / parsedQueue.length) * 100)}%`;
+      }
+    }
+
+    document.getElementById('btnConcurrent').disabled = false;
+    document.getElementById('btnSequential').disabled = false;
+  }
+
+  function updateStatus(idx, text, statusClass) {
+    const el = document.getElementById(`status-${idx}`);
+    if (el) {
+      el.innerText = text;
+      el.className = `item-status ${statusClass}`;
+    }
+  }
+
+  function updateSuccess(idx, imgUrl) {
+    updateStatus(idx, 'Saved to R2', 'status-success');
+    const preview = document.getElementById(`preview-${idx}`);
+    preview.innerHTML = `<img src="${imgUrl}" alt="Generated" onclick="openModal('${imgUrl}', '${parsedQueue[idx].name}')" style="cursor: pointer;" />`;
+  }
+
+  // R2 GALLERY EXPLORER
+  async function fetchR2Gallery() {
+    const workerUrl = document.getElementById('workerUrl').value.replace(/\/$/, '');
+    const prefix = document.getElementById('browsePrefix').value.trim();
+    const statusEl = document.getElementById('r2Status');
+    const grid = document.getElementById('r2Grid');
+
+    statusEl.innerText = 'Connecting to R2...';
+    grid.innerHTML = '';
+
+    try {
+      const res = await fetch(`${workerUrl}/api/browse?course=${encodeURIComponent(prefix)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to list');
+
+      statusEl.innerText = `Found ${data.count} stored objects`;
+
+      if (data.items.length === 0) {
+        grid.innerHTML = '<p style="color: var(--text-muted); padding: 20px;">No images found in this folder.</p>';
+        return;
+      }
+
+      data.items.forEach(item => {
+        const fullUrl = `${workerUrl}${item.url}`;
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.innerHTML = `
+          <div class="item-preview">
+            <img src="${fullUrl}" loading="lazy" onclick="openModal('${fullUrl}', '${item.filename}')" style="cursor: pointer;" />
+          </div>
+          <div class="item-details">
+            <div class="item-title">${item.filename}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Size: ${(item.size / 1024).toFixed(1)} KB | Folder: ${item.folder}</div>
+            <div class="row" style="margin-top: 4px;">
+              <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${fullUrl}'); alert('URL copied!')">Copy Link</button>
+              <a href="${fullUrl}" download="${item.filename}" class="btn btn-secondary btn-sm" style="text-decoration: none;">Download</a>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    } catch (e) {
+      statusEl.innerText = 'Error: ' + e.message;
+    }
+  }
+
+  function openModal(url, title) {
+    currentModalUrl = url;
+    document.getElementById('modalImg').src = url;
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('previewModal').classList.add('active');
+  }
+
+  function closeModal(e) {
+    document.getElementById('previewModal').classList.remove('active');
+  }
+
+  function copyModalUrl() {
+    navigator.clipboard.writeText(currentModalUrl);
+    alert('Image R2 URL copied to clipboard!');
+  }
+</script>
+</body>
+</html>
