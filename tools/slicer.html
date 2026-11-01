@@ -236,6 +236,98 @@
       justify-content: space-between;
       gap: 10px;
       position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    /* Selection Mode & Multi-Select */
+    .select-toggle-btn.active {
+      background: var(--accent) !important;
+      color: #0f172a !important;
+      border-color: var(--accent) !important;
+    }
+
+    .select-mode-active .copy-btn,
+    .select-mode-active .icon-btn {
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    .node-checkbox {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 1.5px solid #475569;
+      background: #0f172a;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .select-mode-active .node-checkbox {
+      display: flex;
+    }
+
+    .node-card.selected {
+      border-color: var(--accent) !important;
+      background: rgba(56, 189, 248, 0.08) !important;
+    }
+
+    .node-card.selected .node-checkbox {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .node-checkbox svg {
+      opacity: 0;
+      color: #0f172a;
+    }
+
+    .node-card.selected .node-checkbox svg {
+      opacity: 1;
+    }
+
+    .selection-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #0b1120;
+      border-top: 1px solid var(--card-border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 85;
+      box-shadow: 0 -8px 25px rgba(0,0,0,0.65);
+    }
+
+    .sel-count-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .link-btn {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 2px 4px;
+    }
+
+    .sel-action-btns {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .node-content {
@@ -595,11 +687,30 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           Courses
         </button>
-        <div id="activeBookTitle" style="font-weight:600; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+        <div id="activeBookTitle" style="font-weight:600; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;"></div>
+        <button class="back-btn select-toggle-btn" id="selectModeBtn" onclick="toggleSelectMode()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Select</span>
+        </button>
       </div>
       <input type="text" id="tocSearch" class="search-input" placeholder="Filter sections by title or page..." oninput="filterTOC()">
     </div>
     <div id="tocTree" class="toc-tree"></div>
+  </div>
+
+  <!-- Selection Mode Bottom Action Bar -->
+  <div id="selectionActionBar" class="selection-bar hidden">
+    <div class="sel-count-info">
+      <span id="selectedCountText">0 selected</span>
+      <button class="link-btn" onclick="toggleSelectAll()">Select All</button>
+    </div>
+    <div class="sel-action-btns">
+      <button class="copy-btn" id="bulkCopyBtn" onclick="copySelectedSections()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span>Copy Selected</span>
+      </button>
+      <button class="icon-btn" onclick="exitSelectMode()">Cancel</button>
+    </div>
   </div>
 
   <!-- Page Transition Inspection Modal (Bottom Sheet) -->
@@ -648,6 +759,8 @@
     let courses = []; // { filename, data }
     let activeCourse = null;
     let flatTOC = [];
+    let isSelectMode = false;
+    let selectedIndices = new Set();
 
     const fileInput = document.getElementById('fileInput');
     const uploadView = document.getElementById('uploadView');
@@ -805,14 +918,46 @@
     }
 
     function showBookList() {
+      exitSelectMode();
       tocView.classList.add('hidden');
       booksView.classList.remove('hidden');
+    }
+
+    // --- Unified Section Boundary Resolver ---
+    function getSectionBounds(node, pages, bookMeta) {
+      const boundaryNode = findNextBoundaryNode(node, bookMeta.toc || []);
+      const startIdx = resolvePageIndex(node.page, pages, bookMeta);
+      const rawBoundaryIdx = boundaryNode ? resolvePageIndex(boundaryNode.page, pages, bookMeta) : pages.length;
+
+      // Intra-Page Boundary Check: Do both sections start on the exact same page?
+      const isSamePageBoundary = Boolean(boundaryNode && (
+        (rawBoundaryIdx !== -1 && rawBoundaryIdx === startIdx) ||
+        String(boundaryNode.page).trim() === String(node.page).trim()
+      ));
+
+      let endIdx = rawBoundaryIdx;
+      if (endIdx === -1 || endIdx <= startIdx) {
+        endIdx = Math.min(startIdx + 1, pages.length);
+      }
+      const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
+      const safeEnd = Math.max(safeStart + 1, endIdx);
+
+      // Same-page sections can NEVER spill over to the next page because the next section began on this page!
+      const hasSpillover = !isSamePageBoundary && detectTailSpillover(pages, safeEnd, boundaryNode);
+
+      return {
+        boundaryNode,
+        startIdx: safeStart,
+        endIdx: safeEnd,
+        isSamePageBoundary,
+        hasSpillover
+      };
     }
 
     // --- Boundary Search Engine ---
     // Finds the next sibling, or walks up ancestors to find the next sibling.
     // Completely encompasses all children of targetNode.
-    function findNextBoundaryNode(targetNode, tocTree) {
+    function findNextBoundaryNode(targetNode, tocTree) {</find>
       function buildMaps(nodes, parent = null, parentMap = new Map(), siblingsMap = new Map()) {
         for (let i = 0; i < nodes.length; i++) {
           const n = nodes[i];
@@ -885,6 +1030,7 @@
       const pages = activeCourse.data.pages || [];
       const tocTreeNodes = book.toc || [];
 
+      exitSelectMode();
       activeBookTitle.textContent = book.title || activeCourse.filename;
       booksView.classList.add('hidden');
       tocView.classList.remove('hidden');
@@ -1012,34 +1158,43 @@
       tocTree.innerHTML = '';
       const pages = activeCourse.data.pages || [];
       const bookMeta = activeCourse.data.book;
-      const rootTOC = bookMeta.toc || [];
 
       items.forEach((entry, idx) => {
         const { node, depth } = entry;
         const entryIdx = entry.origIdx !== undefined ? entry.origIdx : idx;
-        const boundaryNode = findNextBoundaryNode(node, rootTOC);
+        const bounds = getSectionBounds(node, pages, bookMeta);
 
-        // Pre-calculate page boundaries
-        const startIdx = resolvePageIndex(node.page, pages, bookMeta);
-        let endIdx = boundaryNode ? resolvePageIndex(boundaryNode.page, pages, bookMeta) : pages.length;
-        if (endIdx === -1 || endIdx <= startIdx) {
-          endIdx = Math.min(startIdx + 1, pages.length);
-        }
-        const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
-        const safeEnd = Math.max(safeStart + 1, endIdx);
-
-        // Native AST Spillover Inspection
-        const hasSpillover = detectTailSpillover(pages, safeEnd, boundaryNode);
-        const effectiveEnd = hasSpillover ? Math.min(pages.length, safeEnd + 1) : safeEnd;
-        const pageSpanCount = effectiveEnd - safeStart;
+        const effectiveEnd = bounds.hasSpillover ? Math.min(pages.length, bounds.endIdx + 1) : bounds.endIdx;
+        const pageSpanCount = effectiveEnd - bounds.startIdx;
+        const isSelected = selectedIndices.has(entryIdx);
 
         const card = document.createElement('div');
         const levelClass = `level-${Math.min(depth, 4)}`;
-        card.className = `node-card ${levelClass}`;
+        card.className = `node-card ${levelClass}${isSelected ? ' selected' : ''}`;
+        card.id = `node-card-${entryIdx}`;
         card.style.cursor = 'pointer';
-        card.onclick = () => inspectSectionPages(entryIdx);
+
+        card.onclick = (e) => {
+          if (isSelectMode) {
+            toggleCardSelection(entryIdx);
+          } else {
+            inspectSectionPages(entryIdx);
+          }
+        };
+
+        let badgeHtml = '';
+        if (bounds.isSamePageBoundary) {
+          badgeHtml = `<span class="badge" style="color:#e2e8f0; border-color:#475569; background:#1e293b;">Same Page Cut</span>`;
+        } else if (bounds.hasSpillover) {
+          badgeHtml = `<span class="badge" style="color:#38bdf8; border-color:#0284c7; background:rgba(56,189,248,0.12);">+1p Tail Auto</span>`;
+        } else {
+          badgeHtml = `<span class="badge" style="color:var(--success); border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.08);">Clean Cut</span>`;
+        }
 
         card.innerHTML = `
+          <div class="node-checkbox">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
           <div class="node-content">
             <div class="node-title">${node.title}</div>
             <div class="node-subtext">
@@ -1047,10 +1202,7 @@
               <span>•</span>
               <span>${pageSpanCount} Page${pageSpanCount > 1 ? 's' : ''}</span>
               <span>•</span>
-              ${hasSpillover
-                ? `<span class="badge" style="color:#38bdf8; border-color:#0284c7; background:rgba(56,189,248,0.12);">+1p Tail Auto</span>`
-                : `<span class="badge" style="color:var(--success); border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.08);">Clean Cut</span>`
-              }
+              ${badgeHtml}
             </div>
           </div>
           <div class="btn-group">
@@ -1094,35 +1246,23 @@
       const pages = activeCourse.data.pages || [];
       const book = activeCourse.data.book;
 
-      // 1. Identify stopping boundary node
-      const boundaryNode = findNextBoundaryNode(node, book.toc || []);
+      // Use unified boundary resolver with same-page protection
+      const bounds = getSectionBounds(node, pages, book);
 
-      // 2. Resolve start and end index in pages[] array
-      const startIdx = resolvePageIndex(node.page, pages, book);
-      let endIdx = boundaryNode ? resolvePageIndex(boundaryNode.page, pages, book) : pages.length;
-
-      if (endIdx === -1 || endIdx <= startIdx) {
-        endIdx = Math.min(startIdx + 1, pages.length);
-      }
-      const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
-      let safeEnd = Math.max(safeStart + 1, endIdx);
-
-      // Determine spillover
-      const autoSpillover = detectTailSpillover(pages, safeEnd, boundaryNode);
       let appliedExtra = 0;
-
       if (extraPages !== null) {
         appliedExtra = extraPages;
-      } else if (autoSpillover) {
+      } else if (bounds.hasSpillover) {
         appliedExtra = 1;
       }
 
+      let safeEnd = bounds.endIdx;
       if (appliedExtra > 0) {
         safeEnd = Math.min(pages.length, safeEnd + appliedExtra);
       }
 
-      // 3. Slice all encompassed pages
-      const slicedPages = pages.slice(safeStart, safeEnd);
+      // Slice all encompassed pages
+      const slicedPages = pages.slice(bounds.startIdx, safeEnd);
 
       // 4. Construct complete section JSON payload
       const payload = {
@@ -1134,7 +1274,8 @@
           selected_section: node.title,
           section_start_page: node.page,
           section_end_page: boundaryNode ? boundaryNode.page : (pages[pages.length - 1]?.page_number || "End"),
-          tail_spillover_detected: autoSpillover,
+          same_page_boundary: bounds.isSamePageBoundary,
+          tail_spillover_detected: bounds.hasSpillover,
           extra_pages_appended: appliedExtra
         },
         section_node: node,
@@ -1209,25 +1350,29 @@
       const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
       const safeEnd = Math.max(safeStart + 1, endIdx);
 
-      // Detect spillover
-      const hasSpillover = detectTailSpillover(pages, safeEnd, boundaryNode);
+      const bounds = getSectionBounds(node, pages, book);
 
       // Page 1: Last page of current section
-      const lastPageIdx = safeEnd - 1;
+      const lastPageIdx = bounds.endIdx - 1;
       const lastPage = pages[lastPageIdx];
 
       // Page 2: Start page of next section
-      const hasNextPage = safeEnd < pages.length;
-      const nextStartPage = hasNextPage ? pages[safeEnd] : null;
+      const hasNextPage = bounds.endIdx < pages.length;
+      const nextStartPage = hasNextPage ? pages[bounds.endIdx] : null;
+
+      let statusMsg = '';
+      if (bounds.isSamePageBoundary) {
+        statusMsg = '<span style="color:#e2e8f0; font-weight:600;">Next section shares this exact same page (Same-Page Cut)</span>';
+      } else if (bounds.hasSpillover) {
+        statusMsg = '<span style="color:#38bdf8; font-weight:600;">Tail spillover detected on next page</span>';
+      } else {
+        statusMsg = '<span style="color:var(--success); font-weight:600;">Clean cut (starts at top of next page)</span>';
+      }
 
       // Update sheet header
       document.getElementById('inspectTitle').textContent = node.title;
       document.getElementById('inspectSubtitle').innerHTML = `
-        Spans ${safeEnd - safeStart} page(s) (p.${node.page} to p.${lastPage ? getPageLabel(lastPage) : '?'}) •
-        ${hasSpillover
-          ? '<span style="color:#38bdf8; font-weight:600;">Tail spillover detected on next page</span>'
-          : '<span style="color:var(--success); font-weight:600;">Clean cut (starts at top of next page)</span>'
-        }
+        Spans ${bounds.endIdx - bounds.startIdx} page(s) (p.${node.page} to p.${lastPage ? getPageLabel(lastPage) : '?'}) • ${statusMsg}
       `;
 
       // Render inspector cards
@@ -1313,6 +1458,153 @@
       setTimeout(() => {
         toast.classList.remove('show');
       }, 2400);
+    }
+
+    // --- Selection Mode Logic ---
+    function toggleSelectMode() {
+      isSelectMode = !isSelectMode;
+      selectedIndices.clear();
+      updateSelectModeUI();
+    }
+
+    function exitSelectMode() {
+      isSelectMode = false;
+      selectedIndices.clear();
+      updateSelectModeUI();
+    }
+
+    function updateSelectModeUI() {
+      const btn = document.getElementById('selectModeBtn');
+      const bar = document.getElementById('selectionActionBar');
+      const tocViewEl = document.getElementById('tocView');
+
+      if (isSelectMode) {
+        btn.classList.add('active');
+        btn.innerHTML = `<span>Exit</span>`;
+        bar.classList.remove('hidden');
+        tocViewEl.classList.add('select-mode-active');
+      } else {
+        btn.classList.remove('active');
+        btn.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Select</span>
+        `;
+        bar.classList.add('hidden');
+        tocViewEl.classList.remove('select-mode-active');
+        document.querySelectorAll('.node-card.selected').forEach(el => el.classList.remove('selected'));
+      }
+      updateSelectedCount();
+    }
+
+    function toggleCardSelection(entryIdx) {
+      const card = document.getElementById(`node-card-${entryIdx}`);
+      if (selectedIndices.has(entryIdx)) {
+        selectedIndices.delete(entryIdx);
+        if (card) card.classList.remove('selected');
+      } else {
+        selectedIndices.add(entryIdx);
+        if (card) card.classList.add('selected');
+      }
+      updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+      const countEl = document.getElementById('selectedCountText');
+      if (countEl) {
+        countEl.textContent = `${selectedIndices.size} selected`;
+      }
+    }
+
+    function toggleSelectAll() {
+      const allSelected = flatTOC.every(e => selectedIndices.has(e.origIdx));
+      if (allSelected) {
+        selectedIndices.clear();
+      } else {
+        flatTOC.forEach(e => selectedIndices.add(e.origIdx));
+      }
+      renderTOCTree(flatTOC);
+      updateSelectModeUI();
+    }
+
+    async function copySelectedSections() {
+      if (selectedIndices.size === 0) {
+        showToast("No sections selected");
+        return;
+      }
+
+      const pages = activeCourse.data.pages || [];
+      const book = activeCourse.data.book;
+
+      const sortedIndices = Array.from(selectedIndices).sort((a, b) => a - b);
+      const sectionsPayload = [];
+      const includedPageIndices = new Set();
+
+      for (const idx of sortedIndices) {
+        const entry = flatTOC[idx];
+        if (!entry) continue;
+        const node = entry.node;
+        const bounds = getSectionBounds(node, pages, book);
+
+        let safeEnd = bounds.endIdx;
+        if (bounds.hasSpillover) {
+          safeEnd = Math.min(pages.length, safeEnd + 1);
+        }
+
+        const slicedPages = pages.slice(bounds.startIdx, safeEnd);
+        for (let i = bounds.startIdx; i < safeEnd; i++) {
+          includedPageIndices.add(i);
+        }
+
+        sectionsPayload.push({
+          section_title: node.title,
+          section_start_page: node.page,
+          section_end_page: bounds.boundaryNode ? bounds.boundaryNode.page : (pages[pages.length - 1]?.page_number || "End"),
+          page_count: slicedPages.length,
+          same_page_boundary: bounds.isSamePageBoundary,
+          tail_spillover_detected: bounds.hasSpillover,
+          section_node: node,
+          pages: slicedPages
+        });
+      }
+
+      const sortedPageIndices = Array.from(includedPageIndices).sort((a, b) => a - b);
+      const allDeduplicatedPages = sortedPageIndices.map(i => pages[i]);
+
+      const bundlePayload = {
+        book: {
+          id: book.id,
+          title: book.title,
+          course_code: book.course_code,
+          page_offset: book.page_offset,
+          total_sections_selected: sectionsPayload.length,
+          total_unique_pages: allDeduplicatedPages.length
+        },
+        sections: sectionsPayload,
+        combined_pages: allDeduplicatedPages
+      };
+
+      const jsonStr = JSON.stringify(bundlePayload, null, 2);
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(jsonStr);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = jsonStr;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+
+        if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+        showToast(`Copied ${sectionsPayload.length} sections (${allDeduplicatedPages.length} unique pages)!`);
+        exitSelectMode();
+      } catch (err) {
+        alert("Failed to copy selected sections: " + err.message);
+      }
     }
   </script>
 </body>
