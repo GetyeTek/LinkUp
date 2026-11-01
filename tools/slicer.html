@@ -957,7 +957,7 @@
     // --- Boundary Search Engine ---
     // Finds the next sibling, or walks up ancestors to find the next sibling.
     // Completely encompasses all children of targetNode.
-    function findNextBoundaryNode(targetNode, tocTree) {</find>
+    function findNextBoundaryNode(targetNode, tocTree) {
       function buildMaps(nodes, parent = null, parentMap = new Map(), siblingsMap = new Map()) {
         for (let i = 0; i < nodes.length; i++) {
           const n = nodes[i];
