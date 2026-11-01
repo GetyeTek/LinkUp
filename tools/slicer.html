@@ -638,6 +638,12 @@
   </div>
 
   <script>
+    // Global Helper: Clean & Normalize String
+    function clean(s) {
+      if (!s) return "";
+      return String(s).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+    }
+
     // Global State
     let courses = []; // { filename, data }
     let activeCourse = null;
@@ -893,11 +899,11 @@
         return;
       }
 
-      // Flatten tree preserving hierarchy level and reference
+      // Flatten tree preserving hierarchy level, reference, and original index
       flatTOC = [];
       function walk(nodes, depth = 0) {
         for (const n of nodes) {
-          flatTOC.push({ node: n, depth });
+          flatTOC.push({ node: n, depth, origIdx: flatTOC.length });
           if (n.children && n.children.length > 0) {
             walk(n.children, depth + 1);
           }
@@ -908,6 +914,38 @@
       renderTOCTree(flatTOC);
     }
 
+    // --- Block-Level Spillover Detector ---
+    function detectTailSpillover(pages, safeEnd, boundaryNode) {
+      if (!pages || safeEnd >= pages.length || !boundaryNode) {
+        return false;
+      }
+
+      const boundaryPage = pages[safeEnd];
+      const blocks = boundaryPage.content_json || [];
+      if (blocks.length === 0) return false;
+
+      let substantiveBlocksBeforeHeader = 0;
+
+      for (const b of blocks) {
+        if (!b) continue;
+        const bType = String(b.type || '').toLowerCase();
+        const isHeader = bType.includes('header') || bType.includes('title') || bType.includes('sub');
+        const text = clean(b.body || b.title || b.label || '');
+
+        // If we reached a header, stop checking
+        if (isHeader && text.length > 0) {
+          break;
+        }
+
+        const isBenign = bType.includes('spacer') || bType.includes('footer') || bType.includes('graphic');
+        if (!isBenign && text.length > 5) {
+          substantiveBlocksBeforeHeader++;
+        }
+      }
+
+      return substantiveBlocksBeforeHeader > 0;
+    }
+
     function renderTOCTree(items) {
       tocTree.innerHTML = '';
       const pages = activeCourse.data.pages || [];
@@ -916,6 +954,7 @@
 
       items.forEach((entry, idx) => {
         const { node, depth } = entry;
+        const entryIdx = entry.origIdx !== undefined ? entry.origIdx : idx;
         const boundaryNode = findNextBoundaryNode(node, rootTOC);
 
         // Pre-calculate page boundaries
@@ -926,13 +965,17 @@
         }
         const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
         const safeEnd = Math.max(safeStart + 1, endIdx);
-        const pageSpanCount = safeEnd - safeStart;
+
+        // Native AST Spillover Inspection
+        const hasSpillover = detectTailSpillover(pages, safeEnd, boundaryNode);
+        const effectiveEnd = hasSpillover ? Math.min(pages.length, safeEnd + 1) : safeEnd;
+        const pageSpanCount = effectiveEnd - safeStart;
 
         const card = document.createElement('div');
         const levelClass = `level-${Math.min(depth, 4)}`;
         card.className = `node-card ${levelClass}`;
         card.style.cursor = 'pointer';
-        card.onclick = () => inspectSectionPages(idx);
+        card.onclick = () => inspectSectionPages(entryIdx);
 
         card.innerHTML = `
           <div class="node-content">
@@ -942,18 +985,21 @@
               <span>•</span>
               <span>${pageSpanCount} Page${pageSpanCount > 1 ? 's' : ''}</span>
               <span>•</span>
-              <span style="color:var(--accent);">Tap to inspect transition</span>
+              ${hasSpillover
+                ? `<span class="badge" style="color:#38bdf8; border-color:#0284c7; background:rgba(56,189,248,0.12);">+1p Tail Auto</span>`
+                : `<span class="badge" style="color:var(--success); border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.08);">Clean Cut</span>`
+              }
             </div>
           </div>
           <div class="btn-group">
-            <button class="copy-btn" id="btn-${idx}" onclick="copySectionJSON(event, ${idx}, 0)" title="Copy Section JSON">
+            <button class="copy-btn" id="btn-${entryIdx}" onclick="copySectionJSON(event, ${entryIdx})" title="Copy Section JSON (Auto-captures tail if spilled)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
               </svg>
               <span>Copy</span>
             </button>
-            <button class="icon-btn" id="btn-plus-${idx}" onclick="copySectionJSON(event, ${idx}, 1)" title="Copy Section + 1 Next Page (Spillover Tail)">
+            <button class="icon-btn" id="btn-plus-${entryIdx}" onclick="copySectionJSON(event, ${entryIdx}, 1)" title="Force add +1 page beyond current boundary">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -979,9 +1025,8 @@
     }
 
     // --- Action: Slice & Copy JSON ---
-    async function copySectionJSON(event, entryIdx, extraPages = 0) {
-      event.stopPropagation();
-      const btn = document.getElementById(extraPages > 0 ? `btn-plus-${entryIdx}` : `btn-${entryIdx}`);
+    async function copySectionJSON(event, entryIdx, extraPages = null) {
+      if (event) event.stopPropagation();
       const entry = flatTOC[entryIdx];
       const node = entry.node;
       const pages = activeCourse.data.pages || [];
@@ -1000,9 +1045,18 @@
       const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
       let safeEnd = Math.max(safeStart + 1, endIdx);
 
-      // Append spillover page(s) if requested
-      if (extraPages > 0) {
-        safeEnd = Math.min(pages.length, safeEnd + extraPages);
+      // Determine spillover
+      const autoSpillover = detectTailSpillover(pages, safeEnd, boundaryNode);
+      let appliedExtra = 0;
+
+      if (extraPages !== null) {
+        appliedExtra = extraPages;
+      } else if (autoSpillover) {
+        appliedExtra = 1;
+      }
+
+      if (appliedExtra > 0) {
+        safeEnd = Math.min(pages.length, safeEnd + appliedExtra);
       }
 
       // 3. Slice all encompassed pages
@@ -1018,7 +1072,8 @@
           selected_section: node.title,
           section_start_page: node.page,
           section_end_page: boundaryNode ? boundaryNode.page : (pages[pages.length - 1]?.page_number || "End"),
-          extra_spillover_pages: extraPages
+          tail_spillover_detected: autoSpillover,
+          extra_pages_appended: appliedExtra
         },
         section_node: node,
         page_count: slicedPages.length,
@@ -1047,19 +1102,22 @@
         if (navigator.vibrate) navigator.vibrate(40);
 
         // Visual button feedback
-        btn.classList.add('copied');
-        const origHTML = btn.innerHTML;
-        btn.innerHTML = extraPages > 0
-          ? `<span>✓ +1p</span>`
-          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Copied!</span>`;
+        const targetBtn = document.getElementById((extraPages === 1) ? `btn-plus-${entryIdx}` : `btn-${entryIdx}`);
+        if (targetBtn) {
+          targetBtn.classList.add('copied');
+          const origHTML = targetBtn.innerHTML;
+          targetBtn.innerHTML = (extraPages === 1)
+            ? `<span>✓ +1p</span>`
+            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Copied!</span>`;
 
-        const spillMsg = extraPages > 0 ? ` (+1 spillover, ${slicedPages.length} pgs)` : ` (${slicedPages.length} pgs)`;
+          setTimeout(() => {
+            targetBtn.classList.remove('copied');
+            targetBtn.innerHTML = origHTML;
+          }, 1800);
+        }
+
+        const spillMsg = (appliedExtra > 0) ? ` (Tail included, ${slicedPages.length} pgs)` : ` (${slicedPages.length} pgs)`;
         showToast(`Copied "${node.title.slice(0, 20)}..."${spillMsg}`);
-
-        setTimeout(() => {
-          btn.classList.remove('copied');
-          btn.innerHTML = origHTML;
-        }, 1800);
 
       } catch (err) {
         alert("Failed to copy to clipboard: " + err.message);
@@ -1089,6 +1147,9 @@
       const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
       const safeEnd = Math.max(safeStart + 1, endIdx);
 
+      // Detect spillover
+      const hasSpillover = detectTailSpillover(pages, safeEnd, boundaryNode);
+
       // Page 1: Last page of current section
       const lastPageIdx = safeEnd - 1;
       const lastPage = pages[lastPageIdx];
@@ -1099,7 +1160,13 @@
 
       // Update sheet header
       document.getElementById('inspectTitle').textContent = node.title;
-      document.getElementById('inspectSubtitle').textContent = `Spans ${safeEnd - safeStart} page(s) (p.${node.page} to p.${lastPage ? getPageLabel(lastPage) : '?'})`;
+      document.getElementById('inspectSubtitle').innerHTML = `
+        Spans ${safeEnd - safeStart} page(s) (p.${node.page} to p.${lastPage ? getPageLabel(lastPage) : '?'}) •
+        ${hasSpillover
+          ? '<span style="color:#38bdf8; font-weight:600;">Tail spillover detected on next page</span>'
+          : '<span style="color:var(--success); font-weight:600;">Clean cut (starts at top of next page)</span>'
+        }
+      `;
 
       // Render inspector cards
       const bodyEl = document.getElementById('inspectBody');
