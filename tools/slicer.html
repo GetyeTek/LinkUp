@@ -1273,7 +1273,7 @@
           page_offset: book.page_offset,
           selected_section: node.title,
           section_start_page: node.page,
-          section_end_page: boundaryNode ? boundaryNode.page : (pages[pages.length - 1]?.page_number || "End"),
+          section_end_page: bounds.boundaryNode ? bounds.boundaryNode.page : (pages[pages.length - 1]?.page_number || "End"),
           same_page_boundary: bounds.isSamePageBoundary,
           tail_spillover_detected: bounds.hasSpillover,
           extra_pages_appended: appliedExtra
