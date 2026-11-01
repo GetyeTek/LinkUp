@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Course Section Slicer</title>
+  <!-- JSZip for in-browser unzipping -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #131b2e;
+      --card-border: #1f2d4a;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --success: #10b981;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --level-0: #38bdf8;
+      --level-1: #818cf8;
+      --level-2: #c084fc;
+      --level-3: #fb7185;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 40px;
+    }
+
+    /* --- App Bar --- */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #fff;
+    }
+
+    .brand svg {
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* --- Upload Zone --- */
+    .upload-container {
+      padding: 16px;
+    }
+
+    .upload-card {
+      border: 2px dashed var(--card-border);
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .upload-card:active {
+      transform: scale(0.98);
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    .upload-card svg {
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .upload-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .upload-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* --- Book List Screen --- */
+    .view-container {
+      padding: 0 16px;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin: 16px 0 8px 4px;
+    }
+
+    .book-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .book-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .book-item:active {
+      border-color: var(--accent);
+      background: #18223a;
+    }
+
+    .book-info {
+      flex: 1;
+      padding-right: 12px;
+    }
+
+    .book-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+
+    .book-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: #1e293b;
+      color: var(--accent);
+      border: 1px solid var(--card-border);
+    }
+
+    /* --- TOC Screen --- */
+    .toc-header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--card-border);
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .back-btn {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .search-input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      color: #fff;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+    }
+
+    .toc-tree {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Tree Node */
+    .node-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: relative;
+    }
+
+    .node-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .node-title {
+      font-size: 0.85rem;
+      font-weight: 500;
+      line-height: 1.35;
+      color: #f8fafc;
+      word-break: break-word;
+    }
+
+    .node-subtext {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .copy-btn {
+      background: #0f172a;
+      border: 1px solid #22d3ee;
+      color: #38bdf8;
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+      touch-action: manipulation;
+    }
+
+    .copy-btn:active {
+      transform: scale(0.94);
+    }
+
+    .copy-btn.copied {
+      background: var(--success);
+      color: #fff;
+      border-color: var(--success);
+    }
+
+    /* Hierarchy visual indents */
+    .level-0 { margin-left: 0px; border-left: 3px solid var(--level-0); }
+    .level-1 { margin-left: 12px; border-left: 3px solid var(--level-1); }
+    .level-2 { margin-left: 24px; border-left: 3px solid var(--level-2); }
+    .level-3 { margin-left: 36px; border-left: 3px solid var(--level-3); }
+    .level-4 { margin-left: 48px; border-left: 3px solid #f59e0b; }
+
+    /* --- Toast Notification --- */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #0f172a;
+      border: 1px solid var(--success);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 9999px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      z-index: 100;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      max-width: 90%;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Utilities */
+    .hidden { display: none !important; }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- App Bar -->
+  <header>
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      <span>Course Section Slicer</span>
+    </div>
+    <label class="badge" style="cursor:pointer;" for="fileInput">Change ZIP</label>
+    <input type="file" id="fileInput" accept=".zip,.txt,.json" class="hidden">
+  </header>
+
+  <!-- Upload Screen -->
+  <div id="uploadView" class="upload-container">
+    <div class="upload-card" onclick="document.getElementById('fileInput').click()">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <div class="upload-title">Tap to Choose ZIP File</div>
+      <div class="upload-sub">Upload the course pack (e.g. books_split.zip)</div>
+    </div>
+  </div>
+
+  <!-- Book List Screen -->
+  <div id="booksView" class="view-container hidden">
+    <div class="section-label">Available Courses (<span id="bookCount">0</span>)</div>
+    <div id="bookList" class="book-grid"></div>
+  </div>
+
+  <!-- TOC Screen -->
+  <div id="tocView" class="hidden">
+    <div class="toc-header">
+      <div class="nav-bar">
+        <button class="back-btn" onclick="showBookList()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Courses
+        </button>
+        <div id="activeBookTitle" style="font-weight:600; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+      </div>
+      <input type="text" id="tocSearch" class="search-input" placeholder="Filter sections by title or page..." oninput="filterTOC()">
+    </div>
+    <div id="tocTree" class="toc-tree"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    <span id="toastMsg">Copied section JSON!</span>
+  </div>
+
+  <script>
+    // Global State
+    let courses = []; // { filename, data }
+    let activeCourse = null;
+    let flatTOC = [];
+
+    const fileInput = document.getElementById('fileInput');
+    const uploadView = document.getElementById('uploadView');
+    const booksView = document.getElementById('booksView');
+    const tocView = document.getElementById('tocView');
+    const bookList = document.getElementById('bookList');
+    const bookCount = document.getElementById('bookCount');
+    const tocTree = document.getElementById('tocTree');
+    const activeBookTitle = document.getElementById('activeBookTitle');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+
+    // Handle ZIP Upload
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      showToast("Loading & unpacking courses...");
+
+      try {
+        courses = [];
+        if (file.name.endsWith('.zip')) {
+          const zip = await JSZip.loadAsync(file);
+          const entries = Object.keys(zip.files);
+
+          for (const name of entries) {
+            // Ignore macOS metadata & non-text files
+            if (name.includes('__MACOSX') || name.startsWith('.') || (!name.endsWith('.txt') && !name.endsWith('.json'))) {
+              continue;
+            }
+            const content = await zip.files[name].async('string');
+            try {
+              const parsed = JSON.parse(content);
+              if (parsed.book && parsed.pages) {
+                courses.push({ filename: name.split('/').pop(), data: parsed });
+              }
+            } catch (err) {
+              console.warn("Could not parse file as JSON:", name);
+            }
+          }
+        } else {
+          // Direct JSON / TXT file upload
+          const content = await file.text();
+          const parsed = JSON.parse(content);
+          if (parsed.book && parsed.pages) {
+            courses.push({ filename: file.name, data: parsed });
+          }
+        }
+
+        if (courses.length === 0) {
+          alert("No valid course JSON files found in this archive.");
+          return;
+        }
+
+        renderBookList();
+      } catch (err) {
+        alert("Error reading file: " + err.message);
+      }
+    });
+
+    function renderBookList() {
+      uploadView.classList.add('hidden');
+      tocView.classList.add('hidden');
+      booksView.classList.remove('hidden');
+
+      bookCount.textContent = courses.length;
+      bookList.innerHTML = '';
+
+      courses.sort((a, b) => (a.data.book.title || a.filename).localeCompare(b.data.book.title || b.filename));
+
+      courses.forEach((c, idx) => {
+        const book = c.data.book;
+        const pages = c.data.pages || [];
+        const tocLen = (book.toc || []).length;
+
+        const card = document.createElement('div');
+        card.className = 'book-item';
+        card.onclick = () => openCourseTOC(idx);
+
+        card.innerHTML = `
+          <div class="book-info">
+            <div class="book-title">${book.title || c.filename}</div>
+            <div class="book-meta">
+              <span>${book.course_code || 'Course'}</span>
+              <span>•</span>
+              <span>${pages.length} Pages</span>
+              ${tocLen === 0 ? '<span class="badge" style="color:#f87171;">No TOC</span>' : ''}
+            </div>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted);"><polyline points="9 18 15 12 9 6"/></svg>
+        `;
+        bookList.appendChild(card);
+      });
+    }
+
+    function showBookList() {
+      tocView.classList.add('hidden');
+      booksView.classList.remove('hidden');
+    }
+
+    // --- Boundary Search Engine ---
+    // Finds the next sibling, or walks up ancestors to find the next sibling.
+    // Completely encompasses all children of targetNode.
+    function findNextBoundaryNode(targetNode, tocTree) {
+      function buildMaps(nodes, parent = null, parentMap = new Map(), siblingsMap = new Map()) {
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          parentMap.set(n, parent);
+          siblingsMap.set(n, {
+            index: i,
+            nextSibling: (i + 1 < nodes.length) ? nodes[i + 1] : null
+          });
+          if (n.children && n.children.length > 0) {
+            buildMaps(n.children, n, parentMap, siblingsMap);
+          }
+        }
+        return { parentMap, siblingsMap };
+      }
+
+      const { parentMap, siblingsMap } = buildMaps(tocTree);
+
+      let curr = targetNode;
+      while (curr) {
+        const info = siblingsMap.get(curr);
+        if (info && info.nextSibling) {
+          return info.nextSibling;
+        }
+        curr = parentMap.get(curr);
+      }
+      return null; // Extends to the end of the document
+    }
+
+    // Resolves a TOC page reference to the exact array index in pages[]
+    function resolvePageIndex(pageVal, pages, bookMeta) {
+      if (pageVal == null || !pages || pages.length === 0) return 0;
+      const targetStr = String(pageVal).trim().toLowerCase();
+      const offset = Number(bookMeta.page_offset) || 0;
+
+      // 1. Try printed footer match
+      for (let i = 0; i < pages.length; i++) {
+        for (const item of (pages[i].content_json || [])) {
+          if (item && item.type && item.type.toLowerCase().includes('footer') && item.val != null) {
+            if (String(item.val).trim().toLowerCase() === targetStr) {
+              return i;
+            }
+          }
+        }
+      }
+
+      // 2. Try canvas page_number match
+      for (let i = 0; i < pages.length; i++) {
+        if (String(pages[i].page_number).trim() === targetStr) {
+          return i;
+        }
+      }
+
+      // 3. Try offset-calculated match (canvas - offset)
+      if (/^\d+$/.test(targetStr)) {
+        const num = parseInt(targetStr, 10);
+        for (let i = 0; i < pages.length; i++) {
+          if (Number(pages[i].page_number) - offset === num) {
+            return i;
+          }
+        }
+      }
+
+      return -1;
+    }
+
+    // --- TOC Hierarchical Rendering ---
+    function openCourseTOC(courseIdx) {
+      activeCourse = courses[courseIdx];
+      const book = activeCourse.data.book;
+      const pages = activeCourse.data.pages || [];
+      const tocTreeNodes = book.toc || [];
+
+      activeBookTitle.textContent = book.title || activeCourse.filename;
+      booksView.classList.add('hidden');
+      tocView.classList.remove('hidden');
+
+      if (tocTreeNodes.length === 0) {
+        tocTree.innerHTML = `
+          <div style="text-align:center; padding:40px 16px; color:var(--text-muted);">
+            No Table of Contents in this book.<br><br>
+            <button class="copy-btn" style="margin:auto;" onclick="copyEntireBook()">Copy Full Book JSON</button>
+          </div>
+        `;
+        return;
+      }
+
+      // Flatten tree preserving hierarchy level and reference
+      flatTOC = [];
+      function walk(nodes, depth = 0) {
+        for (const n of nodes) {
+          flatTOC.push({ node: n, depth });
+          if (n.children && n.children.length > 0) {
+            walk(n.children, depth + 1);
+          }
+        }
+      }
+      walk(tocTreeNodes);
+
+      renderTOCTree(flatTOC);
+    }
+
+    function renderTOCTree(items) {
+      tocTree.innerHTML = '';
+      const pages = activeCourse.data.pages || [];
+      const bookMeta = activeCourse.data.book;
+      const rootTOC = bookMeta.toc || [];
+
+      items.forEach((entry, idx) => {
+        const { node, depth } = entry;
+        const boundaryNode = findNextBoundaryNode(node, rootTOC);
+
+        // Pre-calculate page boundaries
+        const startIdx = resolvePageIndex(node.page, pages, bookMeta);
+        let endIdx = boundaryNode ? resolvePageIndex(boundaryNode.page, pages, bookMeta) : pages.length;
+        if (endIdx === -1 || endIdx <= startIdx) {
+          endIdx = Math.min(startIdx + 1, pages.length);
+        }
+        const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
+        const safeEnd = Math.max(safeStart + 1, endIdx);
+        const pageSpanCount = safeEnd - safeStart;
+
+        const card = document.createElement('div');
+        const levelClass = `level-${Math.min(depth, 4)}`;
+        card.className = `node-card ${levelClass}`;
+
+        card.innerHTML = `
+          <div class="node-content">
+            <div class="node-title">${node.title}</div>
+            <div class="node-subtext">
+              <span>Start: p.${node.page}</span>
+              <span>•</span>
+              <span>${pageSpanCount} Page${pageSpanCount > 1 ? 's' : ''}</span>
+              ${node.children && node.children.length ? `<span>•</span><span>${node.children.length} sub-items</span>` : ''}
+            </div>
+          </div>
+          <button class="copy-btn" id="btn-${idx}" onclick="copySectionJSON(event, ${idx})">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>Copy</span>
+          </button>
+        `;
+        tocTree.appendChild(card);
+      });
+    }
+
+    function filterTOC() {
+      const q = document.getElementById('tocSearch').value.toLowerCase().trim();
+      if (!q) {
+        renderTOCTree(flatTOC);
+        return;
+      }
+      const filtered = flatTOC.filter(e => 
+        e.node.title.toLowerCase().includes(q) || String(e.node.page).includes(q)
+      );
+      renderTOCTree(filtered);
+    }
+
+    // --- Action: Slice & Copy JSON ---
+    async function copySectionJSON(event, entryIdx) {
+      event.stopPropagation();
+      const btn = document.getElementById(`btn-${entryIdx}`);
+      const entry = flatTOC[entryIdx];
+      const node = entry.node;
+      const pages = activeCourse.data.pages || [];
+      const book = activeCourse.data.book;
+
+      // 1. Identify stopping boundary node
+      const boundaryNode = findNextBoundaryNode(node, book.toc || []);
+
+      // 2. Resolve start and end index in pages[] array
+      const startIdx = resolvePageIndex(node.page, pages, book);
+      let endIdx = boundaryNode ? resolvePageIndex(boundaryNode.page, pages, book) : pages.length;
+
+      if (endIdx === -1 || endIdx <= startIdx) {
+        endIdx = Math.min(startIdx + 1, pages.length);
+      }
+      const safeStart = Math.max(0, startIdx === -1 ? 0 : startIdx);
+      const safeEnd = Math.max(safeStart + 1, endIdx);
+
+      // 3. Slice all encompassed pages
+      const slicedPages = pages.slice(safeStart, safeEnd);
+
+      // 4. Construct complete section JSON payload
+      const payload = {
+        book: {
+          id: book.id,
+          title: book.title,
+          course_code: book.course_code,
+          page_offset: book.page_offset,
+          selected_section: node.title,
+          section_start_page: node.page,
+          section_end_page: boundaryNode ? boundaryNode.page : (pages[pages.length - 1]?.page_number || "End")
+        },
+        section_node: node,
+        page_count: slicedPages.length,
+        pages: slicedPages
+      };
+
+      const jsonStr = JSON.stringify(payload, null, 2);
+
+      // 5. Copy to clipboard
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(jsonStr);
+        } else {
+          // Fallback for older mobile WebViews
+          const ta = document.createElement("textarea");
+          ta.value = jsonStr;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+
+        // Haptic feedback if supported
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        // Visual button feedback
+        btn.classList.add('copied');
+        btn.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Copied!</span>
+        `;
+
+        showToast(`Copied "${node.title.slice(0, 24)}..." (${slicedPages.length} Pages)`);
+
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>Copy</span>
+          `;
+        }, 1800);
+
+      } catch (err) {
+        alert("Failed to copy to clipboard: " + err.message);
+      }
+    }
+
+    function copyEntireBook() {
+      if (!activeCourse) return;
+      navigator.clipboard.writeText(JSON.stringify(activeCourse.data, null, 2));
+      showToast("Copied entire book JSON!");
+    }
+
+    function showToast(msg) {
+      toastMsg.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2400);
+    }
+  </script>
+</body>
+</html>
