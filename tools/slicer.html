@@ -914,31 +914,40 @@
       renderTOCTree(flatTOC);
     }
 
-    // --- Block-Level Spillover Detector ---
-    function getBlockText(b) {
-      if (!b) return "";
-      let txt = clean(b.body || b.title || b.label || "");
-      if (Array.isArray(b.items)) {
-        txt += " " + b.items.map(clean).join(" ");
-      }
-      if (Array.isArray(b.questions)) {
-        txt += " " + b.questions.map(clean).join(" ");
-      }
-      return txt.trim();
+    // --- Empirical 19-Course Schema Engine ---
+    const CONFIRMED_ANCHOR_TYPES = new Set([
+      "header", "mced-sub-header", "chem-sub-header", "emte-sub-header", "entre-sub-header",
+      "glaf-sub-header", "math-sub-header", "geog-sub-header", "psych-sub-header", "phys-sub-header",
+      "spsc-sub-header", "econ-sub-header", "flen-sub-header", "chem-review", "flen2-part-header",
+      "econ-review", "emte-chapter-header", "geog-chapter-header", "geog-review-box",
+      "emte-review-questions", "history-unit-header", "entre-review", "phys-chapter-header",
+      "unit-outcomes", "flen2-unit-title", "econ-summary", "glaf-chapter-header", "glaf-exercise",
+      "mced-chapter-header", "spsc-chapter-header", "flen-chapter-header", "math-chapter-header",
+      "flen2-sub-header", "flen2-reading-header", "section-header", "unit-header",
+      "chem-chapter-header", "chapter-title", "mced-activity", "entre-chapter-header"
+    ]);
+
+    // The Inverted Rule: only layout padding is benign; everything else is substantive curriculum content
+    function isBenignBlock(b) {
+      if (!b) return true;
+      const bType = String(b.type || "").toLowerCase();
+      return bType.includes("spacer") || bType.includes("footer") || bType.includes("blank-line");
     }
 
     function isBoundaryHeader(block, boundaryTitle) {
       if (!block || !boundaryTitle) return false;
       const bType = String(block.type || "").toLowerCase();
-      const isHeaderType = bType.includes("header") || bType.includes("title") || bType.includes("sub");
-      if (!isHeaderType) return false;
+      const isKnownAnchor = CONFIRMED_ANCHOR_TYPES.has(bType) ||
+        bType.includes("header") || bType.includes("title") || bType.includes("sub") ||
+        bType.includes("review") || bType.includes("summary") || bType.includes("exercise");
 
-      const headerText = clean(block.body || block.title || "").toLowerCase();
+      if (!isKnownAnchor) return false;
+
+      const headerText = clean(block.body || block.title || block.label || "").toLowerCase();
       const targetText = clean(boundaryTitle).toLowerCase();
 
       if (headerText === targetText) return true;
 
-      // Strip numeric and chapter prefixes for robust comparison
       const stripPrefix = (str) => str.replace(/^(?:(?:chapter|unit)[\s\-]+[0-9a-zivxlcdm]+|(?:\d+(?:\.\s*\d+)*))[:\.\s\-]*/i, "").trim();
       const normH = stripPrefix(headerText);
       const normT = stripPrefix(targetText);
@@ -966,27 +975,23 @@
         }
       }
 
-      // 2. If boundary header is found, check if substantive blocks exist before it
+      // 2. If boundary header is found on page:
+      // Any non-benign block before it means Section N has a tail
       if (boundaryIndex !== -1) {
         for (let i = 0; i < boundaryIndex; i++) {
-          const b = blocks[i];
-          const bType = String(b.type || "").toLowerCase();
-          const isBenign = bType.includes("spacer") || bType.includes("footer") || bType.includes("graphic");
-          const text = getBlockText(b);
-
-          if (!isBenign && text.length > 5) {
-            return true; // Tail detected: substantive content precedes next section's header
+          if (!isBenignBlock(blocks[i])) {
+            return true;
           }
         }
-        return false; // Boundary header is sitting right at the top
+        return false;
       }
 
       // 3. Fallback: If boundary title wasn't found by exact name,
-      // find the first section header on the page and audit pre-header blocks
+      // check if any confirmed anchor header sits lower down on the page
       let firstHeaderIdx = -1;
       for (let i = 0; i < blocks.length; i++) {
         const bType = String(blocks[i].type || "").toLowerCase();
-        if (bType.includes("header") || bType.includes("title")) {
+        if (CONFIRMED_ANCHOR_TYPES.has(bType) || bType.includes("header") || bType.includes("title") || bType.includes("chap") || bType.includes("unit")) {
           firstHeaderIdx = i;
           break;
         }
@@ -994,9 +999,7 @@
 
       if (firstHeaderIdx > 0) {
         for (let i = 0; i < firstHeaderIdx; i++) {
-          const bType = String(blocks[i].type || "").toLowerCase();
-          const isBenign = bType.includes("spacer") || bType.includes("footer") || bType.includes("graphic");
-          if (!isBenign && getBlockText(blocks[i]).length > 5) {
+          if (!isBenignBlock(blocks[i])) {
             return true;
           }
         }
