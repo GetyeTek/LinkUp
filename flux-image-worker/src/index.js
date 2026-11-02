@@ -80,6 +80,59 @@ async function uploadToSupabase({ url, key, courseFolder, fileName, buffer }) {
   return { storagePath, publicUrl };
 }
 
+function parseFilenameMeta(fileName) {
+  const match = fileName.match(/^U(\d+)_(\d+)_sec([0-9.]+)_?(.*?)\.(?:png|jpg|jpeg)$/i);
+  if (match) {
+    const rawTitle = (match[4] || '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+    return {
+      unit_number: parseInt(match[1], 10),
+      section_tag: match[3],
+      title: rawTitle || fileName,
+    };
+  }
+  return { unit_number: null, section_tag: null, title: fileName };
+}
+
+async function recordAssetInSupabase({ url, key, courseFolder, fileName, storagePath, publicUrl, prompt }) {
+  const meta = parseFilenameMeta(fileName);
+  const endpoint = `${url}/rest/v1/course_visual_assets`;
+
+  const payload = {
+    id: fileName,
+    course_code: courseFolder,
+    asset_type: 'image_generated',
+    unit_number: meta.unit_number,
+    section_tag: meta.section_tag,
+    title: meta.title,
+    storage_path: storagePath,
+    image_url: publicUrl,
+    metadata: { prompt: prompt || '' },
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'apikey': key,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`[Supabase DB Record Warning]: ${errText}`);
+    }
+  } catch (err) {
+    console.warn(`[Supabase DB Record Error]: ${err.message}`);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -117,6 +170,16 @@ export default {
           buffer,
         });
 
+        await recordAssetInSupabase({
+          url: supaUrl,
+          key: supaKey,
+          courseFolder,
+          fileName,
+          storagePath,
+          publicUrl,
+          prompt: finalPrompt,
+        });
+
         return jsonResponse({
           success: true,
           filename: fileName,
@@ -142,7 +205,8 @@ export default {
 
         const courseFolder = sanitizeSegment(course_code || 'MISC');
 
-        const tasks = images.map(async (item) => {
+        const results = [];
+        for (const item of images) {
           const finalPrompt = item.prompt || item.description;
           const fileName = sanitizeSegment(item.name || `image_${Date.now()}.png`);
 
@@ -156,22 +220,30 @@ export default {
               buffer,
             });
 
-            return {
+            await recordAssetInSupabase({
+              url: supaUrl,
+              key: supaKey,
+              courseFolder,
+              fileName,
+              storagePath,
+              publicUrl,
+              prompt: finalPrompt,
+            });
+
+            results.push({
               status: 'fulfilled',
               name: fileName,
               storage_path: storagePath,
               url: publicUrl,
-            };
+            });
           } catch (err) {
-            return {
+            results.push({
               status: 'rejected',
               name: fileName,
               error: err.message,
-            };
+            });
           }
-        });
-
-        const results = await Promise.all(tasks);
+        }
 
         return jsonResponse({
           success: true,
