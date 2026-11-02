@@ -142,17 +142,34 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         return candidate;
     }, [audioLesson, currentTime]);
 
-    // Sync Pinned Block in Anchor Mode if cue targets anchor
+    // Automatic Dual-Mode Switcher: Flips to anchor on block cue, snaps to cinema on visuals
     useEffect(() => {
-        if (activeCue && activeCue.type === 'anchor_block') {
-            const match = String(activeCue.target || '').match(/B(\d+)/i);
-            if (match) {
-                const bIdx = parseInt(match[1], 10);
-                setPinnedBlockIndex(bIdx);
+        if (activeCue) {
+            if (activeCue.type === 'anchor_block') {
+                const match = String(activeCue.target || '').match(/B(\d+)/i);
+                if (match) {
+                    setPinnedBlockIndex(parseInt(match[1], 10));
+                }
                 setViewMode('anchor');
+            } else if (activeCue.type === 'show_diagram' || activeCue.type === 'show_image' || activeCue.type === 'note_card') {
+                setViewMode('cinema');
             }
         }
     }, [activeCue]);
+
+    // Active Section Range Resolution from Manifest
+    const activeSection = useMemo(() => {
+        const manifest = audioLesson?.sections_manifest;
+        if (!Array.isArray(manifest) || manifest.length === 0) return null;
+        return manifest.find(s => currentTime >= s.start_time && currentTime <= s.end_time) || manifest[0];
+    }, [audioLesson, currentTime]);
+
+    const handleJumpToSection = (sec) => {
+        if (audioRef.current && sec.start_time !== undefined) {
+            audioRef.current.currentTime = sec.start_time;
+            setCurrentTime(sec.start_time);
+        }
+    };
 
     // Live Cue Match & Dispatch Telemetry Logger
     const lastReportedCueRef = useRef(null);
@@ -488,24 +505,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         )}
                     </div>
 
-                    {stage === 'studio' && (
-                        <div className="ml-mode-switch-pill">
-                            <button 
-                                className={`ml-mode-btn ${viewMode === 'cinema' ? 'active' : ''}`}
-                                onClick={() => setViewMode('cinema')}
-                            >
-                                <i className="fas fa-tv"></i>
-                                <span>Studio</span>
-                            </button>
-                            <button 
-                                className={`ml-mode-btn ${viewMode === 'anchor' ? 'active' : ''}`}
-                                onClick={() => setViewMode('anchor')}
-                            >
-                                <i className="fas fa-book-bookmark"></i>
-                                <span>Textbook Anchor</span>
-                            </button>
-                        </div>
-                    )}
+
                 </div>
 
                 <div className="ml-header-right">
@@ -743,62 +743,45 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                     </div>
                                 )}
 
-                                {/* SUBTITLE KARAOKE BAR */}
-                                <div className="ml-karaoke-bar">
-                                    <div className="ml-karaoke-stream">
-                                        {karaokeData.sentenceSnippet.map((item, idx) => (
-                                            <span 
-                                                key={idx} 
-                                                className={`ml-karaoke-word ${item.word === karaokeData.activeWord ? 'active' : ''}`}
-                                            >
-                                                {item.word}{' '}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* BOTTOM TRANSPORT AUDIO CONTROLS */}
+                                {/* BOTTOM TRANSPORT: YOUTUBE CHAPTER JUMP BARS */}
                                 <div className="ml-transport-bar">
-                                    {/* Timeline Slider with Cue Markers */}
-                                    <div 
-                                        className="ml-scrub-track" 
-                                        ref={progressBarRef} 
-                                        onClick={handleSeek}
-                                    >
-                                        <div 
-                                            className="ml-scrub-fill" 
-                                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                                        ></div>
-                                        
-                                        {/* Section Chapter Boundaries on Track */}
-                                        {(audioLesson.sections_manifest || []).map((sec, idx) => (
-                                            <div 
-                                                key={`sec-${idx}`}
-                                                className="ml-section-tick"
-                                                style={{ left: `${duration > 0 ? (sec.start_time / duration) * 100 : 0}%` }}
-                                                title={`Section: ${sec.title} (${formatTime(sec.start_time)})`}
-                                            ></div>
-                                        ))}
-
-                                        {/* Visual Cue Tick Markers on Track */}
-                                        {(audioLesson.cue_timeline || []).map((cue, idx) => (
-                                            <div 
-                                                key={`cue-${idx}`}
-                                                className="ml-cue-tick"
-                                                style={{ left: `${duration > 0 ? (cue.time / duration) * 100 : 0}%` }}
-                                                title={`Event: ${cue.type} at ${formatTime(cue.time)}`}
-                                            ></div>
-                                        ))}
-                                    </div>
-
-                                    {/* Controls Row */}
-                                    <div className="ml-transport-row">
+                                    {/* Active Section Label Pill */}
+                                    <div className="ml-chapter-info-row">
+                                        <span className="ml-active-section-pill">
+                                            <i className="fas fa-bookmark"></i>
+                                            <span>{activeSection ? `${activeSection.section_tag ? activeSection.section_tag + ' • ' : ''}${activeSection.title}` : (selectedSection?.title || 'Lecture Track')}</span>
+                                        </span>
                                         <div className="ml-time-display">
                                             <span>{formatTime(currentTime)}</span>
                                             <span className="ml-time-divider">/</span>
                                             <span>{formatTime(duration)}</span>
                                         </div>
+                                    </div>
 
+                                    {/* Dashed YouTube-Style Chapter Segments */}
+                                    <div className="ml-chapter-bar">
+                                        {(audioLesson.sections_manifest || []).map((sec, idx) => {
+                                            const isPast = currentTime >= sec.end_time;
+                                            const isCurrent = currentTime >= sec.start_time && currentTime < sec.end_time;
+                                            const progressPct = isPast ? 100 : isCurrent ? Math.min(100, Math.max(0, ((currentTime - sec.start_time) / (sec.duration || 1)) * 100)) : 0;
+                                            const widthPct = duration > 0 ? (sec.duration / duration) * 100 : (100 / (audioLesson.sections_manifest.length || 1));
+
+                                            return (
+                                                <div 
+                                                    key={idx}
+                                                    className={`ml-chapter-segment ${isCurrent ? 'active' : ''}`}
+                                                    style={{ width: `${Math.max(3, widthPct)}%` }}
+                                                    onClick={() => handleJumpToSection(sec)}
+                                                    title={`${sec.section_tag ? sec.section_tag + ' ' : ''}${sec.title} (${formatTime(sec.start_time)})`}
+                                                >
+                                                    <div className="ml-chapter-fill" style={{ width: `${progressPct}%` }}></div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Controls Row */}
+                                    <div className="ml-transport-row">
                                         <div className="ml-center-playback-actions">
                                             <button className="ml-skip-btn" onClick={() => handleSkip(-10)} title="Rewind 10s">
                                                 <i className="fas fa-rotate-left"></i>
