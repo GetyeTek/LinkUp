@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miron Ingestor & Lecture Queue Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090e18;
+      --surface: #111827;
+      --surface-card: #162032;
+      --border: #24324a;
+      --blue: #38bdf8;
+      --blue-glow: rgba(56, 189, 248, 0.15);
+      --green: #10b981;
+      --green-dim: rgba(16, 185, 129, 0.12);
+      --amber: #f59e0b;
+      --red: #f43f5e;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      padding: 32px 20px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 920px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .header {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .tabs-nav {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 6px;
+      gap: 8px;
+    }
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--blue);
+      color: #090e18;
+      box-shadow: 0 4px 15px rgba(56, 189, 248, 0.35);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1.2fr 1.8fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 720px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+    label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+    input, textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 12px var(--blue-glow);
+    }
+    textarea {
+      min-height: 280px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+    .btn {
+      background: var(--blue);
+      color: #090e18;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s;
+    }
+    .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.btn-green {
+      background: var(--green);
+      color: #042f2e;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+    }
+    .log-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      max-height: 320px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+    .log-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: var(--surface-card);
+      border-left: 3px solid var(--blue);
+    }
+    .log-item.success { border-left-color: var(--green); }
+    .log-item.error { border-left-color: var(--red); color: #fca5a5; }
+    .status-badge {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .pill-tip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-dim);
+      border: 1px solid var(--green);
+      color: var(--green);
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>⚡ Miron Ingestor & Lecture Queue Studio</h1>
+        <p>Direct Supabase REST bridge for visual SVG diagrams and master audio lesson scripts.</p>
+      </div>
+      <span class="pill-tip">✔ Auto-Saves Credentials</span>
+    </div>
+
+    <!-- Credentials Card -->
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <label>Supabase URL</label>
+          <input type="text" id="supa-url" placeholder="https://xyz.supabase.co">
+        </div>
+        <div>
+          <label>Supabase Service Role Key</label>
+          <input type="password" id="supa-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" id="tab-btn-visuals" onclick="switchTab('visuals')">
+        🎨 1. Ingest Course Visuals (XML)
+      </button>
+      <button class="tab-btn" id="tab-btn-script" onclick="switchTab('script')">
+        🎙️ 2. Queue Audio Lesson Script
+      </button>
+    </div>
+
+    <!-- TAB 1: XML VISUALS INGESTION -->
+    <div class="card" id="tab-panel-visuals">
+      <div>
+        <label>Course Visuals XML</label>
+        <textarea id="xml-input" placeholder="Paste <course_visuals> XML content here..."></textarea>
+      </div>
+      <button class="btn" id="btn-ingest-xml" onclick="handleIngestXml()">
+        🚀 Parse & Ingest Visuals
+      </button>
+    </div>
+
+    <!-- TAB 2: MASTER SCRIPT QUEUE -->
+    <div class="card" id="tab-panel-script" style="display: none;">
+      <div class="grid-3">
+        <div>
+          <label>Course Code</label>
+          <input type="text" id="script-course-code" value="ANTH 1012">
+        </div>
+        <div>
+          <label>Book ID (UUID)</label>
+          <input type="text" id="script-book-id" value="d59179fa-23a7-470a-b071-9e632e85e6ae">
+        </div>
+        <div>
+          <label>Start Page</label>
+          <input type="number" id="script-page-num" value="11">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Chapter Title</label>
+          <input type="text" id="script-chapter-title" value="Unit One: Introducing Anthropology and its Subject Matter">
+        </div>
+        <div>
+          <label>Section Title (Master Track Title)</label>
+          <input type="text" id="script-section-title" value="Unit One: Introducing Anthropology and its Subject Matter">
+        </div>
+      </div>
+
+      <div>
+        <label>Master Audio Script (With Section & Visual Cues)</label>
+        <textarea id="script-text-input" placeholder="Paste master lecture script here..."></textarea>
+      </div>
+
+      <button class="btn btn-green" id="btn-queue-script" onclick="handleQueueScript()">
+        ⚡ Queue Audio Lesson for Processing
+      </button>
+    </div>
+
+    <!-- Output Logs Console -->
+    <div class="card" id="output-card" style="display: none;">
+      <label id="log-summary">Execution Logs</label>
+      <div class="log-box" id="log-container"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY_URL = 'miron_ingestor_supa_url';
+    const STORAGE_KEY_KEY = 'miron_ingestor_supa_key';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedUrl = localStorage.getItem(STORAGE_KEY_URL);
+      const savedKey = localStorage.getItem(STORAGE_KEY_KEY);
+      if (savedUrl) document.getElementById('supa-url').value = savedUrl;
+      if (savedKey) document.getElementById('supa-key').value = savedKey;
+    });
+
+    function getCredentials() {
+      const supaUrl = (document.getElementById('supa-url').value || '').trim().replace(/\/$/, '');
+      const supaKey = (document.getElementById('supa-key').value || '').trim();
+
+      if (!supaUrl || !supaKey) {
+        alert('Please provide your Supabase URL and Service Role Key.');
+        return null;
+      }
+
+      localStorage.setItem(STORAGE_KEY_URL, supaUrl);
+      localStorage.setItem(STORAGE_KEY_KEY, supaKey);
+      return { supaUrl, supaKey };
+    }
+
+    function switchTab(mode) {
+      const isVisuals = mode === 'visuals';
+      document.getElementById('tab-btn-visuals').className = `tab-btn ${isVisuals ? 'active' : ''}`;
+      document.getElementById('tab-btn-script').className = `tab-btn ${!isVisuals ? 'active' : ''}`;
+      document.getElementById('tab-panel-visuals').style.display = isVisuals ? 'flex' : 'none';
+      document.getElementById('tab-panel-script').style.display = !isVisuals ? 'flex' : 'none';
+    }
+
+    function appendLog(title, subtitle, status) {
+      const outputCard = document.getElementById('output-card');
+      const container = document.getElementById('log-container');
+      outputCard.style.display = 'flex';
+
+      const row = document.createElement('div');
+      row.className = `log-item ${status}`;
+      row.innerHTML = `
+        <span><strong>${title}</strong></span>
+        <span class="status-badge">${subtitle}</span>
+      `;
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // --- TAB 1: INGEST XML INFOGRAPHICS ---
+    async function handleIngestXml() {
+      const creds = getCredentials();
+      if (!creds) return;
+
+      const rawXml = (document.getElementById('xml-input').value || '').trim();
+      if (!rawXml) {
+        alert('Please paste the course visuals XML content.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-ingest-xml');
+      const logSummary = document.getElementById('log-summary');
+      document.getElementById('log-container').innerHTML = '';
+      btn.disabled = true;
+
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(rawXml, 'application/xml');
+
+        if (xmlDoc.querySelector('parsererror')) {
+          throw new Error('XML parsing failed. Verify that syntax is well-formed.');
+        }
+
+        const courseCode = (xmlDoc.querySelector('course_code')?.textContent || 'GENERAL').trim();
+        const infographics = Array.from(xmlDoc.querySelectorAll('infographic'));
+
+        if (infographics.length === 0) {
+          throw new Error('No <infographic> tags found in XML.');
+        }
+
+        logSummary.textContent = `Ingesting ${infographics.length} visual(s) for ${courseCode}...`;
+
+        let count = 0;
+        for (let i = 0; i !== infographics.length; i++) {
+          const el = infographics[i];
+          const id = el.getAttribute('id') || `vis_${Date.now()}_${i}`;
+          const title = (el.querySelector('name')?.textContent || id).trim();
+          const targetQuery = (el.querySelector('routing > target_query')?.textContent || '').trim();
+          const insertionPosition = (el.querySelector('routing > insertion_position')?.textContent || 'after').trim();
+
+          const secMatch = targetQuery.match(/^([0-9]+(?:\.[0-9]+)*)/);
+          const sectionTag = secMatch ? secMatch[1] : null;
+          const unitNumber = sectionTag ? parseInt(sectionTag.split('.')[0], 10) : null;
+
+          const payloadNode = el.querySelector('payload');
+          const payloadContent = payloadNode ? payloadNode.textContent.trim() : '';
+
+          const record = {
+            id: id,
+            course_code: courseCode,
+            asset_type: 'diagram_svg',
+            unit_number: unitNumber,
+            section_tag: sectionTag,
+            title: title,
+            content_payload: payloadContent,
+            storage_path: null,
+            image_url: null,
+            metadata: {
+              routing_query: targetQuery,
+              insertion_position: insertionPosition
+            },
+            updated_at: new Date().toISOString()
+          };
+
+          const endpoint = `${creds.supaUrl}/rest/v1/course_visual_assets`;
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${creds.supaKey}`,
+              'apikey': creds.supaKey,
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify(record)
+          });
+
+          if (!res.ok) {
+            const err = await res.text();
+            appendLog(`[${i + 1}/${infographics.length}] ${id}`, `Error: ${err}`, 'error');
+          } else {
+            count++;
+            appendLog(`[${i + 1}/${infographics.length}] ${id}`, `Section ${sectionTag || 'N/A'} • Saved`, 'success');
+          }
+        }
+
+        logSummary.textContent = `Completed: ${count} of ${infographics.length} visuals ingested.`;
+      } catch (err) {
+        appendLog('Fatal Ingest Error', err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // --- TAB 2: QUEUE MASTER AUDIO LESSON SCRIPT ---
+    async function handleQueueScript() {
+      const creds = getCredentials();
+      if (!creds) return;
+
+      const courseCode = (document.getElementById('script-course-code').value || '').trim();
+      const bookId = (document.getElementById('script-book-id').value || '').trim();
+      const pageNum = parseInt(document.getElementById('script-page-num').value || '1', 10);
+      const chapterTitle = (document.getElementById('script-chapter-title').value || '').trim();
+      const sectionTitle = (document.getElementById('script-section-title').value || '').trim();
+      const scriptRaw = (document.getElementById('script-text-input').value || '').trim();
+
+      if (!bookId || !sectionTitle || !scriptRaw) {
+        alert('Please fill in Book ID, Section Title, and paste the Master Script.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-queue-script');
+      const logSummary = document.getElementById('log-summary');
+      document.getElementById('log-container').innerHTML = '';
+      btn.disabled = true;
+
+      try {
+        logSummary.textContent = 'Queueing Master Audio Lesson into Supabase...';
+
+        const record = {
+          book_id: bookId,
+          course_code: courseCode,
+          chapter_title: chapterTitle,
+          section_title: sectionTitle,
+          page_number: pageNum,
+          script_raw: scriptRaw,
+          status: 'pending',
+          error_message: null,
+          updated_at: new Date().toISOString()
+        };
+
+        const endpoint = `${creds.supaUrl}/rest/v1/book_audio_lessons`;
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${creds.supaKey}`,
+            'apikey': creds.supaKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify(record)
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(err);
+        }
+
+        // Count cues inside the pasted script
+        const visualCues = (scriptRaw.match(/\[\[(?:cue|call):(?!section)[a-zA-Z0-9_\-]+(?::[\s\S]*?)?\]\]/g) || []).length;
+        const sectionCues = (scriptRaw.match(/\[\[(?:cue|call):section(?::[\s\S]*?)?\]\]/g) || []).length;
+
+        appendLog('Master Script Queued', `Status: PENDING`, 'success');
+        appendLog(`Course: ${courseCode}`, `Book: ${bookId.slice(0, 8)}...`, 'success');
+        appendLog(`Structure Detected`, `${sectionCues} Sections • ${visualCues} Visual Cues`, 'success');
+        logSummary.textContent = 'Success! Script is queued. Trigger GitHub Action to process audio & alignment.';
+      } catch (err) {
+        appendLog('Queue Failed', err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
