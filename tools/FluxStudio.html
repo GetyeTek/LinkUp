@@ -148,6 +148,7 @@
     <div class="modal-footer">
       <span id="modalTitle" style="font-size: 13px; font-weight: 600;"></span>
       <div class="row">
+        <button class="btn btn-emerald btn-sm" onclick="downloadCurrentImage()">Download Image</button>
         <button class="btn btn-secondary btn-sm" onclick="copyModalUrl()">Copy Supabase CDN URL</button>
         <button class="btn btn-secondary btn-sm" onclick="closeModal()">Close</button>
       </div>
@@ -379,7 +380,7 @@
             <div style="font-size: 11px; color: var(--text-muted);">Size: ${(item.size / 1024).toFixed(1)} KB | ${item.storage_path}</div>
             <div class="row" style="margin-top: 4px;">
               <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${item.url}'); alert('Supabase CDN URL copied!')">Copy URL</button>
-              <a href="${item.url}" download="${item.filename}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration: none;">Download</a>
+              <button class="btn btn-secondary btn-sm" onclick="downloadImage('${item.url}', '${item.filename}')">Download</button>
             </div>
           </div>
         `;
@@ -404,6 +405,40 @@
   function copyModalUrl() {
     navigator.clipboard.writeText(currentModalUrl);
     alert('Public Supabase CDN URL copied to clipboard!');
+  }
+
+  async function downloadImage(url, filename) {
+    const safeName = filename || 'download.png';
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error('Fetch failed: ' + res.statusText);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = safeName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    } catch (err) {
+      console.warn('Blob download fallback triggered:', err);
+      const sep = url.includes('?') ? '&' : '?';
+      const forceDownloadUrl = `${url}${sep}download=${encodeURIComponent(safeName)}`;
+      const link = document.createElement('a');
+      link.href = forceDownloadUrl;
+      link.setAttribute('download', safeName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+
+  function downloadCurrentImage() {
+    const title = document.getElementById('modalTitle').innerText || 'image.png';
+    if (currentModalUrl) {
+      downloadImage(currentModalUrl, title);
+    }
   }
 </script>
 </body>
