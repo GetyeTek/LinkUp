@@ -18,19 +18,20 @@
     z-index: 0; pointer-events: none;
 }
 .ml-header {
-    padding: 0.65rem 1.25rem; display: flex; justify-content: space-between; align-items: center;
+    padding: 0.4rem 1rem; display: flex; justify-content: space-between; align-items: center;
     z-index: 30; border-bottom: 1px solid #1e293b; background: rgba(15, 23, 42, 0.95);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); width: 100%; box-sizing: border-box;
+    min-height: 48px;
 }
 .ml-header-left, .ml-header-right {
-    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
 }
 .ml-header-center {
-    display: flex; align-items: center; justify-content: center; gap: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
     flex: 1; min-width: 0;
 }
 .ml-avatar-mini-container {
-    width: 38px; height: 38px; position: relative; border-radius: 50%;
+    width: 30px; height: 30px; position: relative; border-radius: 50%;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .ml-avatar {
@@ -67,17 +68,17 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ml-studio-title-pill {
-    display: flex; align-items: center; gap: 8px;
-    background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 99px; padding: 4px 12px;
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 99px; padding: 2px 10px;
 }
 .ml-studio-course-tag {
-    font-family: 'Roboto Mono', monospace; font-size: 0.68rem; font-weight: 800;
-    color: #38bdf8; background: rgba(56, 189, 248, 0.15); padding: 1px 6px; border-radius: 4px;
+    font-family: 'Roboto Mono', monospace; font-size: 0.62rem; font-weight: 800;
+    color: #38bdf8; background: rgba(56, 189, 248, 0.15); padding: 1px 5px; border-radius: 3px;
 }
 .ml-studio-section-name {
-    font-size: 0.82rem; font-weight: 600; color: #f8fafc;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px;
+    font-size: 0.78rem; font-weight: 600; color: #f8fafc;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px;
 }
 
 /* Mode Switch Pill */
@@ -258,23 +259,80 @@
 }
 
 /* CINEMA STAGE */
+/* --- DUAL-TOPOLOGY SVG ENGINE & DESIGN TOKENS --- */
+:root {
+    --vis-bg: #090e18;
+    --vis-surface: #111827;
+    --vis-surface-card: #162032;
+    --vis-border: #24324a;
+    --vis-blue: #38bdf8;
+    --vis-blue-dim: rgba(56, 189, 248, 0.12);
+    --vis-green: #10b981;
+    --vis-green-dim: rgba(16, 185, 129, 0.12);
+    --vis-purple: #a855f7;
+    --vis-purple-dim: rgba(168, 85, 247, 0.12);
+    --vis-amber: #f59e0b;
+    --vis-amber-dim: rgba(245, 158, 11, 0.12);
+    --vis-rose: #f43f5e;
+    --vis-rose-dim: rgba(244, 63, 94, 0.12);
+    --vis-text: #f8fafc;
+    --vis-text-muted: #94a3b8;
+}
+
+/* Dual-Topology Screen Switcher: Renders desktop on PC, mobile on phone */
+.vis-desktop { display: block !important; }
+.vis-mobile  { display: none !important; }
+
+@media (max-width: 768px) {
+    .vis-desktop { display: none !important; }
+    .vis-mobile  { display: block !important; }
+}
+
+/* Universal SVG Card Styles */
+.vis-card {
+    background: var(--vis-surface); border: 1px solid var(--vis-border);
+    border-radius: 14px; padding: 12px 14px; margin: 0 auto;
+    width: 100%; max-width: 780px; display: flex; flex-direction: column;
+    gap: 8px; color: var(--vis-text); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.vis-head {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--vis-border); padding-bottom: 6px;
+}
+.vis-badge {
+    font-size: 8.5px; font-weight: 800; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 5px; letter-spacing: 0.5px;
+    display: inline-block; margin-bottom: 2px;
+}
+.vb-blue   { background: var(--vis-blue-dim);   color: var(--vis-blue);   border: 1px solid var(--vis-blue); }
+.vb-green  { background: var(--vis-green-dim);  color: var(--vis-green);  border: 1px solid var(--vis-green); }
+.vb-amber  { background: var(--vis-amber-dim);  color: var(--vis-amber);  border: 1px solid var(--vis-amber); }
+.vb-purple { background: var(--vis-purple-dim); color: var(--vis-purple); border: 1px solid var(--vis-purple); }
+.vis-title { font-size: 13.5px; font-weight: 800; color: #fff; }
+.vis-box {
+    width: 100%; border-radius: 10px; background: var(--vis-bg);
+    border: 1px solid #1a253a; overflow: hidden; display: flex;
+    justify-content: center; align-items: center; padding: 8px 4px;
+}
+.vis-box svg { display: block; width: 100%; height: auto; max-height: 52vh; }
+
 .ml-cinema-stage {
     flex: 1; display: flex; align-items: center; justify-content: center;
-    padding: 1rem 1.5rem; overflow-y: auto; min-height: 0; position: relative;
+    padding: 0.5rem 1rem; overflow-y: auto; min-height: 0; position: relative;
 }
 .ml-visual-card-svg {
-    width: 100%; max-width: 820px; animation: fadeInCard 0.25s ease-out;
+    width: 100%; max-width: 780px; animation: fadeInCard 0.25s ease-out;
 }
 .ml-visual-card-image {
-    width: 100%; max-width: 760px; max-height: 100%; position: relative; border-radius: 18px;
-    overflow: hidden; border: 1px solid #1e293b; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
-    animation: fadeInCard 0.25s ease-out;
+    width: 100%; max-width: 680px; position: relative; border-radius: 16px;
+    overflow: hidden; border: 1px solid #1e293b; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    animation: fadeInCard 0.25s ease-out; margin: 0 auto;
 }
-.ml-visual-card-image img { width: 100%; height: auto; max-height: 55vh; object-fit: contain; display: block; }
+.ml-visual-card-image img { width: 100%; height: auto; max-height: 52vh; object-fit: contain; display: block; }
 .ml-image-caption-pill {
-    position: absolute; bottom: 12px; left: 16px; background: rgba(15, 23, 42, 0.85);
+    position: absolute; bottom: 8px; left: 12px; background: rgba(15, 23, 42, 0.88);
     backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15);
-    padding: 4px 12px; border-radius: 99px; font-size: 0.78rem; font-weight: 700; color: #38bdf8;
+    padding: 2px 10px; border-radius: 99px; font-size: 0.72rem; font-weight: 700; color: #38bdf8;
 }
 
 .ml-visual-card-note {
