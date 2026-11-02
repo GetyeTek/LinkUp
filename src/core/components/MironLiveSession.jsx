@@ -154,6 +154,29 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     }, [activeCue]);
 
+    // Live Cue Match & Dispatch Telemetry Logger
+    const lastReportedCueRef = useRef(null);
+    useEffect(() => {
+        if (activeCue !== lastReportedCueRef.current) {
+            lastReportedCueRef.current = activeCue;
+            if (activeCue) {
+                const matchedAsset = visualAssets[activeCue.target];
+                if (matchedAsset) {
+                    console.log(`🟢 [Miron Visual Cue Fired] Time: ${currentTime.toFixed(2)}s | Target ID: "${activeCue.target}" | Type: ${matchedAsset.asset_type} -> MATCHED!`);
+                } else if (activeCue.type === 'note_card') {
+                    console.log(`📝 [Miron Note Card Fired] Time: ${currentTime.toFixed(2)}s | Data:`, activeCue.target);
+                } else {
+                    console.warn(`⚠️ [Miron Cue Missing Asset] Time: ${currentTime.toFixed(2)}s | Cue Target: "${activeCue.target}" was NOT found in loaded visual assets!`, {
+                        searchedTarget: activeCue.target,
+                        availableAssetKeys: Object.keys(visualAssets)
+                    });
+                }
+            } else if (currentTime > 0) {
+                console.log(`⏱️ [Miron Cue] No cue active at ${currentTime.toFixed(2)}s (Showing default soundwave)`);
+            }
+        }
+    }, [activeCue, currentTime, visualAssets]);
+
     // Active Karaoke Subtitle Window
     const karaokeData = useMemo(() => {
         const words = audioLesson?.word_timestamps;
@@ -244,16 +267,33 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 }
             }
 
-            // 2. Fetch associated Visual Assets (SVGs & Images) for this Course
-            const { data: assets } = await supabase
+            // 2. Fetch Visual Assets with Dual Space/Underscore Normalization
+            const codeWithSpace = (selectedBook.course_code || '').trim();
+            const codeWithUnderscore = codeWithSpace.replace(/\s+/g, '_');
+
+            console.group(`🎨 [Miron Visual Assets Cache] Fetching for "${codeWithSpace}" / "${codeWithUnderscore}"`);
+
+            const { data: assets, error: assetErr } = await supabase
                 .from('course_visual_assets')
                 .select('*')
-                .eq('course_code', selectedBook.course_code);
+                .or(`course_code.eq."${codeWithSpace}",course_code.eq."${codeWithUnderscore}"`);
+
+            if (assetErr) {
+                console.error('❌ Failed to fetch from course_visual_assets:', assetErr);
+            } else if (!assets || assets.length === 0) {
+                console.warn(`⚠️ 0 assets found in course_visual_assets for course_code: ["${codeWithSpace}", "${codeWithUnderscore}"]. Verify that XML diagrams or images are inserted in Supabase!`);
+            } else {
+                console.log(`📦 Loaded ${assets.length} visual asset(s):`, assets);
+            }
 
             const assetMap = {};
             if (Array.isArray(assets)) {
-                assets.forEach(a => { assetMap[a.id] = a; });
+                assets.forEach(a => {
+                    assetMap[a.id] = a;
+                    console.log(`   👉 Registered Asset: [${a.asset_type}] ID: "${a.id}" (Section: ${a.section_tag || 'N/A'})`);
+                });
             }
+            console.groupEnd();
             setVisualAssets(assetMap);
 
             // 3. Preload Book Page Blocks for Anchor Mode
