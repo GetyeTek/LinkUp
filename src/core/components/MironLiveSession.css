@@ -368,7 +368,12 @@
 }
 .ml-cue-tick {
     position: absolute; top: -2px; width: 4px; height: 10px; background: #f59e0b;
-    border-radius: 2px; transform: translateX(-50%); pointer-events: none;
+    border-radius: 2px; transform: translateX(-50%); pointer-events: none; z-index: 3;
+}
+.ml-section-tick {
+    position: absolute; top: -4px; width: 3px; height: 14px; background: #38bdf8;
+    border-radius: 1px; transform: translateX(-50%); pointer-events: none; z-index: 2;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
 }
 .ml-transport-row {
     display: flex; align-items: center; justify-content: space-between;
