@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miron Visual Ingestor</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090e18;
+      --surface: #111827;
+      --surface-card: #162032;
+      --border: #24324a;
+      --blue: #38bdf8;
+      --blue-glow: rgba(56, 189, 248, 0.15);
+      --green: #10b981;
+      --red: #f43f5e;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      padding: 32px 20px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .header {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 680px) { .grid-2 { grid-template-columns: 1fr; } }
+    label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+    input, textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 12px var(--blue-glow);
+    }
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+    .btn {
+      background: var(--blue);
+      color: #090e18;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .log-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      max-height: 320px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+    .log-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: var(--surface-card);
+      border-left: 3px solid var(--blue);
+    }
+    .log-item.success { border-left-color: var(--green); }
+    .log-item.error { border-left-color: var(--red); color: #fca5a5; }
+    .status-badge {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚡ Miron Visual Ingestor</h1>
+      <p>Parse course visual XML files and batch-upsert them directly into Supabase course_visual_assets.</p>
+    </div>
+
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <label>Supabase URL</label>
+          <input type="text" id="supa-url" placeholder="https://xyzcompany.supabase.co">
+        </div>
+        <div>
+          <label>Supabase Service Role Key</label>
+          <input type="password" id="supa-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        </div>
+      </div>
+
+      <div>
+        <label>Course Visuals XML</label>
+        <textarea id="xml-input" placeholder="Paste <course_visuals> XML content here..."></textarea>
+      </div>
+
+      <button class="btn" id="btn-ingest" onclick="handleIngest()">
+        🚀 Parse & Ingest Visuals
+      </button>
+    </div>
+
+    <div class="card" id="output-card" style="display: none;">
+      <label id="log-summary">Execution Logs</label>
+      <div class="log-box" id="log-container"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY_URL = 'miron_ingestor_supa_url';
+    const STORAGE_KEY_KEY = 'miron_ingestor_supa_key';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedUrl = localStorage.getItem(STORAGE_KEY_URL);
+      const savedKey = localStorage.getItem(STORAGE_KEY_KEY);
+      if (savedUrl) document.getElementById('supa-url').value = savedUrl;
+      if (savedKey) document.getElementById('supa-key').value = savedKey;
+    });
+
+    function cleanString(str) {
+      return (str || '').trim();
+    }
+
+    async function handleIngest() {
+      const supaUrl = cleanString(document.getElementById('supa-url').value).replace(/\/$/, '');
+      const supaKey = cleanString(document.getElementById('supa-key').value);
+      const rawXml = cleanString(document.getElementById('xml-input').value);
+
+      if (!supaUrl || !supaKey) {
+        alert('Please provide your Supabase URL and Service Role Key.');
+        return;
+      }
+      if (!rawXml) {
+        alert('Please paste the course visuals XML content.');
+        return;
+      }
+
+      localStorage.setItem(STORAGE_KEY_URL, supaUrl);
+      localStorage.setItem(STORAGE_KEY_KEY, supaKey);
+
+      const btn = document.getElementById('btn-ingest');
+      const outputCard = document.getElementById('output-card');
+      const logContainer = document.getElementById('log-container');
+      const logSummary = document.getElementById('log-summary');
+
+      outputCard.style.display = 'flex';
+      logContainer.innerHTML = '';
+      btn.disabled = true;
+
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(rawXml, 'application/xml');
+
+        if (xmlDoc.querySelector('parsererror')) {
+          throw new Error('XML parsing failed. Verify that your XML syntax is well-formed.');
+        }
+
+        const courseCode = cleanString(xmlDoc.querySelector('course_code')?.textContent || 'GENERAL');
+        const infographics = Array.from(xmlDoc.querySelectorAll('infographic'));
+
+        if (infographics.length === 0) {
+          throw new Error('No <infographic> tags found in the provided XML.');
+        }
+
+        logSummary.textContent = `Found ${infographics.length} infographic(s) for course ${courseCode}. Uploading...`;
+
+        let successCount = 0;
+
+        for (let i = 0; i < infographics.length; i++) {
+          const el = infographics[i];
+          const id = el.getAttribute('id') || `vis_${Date.now()}_${i}`;
+          const title = cleanString(el.querySelector('name')?.textContent || id);
+          const targetQuery = cleanString(el.querySelector('routing > target_query')?.textContent || '');
+          const insertionPosition = cleanString(el.querySelector('routing > insertion_position')?.textContent || 'after');
+          
+          const secMatch = targetQuery.match(/^([0-9]+(?:\.[0-9]+)*)/);
+          const sectionTag = secMatch ? secMatch[1] : null;
+          const unitNumber = sectionTag ? parseInt(sectionTag.split('.')[0], 10) : null;
+
+          const payloadNode = el.querySelector('payload');
+          const payloadContent = payloadNode ? cleanString(payloadNode.textContent) : '';
+
+          const record = {
+            id: id,
+            course_code: courseCode,
+            asset_type: 'diagram_svg',
+            unit_number: unitNumber,
+            section_tag: sectionTag,
+            title: title,
+            content_payload: payloadContent,
+            storage_path: null,
+            image_url: null,
+            metadata: {
+              routing_query: targetQuery,
+              insertion_position: insertionPosition
+            },
+            updated_at: new Date().toISOString()
+          };
+
+          const endpoint = `${supaUrl}/rest/v1/course_visual_assets`;
+
+          try {
+            const res = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${supaKey}`,
+                'apikey': supaKey,
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=merge-duplicates'
+              },
+              body: JSON.stringify(record)
+            });
+
+            if (!res.ok) {
+              const err = await res.text();
+              throw new Error(err);
+            }
+
+            successCount++;
+            appendLog(logContainer, `[${i + 1}/${infographics.length}] ${id}`, `Section ${sectionTag || 'N/A'} • Saved`, 'success');
+          } catch (err) {
+            appendLog(logContainer, `[${i + 1}/${infographics.length}] ${id}`, `Error: ${err.message}`, 'error');
+          }
+        }
+
+        logSummary.textContent = `Completed: ${successCount} of ${infographics.length} visuals successfully ingested.`;
+      } catch (err) {
+        appendLog(logContainer, 'Fatal Error', err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function appendLog(container, title, subtitle, status) {
+      const row = document.createElement('div');
+      row.className = `log-item ${status}`;
+      row.innerHTML = `
+        <span><strong>${title}</strong></span>
+        <span class="status-badge">${subtitle}</span>
+      `;
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+    }
+  </script>
+</body>
+</html>
