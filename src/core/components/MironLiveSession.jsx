@@ -157,12 +157,30 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
     }, [activeCue]);
 
-    // Active Section Range Resolution from Manifest
+    // Safe Manifest Parsing & Fallback (Guarantees visible chapter segments)
+    const manifest = useMemo(() => {
+        let raw = audioLesson?.sections_manifest;
+        if (typeof raw === 'string') {
+            try { raw = JSON.parse(raw); } catch (e) { raw = []; }
+        }
+        if (Array.isArray(raw) && raw.length > 0) return raw;
+        if (duration > 0) {
+            return [{
+                section_tag: '1.1',
+                title: selectedSection?.title || 'Core Lecture',
+                start_time: 0,
+                end_time: duration,
+                duration: duration
+            }];
+        }
+        return [];
+    }, [audioLesson, duration, selectedSection]);
+
+    // Active Section Resolution
     const activeSection = useMemo(() => {
-        const manifest = audioLesson?.sections_manifest;
-        if (!Array.isArray(manifest) || manifest.length === 0) return null;
+        if (manifest.length === 0) return null;
         return manifest.find(s => currentTime >= s.start_time && currentTime <= s.end_time) || manifest[0];
-    }, [audioLesson, currentTime]);
+    }, [manifest, currentTime]);
 
     const handleJumpToSection = (sec) => {
         if (audioRef.current && sec.start_time !== undefined) {
@@ -743,14 +761,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                     </div>
                                 )}
 
-                                {/* BOTTOM TRANSPORT: YOUTUBE CHAPTER JUMP BARS */}
+                                {/* BOTTOM TRANSPORT: COMPACT IMMERSIVE CONTROLS */}
                                 <div className="ml-transport-bar">
-                                    {/* Active Section Label Pill */}
+                                    {/* Row 1: Single-Line Title & Time */}
                                     <div className="ml-chapter-info-row">
-                                        <span className="ml-active-section-pill">
+                                        <div className="ml-active-section-pill">
                                             <i className="fas fa-bookmark"></i>
-                                            <span>{activeSection ? `${activeSection.section_tag ? activeSection.section_tag + ' • ' : ''}${activeSection.title}` : (selectedSection?.title || 'Lecture Track')}</span>
-                                        </span>
+                                            <span className="ml-active-sec-text">
+                                                {activeSection ? `${activeSection.section_tag ? activeSection.section_tag + ' • ' : ''}${activeSection.title}` : (selectedSection?.title || 'Lecture Track')}
+                                            </span>
+                                        </div>
                                         <div className="ml-time-display">
                                             <span>{formatTime(currentTime)}</span>
                                             <span className="ml-time-divider">/</span>
@@ -758,20 +778,23 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         </div>
                                     </div>
 
-                                    {/* Dashed YouTube-Style Chapter Segments */}
-                                    <div className="ml-chapter-bar">
-                                        {(audioLesson.sections_manifest || []).map((sec, idx) => {
+                                    {/* Row 2: Visible YouTube Chapter Segments (Tap to Jump) */}
+                                    <div className="ml-chapter-bar" title="Tap any chapter line to jump to section">
+                                        {manifest.map((sec, idx) => {
                                             const isPast = currentTime >= sec.end_time;
                                             const isCurrent = currentTime >= sec.start_time && currentTime < sec.end_time;
                                             const progressPct = isPast ? 100 : isCurrent ? Math.min(100, Math.max(0, ((currentTime - sec.start_time) / (sec.duration || 1)) * 100)) : 0;
-                                            const widthPct = duration > 0 ? (sec.duration / duration) * 100 : (100 / (audioLesson.sections_manifest.length || 1));
+                                            const widthPct = duration > 0 ? (sec.duration / duration) * 100 : (100 / (manifest.length || 1));
 
                                             return (
                                                 <div 
                                                     key={idx}
                                                     className={`ml-chapter-segment ${isCurrent ? 'active' : ''}`}
-                                                    style={{ width: `${Math.max(3, widthPct)}%` }}
-                                                    onClick={() => handleJumpToSection(sec)}
+                                                    style={{ width: `${Math.max(4, widthPct)}%` }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleJumpToSection(sec);
+                                                    }}
                                                     title={`${sec.section_tag ? sec.section_tag + ' ' : ''}${sec.title} (${formatTime(sec.start_time)})`}
                                                 >
                                                     <div className="ml-chapter-fill" style={{ width: `${progressPct}%` }}></div>
@@ -780,8 +803,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         })}
                                     </div>
 
-                                    {/* Controls Row */}
+                                    {/* Row 3: Mathematically Centered Controls */}
                                     <div className="ml-transport-row">
+                                        <div className="ml-transport-left-spacer"></div>
+
                                         <div className="ml-center-playback-actions">
                                             <button className="ml-skip-btn" onClick={() => handleSkip(-10)} title="Rewind 10s">
                                                 <i className="fas fa-rotate-left"></i>
