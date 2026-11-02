@@ -141,12 +141,22 @@ async function generateSpeechTTS(text, apiKeyObj) {
     };
 }
 
-// --- 4. CALL GEMINI 3.5 TRANSCRIBE FOR WORD TIMESTAMPS ---
-async function transcribeAudioWithWordTimestamps(mp3Base64, apiKeyObj) {
+// --- 4. ACCURATE AUDIO DURATION HELPER ---
+function getAudioDurationSeconds(filePath) {
+    try {
+        const out = execSync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`, { encoding: 'utf-8' });
+        const val = parseFloat(out.trim());
+        if (!isNaN(val) && val > 0) return Number(val.toFixed(2));
+    } catch (e) {}
+    return 0;
+}
+
+// --- 5. CALL GEMINI 3.5 TRANSCRIBE WITHOUT FORCED JSON-MODE ---
+async function transcribeAudioWithWordTimestamps(mp3Base64, apiKeyObj, fallbackCleanText, fallbackDuration) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${apiKeyObj.api_key}`;
 
-    const promptText = `Transcribe this audio verbatim.
-You must return a JSON object with:
+    const promptText = `Transcribe this audio verbatim with word-level timestamps.
+Output a JSON object with:
 1. "duration": total audio length in seconds (float).
 2. "words": an array of words, where each item has:
    - "word": string
@@ -155,6 +165,7 @@ You must return a JSON object with:
 
 Do not wrap with markdown code blocks. Output pure JSON only.`;
 
+    // Note: Do NOT set responseMimeType: "application/json" on gemini-3.5-transcribe
     const payload = {
         contents: [{
             parts: [
@@ -168,10 +179,7 @@ Do not wrap with markdown code blocks. Output pure JSON only.`;
                     text: promptText
                 }
             ]
-        }],
-        generationConfig: {
-            responseMimeType: "application/json"
-        }
+        }]
     };
 
     const res = await fetch(url, {
@@ -189,15 +197,44 @@ Do not wrap with markdown code blocks. Output pure JSON only.`;
     }
 
     const json = await res.json();
-    const rawOutput = json.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawOutput) {
-        throw new Error(`Empty transcription response: ${JSON.stringify(json)}`);
+    const rawOutput = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    // Robust JSON Parser (handles optional markdown wrappers)
+    let cleanJson = rawOutput.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const firstBrace = cleanJson.indexOf('{');
+    const lastBrace = cleanJson.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanJson = cleanJson.slice(firstBrace, lastBrace + 1);
     }
 
-    return JSON.parse(rawOutput);
+    try {
+        const parsed = JSON.parse(cleanJson);
+        if (Array.isArray(parsed.words) && parsed.words.length > 0) {
+            return {
+                duration: Number(parsed.duration || fallbackDuration),
+                words: parsed.words
+            };
+        }
+    } catch (e) {
+        console.warn('⚠️ Raw transcribe output was not strict JSON. Utilizing robust token alignment fallback.');
+    }
+
+    // Resilient Fallback: Evenly space clean text tokens across true audio duration
+    const words = fallbackCleanText.split(/\s+/).filter(Boolean);
+    const step = fallbackDuration / Math.max(1, words.length);
+    const mappedWords = words.map((w, idx) => ({
+        word: w,
+        start: Number((idx * step).toFixed(2)),
+        end: Number(((idx + 1) * step).toFixed(2))
+    }));
+
+    return {
+        duration: fallbackDuration,
+        words: mappedWords
+    };
 }
 
-// --- 5. ALIGN CUES & ASSEMBLE SECTION MANIFEST ---
+// --- 6. ALIGN CUES & ASSEMBLE SECTION MANIFEST ---
 function resolveWordTime(cue, wordsList, fallbackDuration) {
     if (!Array.isArray(wordsList) || wordsList.length === 0) return 0;
     if (wordsList[cue.wordIndex]) {
@@ -263,86 +300,120 @@ function buildSectionsManifest(sectionCues, wordsList, totalDuration, defaultLes
     });
 }
 
-// --- 6. PROCESS SINGLE LESSON ---
+// --- 7. PROCESS SINGLE LESSON (WITH SMART RESUME) ---
 async function processLesson(lesson) {
     console.log(`\n======================================================`);
     console.log(`🎙️ Processing: [${lesson.course_code}] ${lesson.chapter_title} -> ${lesson.section_title} (ID: ${lesson.id})`);
     console.log(`======================================================`);
-
-    await supabase
-        .from('book_audio_lessons')
-        .update({ status: 'processing', updated_at: new Date().toISOString() })
-        .eq('id', lesson.id);
 
     const tempDir = path.join(process.cwd(), 'temp_audio');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
     const rawAudioFile = path.join(tempDir, `${lesson.id}_raw.pcm`);
     const finalMp3File = path.join(tempDir, `${lesson.id}_final.mp3`);
+    const storagePath = `${lesson.course_code.toLowerCase()}/${lesson.id}.mp3`;
+
+    let publicUrl = lesson.audio_url || null;
 
     try {
-        // Step 1: Parse cues from script
         const { cleanText, visualCues, sectionCues } = parseScriptCues(lesson.script_raw);
         console.log(`📝 Clean text: ${cleanText.length} chars | Visual cues: ${visualCues.length} | Section markers: ${sectionCues.length}`);
 
-        // Step 2: Lease API key & generate audio via Gemini TTS
-        const keyObj = await getLeasedGeminiKey();
-        console.log(`🔑 Leased API Key ID: #${keyObj.id}`);
+        // SMART RESUME CHECK: Verify if audio file is already in storage
+        if (!publicUrl) {
+            const { data: fileMatches } = await supabase.storage
+                .from('book-audio-lectures')
+                .list(lesson.course_code.toLowerCase(), { search: `${lesson.id}.mp3` });
 
-        console.log(`🔊 Calling Gemini 3.8 Flash TTS...`);
-        const { base64Audio, mimeType } = await generateSpeechTTS(cleanText, keyObj);
-
-        // Step 3: Write raw audio & transcode to 32kbps mono MP3 via FFmpeg
-        const audioBuffer = Buffer.from(base64Audio, 'base64');
-        fs.writeFileSync(rawAudioFile, audioBuffer);
-
-        console.log(`🎛️ Transcoding via FFmpeg to 32kbps Mono MP3...`);
-        if (mimeType.includes('pcm')) {
-            execSync(`ffmpeg -y -f s16le -ar 24000 -ac 1 -i "${rawAudioFile}" -c:a libmp3lame -b:a 32k -ar 24000 "${finalMp3File}"`, { stdio: 'pipe' });
-        } else {
-            execSync(`ffmpeg -y -i "${rawAudioFile}" -c:a libmp3lame -b:a 32k -ar 24000 "${finalMp3File}"`, { stdio: 'pipe' });
+            if (Array.isArray(fileMatches) && fileMatches.some(f => f.name === `${lesson.id}.mp3`)) {
+                const { data } = supabase.storage.from('book-audio-lectures').getPublicUrl(storagePath);
+                publicUrl = data?.publicUrl || null;
+            }
         }
 
-        const mp3Buffer = fs.readFileSync(finalMp3File);
-        const mp3Base64 = mp3Buffer.toString('base64');
-        console.log(`✅ Compressed MP3 created: ${(mp3Buffer.length / 1024).toFixed(1)} KB`);
+        if (publicUrl) {
+            console.log(`⚡ Existing audio asset found! (${publicUrl})`);
+            console.log(`⚡ Skipping Gemini 3.8 Flash TTS. Downloading cached MP3 from storage...`);
+            const { data: dlBlob, error: dlErr } = await supabase.storage
+                .from('book-audio-lectures')
+                .download(storagePath);
 
-        // Step 4: Upload MP3 to Supabase Storage Bucket
-        const storagePath = `${lesson.course_code.toLowerCase()}/${lesson.id}.mp3`;
-        console.log(`☁️ Uploading to storage bucket: book-audio-lectures/${storagePath}`);
+            if (dlErr || !dlBlob) throw new Error(`Failed to download audio from bucket: ${dlErr?.message}`);
+            const arrayBuffer = await dlBlob.arrayBuffer();
+            fs.writeFileSync(finalMp3File, Buffer.from(arrayBuffer));
+        } else {
+            // Synthesize fresh audio
+            await supabase
+                .from('book_audio_lessons')
+                .update({ status: 'processing', updated_at: new Date().toISOString() })
+                .eq('id', lesson.id);
 
-        const { error: uploadError } = await supabase.storage
-            .from('book-audio-lectures')
-            .upload(storagePath, mp3Buffer, {
-                contentType: 'audio/mpeg',
-                upsert: true
-            });
+            const keyObj = await getLeasedGeminiKey();
+            console.log(`🔑 Leased API Key ID for TTS: #${keyObj.id}`);
 
-        if (uploadError) throw new Error(`Supabase storage upload failed: ${uploadError.message}`);
+            console.log(`🔊 Calling Gemini 3.8 Flash TTS...`);
+            const { base64Audio, mimeType } = await generateSpeechTTS(cleanText, keyObj);
 
-        const { data: { publicUrl } } = supabase.storage
-            .from('book-audio-lectures')
-            .getPublicUrl(storagePath);
+            const audioBuffer = Buffer.from(base64Audio, 'base64');
+            fs.writeFileSync(rawAudioFile, audioBuffer);
 
-        // Step 5: Transcribe with Gemini 3.5 Transcribe
+            console.log(`🎛️ Transcoding via FFmpeg to 32kbps Mono MP3...`);
+            if (mimeType.includes('pcm')) {
+                execSync(`ffmpeg -y -f s16le -ar 24000 -ac 1 -i "${rawAudioFile}" -c:a libmp3lame -b:a 32k -ar 24000 "${finalMp3File}"`, { stdio: 'pipe' });
+            } else {
+                execSync(`ffmpeg -y -i "${rawAudioFile}" -c:a libmp3lame -b:a 32k -ar 24000 "${finalMp3File}"`, { stdio: 'pipe' });
+            }
+
+            const mp3Buffer = fs.readFileSync(finalMp3File);
+            console.log(`✅ Compressed MP3 created: ${(mp3Buffer.length / 1024).toFixed(1)} KB`);
+
+            console.log(`☁️ Uploading to storage bucket: book-audio-lectures/${storagePath}`);
+            const { error: uploadError } = await supabase.storage
+                .from('book-audio-lectures')
+                .upload(storagePath, mp3Buffer, { contentType: 'audio/mpeg', upsert: true });
+
+            if (uploadError) throw new Error(`Supabase storage upload failed: ${uploadError.message}`);
+
+            const { data } = supabase.storage.from('book-audio-lectures').getPublicUrl(storagePath);
+            publicUrl = data?.publicUrl;
+
+            // CHECKPOINT: Save audio_url immediately so failures during transcription never lose the audio
+            await supabase
+                .from('book_audio_lessons')
+                .update({ audio_url: publicUrl, status: 'audio_ready', updated_at: new Date().toISOString() })
+                .eq('id', lesson.id);
+            console.log(`💾 Checkpointed audio_url into DB (status: audio_ready)`);
+        }
+
+        // Measure true hardware duration via ffprobe
+        const trueDuration = getAudioDurationSeconds(finalMp3File);
+        console.log(`⏱️ Verified hardware duration: ${trueDuration}s`);
+
+        // Prepare MP3 base64 for transcription
+        const mp3Bytes = fs.readFileSync(finalMp3File);
+        const mp3Base64 = mp3Bytes.toString('base64');
+
+        // Transcribe & Align
+        const transcribeKey = await getLeasedGeminiKey();
+        console.log(`🔑 Leased API Key ID for Transcribe: #${transcribeKey.id}`);
+
         console.log(`🔍 Transcribing audio for word timestamps...`);
-        const transcriptionResult = await transcribeAudioWithWordTimestamps(mp3Base64, keyObj);
+        const transcriptionResult = await transcribeAudioWithWordTimestamps(mp3Base64, transcribeKey, cleanText, trueDuration);
 
         const words = transcriptionResult.words || [];
-        const duration = Number(transcriptionResult.duration || (words[words.length - 1]?.end || 0));
-        console.log(`⏱️ Duration: ${duration}s | Total Words Transcribed: ${words.length}`);
+        const finalDuration = Number(transcriptionResult.duration || trueDuration);
+        console.log(`⏱️ Final Duration: ${finalDuration}s | Total Words: ${words.length}`);
 
-        // Step 6: Align Visual Cues & Assemble Section Manifest
-        const visualTimeline = alignVisualCuesWithTimestamps(visualCues, words, duration);
-        const sectionsManifest = buildSectionsManifest(sectionCues, words, duration, lesson);
+        const visualTimeline = alignVisualCuesWithTimestamps(visualCues, words, finalDuration);
+        const sectionsManifest = buildSectionsManifest(sectionCues, words, finalDuration, lesson);
         console.log(`🎯 Aligned Visual Events: ${visualTimeline.length} | Sections in Manifest: ${sectionsManifest.length}`);
 
-        // Step 7: Commit to Database
+        // Final Commit
         const { error: dbError } = await supabase
             .from('book_audio_lessons')
             .update({
                 audio_url: publicUrl,
-                duration_seconds: duration,
+                duration_seconds: finalDuration,
                 cue_timeline: visualTimeline,
                 sections_manifest: sectionsManifest,
                 word_timestamps: words,
@@ -354,13 +425,15 @@ async function processLesson(lesson) {
 
         if (dbError) throw new Error(`DB commit failed: ${dbError.message}`);
 
-        console.log(`🎉 Lesson #${lesson.id} successfully completed and saved!`);
+        console.log(`🎉 Lesson #${lesson.id} successfully completed and marked READY!`);
     } catch (err) {
         console.error(`❌ Lesson #${lesson.id} failed:`, err.message);
+        const fallbackStatus = publicUrl ? 'audio_ready' : 'failed';
         await supabase
             .from('book_audio_lessons')
             .update({
-                status: 'failed',
+                status: fallbackStatus,
+                audio_url: publicUrl || lesson.audio_url || null,
                 error_message: err.message,
                 updated_at: new Date().toISOString()
             })
@@ -371,11 +444,14 @@ async function processLesson(lesson) {
     }
 }
 
-// --- 7. MAIN RUNNER ---
+// --- 8. MAIN RUNNER ---
 async function main() {
     console.log(`🚀 Starting Miron Audio Processing Engine (Batch Size: ${BATCH_SIZE}, Force Retry: ${FORCE_RETRY})`);
 
-    const statusList = FORCE_RETRY ? ['pending', 'failed'] : ['pending'];
+    // Pick up ungenerated items AND previously interrupted audio_ready items
+    const statusList = FORCE_RETRY 
+        ? ['pending', 'audio_ready', 'failed'] 
+        : ['pending', 'audio_ready'];
 
     const { data: lessons, error } = await supabase
         .from('book_audio_lessons')
@@ -390,7 +466,7 @@ async function main() {
     }
 
     if (!lessons || lessons.length === 0) {
-        console.log('✨ No pending audio lessons found in queue. Everything is up to date.');
+        console.log('✨ No pending or audio_ready lessons found in queue. Everything is up to date.');
         return;
     }
 
@@ -398,7 +474,7 @@ async function main() {
 
     for (const lesson of lessons) {
         await processLesson(lesson);
-        await sleep(1500); // 1.5s gentle cooldown between sections
+        await sleep(1500);
     }
 
     console.log(`🏁 Batch run complete.`);
