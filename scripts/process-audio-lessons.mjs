@@ -3,6 +3,14 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
+// Provide WebSocket transport for Node environments without native support
+if (typeof globalThis.WebSocket === 'undefined') {
+    try {
+        const { default: WebSocket } = await import('ws');
+        globalThis.WebSocket = WebSocket;
+    } catch (e) {}
+}
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '5', 10);
