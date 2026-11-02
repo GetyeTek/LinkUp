@@ -1,0 +1,43 @@
+name: Process Audio Lessons
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: 'Number of pending lessons to process'
+        required: false
+        default: '5'
+      force_retry_failed:
+        description: 'Retry previously failed lessons (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  process-audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 # 6 hours execution cap
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install System Dependencies (FFmpeg)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Script Dependencies
+        run: npm install @supabase/supabase-js
+
+      - name: Execute Audio Processing Pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BATCH_SIZE: ${{ github.event.inputs.batch_size || 5 }}
+          FORCE_RETRY: ${{ github.event.inputs.force_retry_failed || 'false' }}
+        run: node scripts/process-audio-lessons.mjs
