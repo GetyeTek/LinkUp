@@ -279,16 +279,33 @@
     --vis-text-muted: #94a3b8;
 }
 
-/* Dual-Topology Screen Switcher: Renders desktop on PC, mobile on phone */
-.vis-desktop { display: block !important; }
-.vis-mobile  { display: none !important; }
-
-@media (max-width: 768px) {
-    .vis-desktop { display: none !important; }
-    .vis-mobile  { display: block !important; }
+/* High-Specificity Dual-Topology Switcher (Desktop Default) */
+svg.vis-desktop,
+.vis-box svg.vis-desktop,
+.ml-cinema-stage svg.vis-desktop {
+    display: block !important;
+}
+svg.vis-mobile,
+.vis-box svg.vis-mobile,
+.ml-cinema-stage svg.vis-mobile {
+    display: none !important;
 }
 
-/* Full-Bleed Immersive Diagram Canvas (No borders, no outer card) */
+/* High-Specificity Mobile Override (Phones <= 768px) */
+@media (max-width: 768px) {
+    svg.vis-desktop,
+    .vis-box svg.vis-desktop,
+    .ml-cinema-stage svg.vis-desktop {
+        display: none !important;
+    }
+    svg.vis-mobile,
+    .vis-box svg.vis-mobile,
+    .ml-cinema-stage svg.vis-mobile {
+        display: block !important;
+    }
+}
+
+/* Full-Bleed Immersive Diagram Canvas */
 .vis-card {
     background: transparent !important; border: none !important;
     border-radius: 0 !important; padding: 0 !important; margin: 0 auto !important;
@@ -301,12 +318,13 @@
 }
 .vis-box {
     width: 100% !important; border-radius: 0 !important; background: transparent !important;
-    border: none !important; overflow: hidden; display: flex;
-    justify-content: center; align-items: center; padding: 0 !important;
+    border: none !important; overflow: hidden; display: flex !important;
+    flex-direction: column !important; justify-content: center !important;
+    align-items: center !important; padding: 0 !important;
 }
 .vis-box svg {
-    display: block !important; width: 100% !important; height: auto !important;
-    max-height: calc(100vh - 175px) !important; object-fit: contain;
+    width: 100% !important; height: auto !important;
+    max-height: calc(100vh - 170px) !important; object-fit: contain;
 }
 
 .ml-cinema-stage {
@@ -505,4 +523,223 @@
     .ml-showcase-details { align-items: flex-start; }
     .ml-showcase-prompt-tip { display: none; }
     .ml-studio-section-name { max-width: 140px; }
+}
+
+/* ==============================================================================
+   SEAMLESS WHITE / LIGHT THEME ADAPTATION (.theme-light)
+   ============================================================================== */
+.theme-light .ml-overlay {
+    background: #f8fafc;
+    color: #0f172a;
+}
+.theme-light .ml-ambient {
+    background: radial-gradient(circle at 50% 15%, rgba(2, 132, 199, 0.08) 0%, transparent 60%);
+}
+.theme-light .ml-header {
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom-color: #e2e8f0;
+}
+.theme-light .ml-status,
+.theme-light .ml-back-btn,
+.theme-light .athena-close {
+    color: #0f172a;
+}
+.theme-light .ml-back-btn:hover,
+.theme-light .athena-close:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+.theme-light .ml-studio-title-pill {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+.theme-light .ml-studio-course-tag {
+    color: #0284c7;
+    background: rgba(2, 132, 199, 0.12);
+}
+.theme-light .ml-studio-section-name {
+    color: #0f172a;
+}
+.theme-light .ml-page-collapse-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #475569;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+.theme-light .ml-page-collapse-btn:hover {
+    border-color: #0284c7;
+    color: #0284c7;
+}
+
+/* Stage 0: Course Grid Light Theme */
+.theme-light .ml-stage-header h2 { color: #0f172a; }
+.theme-light .ml-stage-header p { color: #64748b; }
+.theme-light .ml-course-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+.theme-light .ml-card-name { color: #0f172a; }
+.theme-light .ml-card-count { color: #64748b; }
+.theme-light .ml-card-code-tag {
+    color: #334155;
+    background: rgba(0, 0, 0, 0.06);
+}
+.theme-light .ml-card-icon-box {
+    background: rgba(2, 132, 199, 0.1);
+    color: #0284c7;
+}
+
+/* Stage 1: TOC Light Theme */
+.theme-light .ml-toc-book-showcase {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+.theme-light .ml-showcase-title { color: #0f172a; }
+.theme-light .ml-showcase-meta { color: #64748b; }
+.theme-light .ml-toc-chapter-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+}
+.theme-light .ml-toc-ch-header:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+.theme-light .ml-toc-ch-left { color: #0f172a; }
+.theme-light .ml-toc-sections-list {
+    background: rgba(0, 0, 0, 0.02);
+    border-top-color: #e2e8f0;
+}
+.theme-light .ml-toc-section-item {
+    color: #334155;
+    border-bottom-color: rgba(0, 0, 0, 0.04);
+}
+.theme-light .ml-toc-section-item:hover {
+    background: rgba(2, 132, 199, 0.08);
+    color: #0f172a;
+}
+
+/* Stage 2: Studio Visuals & Cards Light Theme */
+.theme-light .ml-visual-card-image {
+    border-color: #e2e8f0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+.theme-light .ml-image-caption-pill {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #0284c7;
+}
+.theme-light .ml-visual-card-note {
+    background: #ffffff;
+    border-color: rgba(2, 132, 199, 0.35);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+.theme-light .ml-visual-card-note h3 { color: #0f172a; }
+.theme-light .ml-visual-card-note p { color: #334155; }
+.theme-light .ml-default-soundwave-stage .ml-soundwave-topic { color: #0f172a; }
+.theme-light .ml-default-soundwave-stage .ml-soundwave-sub { color: #64748b; }
+.theme-light .ml-pinned-block-card {
+    background: #ffffff;
+    border-color: #cbd5e1;
+}
+.theme-light .ml-pinned-block-header {
+    background: #f1f5f9;
+    border-bottom-color: #e2e8f0;
+    color: #0284c7;
+}
+.theme-light .ml-pinned-block-content {
+    color: #0f172a;
+}
+
+/* Stage 2: Bottom Transport & YouTube Chapter Bar Light Theme */
+.theme-light .ml-transport-bar {
+    background: #ffffff;
+    border-top-color: #e2e8f0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+}
+.theme-light .ml-active-section-pill {
+    color: #0284c7;
+    background: rgba(2, 132, 199, 0.08);
+    border-color: rgba(2, 132, 199, 0.2);
+}
+.theme-light .ml-time-display {
+    color: #64748b;
+}
+.theme-light .ml-chapter-segment {
+    background: rgba(0, 0, 0, 0.12);
+}
+.theme-light .ml-chapter-segment:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+.theme-light .ml-chapter-segment.active {
+    background: rgba(2, 132, 199, 0.2);
+    box-shadow: 0 0 8px rgba(2, 132, 199, 0.3);
+}
+.theme-light .ml-chapter-fill {
+    background: #0284c7;
+}
+.theme-light .ml-skip-btn {
+    color: #475569;
+}
+.theme-light .ml-skip-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #0f172a;
+}
+.theme-light .ml-main-play-btn {
+    background: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35);
+}
+.theme-light .ml-speed-btn {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #334155;
+}
+.theme-light .ml-speed-btn:hover {
+    background: rgba(2, 132, 199, 0.12);
+    color: #0284c7;
+}
+
+/* --- LIGHT THEME SMART SVG COLOR INVERSIONS --- */
+.theme-light .vis-box text[fill="#fff"],
+.theme-light .vis-box text[fill="#ffffff"],
+.theme-light .vis-box text[fill="#f8fafc"] {
+    fill: #0f172a !important;
+}
+.theme-light .vis-box text[fill="#94a3b8"] {
+    fill: #475569 !important;
+}
+.theme-light .vis-box line[stroke="#253554"],
+.theme-light .vis-box line[stroke="#273754"] {
+    stroke: #cbd5e1 !important;
+}
+.theme-light .vis-box circle[fill="#0f172a"],
+.theme-light .vis-box circle[fill="#090e18"] {
+    fill: #f1f5f9 !important;
+    stroke: #0284c7 !important;
+}
+.theme-light .vis-box circle[fill="#0d1b30"] {
+    fill: #e0f2fe !important;
+}
+.theme-light .vis-box circle[fill="#251233"],
+.theme-light .vis-box circle[fill="#2d123d"] {
+    fill: #f3e8ff !important;
+}
+.theme-light .vis-box rect[fill="#1b253b"],
+.theme-light .vis-box rect[fill="#162032"],
+.theme-light .vis-box rect[fill="#1a253a"] {
+    fill: #f1f5f9 !important;
+    stroke: #0284c7 !important;
+}
+.theme-light .vis-box rect[fill="#0d233a"] {
+    fill: #e0f2fe !important;
+}
+.theme-light .vis-box rect[fill="#3b270c"] {
+    fill: #fef3c7 !important;
+}
+.theme-light .vis-box rect[fill="#073024"] {
+    fill: #d1fae5 !important;
+}
+.theme-light .vis-box path[stroke="#223352"],
+.theme-light .vis-box path[stroke="#253554"] {
+    stroke: #94a3b8 !important;
 }
