@@ -311,32 +311,53 @@ async function processLesson(lesson) {
 
     const rawAudioFile = path.join(tempDir, `${lesson.id}_raw.pcm`);
     const finalMp3File = path.join(tempDir, `${lesson.id}_final.mp3`);
-    const storagePath = `${lesson.course_code.toLowerCase()}/${lesson.id}.mp3`;
 
+    // Sanitize course folder name: replace all spaces with underscores
+    const sanitizedFolder = (lesson.course_code || 'misc')
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_\-]/g, '');
+    const storagePath = `${sanitizedFolder}/${lesson.id}.mp3`;
+
+    const legacySpaceFolder = (lesson.course_code || 'misc').toLowerCase().trim();
+    let downloadPath = storagePath;
     let publicUrl = lesson.audio_url || null;
 
     try {
         const { cleanText, visualCues, sectionCues } = parseScriptCues(lesson.script_raw);
         console.log(`📝 Clean text: ${cleanText.length} chars | Visual cues: ${visualCues.length} | Section markers: ${sectionCues.length}`);
 
-        // SMART RESUME CHECK: Verify if audio file is already in storage
+        // SMART RESUME CHECK: Verify if audio file exists in sanitized folder or legacy folder
         if (!publicUrl) {
-            const { data: fileMatches } = await supabase.storage
+            let { data: fileMatches } = await supabase.storage
                 .from('book-audio-lectures')
-                .list(lesson.course_code.toLowerCase(), { search: `${lesson.id}.mp3` });
+                .list(sanitizedFolder, { search: `${lesson.id}.mp3` });
 
             if (Array.isArray(fileMatches) && fileMatches.some(f => f.name === `${lesson.id}.mp3`)) {
+                downloadPath = storagePath;
                 const { data } = supabase.storage.from('book-audio-lectures').getPublicUrl(storagePath);
                 publicUrl = data?.publicUrl || null;
+            } else {
+                // Check legacy space folder for backward-compatibility
+                const { data: legacyMatches } = await supabase.storage
+                    .from('book-audio-lectures')
+                    .list(legacySpaceFolder, { search: `${lesson.id}.mp3` });
+
+                if (Array.isArray(legacyMatches) && legacyMatches.some(f => f.name === `${lesson.id}.mp3`)) {
+                    downloadPath = `${legacySpaceFolder}/${lesson.id}.mp3`;
+                    const { data } = supabase.storage.from('book-audio-lectures').getPublicUrl(downloadPath);
+                    publicUrl = data?.publicUrl || null;
+                }
             }
         }
 
         if (publicUrl) {
             console.log(`⚡ Existing audio asset found! (${publicUrl})`);
-            console.log(`⚡ Skipping Gemini 3.8 Flash TTS. Downloading cached MP3 from storage...`);
+            console.log(`⚡ Skipping Gemini 3.8 Flash TTS. Downloading cached MP3 from: ${downloadPath}`);
             const { data: dlBlob, error: dlErr } = await supabase.storage
                 .from('book-audio-lectures')
-                .download(storagePath);
+                .download(downloadPath);
 
             if (dlErr || !dlBlob) throw new Error(`Failed to download audio from bucket: ${dlErr?.message}`);
             const arrayBuffer = await dlBlob.arrayBuffer();
@@ -377,7 +398,7 @@ async function processLesson(lesson) {
             const { data } = supabase.storage.from('book-audio-lectures').getPublicUrl(storagePath);
             publicUrl = data?.publicUrl;
 
-            // CHECKPOINT: Save audio_url immediately so failures during transcription never lose the audio
+            // CHECKPOINT: Save audio_url immediately
             await supabase
                 .from('book_audio_lessons')
                 .update({ audio_url: publicUrl, status: 'audio_ready', updated_at: new Date().toISOString() })
