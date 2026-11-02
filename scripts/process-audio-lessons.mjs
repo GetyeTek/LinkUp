@@ -22,7 +22,8 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // --- 1. SCRIPT NORMALIZER & CUE MAPPING ---
 function parseScriptCues(rawScript) {
     const cueRegex = /\[\[(?:cue|call):([a-zA-Z0-9_\-]+)(?::([\s\S]*?))?\]\]/g;
-    const cues = [];
+    const visualCues = [];
+    const sectionCues = [];
     let cleanText = '';
     let lastIdx = 0;
     let match;
@@ -34,13 +35,29 @@ function parseScriptCues(rawScript) {
         const wordsBefore = cleanText.trim().split(/\s+/).filter(Boolean);
         const anchorWordIndex = Math.max(0, wordsBefore.length - 1);
         const anchorWord = wordsBefore[anchorWordIndex] || '';
+        const cueType = match[1].trim();
+        const rawTarget = (match[2] || '').trim();
 
-        cues.push({
-            type: match[1].trim(),
-            target: (match[2] || '').trim(),
-            wordIndex: anchorWordIndex,
-            anchorWord: anchorWord.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
-        });
+        if (cueType === 'section' || cueType === 'section_start') {
+            const parts = rawTarget.split(':');
+            const sectionTag = parts[0]?.trim() || '';
+            const sectionTitle = (parts.slice(1).join(':') || sectionTag).trim();
+
+            sectionCues.push({
+                type: 'section',
+                tag: sectionTag,
+                title: sectionTitle,
+                wordIndex: anchorWordIndex,
+                anchorWord: anchorWord.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+            });
+        } else {
+            visualCues.push({
+                type: cueType,
+                target: rawTarget,
+                wordIndex: anchorWordIndex,
+                anchorWord: anchorWord.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+            });
+        }
 
         lastIdx = match.index + match[0].length;
     }
@@ -48,7 +65,7 @@ function parseScriptCues(rawScript) {
     cleanText += rawScript.slice(lastIdx);
     cleanText = cleanText.replace(/\s+/g, ' ').trim();
 
-    return { cleanText, cues };
+    return { cleanText, visualCues, sectionCues };
 }
 
 // --- 2. LEASE API KEY WITH ROTATION ---
@@ -172,35 +189,68 @@ Do not wrap with markdown code blocks. Output pure JSON only.`;
     return JSON.parse(rawOutput);
 }
 
-// --- 5. ALIGN CUES WITH WORD TIMESTAMPS ---
-function alignCuesWithTimestamps(cues, wordsList, fallbackDuration) {
+// --- 5. ALIGN CUES & ASSEMBLE SECTION MANIFEST ---
+function resolveWordTime(cue, wordsList, fallbackDuration) {
+    if (!Array.isArray(wordsList) || wordsList.length === 0) return 0;
+    if (wordsList[cue.wordIndex]) {
+        return wordsList[cue.wordIndex].end || wordsList[cue.wordIndex].start || 0;
+    }
+    if (cue.anchorWord) {
+        const found = wordsList.find(w => w.word.toLowerCase().replace(/[^a-zA-Z0-9]/g, '') === cue.anchorWord);
+        if (found) return found.end || found.start || 0;
+    }
+    return fallbackDuration;
+}
+
+function alignVisualCuesWithTimestamps(visualCues, wordsList, fallbackDuration) {
     if (!Array.isArray(wordsList) || wordsList.length === 0) {
-        return cues.map((c, i) => ({
+        return visualCues.map((c, i) => ({
             time: Number((i * 3.0).toFixed(2)),
             type: c.type,
             target: c.target
         }));
     }
 
-    return cues.map(cue => {
-        let matchedTime = 0;
-
-        // Try exact index match
-        if (wordsList[cue.wordIndex]) {
-            matchedTime = wordsList[cue.wordIndex].end || wordsList[cue.wordIndex].start;
-        } else if (cue.anchorWord) {
-            // Search nearby for anchor word
-            const found = wordsList.find(w => w.word.toLowerCase().replace(/[^a-zA-Z0-9]/g, '') === cue.anchorWord);
-            if (found) matchedTime = found.end || found.start;
-            else matchedTime = wordsList[wordsList.length - 1].end;
-        } else {
-            matchedTime = fallbackDuration;
-        }
-
+    return visualCues.map(cue => {
+        const matchedTime = resolveWordTime(cue, wordsList, fallbackDuration);
         return {
             time: Number(Number(matchedTime).toFixed(2)),
             type: cue.type,
             target: cue.target
+        };
+    });
+}
+
+function buildSectionsManifest(sectionCues, wordsList, totalDuration, defaultLesson) {
+    if (!Array.isArray(sectionCues) || sectionCues.length === 0) {
+        const fallbackTag = (defaultLesson.section_title || '').match(/^([0-9]+(?:\.[0-9]+)*)/)?.[1] || '1.1';
+        return [{
+            section_tag: fallbackTag,
+            title: defaultLesson.section_title || 'Core Lecture',
+            start_time: 0,
+            end_time: Number(Number(totalDuration).toFixed(2)),
+            duration: Number(Number(totalDuration).toFixed(2))
+        }];
+    }
+
+    const timedSections = sectionCues.map(c => ({
+        tag: c.tag,
+        title: c.title,
+        startTime: Number(Number(resolveWordTime(c, wordsList, totalDuration)).toFixed(2))
+    }));
+
+    timedSections.sort((a, b) => a.startTime - b.startTime);
+
+    return timedSections.map((sec, idx) => {
+        const nextSec = timedSections[idx + 1];
+        const endTime = nextSec ? nextSec.startTime : Number(Number(totalDuration).toFixed(2));
+        const span = Math.max(0, endTime - sec.startTime);
+        return {
+            section_tag: sec.tag,
+            title: sec.title,
+            start_time: sec.startTime,
+            end_time: endTime,
+            duration: Number(span.toFixed(2))
         };
     });
 }
@@ -224,8 +274,8 @@ async function processLesson(lesson) {
 
     try {
         // Step 1: Parse cues from script
-        const { cleanText, cues } = parseScriptCues(lesson.script_raw);
-        console.log(`📝 Clean text: ${cleanText.length} chars | Cues extracted: ${cues.length}`);
+        const { cleanText, visualCues, sectionCues } = parseScriptCues(lesson.script_raw);
+        console.log(`📝 Clean text: ${cleanText.length} chars | Visual cues: ${visualCues.length} | Section markers: ${sectionCues.length}`);
 
         // Step 2: Lease API key & generate audio via Gemini TTS
         const keyObj = await getLeasedGeminiKey();
@@ -274,9 +324,10 @@ async function processLesson(lesson) {
         const duration = Number(transcriptionResult.duration || (words[words.length - 1]?.end || 0));
         console.log(`⏱️ Duration: ${duration}s | Total Words Transcribed: ${words.length}`);
 
-        // Step 6: Align Cues to timestamps
-        const timeline = alignCuesWithTimestamps(cues, words, duration);
-        console.log(`🎯 Aligned Timeline Events: ${timeline.length}`);
+        // Step 6: Align Visual Cues & Assemble Section Manifest
+        const visualTimeline = alignVisualCuesWithTimestamps(visualCues, words, duration);
+        const sectionsManifest = buildSectionsManifest(sectionCues, words, duration, lesson);
+        console.log(`🎯 Aligned Visual Events: ${visualTimeline.length} | Sections in Manifest: ${sectionsManifest.length}`);
 
         // Step 7: Commit to Database
         const { error: dbError } = await supabase
@@ -284,7 +335,8 @@ async function processLesson(lesson) {
             .update({
                 audio_url: publicUrl,
                 duration_seconds: duration,
-                cue_timeline: timeline,
+                cue_timeline: visualTimeline,
+                sections_manifest: sectionsManifest,
                 word_timestamps: words,
                 status: 'ready',
                 error_message: null,
