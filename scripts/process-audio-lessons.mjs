@@ -1,0 +1,350 @@
+import { createClient } from '@supabase/supabase-js';
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '5', 10);
+const FORCE_RETRY = process.env.FORCE_RETRY === 'true';
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment.');
+    process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false }
+});
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// --- 1. SCRIPT NORMALIZER & CUE MAPPING ---
+function parseScriptCues(rawScript) {
+    const cueRegex = /\[\[(?:cue|call):([a-zA-Z0-9_\-]+)(?::([\s\S]*?))?\]\]/g;
+    const cues = [];
+    let cleanText = '';
+    let lastIdx = 0;
+    let match;
+
+    while ((match = cueRegex.exec(rawScript)) !== null) {
+        const textBefore = rawScript.slice(lastIdx, match.index);
+        cleanText += textBefore;
+
+        const wordsBefore = cleanText.trim().split(/\s+/).filter(Boolean);
+        const anchorWordIndex = Math.max(0, wordsBefore.length - 1);
+        const anchorWord = wordsBefore[anchorWordIndex] || '';
+
+        cues.push({
+            type: match[1].trim(),
+            target: (match[2] || '').trim(),
+            wordIndex: anchorWordIndex,
+            anchorWord: anchorWord.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+        });
+
+        lastIdx = match.index + match[0].length;
+    }
+
+    cleanText += rawScript.slice(lastIdx);
+    cleanText = cleanText.replace(/\s+/g, ' ').trim();
+
+    return { cleanText, cues };
+}
+
+// --- 2. LEASE API KEY WITH ROTATION ---
+async function getLeasedGeminiKey() {
+    const { data, error } = await supabase.rpc('lease_gemini_api_key');
+    if (error || !data || data.length === 0) {
+        throw new Error(`Failed to lease Gemini API key: ${error?.message || 'No available keys'}`);
+    }
+    return data[0];
+}
+
+async function cooldownKey(keyId, seconds = 300) {
+    try {
+        await supabase.rpc('cooldown_gemini_api_key', { p_id: keyId, p_seconds: seconds });
+    } catch (e) {
+        console.warn(`Could not set cooldown for key ID ${keyId}:`, e.message);
+    }
+}
+
+// --- 3. CALL GEMINI 3.8 FLASH TTS ---
+async function generateSpeechTTS(text, apiKeyObj) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-tts:generateContent?key=${apiKeyObj.api_key}`;
+
+    const payload = {
+        contents: [{
+            parts: [{ text: text }]
+        }],
+        generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+                voiceConfig: {
+                    prebuiltVoiceConfig: {
+                        voiceName: "Puck"
+                    }
+                }
+            }
+        }
+    };
+
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+        const errText = await res.text();
+        if (res.status === 429) {
+            await cooldownKey(apiKeyObj.id, 300);
+        }
+        throw new Error(`Gemini TTS API error (${res.status}): ${errText}`);
+    }
+
+    const json = await res.json();
+    const candidate = json.candidates?.[0];
+    const part = candidate?.content?.parts?.[0];
+
+    if (!part?.inlineData?.data) {
+        throw new Error(`Gemini TTS returned no audio data: ${JSON.stringify(json)}`);
+    }
+
+    return {
+        base64Audio: part.inlineData.data,
+        mimeType: part.inlineData.mimeType || 'audio/pcm'
+    };
+}
+
+// --- 4. CALL GEMINI 3.5 TRANSCRIBE FOR WORD TIMESTAMPS ---
+async function transcribeAudioWithWordTimestamps(mp3Base64, apiKeyObj) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${apiKeyObj.api_key}`;
+
+    const promptText = `Transcribe this audio verbatim.
+You must return a JSON object with:
+1. "duration": total audio length in seconds (float).
+2. "words": an array of words, where each item has:
+   - "word": string
+   - "start": start time in seconds (float)
+   - "end": end time in seconds (float)
+
+Do not wrap with markdown code blocks. Output pure JSON only.`;
+
+    const payload = {
+        contents: [{
+            parts: [
+                {
+                    inlineData: {
+                        mimeType: "audio/mp3",
+                        data: mp3Base64
+                    }
+                },
+                {
+                    text: promptText
+                }
+            ]
+        }],
+        generationConfig: {
+            responseMimeType: "application/json"
+        }
+    };
+
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+        const errText = await res.text();
+        if (res.status === 429) {
+            await cooldownKey(apiKeyObj.id, 300);
+        }
+        throw new Error(`Gemini Transcribe API error (${res.status}): ${errText}`);
+    }
+
+    const json = await res.json();
+    const rawOutput = json.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawOutput) {
+        throw new Error(`Empty transcription response: ${JSON.stringify(json)}`);
+    }
+
+    return JSON.parse(rawOutput);
+}
+
+// --- 5. ALIGN CUES WITH WORD TIMESTAMPS ---
+function alignCuesWithTimestamps(cues, wordsList, fallbackDuration) {
+    if (!Array.isArray(wordsList) || wordsList.length === 0) {
+        return cues.map((c, i) => ({
+            time: Number((i * 3.0).toFixed(2)),
+            type: c.type,
+            target: c.target
+        }));
+    }
+
+    return cues.map(cue => {
+        let matchedTime = 0;
+
+        // Try exact index match
+        if (wordsList[cue.wordIndex]) {
+            matchedTime = wordsList[cue.wordIndex].end || wordsList[cue.wordIndex].start;
+        } else if (cue.anchorWord) {
+            // Search nearby for anchor word
+            const found = wordsList.find(w => w.word.toLowerCase().replace(/[^a-zA-Z0-9]/g, '') === cue.anchorWord);
+            if (found) matchedTime = found.end || found.start;
+            else matchedTime = wordsList[wordsList.length - 1].end;
+        } else {
+            matchedTime = fallbackDuration;
+        }
+
+        return {
+            time: Number(Number(matchedTime).toFixed(2)),
+            type: cue.type,
+            target: cue.target
+        };
+    });
+}
+
+// --- 6. PROCESS SINGLE LESSON ---
+async function processLesson(lesson) {
+    console.log(`\n======================================================`);
+    console.log(`🎙️ Processing: [${lesson.course_code}] ${lesson.chapter_title} -> ${lesson.section_title} (ID: ${lesson.id})`);
+    console.log(`======================================================`);
+
+    await supabase
+        .from('book_audio_lessons')
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
+        .eq('id', lesson.id);
+
+    const tempDir = path.join(process.cwd(), 'temp_audio');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    const rawAudioFile = path.join(tempDir, `${lesson.id}_raw.pcm`);
+    const finalMp3File = path.join(tempDir, `${lesson.id}_final.mp3`);
+
+    try {
+        // Step 1: Parse cues from script
+        const { cleanText, cues } = parseScriptCues(lesson.script_raw);
+        console.log(`📝 Clean text: ${cleanText.length} chars | Cues extracted: ${cues.length}`);
+
+        // Step 2: Lease API key & generate audio via Gemini TTS
+        const keyObj = await getLeasedGeminiKey();
+        console.log(`🔑 Leased API Key ID: #${keyObj.id}`);
+
+        console.log(`🔊 Calling Gemini 3.8 Flash TTS...`);
+        const { base64Audio, mimeType } = await generateSpeechTTS(cleanText, keyObj);
+
+        // Step 3: Write raw audio & transcode to 32kbps mono MP3 via FFmpeg
+        const audioBuffer = Buffer.from(base64Audio, 'base64');
+        fs.writeFileSync(rawAudioFile, audioBuffer);
+
+        console.log(`🎛️ Transcoding via FFmpeg to 32kbps Mono MP3...`);
+        if (mimeType.includes('pcm')) {
+            execSync(`ffmpeg -y -f s16le -ar 24000 -ac 1 -i "${rawAudioFile}" -c:a libmp3lame -b:a 32k -ar 24000 "${finalMp3File}"`, { stdio: 'pipe' });
+        } else {
+            execSync(`ffmpeg -y -i "${rawAudioFile}" -c:a libmp3lame -b:a 32k -ar 24000 "${finalMp3File}"`, { stdio: 'pipe' });
+        }
+
+        const mp3Buffer = fs.readFileSync(finalMp3File);
+        const mp3Base64 = mp3Buffer.toString('base64');
+        console.log(`✅ Compressed MP3 created: ${(mp3Buffer.length / 1024).toFixed(1)} KB`);
+
+        // Step 4: Upload MP3 to Supabase Storage Bucket
+        const storagePath = `${lesson.course_code.toLowerCase()}/${lesson.id}.mp3`;
+        console.log(`☁️ Uploading to storage bucket: book-audio-lectures/${storagePath}`);
+
+        const { error: uploadError } = await supabase.storage
+            .from('book-audio-lectures')
+            .upload(storagePath, mp3Buffer, {
+                contentType: 'audio/mpeg',
+                upsert: true
+            });
+
+        if (uploadError) throw new Error(`Supabase storage upload failed: ${uploadError.message}`);
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('book-audio-lectures')
+            .getPublicUrl(storagePath);
+
+        // Step 5: Transcribe with Gemini 3.5 Transcribe
+        console.log(`🔍 Transcribing audio for word timestamps...`);
+        const transcriptionResult = await transcribeAudioWithWordTimestamps(mp3Base64, keyObj);
+
+        const words = transcriptionResult.words || [];
+        const duration = Number(transcriptionResult.duration || (words[words.length - 1]?.end || 0));
+        console.log(`⏱️ Duration: ${duration}s | Total Words Transcribed: ${words.length}`);
+
+        // Step 6: Align Cues to timestamps
+        const timeline = alignCuesWithTimestamps(cues, words, duration);
+        console.log(`🎯 Aligned Timeline Events: ${timeline.length}`);
+
+        // Step 7: Commit to Database
+        const { error: dbError } = await supabase
+            .from('book_audio_lessons')
+            .update({
+                audio_url: publicUrl,
+                duration_seconds: duration,
+                cue_timeline: timeline,
+                word_timestamps: words,
+                status: 'ready',
+                error_message: null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', lesson.id);
+
+        if (dbError) throw new Error(`DB commit failed: ${dbError.message}`);
+
+        console.log(`🎉 Lesson #${lesson.id} successfully completed and saved!`);
+    } catch (err) {
+        console.error(`❌ Lesson #${lesson.id} failed:`, err.message);
+        await supabase
+            .from('book_audio_lessons')
+            .update({
+                status: 'failed',
+                error_message: err.message,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', lesson.id);
+    } finally {
+        if (fs.existsSync(rawAudioFile)) fs.unlinkSync(rawAudioFile);
+        if (fs.existsSync(finalMp3File)) fs.unlinkSync(finalMp3File);
+    }
+}
+
+// --- 7. MAIN RUNNER ---
+async function main() {
+    console.log(`🚀 Starting Miron Audio Processing Engine (Batch Size: ${BATCH_SIZE}, Force Retry: ${FORCE_RETRY})`);
+
+    const statusList = FORCE_RETRY ? ['pending', 'failed'] : ['pending'];
+
+    const { data: lessons, error } = await supabase
+        .from('book_audio_lessons')
+        .select('*')
+        .in('status', statusList)
+        .order('created_at', { ascending: true })
+        .limit(BATCH_SIZE);
+
+    if (error) {
+        console.error('❌ Failed to fetch pending lessons from database:', error.message);
+        process.exit(1);
+    }
+
+    if (!lessons || lessons.length === 0) {
+        console.log('✨ No pending audio lessons found in queue. Everything is up to date.');
+        return;
+    }
+
+    console.log(`📋 Found ${lessons.length} lesson(s) to process.`);
+
+    for (const lesson of lessons) {
+        await processLesson(lesson);
+        await sleep(1500); // 1.5s gentle cooldown between sections
+    }
+
+    console.log(`🏁 Batch run complete.`);
+}
+
+main().catch(err => {
+    console.error('Fatal pipeline crash:', err);
+    process.exit(1);
+});
