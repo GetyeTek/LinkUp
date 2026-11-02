@@ -64,14 +64,23 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 if (data) setBooks(data);
             });
 
-        // Scan available ready audio lessons
+        // Scan available ready audio lessons (including multi-section chapter tracks)
         supabase
             .from('book_audio_lessons')
-            .select('book_id, section_title')
+            .select('id, book_id, section_title, sections_manifest')
             .eq('status', 'ready')
             .then(({ data }) => {
                 if (data) {
-                    const keys = new Set(data.map(d => `${d.book_id}::${d.section_title}`));
+                    const keys = new Set();
+                    data.forEach(d => {
+                        keys.add(`${d.book_id}::${d.section_title}`);
+                        if (Array.isArray(d.sections_manifest)) {
+                            d.sections_manifest.forEach(s => {
+                                if (s.title) keys.add(`${d.book_id}::${s.title}`);
+                                if (s.section_tag) keys.add(`${d.book_id}::${s.section_tag}`);
+                            });
+                        }
+                    });
                     setAvailableLessonSections(keys);
                 }
             });
@@ -203,8 +212,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         setSelectedSection({ ...sectionNode, parentTitle: parentChapterTitle });
 
         try {
-            // 1. Fetch matching Audio Lesson from DB
-            const { data: lesson, error: lessonErr } = await supabase
+            // 1. Fetch matching Audio Lesson (Direct Title or via Sections Manifest)
+            let lesson = null;
+            const { data: directMatch } = await supabase
                 .from('book_audio_lessons')
                 .select('*')
                 .eq('book_id', selectedBook.id)
@@ -212,7 +222,27 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 .eq('status', 'ready')
                 .maybeSingle();
 
-            if (lessonErr) console.warn('Lesson query error:', lessonErr);
+            if (directMatch) {
+                lesson = directMatch;
+            } else {
+                // Check if this section sits inside a master chapter audio lesson
+                const { data: bookLessons } = await supabase
+                    .from('book_audio_lessons')
+                    .select('*')
+                    .eq('book_id', selectedBook.id)
+                    .eq('status', 'ready');
+
+                if (Array.isArray(bookLessons)) {
+                    lesson = bookLessons.find(bl => {
+                        if (!Array.isArray(bl.sections_manifest)) return false;
+                        return bl.sections_manifest.some(s => 
+                            (s.title && s.title.toLowerCase() === sectionNode.title.toLowerCase()) ||
+                            (s.title && sectionNode.title.toLowerCase().includes(s.title.toLowerCase())) ||
+                            (s.section_tag && sectionNode.title.startsWith(s.section_tag))
+                        );
+                    }) || null;
+                }
+            }
 
             // 2. Fetch associated Visual Assets (SVGs & Images) for this Course
             const { data: assets } = await supabase
@@ -247,12 +277,32 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
 
             if (lesson && lesson.audio_url) {
+                // Resolve section offset within master track
+                let jumpStartTime = 0;
+                if (Array.isArray(lesson.sections_manifest)) {
+                    const matchedManifest = lesson.sections_manifest.find(s => 
+                        (s.title && s.title.toLowerCase() === sectionNode.title.toLowerCase()) ||
+                        (s.title && sectionNode.title.toLowerCase().includes(s.title.toLowerCase())) ||
+                        (s.section_tag && sectionNode.title.startsWith(s.section_tag))
+                    );
+                    if (matchedManifest && matchedManifest.start_time !== undefined) {
+                        jumpStartTime = matchedManifest.start_time;
+                    }
+                }
+
                 setAudioLesson(lesson);
                 setDuration(lesson.duration_seconds || 0);
-                setCurrentTime(0);
+                setCurrentTime(jumpStartTime);
                 setIsPlaying(true);
                 setStage('studio');
                 setViewMode('cinema');
+
+                setTimeout(() => {
+                    if (audioRef.current) {
+                        audioRef.current.currentTime = jumpStartTime;
+                        audioRef.current.play().catch(() => {});
+                    }
+                }, 50);
             } else {
                 setAudioLesson(null);
                 setStage('studio');
@@ -680,10 +730,20 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
                                         ></div>
                                         
+                                        {/* Section Chapter Boundaries on Track */}
+                                        {(audioLesson.sections_manifest || []).map((sec, idx) => (
+                                            <div 
+                                                key={`sec-${idx}`}
+                                                className="ml-section-tick"
+                                                style={{ left: `${duration > 0 ? (sec.start_time / duration) * 100 : 0}%` }}
+                                                title={`Section: ${sec.title} (${formatTime(sec.start_time)})`}
+                                            ></div>
+                                        ))}
+
                                         {/* Visual Cue Tick Markers on Track */}
                                         {(audioLesson.cue_timeline || []).map((cue, idx) => (
                                             <div 
-                                                key={idx}
+                                                key={`cue-${idx}`}
                                                 className="ml-cue-tick"
                                                 style={{ left: `${duration > 0 ? (cue.time / duration) * 100 : 0}%` }}
                                                 title={`Event: ${cue.type} at ${formatTime(cue.time)}`}
