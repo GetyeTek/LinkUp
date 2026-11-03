@@ -3,10 +3,6 @@ name: Process Audio Lessons
 on:
   workflow_dispatch:
     inputs:
-      batch_size:
-        description: 'Number of pending lessons to process'
-        required: false
-        default: '5'
       target_lesson_id:
         description: 'Target Lesson ID (paste UUID to process only this lesson, leave empty for queue)'
         required: false
