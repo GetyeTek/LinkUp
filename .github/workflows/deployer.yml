@@ -27,6 +27,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cloudflare-worker
           wranglerVersion: '4.107.0'
+          command: deploy --config wrangler.toml
           secrets: |
             SUPABASE_SERVICE_ROLE_KEY
         env:
