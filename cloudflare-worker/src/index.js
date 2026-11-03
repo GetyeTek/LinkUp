@@ -172,7 +172,7 @@ export default {
       });
     }
 
-    if (isExplicitOrigin && !isOriginAllowed) {
+    if (isExplicitOrigin && !isOriginAllowed && !isPublicStorage) {
       console.error(`[Gateway] ⛔ Blocked unauthorized request from: ${incomingOrigin}`);
       return new Response(JSON.stringify({ error: "Unauthorized environment" }), { 
         status: 403, 
