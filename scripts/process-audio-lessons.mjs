@@ -15,6 +15,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '5', 10);
 const FORCE_RETRY = process.env.FORCE_RETRY === 'true';
+const FORCE_REGENERATE = process.env.FORCE_REGENERATE === 'true';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment.');
@@ -328,8 +329,14 @@ async function processLesson(lesson) {
         const { cleanText, visualCues, sectionCues } = parseScriptCues(lesson.script_raw);
         console.log(`📝 Clean text: ${cleanText.length} chars | Visual cues: ${visualCues.length} | Section markers: ${sectionCues.length}`);
 
-        // SMART RESUME CHECK: Verify if audio file exists in sanitized folder or legacy folder
-        if (!publicUrl) {
+        // SMART RESUME CHECK: Only reuse audio if NOT forcing regeneration AND lesson was interrupted mid-flight (audio_ready)
+        if (FORCE_REGENERATE) {
+            console.log(`🔄 Force regeneration active: Bypassing storage cache and synthesizing fresh TTS audio.`);
+            publicUrl = null;
+        } else if (lesson.status === 'pending') {
+            console.log(`🆕 Lesson status is 'pending': Generating fresh TTS audio to match updated script.`);
+            publicUrl = null;
+        } else if (!publicUrl) {
             let { data: fileMatches } = await supabase.storage
                 .from('book-audio-lectures')
                 .list(sanitizedFolder, { search: `${lesson.id}.mp3` });
