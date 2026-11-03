@@ -314,7 +314,10 @@ export default {
     // 2. Identify Public Cacheable GET Endpoints (Storage Assets & News Feed)
     const isPublicStorage = url.pathname.startsWith('/storage/v1/object/public/');
     const isPublicNewsFeed = request.method === 'GET' && url.pathname === '/functions/v1/news-feed';
-    const isCacheableGet = !hasBypassParam && request.method === 'GET' && (isPublicStorage || isPublicNewsFeed);
+    
+    // 🚨 AUDIO STREAMING FIX: Exempt byte-range requests from aggressive edge caching. Browsers rely on 206 Partial Content to seek MP3s.
+    const hasRange = request.headers.has('range') || request.headers.has('Range');
+    const isCacheableGet = !hasBypassParam && !hasRange && request.method === 'GET' && (isPublicStorage || isPublicNewsFeed);
     let getCacheKey = null;
 
     // B. Intercept & Serve Cached GET Assets
