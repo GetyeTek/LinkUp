@@ -145,6 +145,19 @@ export default {
     // Identify Public Storage early for CORS bypass
     const isPublicStorage = url.pathname.startsWith('/storage/v1/object/public/');
 
+    // 🔍 AUDIO DEBUG: log every request that touches an audio file
+    const isAudioReq = isPublicStorage && /\.(mp3|m4a|wav|ogg|aac|opus)$/i.test(url.pathname);
+    if (isAudioReq) {
+      const h = (name) => request.headers.get(name) || '(none)';
+      console.log(`[AudioDebug] ▶ ${request.method} ${url.pathname}${url.search}`);
+      console.log(`[AudioDebug]   origin=${h('Origin')} | referer=${h('Referer')}`);
+      console.log(`[AudioDebug]   range=${h('Range')} | accept=${h('Accept')}`);
+      console.log(`[AudioDebug]   sec-fetch: dest=${h('Sec-Fetch-Dest')} mode=${h('Sec-Fetch-Mode')} site=${h('Sec-Fetch-Site')}`);
+      console.log(`[AudioDebug]   acr-headers=${h('Access-Control-Request-Headers')} | acr-method=${h('Access-Control-Request-Method')}`);
+      console.log(`[AudioDebug]   ua=${h('User-Agent')}`);
+      console.log(`[AudioDebug]   colo=${request.cf && request.cf.colo} country=${request.cf && request.cf.country}`);
+    }
+
     if (request.method === 'OPTIONS') {
       if (isPublicStorage) {
         return new Response(null, {
@@ -345,6 +358,9 @@ export default {
       const cachedGetRes = await edgeCache.match(getCacheKey);
       if (cachedGetRes) {
         console.log(`[Gateway] ⚡ EDGE CACHE HIT (GET): ${url.pathname}`);
+        if (isAudioReq) {
+          console.log(`[AudioDebug] ◀ CACHE HIT status=${cachedGetRes.status} type=${cachedGetRes.headers.get('content-type')} length=${cachedGetRes.headers.get('content-length')}`);
+        }
         const hitHeaders = new Headers(cachedGetRes.headers);
         if (isPublicStorage) {
           hitHeaders.set('Access-Control-Allow-Origin', '*');
@@ -388,6 +404,12 @@ export default {
     try {
       const response = await fetch(targetUrl.toString(), init);
       console.log(`[Gateway] ✅ Backend responded with HTTP ${response.status}`);
+      if (isAudioReq) {
+        console.log(`[AudioDebug] ◀ UPSTREAM status=${response.status} type=${response.headers.get('content-type')} length=${response.headers.get('content-length')} range=${response.headers.get('content-range')} accept-ranges=${response.headers.get('accept-ranges')}`);
+        if (response.status >= 400) {
+          response.clone().text().then(t => console.error(`[AudioDebug] ❌ upstream error body: ${t.slice(0, 300)}`)).catch(() => {});
+        }
+      }
       
       if (response.status === 101) return response;
 
