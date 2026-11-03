@@ -21,7 +21,51 @@
     </script>
   </head>
   <body>
-    <script>console.log("[Platform:Boot] DOM Ready. Initializing host container...");</script>
+    <script>
+      console.log("[Platform:Boot] DOM Ready. Initializing host container...");
+      (function() {
+        function renderBootstrapFailure(title, detail) {
+          if (window.__LINKUP_MOUNTED__) return;
+          if (document.getElementById('boot-error-screen')) return;
+          var box = document.createElement('div');
+          box.id = 'boot-error-screen';
+          box.style.cssText = 'position:fixed;inset:0;background:#0c0c0c;color:#f3f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;z-index:999999;';
+          box.innerHTML = '<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,95,95,0.12);border:1.5px solid rgba(255,95,95,0.35);color:#ff5f5f;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px;">⚠️</div>' +
+            '<h2 style="font-size:18px;font-weight:700;margin:0 0 8px 0;color:#ffffff;">' + (title || 'Connection Failed') + '</h2>' +
+            '<p style="font-size:13px;color:#94a3b8;max-width:320px;line-height:1.5;margin:0 0 24px 0;">' + (detail || 'Could not load platform bundle. Please check your network or refresh.') + '</p>' +
+            '<div style="display:flex;gap:10px;">' +
+            '<button onclick="location.reload()" style="background:#42d7b8;color:#0c0c0c;border:none;padding:10px 20px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">Reload App</button>' +
+            '<button onclick="if(\'caches\' in window){caches.keys().then(function(k){k.forEach(function(c){caches.delete(c)})})};localStorage.clear();sessionStorage.clear();location.reload(true)" style="background:rgba(255,255,255,0.08);color:#cbd5e1;border:1px solid rgba(255,255,255,0.15);padding:10px 16px;border-radius:10px;font-weight:600;font-size:13px;cursor:pointer;">Clear Cache & Reload</button>' +
+            '</div>';
+          document.body.appendChild(box);
+        }
+
+        window.addEventListener('error', function(e) {
+          if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+            console.error('[Platform:Boot] Asset load failure:', e.target.src || e.target.href);
+            renderBootstrapFailure('Failed to Load App Assets', 'The application bundle could not be downloaded (404 or network error). Tap below to refresh.');
+          } else if (!window.__LINKUP_MOUNTED__) {
+            renderBootstrapFailure('Initialization Error', e.message || 'An error occurred during bootstrap.');
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(e) {
+          if (!window.__LINKUP_MOUNTED__) {
+            console.error('[Platform:Boot] Unhandled rejection:', e.reason);
+            renderBootstrapFailure('Startup Interrupted', (e.reason && e.reason.message) || 'A background service failed to initialize.');
+          }
+        });
+
+        setTimeout(function() {
+          if (!window.__LINKUP_MOUNTED__) {
+            var root = document.getElementById('root');
+            if (!root || root.childNodes.length === 0) {
+              renderBootstrapFailure('Platform Timeout', 'LinkUp took too long to initialize. Please check your network and reload.');
+            }
+          }
+        }, 9000);
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="src/main.jsx"></script>
   </body>
