@@ -16,6 +16,8 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '5', 10);
 const FORCE_RETRY = process.env.FORCE_RETRY === 'true';
 const FORCE_REGENERATE = process.env.FORCE_REGENERATE === 'true';
+const FORCE_RETRANSCRIBE = process.env.FORCE_RETRANSCRIBE === 'true';
+const TARGET_LESSON_ID = (process.env.TARGET_LESSON_ID || '').trim();
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment.');
@@ -152,34 +154,25 @@ function getAudioDurationSeconds(filePath) {
     return 0;
 }
 
-// --- 5. CALL GEMINI 3.5 TRANSCRIBE (STRICT & UNFILTERED) ---
-async function transcribeAudioWithWordTimestamps(mp3Base64, apiKeyObj, fallbackCleanText, fallbackDuration) {
+// --- 5. CALL GEMINI 3.5 TRANSCRIBE (NATIVE AUDIO TRANSCRIPTION) ---
+async function transcribeAudioWithWordTimestamps(mp3Base64, apiKeyObj, fallbackDuration) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${apiKeyObj.api_key}`;
-
-    const promptText = `Transcribe this audio verbatim with word-level timestamps.
-Output a JSON object with:
-1. "duration": total audio length in seconds (float).
-2. "words": an array of words, where each item has:
-   - "word": string
-   - "start": start time in seconds (float)
-   - "end": end time in seconds (float)
-
-Do not wrap with markdown code blocks. Output pure JSON only.`;
 
     const payload = {
         contents: [{
-            parts: [
-                {
-                    inlineData: {
-                        mimeType: "audio/mp3",
-                        data: mp3Base64
-                    }
-                },
-                {
-                    text: promptText
+            parts: [{
+                inlineData: {
+                    mimeType: "audio/mp3",
+                    data: mp3Base64
                 }
-            ]
-        }]
+            }]
+        }],
+        generationConfig: {
+            audioTranscriptionConfig: {
+                mode: "VERBATIM",
+                wordTimestamp: true
+            }
+        }
     };
 
     const res = await fetch(url, {
@@ -199,56 +192,67 @@ Do not wrap with markdown code blocks. Output pure JSON only.`;
     }
 
     const json = await res.json();
-    const rawOutput = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
-    if (!rawOutput) {
-        const emptyErr = new Error(`Gemini Transcribe returned empty candidate parts. Full response: ${JSON.stringify(json)}`);
+    const candidate = json.candidates?.[0];
+    const part = candidate?.content?.parts?.[0];
+    const transcription = part?.audioTranscription;
+
+    if (!transcription || !Array.isArray(transcription.words)) {
+        const emptyErr = new Error(`Gemini Transcribe returned no audioTranscription words. Candidate: ${JSON.stringify(part || json)}`);
         emptyErr.rawOutput = JSON.stringify(json);
         throw emptyErr;
     }
 
-    let cleanJson = rawOutput.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    const firstBrace = cleanJson.indexOf('{');
-    const lastBrace = cleanJson.lastIndexOf('}');
-    
-    if (firstBrace === -1 || lastBrace === -1) {
-        const noJsonErr = new Error(`Gemini Transcribe response does not contain a JSON object.`);
-        noJsonErr.rawOutput = rawOutput;
-        throw noJsonErr;
+    const words = transcription.words.map(w => ({
+        word: w.word || '',
+        start: Number(parseFloat(w.startOffset || '0').toFixed(2)),
+        end: Number(parseFloat(w.endOffset || '0').toFixed(2))
+    }));
+
+    if (words.length === 0) {
+        const noWordsErr = new Error(`Gemini Transcribe returned empty words array.`);
+        noWordsErr.rawOutput = JSON.stringify(json);
+        throw noWordsErr;
     }
 
-    cleanJson = cleanJson.slice(firstBrace, lastBrace + 1);
+    const lastWord = words[words.length - 1];
+    const finalDuration = lastWord ? lastWord.end : fallbackDuration;
 
-    try {
-        const parsed = JSON.parse(cleanJson);
-        if (!Array.isArray(parsed.words) || parsed.words.length === 0) {
-            const noWordsErr = new Error(`Gemini Transcribe JSON parsed successfully but 'words' array is missing or empty.`);
-            noWordsErr.rawOutput = rawOutput;
-            throw noWordsErr;
-        }
-
-        return {
-            duration: Number(parsed.duration || fallbackDuration),
-            words: parsed.words,
-            rawOutput: rawOutput
-        };
-    } catch (parseErr) {
-        const fatalErr = new Error(`Gemini Transcribe JSON parse failed: ${parseErr.message}`);
-        fatalErr.rawOutput = rawOutput;
-        throw fatalErr;
-    }
+    return {
+        duration: Number(finalDuration.toFixed(2)),
+        words: words,
+        rawOutput: transcription.text || ''
+    };
 }
 
 // --- 6. ALIGN CUES & ASSEMBLE SECTION MANIFEST ---
 function resolveWordTime(cue, wordsList, fallbackDuration) {
     if (!Array.isArray(wordsList) || wordsList.length === 0) return 0;
+
+    const cleanAnchor = (cue.anchorWord || '').toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+
+    // 1. Search locally within a window (+/- 25 words) of expected index
+    if (cleanAnchor && cue.wordIndex !== undefined) {
+        const startWin = Math.max(0, cue.wordIndex - 25);
+        const endWin = Math.min(wordsList.length - 1, cue.wordIndex + 25);
+        for (let i = startWin; i <= endWin; i++) {
+            const wClean = (wordsList[i].word || '').toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+            if (wClean === cleanAnchor) {
+                return wordsList[i].end || wordsList[i].start || 0;
+            }
+        }
+    }
+
+    // 2. Direct index fallback if within bounds
     if (wordsList[cue.wordIndex]) {
         return wordsList[cue.wordIndex].end || wordsList[cue.wordIndex].start || 0;
     }
-    if (cue.anchorWord) {
-        const found = wordsList.find(w => w.word.toLowerCase().replace(/[^a-zA-Z0-9]/g, '') === cue.anchorWord);
+
+    // 3. Global search for anchor word
+    if (cleanAnchor) {
+        const found = wordsList.find(w => (w.word || '').toLowerCase().replace(/[^a-zA-Z0-9]/g, '') === cleanAnchor);
         if (found) return found.end || found.start || 0;
     }
+
     return fallbackDuration;
 }
 
@@ -333,14 +337,18 @@ async function processLesson(lesson) {
         const { cleanText, visualCues, sectionCues } = parseScriptCues(lesson.script_raw);
         console.log(`📝 Clean text: ${cleanText.length} chars | Visual cues: ${visualCues.length} | Section markers: ${sectionCues.length}`);
 
-        // SMART RESUME CHECK: Only reuse audio if NOT forcing regeneration AND lesson was interrupted mid-flight (audio_ready)
-        if (FORCE_REGENERATE) {
+        // SMART RESUME & RETRANSCRIBE CHECK
+        if (FORCE_RETRANSCRIBE) {
+            console.log(`⚡ FORCE_RETRANSCRIBE active: Reusing existing audio asset and skipping TTS.`);
+        } else if (FORCE_REGENERATE) {
             console.log(`🔄 Force regeneration active: Bypassing storage cache and synthesizing fresh TTS audio.`);
             publicUrl = null;
         } else if (lesson.status === 'pending') {
             console.log(`🆕 Lesson status is 'pending': Generating fresh TTS audio to match updated script.`);
             publicUrl = null;
-        } else if (!publicUrl) {
+        }
+
+        if (!publicUrl) {
             let { data: fileMatches } = await supabase.storage
                 .from('book-audio-lectures')
                 .list(sanitizedFolder, { search: `${lesson.id}.mp3` });
@@ -430,7 +438,7 @@ async function processLesson(lesson) {
         console.log(`🔑 Leased API Key ID for Transcribe: #${transcribeKey.id}`);
 
         console.log(`🔍 Transcribing audio for word timestamps...`);
-        const transcriptionResult = await transcribeAudioWithWordTimestamps(mp3Base64, transcribeKey, cleanText, trueDuration);
+        const transcriptionResult = await transcribeAudioWithWordTimestamps(mp3Base64, transcribeKey, trueDuration);
 
         const words = transcriptionResult.words || [];
         const finalDuration = Number(transcriptionResult.duration || trueDuration);
@@ -494,27 +502,50 @@ async function processLesson(lesson) {
 
 // --- 8. MAIN RUNNER ---
 async function main() {
-    console.log(`🚀 Starting Miron Audio Processing Engine (Batch Size: ${BATCH_SIZE}, Force Retry: ${FORCE_RETRY})`);
+    console.log(`🚀 Starting Miron Audio Processing Engine`);
+    if (TARGET_LESSON_ID) console.log(`🎯 Targeted Lesson ID: ${TARGET_LESSON_ID}`);
+    console.log(`⚙️ Config: Batch Size: ${BATCH_SIZE} | Retry Failed: ${FORCE_RETRY} | Force Regenerate: ${FORCE_REGENERATE} | Force Retranscribe: ${FORCE_RETRANSCRIBE}`);
 
-    // Pick up ungenerated items AND previously interrupted audio_ready items
-    const statusList = FORCE_RETRY 
-        ? ['pending', 'audio_ready', 'failed'] 
-        : ['pending', 'audio_ready'];
+    let lessons = [];
 
-    const { data: lessons, error } = await supabase
-        .from('book_audio_lessons')
-        .select('*')
-        .in('status', statusList)
-        .order('created_at', { ascending: true })
-        .limit(BATCH_SIZE);
+    if (TARGET_LESSON_ID) {
+        const { data, error } = await supabase
+            .from('book_audio_lessons')
+            .select('*')
+            .eq('id', TARGET_LESSON_ID);
 
-    if (error) {
-        console.error('❌ Failed to fetch pending lessons from database:', error.message);
-        process.exit(1);
+        if (error) {
+            console.error(`❌ Failed to fetch targeted lesson #${TARGET_LESSON_ID}:`, error.message);
+            process.exit(1);
+        }
+        lessons = data || [];
+        if (lessons.length === 0) {
+            console.log(`⚠️ No lesson found matching ID: ${TARGET_LESSON_ID}`);
+            return;
+        }
+    } else {
+        const statusList = FORCE_RETRANSCRIBE
+            ? ['pending', 'audio_ready', 'ready', 'failed']
+            : FORCE_RETRY
+                ? ['pending', 'audio_ready', 'failed']
+                : ['pending', 'audio_ready'];
+
+        const { data, error } = await supabase
+            .from('book_audio_lessons')
+            .select('*')
+            .in('status', statusList)
+            .order('created_at', { ascending: true })
+            .limit(BATCH_SIZE);
+
+        if (error) {
+            console.error('❌ Failed to fetch lessons from database:', error.message);
+            process.exit(1);
+        }
+        lessons = data || [];
     }
 
     if (!lessons || lessons.length === 0) {
-        console.log('✨ No pending or audio_ready lessons found in queue. Everything is up to date.');
+        console.log('✨ No matching lessons found in queue. Everything is up to date.');
         return;
     }
 
