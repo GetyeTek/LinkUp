@@ -48,6 +48,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const rafIdRef = useRef(null);
     const progressBarRef = useRef(null);
     const pendingSeekTimeRef = useRef(0);
+    const cinemaContainerRef = useRef(null);
+    const cameraAnimRef = useRef(null);
 
     // 1. Hydrate Published Curriculum Books & Lesson Availability
     useEffect(() => {
@@ -133,20 +135,145 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [selectedBook]);
 
-    // 4. Resolve Active Visual Cue & Karaoke Words
-    const activeCue = useMemo(() => {
-        if (!audioLesson?.cue_timeline || audioLesson.cue_timeline.length === 0) return null;
+    // 4. Resolve Active Visual Cue, Node Camera & Karaoke Words
+    const { activeCue, activeNodeCue } = useMemo(() => {
+        if (!audioLesson?.cue_timeline || audioLesson.cue_timeline.length === 0) {
+            return { activeCue: null, activeNodeCue: null };
+        }
         const timeline = audioLesson.cue_timeline;
-        let candidate = null;
+        let latestAsset = null;
+        let latestNode = null;
+
         for (const cue of timeline) {
             if (cue.time <= currentTime) {
-                candidate = cue;
+                if (cue.type === 'show_diagram' || cue.type === 'show_image' || cue.type === 'note_card') {
+                    if (cue.target && cue.target.includes(':') && !visualAssets[cue.target]) {
+                        const [assetKey, nodeKey] = cue.target.split(':');
+                        latestAsset = { ...cue, target: assetKey };
+                        latestNode = { ...cue, type: 'zoom', target: nodeKey };
+                    } else if (cue.target && cue.target.includes('#') && !visualAssets[cue.target]) {
+                        const [assetKey, nodeKey] = cue.target.split('#');
+                        latestAsset = { ...cue, target: assetKey };
+                        latestNode = { ...cue, type: 'zoom', target: nodeKey };
+                    } else {
+                        latestAsset = cue;
+                        latestNode = null;
+                    }
+                } else if (cue.type === 'zoom' || cue.type === 'focus' || cue.type === 'spotlight') {
+                    latestNode = cue;
+                } else if (cue.type === 'anchor_block') {
+                    latestAsset = cue;
+                }
             } else {
                 break;
             }
         }
-        return candidate;
-    }, [audioLesson, currentTime]);
+        return { activeCue: latestAsset, activeNodeCue: latestNode };
+    }, [audioLesson, currentTime, visualAssets]);
+
+    // Dynamic 60fps ViewBox Camera Interpolator
+    const animateViewBox = (svg, targetBoxStr) => {
+        if (!svg || !targetBoxStr) return;
+        const target = targetBoxStr.trim().split(/\s+/).map(Number);
+        if (target.length !== 4 || target.some(isNaN)) return;
+
+        cancelAnimationFrame(cameraAnimRef.current);
+        const currentBoxStr = svg.getAttribute('viewBox') || targetBoxStr;
+        const start = currentBoxStr.trim().split(/\s+/).map(Number);
+        if (start.length !== 4 || start.some(isNaN)) {
+            svg.setAttribute('viewBox', targetBoxStr);
+            return;
+        }
+
+        const startTime = performance.now();
+        const duration = 650; // Smooth 650ms camera pan
+
+        const step = (now) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(1, elapsed / duration);
+            const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+
+            const cur = [
+                start[0] + (target[0] - start[0]) * ease,
+                start[1] + (target[1] - start[1]) * ease,
+                start[2] + (target[2] - start[2]) * ease,
+                start[3] + (target[3] - start[3]) * ease
+            ];
+
+            svg.setAttribute('viewBox', `${cur[0].toFixed(2)} ${cur[1].toFixed(2)} ${cur[2].toFixed(2)} ${cur[3].toFixed(2)}`);
+
+            if (progress < 1) {
+                cameraAnimRef.current = requestAnimationFrame(step);
+            }
+        };
+        cameraAnimRef.current = requestAnimationFrame(step);
+    };
+
+    // Camera Director: Synchronizes ViewBox Pan/Zoom & CSS Node Spotlight
+    useEffect(() => {
+        if (viewMode !== 'cinema') return;
+        const container = cinemaContainerRef.current;
+        if (!container) return;
+
+        const targetNode = activeNodeCue?.target;
+        const cardEl = container.querySelector('.vis-card');
+
+        if (!targetNode || targetNode === 'overview' || targetNode === 'reset') {
+            if (cardEl) {
+                cardEl.removeAttribute('data-active-node');
+                cardEl.querySelectorAll('.vis-node').forEach(n => {
+                    n.classList.remove('is-focused');
+                    n.removeAttribute('data-is-active');
+                });
+            }
+            const activeSvg = window.innerWidth <= 768
+                ? (container.querySelector('svg.vis-mobile') || container.querySelector('svg'))
+                : (container.querySelector('svg.vis-desktop') || container.querySelector('svg'));
+            if (activeSvg) {
+                const defaultView = activeSvg.getAttribute('data-default-view') || '0 0 780 340';
+                animateViewBox(activeSvg, defaultView);
+            }
+            return;
+        }
+
+        // 1. Activate CSS Spotlight & Card Glow
+        if (cardEl) {
+            cardEl.setAttribute('data-active-node', targetNode);
+            cardEl.querySelectorAll('.vis-node').forEach(n => {
+                const isMatch = n.getAttribute('data-node') === targetNode;
+                n.classList.toggle('is-focused', isMatch);
+                if (isMatch) n.setAttribute('data-is-active', 'true');
+                else n.removeAttribute('data-is-active');
+            });
+        }
+
+        // 2. Drive ViewBox Camera Pan-and-Zoom
+        const activeSvg = window.innerWidth <= 768
+            ? (container.querySelector('svg.vis-mobile') || container.querySelector('svg'))
+            : (container.querySelector('svg.vis-desktop') || container.querySelector('svg'));
+
+        if (activeSvg) {
+            if (!activeSvg.getAttribute('data-default-view')) {
+                activeSvg.setAttribute('data-default-view', activeSvg.getAttribute('viewBox') || '0 0 780 340');
+            }
+
+            const targetEl = activeSvg.querySelector(`[data-node="${targetNode}"]`);
+            if (targetEl) {
+                const boxStr = targetEl.getAttribute('data-focus-box');
+                if (boxStr) {
+                    animateViewBox(activeSvg, boxStr);
+                } else {
+                    try {
+                        const b = targetEl.getBBox();
+                        const padX = Math.max(25, b.width * 0.15);
+                        const padY = Math.max(25, b.height * 0.15);
+                        const calcBox = `${b.x - padX} ${b.y - padY} ${b.width + padX * 2} ${b.height + padY * 2}`;
+                        animateViewBox(activeSvg, calcBox);
+                    } catch (e) {}
+                }
+            }
+        }
+    }, [activeNodeCue, activeCue, viewMode]);
 
     // Automatic Dual-Mode Switcher: Flips to anchor on block cue, snaps to cinema on visuals
     useEffect(() => {
@@ -803,7 +930,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 
                                 {/* VIEW 1: CINEMA STAGE */}
                                 {viewMode === 'cinema' && (
-                                    <div className="ml-cinema-stage">
+                                    <div className="ml-cinema-stage" ref={cinemaContainerRef}>
                                         {activeAsset ? (
                                             activeAsset.asset_type === 'diagram_svg' ? (
                                                 <div 
