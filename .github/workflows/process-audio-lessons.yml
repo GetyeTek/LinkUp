@@ -7,14 +7,26 @@ on:
         description: 'Number of pending lessons to process'
         required: false
         default: '5'
-      force_retry_failed:
-        description: 'Retry previously failed lessons (true/false)'
+      target_lesson_id:
+        description: 'Target Lesson ID (paste UUID to process only this lesson, leave empty for queue)'
+        required: false
+        default: ''
+      force_retranscribe:
+        description: 'Re-transcribe & align cues only (reuses existing audio, ignores status) (true/false)'
         required: false
         default: 'false'
       force_regenerate_audio:
-        description: 'Force re-synthesize audio even if cached in storage (true/false)'
+        description: 'Force re-generate TTS audio from scratch (true/false)'
         required: false
         default: 'false'
+      force_retry_failed:
+        description: 'Include failed lessons in batch (true/false)'
+        required: false
+        default: 'false'
+      batch_size:
+        description: 'Number of lessons to process'
+        required: false
+        default: '5'
 
 jobs:
   process-audio:
@@ -42,7 +54,9 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          BATCH_SIZE: ${{ github.event.inputs.batch_size || 5 }}
-          FORCE_RETRY: ${{ github.event.inputs.force_retry_failed || 'false' }}
+          TARGET_LESSON_ID: ${{ github.event.inputs.target_lesson_id || '' }}
+          FORCE_RETRANSCRIBE: ${{ github.event.inputs.force_retranscribe || 'false' }}
           FORCE_REGENERATE: ${{ github.event.inputs.force_regenerate_audio || 'false' }}
+          FORCE_RETRY: ${{ github.event.inputs.force_retry_failed || 'false' }}
+          BATCH_SIZE: ${{ github.event.inputs.batch_size || 5 }}
         run: node scripts/process-audio-lessons.mjs
