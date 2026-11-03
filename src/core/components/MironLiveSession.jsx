@@ -11,6 +11,11 @@ const formatTime = (secs) => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
 };
 
+const proxyUrl = (url) => {
+    if (!url) return url;
+    return url.replace(/https:\/\/[^/]+\.supabase\.co/gi, 'https://linkup-gateway.getyeteklu2.workers.dev');
+};
+
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const { t } = usePlatform();
     const renderBookBlock = getComponent('book-block-renderer');
@@ -374,7 +379,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 setViewMode('cinema');
 
                 // If track is already loaded in the audio tag, seek and play immediately
-                if (audioRef.current && audioRef.current.src === lesson.audio_url) {
+                if (audioRef.current && audioRef.current.src === proxyUrl(lesson.audio_url)) {
                     try {
                         audioRef.current.currentTime = jumpStartTime;
                         audioRef.current.play().catch((err) => {
@@ -468,7 +473,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             {audioLesson?.audio_url && (
                 <audio 
                     ref={audioRef}
-                    src={audioLesson.audio_url}
+                    src={proxyUrl(audioLesson.audio_url)}
                     preload="auto"
                     onPlay={() => setIsPlaying(true)}
                     onPause={() => setIsPlaying(false)}
@@ -478,7 +483,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     onStalled={() => console.warn('⚠️ [Audio Element] stalled (Data not arriving)')}
                     onWaiting={() => console.warn('⚠️ [Audio Element] waiting for more frames')}
                     onError={async (e) => {
-                        const targetUrl = audioLesson.audio_url;
+                        const targetUrl = proxyUrl(audioLesson.audio_url);
                         const el = audioRef.current;
                         setIsPlaying(false);
 
@@ -807,7 +812,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 />
                                             ) : (
                                                 <div className="ml-visual-card-image">
-                                                    <img src={activeAsset.image_url} alt={activeAsset.title || 'Lecture Illustration'} />
+                                                    <img src={proxyUrl(activeAsset.image_url)} alt={activeAsset.title || 'Lecture Illustration'} />
                                                     <div className="ml-image-caption-pill">
                                                         <span>{activeAsset.title || 'Scene Concept'}</span>
                                                     </div>
@@ -860,7 +865,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                     <div className="ml-visual-card-svg" dangerouslySetInnerHTML={{ __html: activeAsset.content_payload }} />
                                                 ) : (
                                                     <div className="ml-visual-card-image">
-                                                        <img src={activeAsset.image_url} alt="Illustration" />
+                                                        <img src={proxyUrl(activeAsset.image_url)} alt="Illustration" />
                                                     </div>
                                                 )
                                             ) : (
