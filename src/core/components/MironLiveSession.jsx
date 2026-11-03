@@ -42,6 +42,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const audioRef = useRef(null);
     const rafIdRef = useRef(null);
     const progressBarRef = useRef(null);
+    const pendingSeekTimeRef = useRef(0);
 
     // 1. Hydrate Published Curriculum Books & Lesson Availability
     useEffect(() => {
@@ -365,19 +366,23 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     }
                 }
 
+                pendingSeekTimeRef.current = jumpStartTime;
                 setAudioLesson(lesson);
                 setDuration(lesson.duration_seconds || 0);
                 setCurrentTime(jumpStartTime);
-                setIsPlaying(true);
                 setStage('studio');
                 setViewMode('cinema');
 
-                setTimeout(() => {
-                    if (audioRef.current) {
+                // If track is already loaded in the audio tag, seek and play immediately
+                if (audioRef.current && audioRef.current.src === lesson.audio_url) {
+                    try {
                         audioRef.current.currentTime = jumpStartTime;
-                        audioRef.current.play().catch(() => {});
-                    }
-                }, 50);
+                        audioRef.current.play().catch((err) => {
+                            console.warn('⚠️ [Audio Autoplay Blocked]: Tap Play to begin', err.message);
+                            setIsPlaying(false);
+                        });
+                    } catch (e) {}
+                }
             } else {
                 setAudioLesson(null);
                 setStage('studio');
@@ -393,11 +398,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     // --- TRANSPORT CONTROLS ---
     const handleTogglePlay = () => {
         if (!audioRef.current) return;
-        if (isPlaying) {
+        if (!audioRef.current.paused) {
             audioRef.current.pause();
             setIsPlaying(false);
         } else {
-            audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+            audioRef.current.play()
+                .then(() => setIsPlaying(true))
+                .catch((err) => {
+                    console.error('❌ [Audio Playback Failed]:', err);
+                    setIsPlaying(false);
+                });
         }
     };
 
@@ -460,12 +470,27 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     ref={audioRef}
                     src={audioLesson.audio_url}
                     preload="auto"
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
                     onEnded={() => setIsPlaying(false)}
+                    onError={(e) => {
+                        console.error('❌ [Miron Audio Error]: Failed to load audio stream from bucket', audioRef.current?.error || e);
+                        setIsPlaying(false);
+                    }}
                     onLoadedMetadata={() => {
                         if (audioRef.current) {
-                            setDuration(audioRef.current.duration);
+                            const seekTo = pendingSeekTimeRef.current || 0;
+                            if (seekTo > 0 && Math.abs(audioRef.current.currentTime - seekTo) > 0.5) {
+                                audioRef.current.currentTime = seekTo;
+                            }
+                            setDuration(audioRef.current.duration || audioLesson.duration_seconds || 0);
                             audioRef.current.playbackRate = playbackRate;
-                            audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+                            audioRef.current.play()
+                                .then(() => setIsPlaying(true))
+                                .catch((err) => {
+                                    console.warn('⚠️ [Audio Autoplay Prevented by Browser]: Tap Play to begin lecture', err.message);
+                                    setIsPlaying(false);
+                                });
                         }
                     }}
                 />
