@@ -11,6 +11,10 @@ on:
         description: 'Retry previously failed lessons (true/false)'
         required: false
         default: 'false'
+      force_regenerate_audio:
+        description: 'Force re-synthesize audio even if cached in storage (true/false)'
+        required: false
+        default: 'false'
 
 jobs:
   process-audio:
@@ -40,4 +44,5 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           BATCH_SIZE: ${{ github.event.inputs.batch_size || 5 }}
           FORCE_RETRY: ${{ github.event.inputs.force_retry_failed || 'false' }}
+          FORCE_REGENERATE: ${{ github.event.inputs.force_regenerate_audio || 'false' }}
         run: node scripts/process-audio-lessons.mjs
