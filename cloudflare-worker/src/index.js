@@ -141,8 +141,22 @@ export default {
     const isExplicitOrigin = Boolean(incomingOrigin);
     const isOriginAllowed = isExplicitOrigin ? ALLOWED_ORIGINS.includes(incomingOrigin) : false;
     const resolvedCorsOrigin = isOriginAllowed ? incomingOrigin : ALLOWED_ORIGINS[0];
+    
+    // Identify Public Storage early for CORS bypass
+    const isPublicStorage = url.pathname.startsWith('/storage/v1/object/public/');
 
     if (request.method === 'OPTIONS') {
+      if (isPublicStorage) {
+        return new Response(null, {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers': requestedHeaders || 'authorization, apikey, range, content-type',
+            'Access-Control-Max-Age': '86400',
+          }
+        });
+      }
+
       if (!isExplicitOrigin || !isOriginAllowed) {
         console.warn(`[Gateway] ⛔ Rejected Preflight from unapproved origin: ${incomingOrigin}`);
         return new Response(null, { status: 403 });
@@ -264,6 +278,12 @@ export default {
     const targetUrl = new URL(url.pathname + url.search, REAL_SUPABASE_URL);
     const modifiedHeaders = new Headers(request.headers);
 
+    // Strip tracking headers for public storage to bypass Supabase's strict CORS rules upstream
+    if (isPublicStorage) {
+      modifiedHeaders.delete('Origin');
+      modifiedHeaders.delete('Referer');
+    }
+
     // Ensure apikey header is present for upstream Supabase dispatch
     if (!modifiedHeaders.get('apikey')) {
       modifiedHeaders.set('apikey', REAL_ANON_KEY);
@@ -312,7 +332,6 @@ export default {
     }
 
     // 2. Identify Public Cacheable GET Endpoints (Storage Assets & News Feed)
-    const isPublicStorage = url.pathname.startsWith('/storage/v1/object/public/');
     const isPublicNewsFeed = request.method === 'GET' && url.pathname === '/functions/v1/news-feed';
     
     // 🚨 AUDIO STREAMING FIX: Exempt byte-range requests from aggressive edge caching. Browsers rely on 206 Partial Content to seek MP3s.
@@ -327,7 +346,10 @@ export default {
       if (cachedGetRes) {
         console.log(`[Gateway] ⚡ EDGE CACHE HIT (GET): ${url.pathname}`);
         const hitHeaders = new Headers(cachedGetRes.headers);
-        if (isExplicitOrigin && isOriginAllowed) {
+        if (isPublicStorage) {
+          hitHeaders.set('Access-Control-Allow-Origin', '*');
+          hitHeaders.delete('Access-Control-Allow-Credentials');
+        } else if (isExplicitOrigin && isOriginAllowed) {
           hitHeaders.set('Access-Control-Allow-Origin', incomingOrigin);
           hitHeaders.set('Access-Control-Allow-Credentials', 'true');
         }
@@ -370,7 +392,10 @@ export default {
       if (response.status === 101) return response;
 
       const responseHeaders = new Headers(response.headers);
-      if (isExplicitOrigin && isOriginAllowed) {
+      if (isPublicStorage) {
+        responseHeaders.set('Access-Control-Allow-Origin', '*');
+        responseHeaders.delete('Access-Control-Allow-Credentials');
+      } else if (isExplicitOrigin && isOriginAllowed) {
         responseHeaders.set('Access-Control-Allow-Origin', incomingOrigin);
         responseHeaders.set('Access-Control-Allow-Credentials', 'true');
       }
