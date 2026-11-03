@@ -152,7 +152,7 @@ function getAudioDurationSeconds(filePath) {
     return 0;
 }
 
-// --- 5. CALL GEMINI 3.5 TRANSCRIBE WITHOUT FORCED JSON-MODE ---
+// --- 5. CALL GEMINI 3.5 TRANSCRIBE (STRICT & UNFILTERED) ---
 async function transcribeAudioWithWordTimestamps(mp3Base64, apiKeyObj, fallbackCleanText, fallbackDuration) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${apiKeyObj.api_key}`;
 
@@ -166,7 +166,6 @@ Output a JSON object with:
 
 Do not wrap with markdown code blocks. Output pure JSON only.`;
 
-    // Note: Do NOT set responseMimeType: "application/json" on gemini-3.5-transcribe
     const payload = {
         contents: [{
             parts: [
@@ -194,45 +193,50 @@ Do not wrap with markdown code blocks. Output pure JSON only.`;
         if (res.status === 429) {
             await cooldownKey(apiKeyObj.id, 300);
         }
-        throw new Error(`Gemini Transcribe API error (${res.status}): ${errText}`);
+        const httpErr = new Error(`Gemini Transcribe HTTP ${res.status}: ${errText}`);
+        httpErr.rawOutput = errText;
+        throw httpErr;
     }
 
     const json = await res.json();
     const rawOutput = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
-    // Robust JSON Parser (handles optional markdown wrappers)
+    if (!rawOutput) {
+        const emptyErr = new Error(`Gemini Transcribe returned empty candidate parts. Full response: ${JSON.stringify(json)}`);
+        emptyErr.rawOutput = JSON.stringify(json);
+        throw emptyErr;
+    }
+
     let cleanJson = rawOutput.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     const firstBrace = cleanJson.indexOf('{');
     const lastBrace = cleanJson.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1) {
-        cleanJson = cleanJson.slice(firstBrace, lastBrace + 1);
+    
+    if (firstBrace === -1 || lastBrace === -1) {
+        const noJsonErr = new Error(`Gemini Transcribe response does not contain a JSON object.`);
+        noJsonErr.rawOutput = rawOutput;
+        throw noJsonErr;
     }
+
+    cleanJson = cleanJson.slice(firstBrace, lastBrace + 1);
 
     try {
         const parsed = JSON.parse(cleanJson);
-        if (Array.isArray(parsed.words) && parsed.words.length > 0) {
-            return {
-                duration: Number(parsed.duration || fallbackDuration),
-                words: parsed.words
-            };
+        if (!Array.isArray(parsed.words) || parsed.words.length === 0) {
+            const noWordsErr = new Error(`Gemini Transcribe JSON parsed successfully but 'words' array is missing or empty.`);
+            noWordsErr.rawOutput = rawOutput;
+            throw noWordsErr;
         }
-    } catch (e) {
-        console.warn('⚠️ Raw transcribe output was not strict JSON. Utilizing robust token alignment fallback.');
+
+        return {
+            duration: Number(parsed.duration || fallbackDuration),
+            words: parsed.words,
+            rawOutput: rawOutput
+        };
+    } catch (parseErr) {
+        const fatalErr = new Error(`Gemini Transcribe JSON parse failed: ${parseErr.message}`);
+        fatalErr.rawOutput = rawOutput;
+        throw fatalErr;
     }
-
-    // Resilient Fallback: Evenly space clean text tokens across true audio duration
-    const words = fallbackCleanText.split(/\s+/).filter(Boolean);
-    const step = fallbackDuration / Math.max(1, words.length);
-    const mappedWords = words.map((w, idx) => ({
-        word: w,
-        start: Number((idx * step).toFixed(2)),
-        end: Number(((idx + 1) * step).toFixed(2))
-    }));
-
-    return {
-        duration: fallbackDuration,
-        words: mappedWords
-    };
 }
 
 // --- 6. ALIGN CUES & ASSEMBLE SECTION MANIFEST ---
@@ -456,16 +460,32 @@ async function processLesson(lesson) {
         console.log(`🎉 Lesson #${lesson.id} successfully completed and marked READY!`);
     } catch (err) {
         console.error(`❌ Lesson #${lesson.id} failed:`, err.message);
-        const fallbackStatus = publicUrl ? 'audio_ready' : 'failed';
-        await supabase
+        const updatePayload = {
+            status: 'failed',
+            audio_url: publicUrl || lesson.audio_url || null,
+            word_timestamps: null,
+            cue_timeline: null,
+            error_message: err.message,
+            updated_at: new Date().toISOString()
+        };
+
+        if (err.rawOutput) {
+            updatePayload.raw_transcribe_output = typeof err.rawOutput === 'string' ? err.rawOutput : JSON.stringify(err.rawOutput);
+        }
+
+        const { error: updateErr } = await supabase
             .from('book_audio_lessons')
-            .update({
-                status: fallbackStatus,
-                audio_url: publicUrl || lesson.audio_url || null,
-                error_message: err.message,
-                updated_at: new Date().toISOString()
-            })
+            .update(updatePayload)
             .eq('id', lesson.id);
+
+        if (updateErr) {
+            // Fallback in case raw_transcribe_output column was not yet added via SQL
+            delete updatePayload.raw_transcribe_output;
+            await supabase
+                .from('book_audio_lessons')
+                .update(updatePayload)
+                .eq('id', lesson.id);
+        }
     } finally {
         if (fs.existsSync(rawAudioFile)) fs.unlinkSync(rawAudioFile);
         if (fs.existsSync(finalMp3File)) fs.unlinkSync(finalMp3File);
