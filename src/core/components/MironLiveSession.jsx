@@ -464,7 +464,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         <div className="ml-overlay">
             <div className="ml-ambient"></div>
 
-            {/* Hidden Native Audio Element */}
+            {/* Hidden Native Audio Element with Full-Spectrum Forensic Probe */}
             {audioLesson?.audio_url && (
                 <audio 
                     ref={audioRef}
@@ -473,9 +473,96 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     onPlay={() => setIsPlaying(true)}
                     onPause={() => setIsPlaying(false)}
                     onEnded={() => setIsPlaying(false)}
-                    onError={(e) => {
-                        console.error('❌ [Miron Audio Error]: Failed to load audio stream from bucket', audioRef.current?.error || e);
+                    onLoadStart={() => console.log('⏳ [Audio Element] loadstart triggered:', audioLesson.audio_url)}
+                    onCanPlay={() => console.log('🟢 [Audio Element] canplay triggered (Stream buffered)')}
+                    onStalled={() => console.warn('⚠️ [Audio Element] stalled (Data not arriving)')}
+                    onWaiting={() => console.warn('⚠️ [Audio Element] waiting for more frames')}
+                    onError={async (e) => {
+                        const targetUrl = audioLesson.audio_url;
+                        const el = audioRef.current;
                         setIsPlaying(false);
+
+                        console.group('🔬 [MIRON AUDIO DEEP DIAGNOSTIC PROBE]');
+                        console.error('❌ Native Audio Tag Crashed!');
+                        console.log('🔗 Target URL:', targetUrl);
+                        console.log('📊 DOM Media Element State:', {
+                            networkState: el?.networkState, // 0:EMPTY, 1:IDLE, 2:LOADING, 3:NO_SOURCE
+                            readyState: el?.readyState,     // 0:HAVE_NOTHING, 1:HAVE_METADATA...
+                            error: el?.error ? {
+                                code: el.error.code,
+                                message: el.error.message || '(Empty message from browser)',
+                                codeMeaning: el.error.code === 4 ? 'MEDIA_ERR_SRC_NOT_SUPPORTED' : el.error.code === 3 ? 'MEDIA_ERR_DECODE' : el.error.code === 2 ? 'MEDIA_ERR_NETWORK' : 'MEDIA_ERR_ABORTED'
+                            } : null,
+                            currentSrc: el?.currentSrc
+                        });
+
+                        // 1. Synthetic Probe for CORS, Content-Type & Headers
+                        try {
+                            console.log('📡 1. Probing URL via fetch() to inspect HTTP Headers & CORS...');
+                            const t0 = performance.now();
+                            const res = await fetch(targetUrl, { method: 'GET' });
+                            const tDelta = (performance.now() - t0).toFixed(1);
+
+                            const headersObj = {};
+                            res.headers.forEach((val, key) => { headersObj[key] = val; });
+
+                            console.log(`📡 Fetch Result (${tDelta}ms) [HTTP ${res.status} ${res.statusText}]:`, {
+                                ok: res.ok,
+                                type: res.type,
+                                headers: headersObj
+                            });
+
+                            const cType = res.headers.get('content-type') || '';
+                            if (!cType.includes('audio') && !cType.includes('mpeg')) {
+                                console.error(`🚨 FATAL MIME MISMATCH: Server returned Content-Type: "${cType}". Browsers will REJECT this as non-audio! Expected "audio/mpeg".`);
+                            }
+
+                            // 2. Test Range Request Support (HTTP 206)
+                            try {
+                                console.log('📡 2. Testing Byte-Range request (Range: bytes=0-1024)...');
+                                const rangeRes = await fetch(targetUrl, {
+                                    headers: { 'Range': 'bytes=0-1024' }
+                                });
+                                console.log(`📡 Range Request Status: [HTTP ${rangeRes.status} ${rangeRes.statusText}] (Expected: 206 Partial Content)`);
+                                if (rangeRes.status !== 206 && rangeRes.status !== 200) {
+                                    console.error('🚨 Range Request Warning: Storage server rejected byte range request!');
+                                }
+                            } catch (rErr) {
+                                console.error('🚨 Range Request fetch failed:', rErr);
+                            }
+
+                            // 3. Hardware Bitstream Decoding Test
+                            if (res.ok) {
+                                console.log('📡 3. Downloading byte buffer to test hardware audio decoder...');
+                                const blob = await res.blob();
+                                console.log(`📦 Buffer Size: ${(blob.size / 1024).toFixed(1)} KB | Blob Type: "${blob.type}"`);
+
+                                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                                if (AudioCtx) {
+                                    const actx = new AudioCtx();
+                                    try {
+                                        const arrayBuf = await blob.arrayBuffer();
+                                        const decoded = await actx.decodeAudioData(arrayBuf);
+                                        console.log('🎉 Web Audio Hardware Decoder SUCCESS:', {
+                                            sampleRate: decoded.sampleRate,
+                                            channels: decoded.numberOfChannels,
+                                            duration: `${decoded.duration.toFixed(2)}s`
+                                        });
+                                        console.log('💡 DIAGNOSIS: The audio file bitstream is 100% VALID. The failure is strictly browser <audio> tag stream negotiation!');
+                                    } catch (decErr) {
+                                        console.error('💥 Web Audio Hardware Decoder REJECTED bitstream! The MP3 header/framing is corrupt:', decErr);
+                                    } finally {
+                                        actx.close();
+                                    }
+                                }
+                            } else {
+                                const errBody = await res.text();
+                                console.error('🚨 Non-200 Server Error Body:', errBody);
+                            }
+                        } catch (netErr) {
+                            console.error('🚨 Fetch Probe Completely Blocked (CORS failure or SSL drop):', netErr);
+                        }
+                        console.groupEnd();
                     }}
                     onLoadedMetadata={() => {
                         if (audioRef.current) {
