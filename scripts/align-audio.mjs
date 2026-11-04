@@ -211,10 +211,10 @@ function alignVisualCuesWithTimestamps(visualCues, wordsList, fallbackDuration) 
             time: Number((i * 3.0).toFixed(2)),
             type: c.type,
             target: c.target
-        }));
+        })).sort((a, b) => a.time - b.time);
     }
 
-    return visualCues.map(cue => {
+    const timedCues = visualCues.map(cue => {
         const matchedTime = resolveWordTime(cue, wordsList, fallbackDuration, true);
         return {
             time: Number(Number(matchedTime).toFixed(2)),
@@ -222,6 +222,9 @@ function alignVisualCuesWithTimestamps(visualCues, wordsList, fallbackDuration) 
             target: cue.target
         };
     });
+
+    // Strictly guarantee ascending chronological order so sequential break evaluation never drops cues
+    return timedCues.sort((a, b) => a.time - b.time);
 }
 
 function buildSectionsManifest(sectionCues, wordsList, totalDuration, defaultLesson) {
