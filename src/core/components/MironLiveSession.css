@@ -327,88 +327,200 @@ svg.vis-mobile,
     max-height: calc(100vh - 170px) !important; object-fit: contain;
 }
 
+/* ========================================================
+   STUDIO SPLIT-SCREEN ENGINE (STRICT GEOMETRIC CLAMPING)
+   ======================================================== */
 .ml-cinema-stage {
-    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 0.25rem 0.5rem; overflow: hidden; min-height: 0; position: relative; gap: 8px;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    flex: 1; display: flex; flex-direction: column;
+    padding: 0; overflow: hidden; min-height: 0; position: relative;
+    width: 100%; height: 100%;
 }
 
 .ml-cinema-visual-frame {
-    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-    transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-    min-height: 0; position: relative;
+    width: 100%; flex: 1; min-height: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+    transition: flex 0.4s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.4s ease;
+    padding: 0.25rem 0.5rem;
+    box-sizing: border-box;
 }
 
-/* Adaptive Flex Docking: Compresses visual stage when live notes appear */
+/* DOCKED STATE: Strictly clamps visual stage into upper 45% */
 .ml-cinema-stage[data-has-notes="true"] .ml-cinema-visual-frame {
-    height: 52%;
-    max-height: 52%;
+    flex: 0 0 45%;
+    max-height: 45%;
+    height: 45%;
+    overflow: hidden !important;
 }
 
-/* Cyber-Chalkboard Live HUD Card */
-@keyframes hudSlideUp {
-    from { transform: translateY(20px); opacity: 0; }
+.ml-cinema-stage[data-has-notes="true"] .ml-visual-card-svg {
+    height: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    display: flex; align-items: center; justify-content: center;
+}
+
+.ml-cinema-stage[data-has-notes="true"] .vis-card {
+    height: 100% !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+}
+
+.ml-cinema-stage[data-has-notes="true"] .vis-box {
+    height: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.ml-cinema-stage[data-has-notes="true"] .vis-box svg {
+    max-height: 100% !important;
+    max-width: 100% !important;
+    width: auto !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+.ml-cinema-stage[data-has-notes="true"] .ml-visual-card-image img {
+    max-height: 38vh;
+    width: auto;
+    object-fit: contain;
+}
+
+/* INTEGRATED STUDIO NOTES DECK (LOWER-THIRD STAGE) */
+@keyframes deckSlideUp {
+    from { transform: translateY(16px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes bulletPop {
+@keyframes bulletSlideIn {
     from { transform: translateX(-10px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
 
-.ml-hud-notes-card {
-    width: 100%; max-width: 680px; height: 46%; max-height: 210px;
-    background: rgba(15, 23, 42, 0.90); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 14px;
-    padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.15);
-    animation: hudSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    overflow-y: auto; z-index: 20; box-sizing: border-box;
+.ml-studio-notes-deck {
+    flex: 1 1 55%;
+    width: 100%;
+    min-height: 0;
+    background: #090e18;
+    border-top: 1px solid rgba(56, 189, 248, 0.22);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 16px 14px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    animation: deckSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    z-index: 20;
+    box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.6);
 }
 
-.ml-hud-header {
-    display: flex; align-items: center; justify-content: space-between;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 5px; flex-shrink: 0;
+.ml-studio-notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
 }
 
-.ml-hud-badge {
-    font-size: 0.68rem; font-weight: 800; color: #38bdf8;
-    background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.25);
-    padding: 2px 8px; border-radius: 99px; display: inline-flex; align-items: center; gap: 5px;
-    letter-spacing: 0.5px;
+.ml-studio-notes-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    color: #38bdf8;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: uppercase;
 }
 
-.ml-hud-topic-tag {
-    font-family: 'Roboto Mono', monospace; font-size: 0.68rem; font-weight: 700;
-    color: #94a3b8; text-transform: uppercase;
+.ml-studio-topic-tag {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
 }
 
-.ml-hud-bullets-list {
-    list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;
+.ml-studio-bullets-stream {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
 }
 
-.ml-hud-bullet-item {
-    display: flex; align-items: flex-start; gap: 8px; font-size: 0.82rem;
-    color: #f8fafc; font-weight: 600; line-height: 1.35;
-    animation: bulletPop 0.3s ease-out forwards;
+.ml-studio-bullet-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #f8fafc;
+    animation: bulletSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.ml-hud-bullet-icon {
-    color: #38bdf8; font-size: 0.65rem; margin-top: 3px; flex-shrink: 0;
+.ml-studio-bullet-glyph {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #38bdf8;
+    flex-shrink: 0;
+    min-width: 18px;
+    text-align: center;
 }
 
-/* Light Theme Adaptations */
-.theme-light .ml-hud-notes-card {
-    background: rgba(255, 255, 255, 0.94);
-    border-color: rgba(2, 132, 199, 0.3);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 0 15px rgba(2, 132, 199, 0.1);
+.ml-studio-bullet-glyph.is-number {
+    color: #34d399;
 }
-.theme-light .ml-hud-badge {
-    color: #0284c7; background: rgba(2, 132, 199, 0.1); border-color: rgba(2, 132, 199, 0.25);
+
+.ml-studio-bullet-text {
+    color: #e2e8f0;
+    flex: 1;
+    word-break: break-word;
 }
-.theme-light .ml-hud-topic-tag { color: #64748b; }
-.theme-light .ml-hud-bullet-item { color: #0f172a; }
-.theme-light .ml-hud-bullet-icon { color: #0284c7; }
+
+/* Light Theme Support */
+.theme-light .ml-studio-notes-deck {
+    background: #f8fafc;
+    border-top-color: #cbd5e1;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+}
+.theme-light .ml-studio-notes-header {
+    border-bottom-color: #e2e8f0;
+}
+.theme-light .ml-studio-notes-badge {
+    color: #0284c7;
+}
+.theme-light .ml-studio-topic-tag {
+    color: #64748b;
+}
+.theme-light .ml-studio-bullet-row {
+    color: #0f172a;
+}
+.theme-light .ml-studio-bullet-glyph {
+    color: #0284c7;
+}
+.theme-light .ml-studio-bullet-glyph.is-number {
+    color: #059669;
+}
+.theme-light .ml-studio-bullet-text {
+    color: #1e293b;
+}
 .ml-visual-card-svg {
     width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
     animation: fadeInCard 0.2s ease-out;
