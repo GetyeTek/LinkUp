@@ -1002,28 +1002,28 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             )}
                                         </div>
 
-                                        {/* Frameless Live Canvas Typography */}
+                                        {/* Studio Split-Screen Notes Deck */}
                                         {activeBullets.length > 0 && (
-                                            <div className="ml-canvas-notes-overlay">
-                                                <div className="ml-canvas-notes-header">
-                                                    <span className="ml-canvas-notes-badge">
+                                            <div className="ml-studio-notes-deck">
+                                                <div className="ml-studio-notes-header">
+                                                    <span className="ml-studio-notes-badge">
                                                         <i className="fas fa-bolt"></i> CORE TAKEAWAYS
                                                     </span>
                                                     {activeNodeCue?.target && (
-                                                        <span className="ml-canvas-topic-tag">
+                                                        <span className="ml-studio-topic-tag">
                                                             {activeNodeCue.target.replace(/[-_]/g, ' ')}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="ml-canvas-bullets-stream">
+                                                <div className="ml-studio-bullets-stream">
                                                     {activeBullets.map((bullet, bIdx) => {
                                                         const { glyph, content } = parseBulletItem(bullet);
                                                         return (
-                                                            <div key={bIdx} className="ml-canvas-bullet-row" style={{ animationDelay: `${bIdx * 0.06}s` }}>
-                                                                <span className={`ml-canvas-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
+                                                            <div key={bIdx} className="ml-studio-bullet-row" style={{ animationDelay: `${bIdx * 0.05}s` }}>
+                                                                <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
                                                                     {glyph}
                                                                 </span>
-                                                                <span className="ml-canvas-bullet-text">{content}</span>
+                                                                <span className="ml-studio-bullet-text">{content}</span>
                                                             </div>
                                                         );
                                                     })}
