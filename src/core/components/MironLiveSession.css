@@ -19,9 +19,8 @@
 }
 .ml-header {
     padding: 0.4rem 1rem; display: flex; justify-content: space-between; align-items: center;
-    z-index: 30; border-bottom: 1px solid #1e293b; background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); width: 100%; box-sizing: border-box;
-    min-height: 48px;
+    z-index: 30; border-bottom: 1px solid #1e293b; background: rgba(15, 23, 42, 0.98);
+    width: 100%; box-sizing: border-box; min-height: 48px;
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, margin-top 0.35s ease;
 }
 .ml-header.is-hidden {
@@ -346,6 +345,7 @@ svg.vis-mobile,
     flex: 1; display: flex; flex-direction: column;
     padding: 0; overflow: hidden; min-height: 0; position: relative;
     width: 100%; height: 100%;
+    contain: layout paint;
 }
 
 .ml-cinema-visual-frame {
@@ -423,8 +423,8 @@ svg.vis-mobile,
 }
 
 .ml-studio-notes-deck {
-    flex: 0 0 auto; /* Takes ONLY what content requires! */
-    max-height: 42vh; /* Smoothly caps out at 42% screen height */
+    flex: 0 0 auto;
+    max-height: 42vh;
     width: 100%;
     min-height: 0;
     background: #090e18;
@@ -439,6 +439,7 @@ svg.vis-mobile,
     z-index: 20;
     box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.6);
     transition: max-height 0.3s ease;
+    contain: content;
 }
 
 .ml-studio-notes-header {
