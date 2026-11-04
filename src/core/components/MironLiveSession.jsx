@@ -16,6 +16,16 @@ const proxyUrl = (url) => {
     return url.replace(/https:\/\/[^/]+\.supabase\.co/gi, 'https://linkup-gateway.getyeteklu2.workers.dev');
 };
 
+const parseBulletItem = (rawText) => {
+    if (!rawText) return { glyph: '—', content: '' };
+    const trimmed = rawText.trim();
+    const match = trimmed.match(/^(\d+[\.\)]|[\u2022\u2023\u25E6\u2043\u2219\-\*\⚡\✔\✖\→\>▶■◆]|\p{Emoji}+)\s*(.*)$/u);
+    if (match && match[1]) {
+        return { glyph: match[1], content: match[2] || '' };
+    }
+    return { glyph: '—', content: trimmed };
+};
+
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const { t } = usePlatform();
     const renderBookBlock = getComponent('book-block-renderer');
@@ -135,7 +145,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [selectedBook]);
 
-    // 4. Resolve Active Visual Cue, Node Camera, Live HUD Notes & Karaoke Words
+    // 4. Resolve Active Visual Cue, Node Camera, Continuous HUD Notes & Karaoke Words
     const { activeCue, activeNodeCue, activeBullets } = useMemo(() => {
         if (!audioLesson?.cue_timeline || audioLesson.cue_timeline.length === 0) {
             return { activeCue: null, activeNodeCue: null, activeBullets: [] };
@@ -160,16 +170,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         latestAsset = cue;
                         latestNode = null;
                     }
-                    currentBullets = []; // auto-clear notes on fresh asset
+                    currentBullets = []; // resets strictly when a new visual asset arrives
                 } else if (cue.type === 'zoom' || cue.type === 'focus' || cue.type === 'spotlight') {
                     latestNode = cue;
-                    currentBullets = []; // auto-clear notes on camera move
+                    // Intentionally do NOT clear bullets here: lets notes stack below each other as camera tours!
                 } else if (cue.type === 'bullet' || cue.type === 'note') {
                     const text = cue.target || '';
                     if (text && !currentBullets.includes(text)) {
                         currentBullets.push(text);
                     }
-                } else if (cue.type === 'clear_notes' || cue.type === 'notes:clear') {
+                } else if (cue.type === 'clear_notes' || cue.type === 'notes:clear' || cue.type === 'section') {
                     currentBullets = [];
                 } else if (cue.type === 'anchor_block') {
                     latestAsset = cue;
@@ -981,27 +991,32 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             )}
                                         </div>
 
-                                        {/* Dynamic Live HUD Cheat Sheet Card */}
+                                        {/* Frameless Live Canvas Typography */}
                                         {activeBullets.length > 0 && (
-                                            <div className="ml-hud-notes-card">
-                                                <div className="ml-hud-header">
-                                                    <span className="ml-hud-badge">
-                                                        <i className="fas fa-bolt"></i> KEY TAKEAWAYS
+                                            <div className="ml-canvas-notes-overlay">
+                                                <div className="ml-canvas-notes-header">
+                                                    <span className="ml-canvas-notes-badge">
+                                                        <i className="fas fa-bolt"></i> CORE TAKEAWAYS
                                                     </span>
                                                     {activeNodeCue?.target && (
-                                                        <span className="ml-hud-topic-tag">
+                                                        <span className="ml-canvas-topic-tag">
                                                             {activeNodeCue.target.replace(/[-_]/g, ' ')}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <ul className="ml-hud-bullets-list">
-                                                    {activeBullets.map((bullet, bIdx) => (
-                                                        <li key={bIdx} className="ml-hud-bullet-item" style={{ animationDelay: `${bIdx * 0.08}s` }}>
-                                                            <i className="fas fa-chevron-right ml-hud-bullet-icon"></i>
-                                                            <span>{bullet}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
+                                                <div className="ml-canvas-bullets-stream">
+                                                    {activeBullets.map((bullet, bIdx) => {
+                                                        const { glyph, content } = parseBulletItem(bullet);
+                                                        return (
+                                                            <div key={bIdx} className="ml-canvas-bullet-row" style={{ animationDelay: `${bIdx * 0.06}s` }}>
+                                                                <span className={`ml-canvas-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
+                                                                    {glyph}
+                                                                </span>
+                                                                <span className="ml-canvas-bullet-text">{content}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
