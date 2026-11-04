@@ -71,6 +71,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const pendingSeekTimeRef = useRef(0);
     const cinemaContainerRef = useRef(null);
     const cameraAnimRef = useRef(null);
+    const notesDeckRef = useRef(null);
+    const hideTimeoutRef = useRef(null);
+    const [isChromeVisible, setIsChromeVisible] = useState(true);
 
     // 1. Hydrate Published Curriculum Books & Lesson Availability
     useEffect(() => {
@@ -137,6 +140,39 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
         return () => cancelAnimationFrame(rafIdRef.current);
     }, [isPlaying]);
+
+    // Ghost Chrome Inactivity Engine
+    const resetInactivityTimer = () => {
+        setIsChromeVisible(true);
+        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        if (isPlaying) {
+            hideTimeoutRef.current = setTimeout(() => {
+                setIsChromeVisible(false);
+            }, 3500);
+        }
+    };
+
+    useEffect(() => {
+        if (!isPlaying) {
+            setIsChromeVisible(true);
+            if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        } else {
+            resetInactivityTimer();
+        }
+        return () => {
+            if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        };
+    }, [isPlaying]);
+
+    // Auto-scroll Notes Deck to newest bullet
+    useEffect(() => {
+        if (notesDeckRef.current) {
+            notesDeckRef.current.scrollTo({
+                top: notesDeckRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    }, [activeBullets.length]);
 
     // 3. Dynamic Custom Book CSS Injection for Anchor Mode
     useEffect(() => {
@@ -747,8 +783,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 />
             )}
 
-            {/* Top Navigation Bar */}
-            <header className="ml-header">
+            {/* Top Navigation Bar with Ghost Auto-Hide */}
+            <header 
+                className={`ml-header ${!isChromeVisible && stage === 'studio' ? 'is-hidden' : ''}`}
+                onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
+            >
                 <div className="ml-header-left">
                     {stage !== 'course_select' && (
                         <button 
@@ -813,8 +852,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             <main className={`ml-classroom-body ${stage}`}>
                 {/* Floating Minimize Button */}
                 <button 
-                    className="ml-page-collapse-btn" 
-                    onClick={() => setViewState('minimized')}
+                    className={`ml-page-collapse-btn ${!isChromeVisible && stage === 'studio' ? 'is-hidden' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); setViewState('minimized'); }}
                     title={t('minimize_to_orb', 'Minimize to Floating Orb')}
                 >
                     <i className="fas fa-compress-alt"></i>
@@ -960,12 +999,21 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         ) : (
                             <div className={`ml-studio-content-layout ${viewMode}`}>
                                 
-                                {/* VIEW 1: CINEMA STAGE */}
+                                {/* VIEW 1: CINEMA STAGE (Tap to Toggle Chrome) */}
                                 {viewMode === 'cinema' && (
                                     <div 
                                         className="ml-cinema-stage" 
                                         ref={cinemaContainerRef}
                                         data-has-notes={activeBullets.length > 0 ? "true" : "false"}
+                                        onClick={() => {
+                                            if (stage === 'studio') {
+                                                setIsChromeVisible(prev => {
+                                                    const next = !prev;
+                                                    if (next && isPlaying) resetInactivityTimer();
+                                                    return next;
+                                                });
+                                            }
+                                        }}
                                     >
                                         <div className="ml-cinema-visual-frame">
                                             {activeAsset ? (
@@ -1004,7 +1052,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
                                         {/* Studio Split-Screen Notes Deck */}
                                         {activeBullets.length > 0 && (
-                                            <div className="ml-studio-notes-deck">
+                                            <div 
+                                                className="ml-studio-notes-deck"
+                                                ref={notesDeckRef}
+                                                onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
+                                            >
                                                 <div className="ml-studio-notes-header">
                                                     <span className="ml-studio-notes-badge">
                                                         <i className="fas fa-bolt"></i> CORE TAKEAWAYS
@@ -1073,7 +1125,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 )}
 
                                 {/* BOTTOM TRANSPORT: COMPACT IMMERSIVE CONTROLS */}
-                                <div className="ml-transport-bar">
+                                <div 
+                                    className={`ml-transport-bar ${!isChromeVisible ? 'is-hidden' : ''}`}
+                                    onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
+                                >
                                     {/* Row 1: Single-Line Title & Time */}
                                     <div className="ml-chapter-info-row">
                                         <div className="ml-active-section-pill">
