@@ -22,6 +22,13 @@
     z-index: 30; border-bottom: 1px solid #1e293b; background: rgba(15, 23, 42, 0.95);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); width: 100%; box-sizing: border-box;
     min-height: 48px;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, margin-top 0.35s ease;
+}
+.ml-header.is-hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+    margin-top: -48px;
 }
 .ml-header-left, .ml-header-right {
     display: flex; align-items: center; gap: 6px; flex-shrink: 0;
@@ -113,10 +120,15 @@
     color: #cbd5e1; width: 40px; height: 40px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; font-size: 0.95rem; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
-    transition: all 0.2s ease;
+    transition: transform 0.3s ease, opacity 0.3s ease, border-color 0.2s;
 }
 .ml-page-collapse-btn:hover {
     border-color: #38bdf8; color: #38bdf8; transform: scale(1.08);
+}
+.ml-page-collapse-btn.is-hidden {
+    transform: scale(0.6);
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Stage Viewport (Course Select & TOC) */
@@ -345,11 +357,12 @@ svg.vis-mobile,
     box-sizing: border-box;
 }
 
-/* DOCKED STATE: Strictly clamps visual stage into upper 45% */
+/* ELASTIC DOCKED STATE: Content-Fit Scaling */
 .ml-cinema-stage[data-has-notes="true"] .ml-cinema-visual-frame {
-    flex: 0 0 45%;
-    max-height: 45%;
-    height: 45%;
+    flex: 1 1 auto;
+    max-height: none;
+    height: auto;
+    min-height: 0;
     overflow: hidden !important;
 }
 
@@ -388,17 +401,17 @@ svg.vis-mobile,
     max-height: 100% !important;
     max-width: 100% !important;
     width: auto !important;
-    height: 100% !important;
+    height: auto !important;
     object-fit: contain !important;
 }
 
 .ml-cinema-stage[data-has-notes="true"] .ml-visual-card-image img {
-    max-height: 38vh;
+    max-height: 48vh;
     width: auto;
     object-fit: contain;
 }
 
-/* INTEGRATED STUDIO NOTES DECK (LOWER-THIRD STAGE) */
+/* ELASTIC INTEGRATED STUDIO NOTES DECK (Expands along with content) */
 @keyframes deckSlideUp {
     from { transform: translateY(16px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
@@ -410,20 +423,22 @@ svg.vis-mobile,
 }
 
 .ml-studio-notes-deck {
-    flex: 1 1 55%;
+    flex: 0 0 auto; /* Takes ONLY what content requires! */
+    max-height: 42vh; /* Smoothly caps out at 42% screen height */
     width: 100%;
     min-height: 0;
     background: #090e18;
     border-top: 1px solid rgba(56, 189, 248, 0.22);
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 10px 16px 14px;
+    gap: 6px;
+    padding: 8px 16px 12px;
     box-sizing: border-box;
     overflow-y: auto;
     animation: deckSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     z-index: 20;
     box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.6);
+    transition: max-height 0.3s ease;
 }
 
 .ml-studio-notes-header {
@@ -620,6 +635,13 @@ svg.vis-mobile,
     background: #0b1120; border-top: 1px solid #1e293b;
     padding: 6px 16px calc(6px + env(safe-area-inset-bottom));
     display: flex; flex-direction: column; gap: 5px; z-index: 30;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, margin-bottom 0.35s ease;
+}
+.ml-transport-bar.is-hidden {
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+    margin-bottom: -110px;
 }
 .ml-chapter-info-row {
     display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0;
