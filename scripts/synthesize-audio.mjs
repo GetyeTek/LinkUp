@@ -173,6 +173,22 @@ async function processSynthesis(lesson) {
         if (dbError) throw new Error(`DB update failed: ${dbError.message}`);
 
         console.log(`🎉 Audio Synthesis complete for #${lesson.id}! Status is now AUDIO_READY.`);
+
+        // 🔗 AUTO-CHAIN: Seamlessly trigger Acoustic Alignment in the same runner step
+        console.log(`\n⚡ [Auto-Pipeline] Executing Acoustic Alignment for #${lesson.id}...`);
+        try {
+            execSync(`node scripts/align-audio.mjs`, {
+                stdio: 'inherit',
+                env: {
+                    ...process.env,
+                    TARGET_LESSON_ID: lesson.id
+                }
+            });
+            console.log(`✅ [Auto-Pipeline] Acoustic Alignment completed successfully for #${lesson.id}!`);
+        } catch (alignErr) {
+            console.error(`⚠️ [Auto-Pipeline] Alignment failed for #${lesson.id}:`, alignErr.message);
+            throw alignErr;
+        }
     } catch (err) {
         console.error(`❌ Synthesis failed for #${lesson.id}:`, err.message);
         await supabase
