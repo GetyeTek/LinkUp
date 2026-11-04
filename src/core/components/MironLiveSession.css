@@ -432,7 +432,7 @@ svg.vis-mobile,
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 8px 16px 12px;
+    padding: 8px 16px calc(26px + env(safe-area-inset-bottom, 14px));
     box-sizing: border-box;
     overflow-y: auto;
     animation: deckSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -476,6 +476,7 @@ svg.vis-mobile,
     width: 100%;
     max-width: 680px;
     margin: 0 auto;
+    padding-bottom: 8px;
 }
 
 .ml-studio-bullet-row {
