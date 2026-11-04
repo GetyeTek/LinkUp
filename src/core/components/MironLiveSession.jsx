@@ -19,10 +19,21 @@ const proxyUrl = (url) => {
 const parseBulletItem = (rawText) => {
     if (!rawText) return { glyph: '—', content: '' };
     const trimmed = rawText.trim();
-    const match = trimmed.match(/^(\d+[\.\)]|[\u2022\u2023\u25E6\u2043\u2219\-\*\⚡\✔\✖\→\>▶■◆]|\p{Emoji}+)\s*(.*)$/u);
-    if (match && match[1]) {
-        return { glyph: match[1], content: match[2] || '' };
+
+    // 1. Numbered lists (e.g. "1.", "2)", "10.")
+    const numMatch = trimmed.match(/^(\d+[\.\)])\s*(.*)$/);
+    if (numMatch) {
+        return { glyph: numMatch[1], content: numMatch[2] || '' };
     }
+
+    // 2. Common symbols and emojis
+    const bulletSymbols = ['•', '·', '◦', '‣', '⁃', '-', '*', '⚡', '✔', '✖', '→', '>', '▶', '■', '◆', '👉', '💡', '📝', '📌'];
+    for (const sym of bulletSymbols) {
+        if (trimmed.startsWith(sym)) {
+            return { glyph: sym, content: trimmed.slice(sym.length).trim() };
+        }
+    }
+
     return { glyph: '—', content: trimmed };
 };
 
