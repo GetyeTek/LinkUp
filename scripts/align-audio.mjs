@@ -54,14 +54,14 @@ function parseScriptCues(rawScript) {
                 tag: sectionTag,
                 title: sectionTitle,
                 wordIndex: anchorWordIndex,
-                anchorWord: anchorWord.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+                anchorWord: anchorWord.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase()
             });
         } else {
             visualCues.push({
                 type: cueType,
                 target: rawTarget,
                 wordIndex: anchorWordIndex,
-                anchorWord: anchorWord.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+                anchorWord: anchorWord.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase()
             });
         }
 
@@ -173,7 +173,7 @@ const VISUAL_LEAD_OFFSET = 0.22; // 220ms anticipatory visual priming
 function resolveWordTime(cue, wordsList, fallbackDuration, isVisual = false) {
     if (!Array.isArray(wordsList) || wordsList.length === 0) return 0;
 
-    const cleanAnchor = (cue.anchorWord || '').toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+    const cleanAnchor = (cue.anchorWord || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 
     const getTimestamp = (w) => {
         if (!w) return fallbackDuration;
@@ -186,7 +186,7 @@ function resolveWordTime(cue, wordsList, fallbackDuration, isVisual = false) {
         const startWin = Math.max(0, cue.wordIndex - 25);
         const endWin = Math.min(wordsList.length - 1, cue.wordIndex + 25);
         for (let i = startWin; i <= endWin; i++) {
-            const wClean = (wordsList[i].word || '').toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+            const wClean = (wordsList[i].word || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
             if (wClean === cleanAnchor) {
                 return getTimestamp(wordsList[i]);
             }
@@ -198,7 +198,7 @@ function resolveWordTime(cue, wordsList, fallbackDuration, isVisual = false) {
     }
 
     if (cleanAnchor) {
-        const found = wordsList.find(w => (w.word || '').toLowerCase().replace(/[^a-zA-Z0-9]/g, '') === cleanAnchor);
+        const found = wordsList.find(w => (w.word || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') === cleanAnchor);
         if (found) return getTimestamp(found);
     }
 
