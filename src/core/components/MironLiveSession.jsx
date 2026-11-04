@@ -70,6 +70,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const pendingSeekTimeRef = useRef(0);
     const cinemaContainerRef = useRef(null);
     const cameraAnimRef = useRef(null);
+    const bboxCacheRef = useRef(new Map());
     const notesDeckRef = useRef(null);
     const hideTimeoutRef = useRef(null);
     const [isChromeVisible, setIsChromeVisible] = useState(true);
@@ -132,7 +133,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         };
 
-        const intervalId = setInterval(syncTick, 100); // 100ms tick eliminates GC stutter
+        const intervalId = setInterval(syncTick, 35); // 35ms (~30 FPS) provides lockstep sync without GC stutter
         return () => clearInterval(intervalId);
     }, [isPlaying]);
 
@@ -329,7 +330,17 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     animateViewBox(activeSvg, boxStr);
                 } else {
                     try {
-                        const b = targetEl.getBBox();
+                        const cacheKey = `${activeCue?.target || 'vis'}::${targetNode}`;
+                        let b = bboxCacheRef.current.get(cacheKey);
+                        if (!b) {
+                            const rawBox = targetEl.getBBox();
+                            if (rawBox && rawBox.width > 0 && rawBox.height > 0) {
+                                b = { x: rawBox.x, y: rawBox.y, width: rawBox.width, height: rawBox.height };
+                                bboxCacheRef.current.set(cacheKey, b);
+                            } else {
+                                b = rawBox;
+                            }
+                        }
                         const defaultViewStr = activeSvg.getAttribute('data-default-view') || '0 0 360 520';
                         const [defX, defY, defW, defH] = defaultViewStr.trim().split(/\s+/).map(Number);
 
@@ -550,9 +561,27 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
             const assetMap = {};
             if (Array.isArray(assets)) {
+                const domParser = (typeof window !== 'undefined' && window.DOMParser) ? new DOMParser() : null;
+
                 assets.forEach(a => {
                     assetMap[a.id] = a;
                     console.log(`   👉 Registered Asset: [${a.asset_type}] ID: "${a.id}" (Section: ${a.section_tag || 'N/A'})`);
+
+                    // 1. Hardware GPU Texture Pre-warm for raster illustrations
+                    if (a.asset_type === 'image' && a.image_url) {
+                        const prewarmImg = new Image();
+                        prewarmImg.src = proxyUrl(a.image_url);
+                        if (typeof prewarmImg.decode === 'function') {
+                            prewarmImg.decode().catch(() => {});
+                        }
+                    }
+
+                    // 2. Headless DOM Parser Pre-warming for SVG diagrams (prevents main-thread parse jank)
+                    if (a.asset_type === 'diagram_svg' && a.content_payload && domParser) {
+                        try {
+                            domParser.parseFromString(a.content_payload, 'image/svg+xml');
+                        } catch (e) {}
+                    }
                 });
             }
             console.groupEnd();
