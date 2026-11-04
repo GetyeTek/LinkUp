@@ -164,15 +164,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [isPlaying]);
 
-    // Auto-scroll Notes Deck to newest bullet
-    useEffect(() => {
-        if (notesDeckRef.current) {
-            notesDeckRef.current.scrollTo({
-                top: notesDeckRef.current.scrollHeight,
-                behavior: 'smooth'
-            });
-        }
-    }, [activeBullets.length]);
+
 
     // 3. Dynamic Custom Book CSS Injection for Anchor Mode
     useEffect(() => {
@@ -236,8 +228,18 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 break;
             }
         }
-        return { activeCue: latestAsset, activeNodeCue: latestNode, activeBullets: currentBullets };
+        return { activeCue: latestAsset, activeNodeCue: latestNode, activeBullets: currentBullets || [] };
     }, [audioLesson, currentTime, visualAssets]);
+
+    // Auto-scroll Notes Deck to newest bullet
+    useEffect(() => {
+        if (notesDeckRef.current) {
+            notesDeckRef.current.scrollTo({
+                top: notesDeckRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    }, [activeBullets?.length]);
 
     // Dynamic 60fps ViewBox Camera Interpolator
     const animateViewBox = (svg, targetBoxStr) => {
@@ -1004,7 +1006,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                     <div 
                                         className="ml-cinema-stage" 
                                         ref={cinemaContainerRef}
-                                        data-has-notes={activeBullets.length > 0 ? "true" : "false"}
+                                        data-has-notes={(activeBullets?.length || 0) > 0 ? "true" : "false"}
                                         onClick={() => {
                                             if (stage === 'studio') {
                                                 setIsChromeVisible(prev => {
@@ -1051,7 +1053,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         </div>
 
                                         {/* Studio Split-Screen Notes Deck */}
-                                        {activeBullets.length > 0 && (
+                                        {(activeBullets?.length || 0) > 0 && (
                                             <div 
                                                 className="ml-studio-notes-deck"
                                                 ref={notesDeckRef}
