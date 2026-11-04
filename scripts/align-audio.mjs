@@ -168,10 +168,19 @@ async function transcribeAudioWithWordTimestamps(mp3Base64, apiKeyObj, fallbackD
     };
 }
 
-function resolveWordTime(cue, wordsList, fallbackDuration) {
+const VISUAL_LEAD_OFFSET = 0.22; // 220ms anticipatory visual priming
+
+function resolveWordTime(cue, wordsList, fallbackDuration, isVisual = false) {
     if (!Array.isArray(wordsList) || wordsList.length === 0) return 0;
 
     const cleanAnchor = (cue.anchorWord || '').toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+
+    const getTimestamp = (w) => {
+        if (!w) return fallbackDuration;
+        // Anchor to the acoustic onset (start) rather than trailing edge (end)
+        const base = typeof w.start === 'number' && !isNaN(w.start) ? w.start : (w.end || 0);
+        return isVisual ? Math.max(0, base - VISUAL_LEAD_OFFSET) : base;
+    };
 
     if (cleanAnchor && cue.wordIndex !== undefined) {
         const startWin = Math.max(0, cue.wordIndex - 25);
@@ -179,18 +188,18 @@ function resolveWordTime(cue, wordsList, fallbackDuration) {
         for (let i = startWin; i <= endWin; i++) {
             const wClean = (wordsList[i].word || '').toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
             if (wClean === cleanAnchor) {
-                return wordsList[i].end || wordsList[i].start || 0;
+                return getTimestamp(wordsList[i]);
             }
         }
     }
 
     if (wordsList[cue.wordIndex]) {
-        return wordsList[cue.wordIndex].end || wordsList[cue.wordIndex].start || 0;
+        return getTimestamp(wordsList[cue.wordIndex]);
     }
 
     if (cleanAnchor) {
         const found = wordsList.find(w => (w.word || '').toLowerCase().replace(/[^a-zA-Z0-9]/g, '') === cleanAnchor);
-        if (found) return found.end || found.start || 0;
+        if (found) return getTimestamp(found);
     }
 
     return fallbackDuration;
@@ -206,7 +215,7 @@ function alignVisualCuesWithTimestamps(visualCues, wordsList, fallbackDuration) 
     }
 
     return visualCues.map(cue => {
-        const matchedTime = resolveWordTime(cue, wordsList, fallbackDuration);
+        const matchedTime = resolveWordTime(cue, wordsList, fallbackDuration, true);
         return {
             time: Number(Number(matchedTime).toFixed(2)),
             type: cue.type,
@@ -230,7 +239,7 @@ function buildSectionsManifest(sectionCues, wordsList, totalDuration, defaultLes
     const timedSections = sectionCues.map(c => ({
         tag: c.tag,
         title: c.title,
-        startTime: Number(Number(resolveWordTime(c, wordsList, totalDuration)).toFixed(2))
+        startTime: Number(Number(resolveWordTime(c, wordsList, totalDuration, false)).toFixed(2))
     }));
 
     timedSections.sort((a, b) => a.startTime - b.startTime);
