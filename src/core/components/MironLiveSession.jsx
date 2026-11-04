@@ -135,14 +135,15 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [selectedBook]);
 
-    // 4. Resolve Active Visual Cue, Node Camera & Karaoke Words
-    const { activeCue, activeNodeCue } = useMemo(() => {
+    // 4. Resolve Active Visual Cue, Node Camera, Live HUD Notes & Karaoke Words
+    const { activeCue, activeNodeCue, activeBullets } = useMemo(() => {
         if (!audioLesson?.cue_timeline || audioLesson.cue_timeline.length === 0) {
-            return { activeCue: null, activeNodeCue: null };
+            return { activeCue: null, activeNodeCue: null, activeBullets: [] };
         }
         const timeline = audioLesson.cue_timeline;
         let latestAsset = null;
         let latestNode = null;
+        let currentBullets = [];
 
         for (const cue of timeline) {
             if (cue.time <= currentTime) {
@@ -159,16 +160,26 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         latestAsset = cue;
                         latestNode = null;
                     }
+                    currentBullets = []; // auto-clear notes on fresh asset
                 } else if (cue.type === 'zoom' || cue.type === 'focus' || cue.type === 'spotlight') {
                     latestNode = cue;
+                    currentBullets = []; // auto-clear notes on camera move
+                } else if (cue.type === 'bullet' || cue.type === 'note') {
+                    const text = cue.target || '';
+                    if (text && !currentBullets.includes(text)) {
+                        currentBullets.push(text);
+                    }
+                } else if (cue.type === 'clear_notes' || cue.type === 'notes:clear') {
+                    currentBullets = [];
                 } else if (cue.type === 'anchor_block') {
                     latestAsset = cue;
+                    currentBullets = [];
                 }
             } else {
                 break;
             }
         }
-        return { activeCue: latestAsset, activeNodeCue: latestNode };
+        return { activeCue: latestAsset, activeNodeCue: latestNode, activeBullets: currentBullets };
     }, [audioLesson, currentTime, visualAssets]);
 
     // Dynamic 60fps ViewBox Camera Interpolator
@@ -930,37 +941,67 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 
                                 {/* VIEW 1: CINEMA STAGE */}
                                 {viewMode === 'cinema' && (
-                                    <div className="ml-cinema-stage" ref={cinemaContainerRef}>
-                                        {activeAsset ? (
-                                            activeAsset.asset_type === 'diagram_svg' ? (
-                                                <div 
-                                                    className="ml-visual-card-svg" 
-                                                    dangerouslySetInnerHTML={{ __html: activeAsset.content_payload }} 
-                                                />
-                                            ) : (
-                                                <div className="ml-visual-card-image">
-                                                    <img src={proxyUrl(activeAsset.image_url)} alt={activeAsset.title || 'Lecture Illustration'} />
-                                                    <div className="ml-image-caption-pill">
-                                                        <span>{activeAsset.title || 'Scene Concept'}</span>
+                                    <div 
+                                        className="ml-cinema-stage" 
+                                        ref={cinemaContainerRef}
+                                        data-has-notes={activeBullets.length > 0 ? "true" : "false"}
+                                    >
+                                        <div className="ml-cinema-visual-frame">
+                                            {activeAsset ? (
+                                                activeAsset.asset_type === 'diagram_svg' ? (
+                                                    <div 
+                                                        className="ml-visual-card-svg" 
+                                                        dangerouslySetInnerHTML={{ __html: activeAsset.content_payload }} 
+                                                    />
+                                                ) : (
+                                                    <div className="ml-visual-card-image">
+                                                        <img src={proxyUrl(activeAsset.image_url)} alt={activeAsset.title || 'Lecture Illustration'} />
+                                                        <div className="ml-image-caption-pill">
+                                                            <span>{activeAsset.title || 'Scene Concept'}</span>
+                                                        </div>
                                                     </div>
+                                                )
+                                            ) : activeCue?.type === 'note_card' ? (
+                                                <div className="ml-visual-card-note">
+                                                    <div className="ml-note-badge"><i className="fas fa-bolt"></i> KEY CONCEPT</div>
+                                                    <h3>{activeCue.target?.title || 'Core Takeaway'}</h3>
+                                                    <p>{activeCue.target?.body || activeCue.target || ''}</p>
                                                 </div>
-                                            )
-                                        ) : activeCue?.type === 'note_card' ? (
-                                            <div className="ml-visual-card-note">
-                                                <div className="ml-note-badge"><i className="fas fa-bolt"></i> KEY CONCEPT</div>
-                                                <h3>{activeCue.target?.title || 'Core Takeaway'}</h3>
-                                                <p>{activeCue.target?.body || activeCue.target || ''}</p>
-                                            </div>
-                                        ) : (
-                                            <div className="ml-default-soundwave-stage">
-                                                <div className="ml-soundwave-ambient-glow"></div>
-                                                <div className="ml-soundwave-avatar-wrapper">
-                                                    <img src={mironAvatarUrl} alt="Miron" className={isPlaying ? 'pulsing' : ''} />
-                                                    <div className="ml-soundwave-circle c1"></div>
-                                                    <div className="ml-soundwave-circle c2"></div>
+                                            ) : (
+                                                <div className="ml-default-soundwave-stage">
+                                                    <div className="ml-soundwave-ambient-glow"></div>
+                                                    <div className="ml-soundwave-avatar-wrapper">
+                                                        <img src={mironAvatarUrl} alt="Miron" className={isPlaying ? 'pulsing' : ''} />
+                                                        <div className="ml-soundwave-circle c1"></div>
+                                                        <div className="ml-soundwave-circle c2"></div>
+                                                    </div>
+                                                    <h3 className="ml-soundwave-topic">{selectedSection?.title}</h3>
+                                                    <p className="ml-soundwave-sub">Listening to Miron explanation...</p>
                                                 </div>
-                                                <h3 className="ml-soundwave-topic">{selectedSection?.title}</h3>
-                                                <p className="ml-soundwave-sub">Listening to Miron explanation...</p>
+                                            )}
+                                        </div>
+
+                                        {/* Dynamic Live HUD Cheat Sheet Card */}
+                                        {activeBullets.length > 0 && (
+                                            <div className="ml-hud-notes-card">
+                                                <div className="ml-hud-header">
+                                                    <span className="ml-hud-badge">
+                                                        <i className="fas fa-bolt"></i> KEY TAKEAWAYS
+                                                    </span>
+                                                    {activeNodeCue?.target && (
+                                                        <span className="ml-hud-topic-tag">
+                                                            {activeNodeCue.target.replace(/[-_]/g, ' ')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <ul className="ml-hud-bullets-list">
+                                                    {activeBullets.map((bullet, bIdx) => (
+                                                        <li key={bIdx} className="ml-hud-bullet-item" style={{ animationDelay: `${bIdx * 0.08}s` }}>
+                                                            <i className="fas fa-chevron-right ml-hud-bullet-icon"></i>
+                                                            <span>{bullet}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             </div>
                                         )}
                                     </div>
