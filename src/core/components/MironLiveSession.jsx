@@ -335,11 +335,40 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 } else {
                     try {
                         const b = targetEl.getBBox();
-                        const padX = Math.max(25, b.width * 0.15);
-                        const padY = Math.max(25, b.height * 0.15);
-                        const calcBox = `${b.x - padX} ${b.y - padY} ${b.width + padX * 2} ${b.height + padY * 2}`;
-                        animateViewBox(activeSvg, calcBox);
-                    } catch (e) {}
+                        const defaultViewStr = activeSvg.getAttribute('data-default-view') || '0 0 360 520';
+                        const [defX, defY, defW, defH] = defaultViewStr.trim().split(/\s+/).map(Number);
+
+                        if (defW && defH) {
+                            // Virtual Steadicam: Focal Anchor Tracking with Controlled Optical Zoom
+                            const baseCX = defX + defW / 2;
+                            const baseCY = defY + defH / 2;
+                            const targetCX = b.x + b.width / 2;
+                            const targetCY = b.y + b.height / 2;
+
+                            // Weighted camera pan towards target (60% bias keeps contextual anchors in frame)
+                            const camCX = baseCX + (targetCX - baseCX) * 0.6;
+                            const camCY = baseCY + (targetCY - baseCY) * 0.6;
+
+                            // Optical push-in: 74% of full frame (crisp 1.35x zoom without buzzsaw cropping)
+                            const zoomRatio = window.innerWidth <= 768 ? 0.74 : 0.68;
+                            const targetW = defW * zoomRatio;
+                            const targetH = defH * zoomRatio;
+
+                            // Calculate camera origin and clamp strictly within natural canvas boundaries
+                            let camX = camCX - targetW / 2;
+                            let camY = camCY - targetH / 2;
+                            camX = Math.max(defX, Math.min(defX + defW - targetW, camX));
+                            camY = Math.max(defY, Math.min(defY + defH - targetH, camY));
+
+                            const calcBox = `${camX.toFixed(2)} ${camY.toFixed(2)} ${targetW.toFixed(2)} ${targetH.toFixed(2)}`;
+                            animateViewBox(activeSvg, calcBox);
+                        } else {
+                            animateViewBox(activeSvg, defaultViewStr);
+                        }
+                    } catch (e) {
+                        const defaultViewStr = activeSvg.getAttribute('data-default-view');
+                        if (defaultViewStr) animateViewBox(activeSvg, defaultViewStr);
+                    }
                 }
             }
         }
