@@ -538,9 +538,17 @@ svg.vis-mobile,
 .theme-light .ml-studio-bullet-text {
     color: #1e293b;
 }
+@keyframes fadeInCard {
+    from { opacity: 0; transform: scale(0.985) translateZ(0); }
+    to { opacity: 1; transform: scale(1) translateZ(0); }
+}
+
 .ml-visual-card-svg {
     width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-    animation: fadeInCard 0.2s ease-out;
+    animation: fadeInCard 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 .ml-visual-card-svg svg {
     will-change: viewBox;
@@ -549,7 +557,11 @@ svg.vis-mobile,
 .ml-visual-card-image {
     width: 100%; max-width: 680px; position: relative; border-radius: 16px;
     overflow: hidden; border: 1px solid #1e293b; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-    animation: fadeInCard 0.25s ease-out; margin: 0 auto;
+    animation: fadeInCard 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    margin: 0 auto;
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 .ml-visual-card-image img { width: 100%; height: auto; max-height: 52vh; object-fit: contain; display: block; }
 .ml-image-caption-pill {
@@ -561,7 +573,11 @@ svg.vis-mobile,
 .ml-visual-card-note {
     background: #111827; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 18px;
     padding: 24px; max-width: 580px; width: 100%; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
-    display: flex; flex-direction: column; gap: 10px; animation: fadeInCard 0.25s ease-out;
+    display: flex; flex-direction: column; gap: 10px;
+    animation: fadeInCard 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 .ml-note-badge {
     color: #f59e0b; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.6px;
