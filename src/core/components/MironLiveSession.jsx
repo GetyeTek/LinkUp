@@ -71,6 +71,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const cinemaContainerRef = useRef(null);
     const cameraAnimRef = useRef(null);
     const bboxCacheRef = useRef(new Map());
+    const rafIdRef = useRef(null);
+    const lastFocusedNodeRef = useRef(null);
     const notesDeckRef = useRef(null);
     const hideTimeoutRef = useRef(null);
     const [isChromeVisible, setIsChromeVisible] = useState(true);
@@ -118,11 +120,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             });
     }, []);
 
-    // 2. Throttled Audio Sync Engine (10 FPS - 85% CPU Reduction)
+    // 2. High-Precision Audio Sync Loop (60 FPS Locked RAF)
     useEffect(() => {
-        if (!isPlaying) return;
-
-        const syncTick = () => {
+        const updateTick = () => {
             if (audioRef.current && !audioRef.current.paused) {
                 const cur = audioRef.current.currentTime;
                 setCurrentTime(cur);
@@ -131,10 +131,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     setDuration(audioRef.current.duration);
                 }
             }
+            rafIdRef.current = requestAnimationFrame(updateTick);
         };
 
-        const intervalId = setInterval(syncTick, 35); // 35ms (~30 FPS) provides lockstep sync without GC stutter
-        return () => clearInterval(intervalId);
+        if (isPlaying) {
+            rafIdRef.current = requestAnimationFrame(updateTick);
+        } else {
+            cancelAnimationFrame(rafIdRef.current);
+        }
+
+        return () => cancelAnimationFrame(rafIdRef.current);
     }, [isPlaying]);
 
     // Ghost Chrome Inactivity Engine
@@ -281,7 +287,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         const container = cinemaContainerRef.current;
         if (!container) return;
 
-        const targetNode = activeNodeCue?.target;
+        const targetNode = activeNodeCue?.target || 'overview';
+        const targetCompositeKey = `${activeCue?.target || 'vis'}::${targetNode}`;
+
+        // Prevent infinite cancellation loop: only initiate camera pan when target node actually changes
+        if (lastFocusedNodeRef.current === targetCompositeKey) return;
+        lastFocusedNodeRef.current = targetCompositeKey;
+
         const cardEl = container.querySelector('.vis-card');
 
         if (!targetNode || targetNode === 'overview' || targetNode === 'reset') {
@@ -621,6 +633,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     }
                 }
 
+                if (lesson?.cue_timeline && Array.isArray(lesson.cue_timeline)) {
+                    lesson.cue_timeline.sort((a, b) => (a.time || 0) - (b.time || 0));
+                }
                 pendingSeekTimeRef.current = jumpStartTime;
                 setAudioLesson(lesson);
                 setDuration(lesson.duration_seconds || 0);
@@ -845,7 +860,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
             {/* Top Navigation Bar with Ghost Auto-Hide */}
             <header 
-                className={`ml-header ${!isChromeVisible && stage === 'studio' ? 'is-hidden' : ''}`}
+                className={`ml-header ${stage === 'studio' ? 'studio-mode' : ''} ${!isChromeVisible && stage === 'studio' ? 'is-hidden' : ''}`}
                 onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
             >
                 <div className="ml-header-left">
