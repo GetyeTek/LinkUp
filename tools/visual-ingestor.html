@@ -628,13 +628,13 @@
     }
     .vis-modal-stage svg {
       display: block !important;
-      transition: viewBox 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      /* CSS viewBox transitions are buggy on mobile; using 60fps JS Steadicam instead */
     }
     .vis-modal-stage[data-topo="desktop"] svg.vis-desktop {
       display: block !important;
       width: 100% !important;
+      height: 100% !important;
       max-width: 860px !important;
-      height: auto !important;
       max-height: calc(100vh - 160px) !important;
     }
     .vis-modal-stage[data-topo="desktop"] svg.vis-mobile {
@@ -646,8 +646,8 @@
     .vis-modal-stage[data-topo="mobile"] svg.vis-mobile {
       display: block !important;
       width: 100% !important;
+      height: 100% !important; /* Prevents aspect-ratio physical collapse during zoom */
       max-width: 380px !important;
-      height: auto !important;
       max-height: calc(100vh - 160px) !important;
     }
     .vis-modal-nodes-bar {
@@ -836,6 +836,7 @@
 
     let activePreviewTopology = 'desktop';
     let cachedParsedVisuals = [];
+    let cameraAnimRef = null;
 
     function switchTab(mode) {
       document.getElementById('tab-btn-visuals').className = `tab-btn ${mode === 'visuals' ? 'active' : ''}`;
@@ -1122,6 +1123,44 @@
       document.getElementById('modal-btn-mobile').className = `mode-pill-btn ${topo === 'mobile' ? 'active' : ''}`;
     }
 
+    // 60fps Steadicam ViewBox Interpolator (Mirrors production MironLiveSession app)
+    const animateViewBox = (svg, targetBoxStr) => {
+      if (!svg || !targetBoxStr) return;
+      const target = targetBoxStr.trim().split(/\s+/).map(Number);
+      if (target.length !== 4 || target.some(isNaN)) return;
+
+      cancelAnimationFrame(cameraAnimRef);
+      const currentBoxStr = svg.getAttribute('viewBox') || targetBoxStr;
+      const start = currentBoxStr.trim().split(/\s+/).map(Number);
+      if (start.length !== 4 || start.some(isNaN)) {
+          svg.setAttribute('viewBox', targetBoxStr);
+          return;
+      }
+
+      const startTime = performance.now();
+      const duration = 650; // Smooth 650ms camera pan
+
+      const step = (now) => {
+          const elapsed = now - startTime;
+          const progress = Math.min(1, elapsed / duration);
+          const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+
+          const cur = [
+              start[0] + (target[0] - start[0]) * ease,
+              start[1] + (target[1] - start[1]) * ease,
+              start[2] + (target[2] - start[2]) * ease,
+              start[3] + (target[3] - start[3]) * ease
+          ];
+
+          svg.setAttribute('viewBox', `${cur[0].toFixed(2)} ${cur[1].toFixed(2)} ${cur[2].toFixed(2)} ${cur[3].toFixed(2)}`);
+
+          if (progress < 1) {
+              cameraAnimRef = requestAnimationFrame(step);
+          }
+      };
+      cameraAnimRef = requestAnimationFrame(step);
+    };
+
     // Universal Visual Director: Handles both SVG Steadicam Zoom & HTML 3D Virtual Camera Rig
     function zoomModalNode(nodeSlug) {
       const stage = document.getElementById('modal-stage');
@@ -1146,10 +1185,10 @@
         targetEl.setAttribute('data-is-active', 'true');
 
         if (activeSvg) {
-          // 🎨 PATH A: SVG Steadicam Zoom
+          // 🎨 PATH A: SVG Steadicam Zoom (60fps JS interpolation)
           const boxStr = targetEl.getAttribute('data-focus-box');
           if (boxStr) {
-            activeSvg.setAttribute('viewBox', boxStr);
+            animateViewBox(activeSvg, boxStr);
           }
         } else if (canvasEl) {
           // ⚡ PATH B: Prezi/Figma 3D Virtual Camera Rig for HTML
@@ -1206,7 +1245,7 @@
 
       if (activeSvg) {
         const defaultView = activeSvg.getAttribute('data-default-view') || (currentTopo === 'mobile' ? '0 0 340 540' : '0 0 780 340');
-        activeSvg.setAttribute('viewBox', defaultView);
+        animateViewBox(activeSvg, defaultView);
       }
     }
 
