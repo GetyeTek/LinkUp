@@ -266,6 +266,333 @@
       font-size: 11px;
       font-weight: 700;
     }
+
+    /* Universal SVG Design Tokens */
+    :root {
+      --vis-bg: #090e18;
+      --vis-surface: #111827;
+      --vis-surface-card: #162032;
+      --vis-border: #24324a;
+      --vis-border-light: #334464;
+      --vis-text: #f8fafc;
+      --vis-text-muted: #94a3b8;
+      --vis-accent-1: #38bdf8;
+      --vis-accent-2: #10b981;
+      --vis-accent-3: #f59e0b;
+      --vis-accent-4: #a855f7;
+      --vis-accent-5: #f43f5e;
+    }
+
+    /* Preview Gallery Styles */
+    .preview-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .preview-actions-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-sm {
+      padding: 8px 14px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+    .view-mode-pill {
+      display: inline-flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .mode-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .mode-pill-btn.active {
+      background: var(--blue);
+      color: #090e18;
+      font-weight: 800;
+    }
+    .preview-count-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--blue);
+      background: var(--blue-glow);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .preview-gallery-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      width: 100%;
+    }
+    .preview-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      transition: border-color 0.2s;
+    }
+    .preview-card:hover {
+      border-color: var(--blue);
+    }
+    .preview-card-header {
+      padding: 12px 18px;
+      background: rgba(15, 23, 42, 0.85);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .preview-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .preview-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--blue);
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .preview-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .preview-expand-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: #cbd5e1;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .preview-expand-btn:hover {
+      background: var(--blue);
+      color: #090e18;
+      border-color: var(--blue);
+      transform: scale(1.08);
+    }
+    .preview-viewport-frame {
+      width: 100%;
+      min-height: 240px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .preview-card-footer {
+      padding: 10px 16px;
+      background: rgba(11, 17, 32, 0.6);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .node-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .node-pill:hover {
+      color: var(--blue);
+      border-color: var(--blue);
+      background: var(--blue-glow);
+    }
+
+    /* Topology Dynamic Overrides for Preview Container */
+    .preview-viewport-frame[data-topo="desktop"] svg.vis-desktop { display: block !important; width: 100% !important; max-width: 780px !important; height: auto !important; }
+    .preview-viewport-frame[data-topo="desktop"] svg.vis-mobile  { display: none !important; }
+    .preview-viewport-frame[data-topo="mobile"] svg.vis-desktop  { display: none !important; }
+    .preview-viewport-frame[data-topo="mobile"] svg.vis-mobile   { display: block !important; width: 100% !important; max-width: 360px !important; height: auto !important; }
+
+    /* Clean full-bleed SVG render inside preview */
+    .preview-viewport-frame .vis-card {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      display: flex;
+      justify-content: center;
+    }
+    .preview-viewport-frame .vis-head { display: none !important; }
+    .preview-viewport-frame .vis-box {
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      width: 100% !important;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Fullscreen Cinema Modal Overlay */
+    .vis-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(9, 14, 24, 0.96);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      display: flex;
+      flex-direction: column;
+      animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .vis-modal-header {
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.95);
+    }
+    .vis-modal-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .vis-modal-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--blue);
+      background: var(--blue-glow);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .vis-modal-header h3 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .vis-modal-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: #cbd5e1;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+      transition: all 0.15s;
+    }
+    .modal-close-btn:hover {
+      background: rgba(244, 63, 94, 0.15);
+      color: #f43f5e;
+    }
+    .vis-modal-stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+      position: relative;
+    }
+    .vis-modal-stage[data-topo="desktop"] svg.vis-desktop { display: block !important; max-height: calc(100vh - 170px) !important; width: auto !important; }
+    .vis-modal-stage[data-topo="desktop"] svg.vis-mobile  { display: none !important; }
+    .vis-modal-stage[data-topo="mobile"] svg.vis-desktop  { display: none !important; }
+    .vis-modal-stage[data-topo="mobile"] svg.vis-mobile   { display: block !important; max-height: calc(100vh - 170px) !important; width: auto !important; }
+
+    .vis-modal-stage .vis-card {
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+    }
+    .vis-modal-stage .vis-head { display: none !important; }
+    .vis-modal-stage .vis-box {
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .vis-modal-stage svg {
+      transition: viewBox 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .vis-modal-nodes-bar {
+      padding: 10px 24px;
+      background: rgba(15, 23, 42, 0.95);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow-x: auto;
+    }
+    .vis-modal-nodes-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -299,6 +626,9 @@
       </button>
       <button class="tab-btn" id="tab-btn-script" onclick="switchTab('script')">
         🎙️ 2. Queue Audio Lesson Script
+      </button>
+      <button class="tab-btn" id="tab-btn-preview" onclick="switchTab('preview')">
+        👁️ 3. Visual Gallery & Live Preview
       </button>
     </div>
 
@@ -351,10 +681,57 @@
       </button>
     </div>
 
+    <!-- TAB 3: VISUAL GALLERY & PREVIEW -->
+    <div class="card" id="tab-panel-preview" style="display: none;">
+      <div class="preview-toolbar">
+        <div class="preview-actions-left">
+          <button class="btn btn-sm" onclick="renderPreviewFromInput()">
+            🔄 Render from XML
+          </button>
+          <div class="view-mode-pill">
+            <button class="mode-pill-btn active" id="btn-topo-desktop" onclick="setPreviewTopology('desktop')">
+              💻 Desktop
+            </button>
+            <button class="mode-pill-btn" id="btn-topo-mobile" onclick="setPreviewTopology('mobile')">
+              📱 Mobile
+            </button>
+          </div>
+        </div>
+        <span class="preview-count-tag" id="preview-count">0 diagrams loaded</span>
+      </div>
+      <div class="preview-gallery-grid" id="preview-gallery-container">
+        <p style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0;">
+          Paste your <course_visuals> XML in Tab 1, then click <strong>Render from XML</strong> to view all rendered graphics.
+        </p>
+      </div>
+    </div>
+
     <!-- Output Logs Console -->
     <div class="card" id="output-card" style="display: none;">
       <label id="log-summary">Execution Logs</label>
       <div class="log-box" id="log-container"></div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Immersive Modal (Simulating Miron Live Session Stage) -->
+  <div class="vis-modal-overlay" id="vis-modal" style="display: none;">
+    <div class="vis-modal-header">
+      <div class="vis-modal-meta">
+        <span class="vis-modal-badge" id="modal-badge"></span>
+        <h3 id="modal-title"></h3>
+      </div>
+      <div class="vis-modal-actions">
+        <div class="view-mode-pill">
+          <button class="mode-pill-btn active" id="modal-btn-desktop" onclick="setModalTopology('desktop')">💻 Desktop</button>
+          <button class="mode-pill-btn" id="modal-btn-mobile" onclick="setModalTopology('mobile')">📱 Mobile</button>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal()" title="Close Fullscreen">✕</button>
+      </div>
+    </div>
+    <div class="vis-modal-stage" id="modal-stage" data-topo="desktop"></div>
+    <div class="vis-modal-nodes-bar" id="modal-nodes-bar">
+      <span class="vis-modal-nodes-label">Camera Nodes:</span>
+      <div id="modal-nodes-list" style="display: flex; gap: 6px;"></div>
     </div>
   </div>
 
@@ -383,12 +760,21 @@
       return { supaUrl, supaKey };
     }
 
+    let activePreviewTopology = 'desktop';
+    let cachedParsedVisuals = [];
+
     function switchTab(mode) {
-      const isVisuals = mode === 'visuals';
-      document.getElementById('tab-btn-visuals').className = `tab-btn ${isVisuals ? 'active' : ''}`;
-      document.getElementById('tab-btn-script').className = `tab-btn ${!isVisuals ? 'active' : ''}`;
-      document.getElementById('tab-panel-visuals').style.display = isVisuals ? 'flex' : 'none';
-      document.getElementById('tab-panel-script').style.display = !isVisuals ? 'flex' : 'none';
+      document.getElementById('tab-btn-visuals').className = `tab-btn ${mode === 'visuals' ? 'active' : ''}`;
+      document.getElementById('tab-btn-script').className = `tab-btn ${mode === 'script' ? 'active' : ''}`;
+      document.getElementById('tab-btn-preview').className = `tab-btn ${mode === 'preview' ? 'active' : ''}`;
+
+      document.getElementById('tab-panel-visuals').style.display = mode === 'visuals' ? 'flex' : 'none';
+      document.getElementById('tab-panel-script').style.display = mode === 'script' ? 'flex' : 'none';
+      document.getElementById('tab-panel-preview').style.display = mode === 'preview' ? 'flex' : 'none';
+
+      if (mode === 'preview' && cachedParsedVisuals.length === 0) {
+        renderPreviewFromInput();
+      }
     }
 
     function appendLog(title, subtitle, status) {
@@ -443,16 +829,38 @@
         for (let i = 0; i !== infographics.length; i++) {
           const el = infographics[i];
           const id = el.getAttribute('id') || `vis_${Date.now()}_${i}`;
-          const title = (el.querySelector('name')?.textContent || id).trim();
-          const targetQuery = (el.querySelector('routing > target_query')?.textContent || '').trim();
-          const insertionPosition = (el.querySelector('routing > insertion_position')?.textContent || 'after').trim();
+          const title = (el.querySelector('title')?.textContent || el.querySelector('name')?.textContent || id).trim();
 
-          const secMatch = targetQuery.match(/^([0-9]+(?:\.[0-9]+)*)/);
-          const sectionTag = secMatch ? secMatch[1] : null;
-          const unitNumber = sectionTag ? parseInt(sectionTag.split('.')[0], 10) : null;
+          // V3 Taxonomy Parser with V2 Routing Fallback
+          const taxNode = el.querySelector('taxonomy');
+          let unitNumber = null;
+          let sectionTag = null;
+          let chapterTitle = null;
+          let sectionTitle = null;
+          let anchorQuery = null;
+
+          if (taxNode) {
+            unitNumber = taxNode.querySelector('unit_number')?.textContent ? parseInt(taxNode.querySelector('unit_number').textContent.trim(), 10) : null;
+            sectionTag = taxNode.querySelector('section_tag')?.textContent?.trim() || null;
+            chapterTitle = taxNode.querySelector('chapter_title')?.textContent?.trim() || null;
+            sectionTitle = taxNode.querySelector('section_title')?.textContent?.trim() || null;
+            anchorQuery = taxNode.querySelector('anchor_query')?.textContent?.trim() || null;
+          }
+
+          if (!sectionTag) {
+            const targetQuery = (el.querySelector('routing > target_query')?.textContent || '').trim();
+            const secMatch = targetQuery.match(/^([0-9]+(?:\.[0-9]+)*)/);
+            sectionTag = secMatch ? secMatch[1] : null;
+            if (!unitNumber && sectionTag) unitNumber = parseInt(sectionTag.split('.')[0], 10);
+            anchorQuery = targetQuery;
+          }
 
           const payloadNode = el.querySelector('payload');
           const payloadContent = payloadNode ? payloadNode.textContent.trim() : '';
+
+          // Parse focusable nodes from payload string
+          const nodeMatches = Array.from(payloadContent.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
+          const uniqueNodes = Array.from(new Set(nodeMatches));
 
           const record = {
             id: id,
@@ -465,8 +873,10 @@
             storage_path: null,
             image_url: null,
             metadata: {
-              routing_query: targetQuery,
-              insertion_position: insertionPosition
+              chapter_title: chapterTitle,
+              section_title: sectionTitle,
+              anchor_query: anchorQuery,
+              camera_nodes: uniqueNodes
             },
             updated_at: new Date().toISOString()
           };
@@ -498,6 +908,162 @@
       } finally {
         btn.disabled = false;
       }
+    }
+
+    // --- TAB 3: LIVE PREVIEW & FULLSCREEN CINEMA ENGINE ---
+    function renderPreviewFromInput() {
+      const rawXml = (document.getElementById('xml-input').value || '').trim();
+      const container = document.getElementById('preview-gallery-container');
+      const countTag = document.getElementById('preview-count');
+
+      if (!rawXml) {
+        container.innerHTML = `
+          <p style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0;">
+            No XML found. Paste your <course_visuals> XML in Tab 1 first.
+          </p>`;
+        countTag.textContent = '0 diagrams';
+        return;
+      }
+
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(rawXml, 'application/xml');
+
+        if (xmlDoc.querySelector('parsererror')) {
+          throw new Error('XML parsing failed. Verify XML syntax in Tab 1.');
+        }
+
+        const infographics = Array.from(xmlDoc.querySelectorAll('infographic'));
+        if (infographics.length === 0) {
+          throw new Error('No <infographic> tags found in XML.');
+        }
+
+        cachedParsedVisuals = infographics.map((el, idx) => {
+          const id = el.getAttribute('id') || `vis_${idx}`;
+          const title = (el.querySelector('title')?.textContent || el.querySelector('name')?.textContent || id).trim();
+          const taxNode = el.querySelector('taxonomy');
+          const unitNumber = taxNode?.querySelector('unit_number')?.textContent?.trim() || '';
+          const sectionTag = taxNode?.querySelector('section_tag')?.textContent?.trim() || '';
+          const payload = el.querySelector('payload')?.textContent?.trim() || '';
+
+          const nodeMatches = Array.from(payload.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
+          const uniqueNodes = Array.from(new Set(nodeMatches));
+
+          return { id, title, unitNumber, sectionTag, payload, nodes: uniqueNodes };
+        });
+
+        countTag.textContent = `${cachedParsedVisuals.length} diagram(s)`;
+        container.innerHTML = '';
+
+        cachedParsedVisuals.forEach(v => {
+          const card = document.createElement('div');
+          card.className = 'preview-card';
+          card.innerHTML = `
+            <div class="preview-card-header">
+              <div class="preview-card-meta">
+                <span class="preview-tag">${v.sectionTag ? 'SEC ' + v.sectionTag : (v.unitNumber ? 'UNIT ' + v.unitNumber : 'VIS')}</span>
+                <span class="preview-title" title="${v.title}">${v.title}</span>
+              </div>
+              <button class="preview-expand-btn" onclick="openFullscreenPreview('${v.id}')" title="Full Screen Cinema Preview">
+                ⛶
+              </button>
+            </div>
+            <div class="preview-viewport-frame" id="frame-${v.id}" data-topo="${activePreviewTopology}">
+              ${v.payload}
+            </div>
+            <div class="preview-card-footer">
+              <span style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Nodes:</span>
+              ${v.nodes.map(n => `<span class="node-pill" onclick="testNodeZoom('${v.id}', '${n}')">${n}</span>`).join('')}
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      } catch (e) {
+        container.innerHTML = `<div class="log-item error" style="margin: 20px 0;"><span>Error: ${e.message}</span></div>`;
+      }
+    }
+
+    function setPreviewTopology(topo) {
+      activePreviewTopology = topo;
+      document.getElementById('btn-topo-desktop').className = `mode-pill-btn ${topo === 'desktop' ? 'active' : ''}`;
+      document.getElementById('btn-topo-mobile').className = `mode-pill-btn ${topo === 'mobile' ? 'active' : ''}`;
+      document.querySelectorAll('.preview-viewport-frame').forEach(el => {
+        el.setAttribute('data-topo', topo);
+      });
+    }
+
+    // Modal Fullscreen Cinema Viewer
+    function openFullscreenPreview(id) {
+      const visual = cachedParsedVisuals.find(v => v.id === id);
+      if (!visual) return;
+
+      const modal = document.getElementById('vis-modal');
+      const stage = document.getElementById('modal-stage');
+      const badge = document.getElementById('modal-badge');
+      const title = document.getElementById('modal-title');
+      const nodesList = document.getElementById('modal-nodes-list');
+
+      badge.textContent = visual.sectionTag ? `SEC ${visual.sectionTag}` : visual.id;
+      title.textContent = visual.title;
+      stage.innerHTML = visual.payload;
+      stage.setAttribute('data-topo', activePreviewTopology);
+
+      setModalTopology(activePreviewTopology);
+
+      // Render camera testing buttons in modal bar
+      nodesList.innerHTML = `
+        <span class="node-pill" style="color:var(--blue); border-color:var(--blue);" onclick="resetModalCamera()">↺ Overview</span>
+        ${visual.nodes.map(n => `<span class="node-pill" onclick="zoomModalNode('${n}')">${n}</span>`).join('')}
+      `;
+
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('vis-modal').style.display = 'none';
+      document.getElementById('modal-stage').innerHTML = '';
+      document.body.style.overflow = '';
+    }
+
+    function setModalTopology(topo) {
+      const stage = document.getElementById('modal-stage');
+      stage.setAttribute('data-topo', topo);
+      document.getElementById('modal-btn-desktop').className = `mode-pill-btn ${topo === 'desktop' ? 'active' : ''}`;
+      document.getElementById('modal-btn-mobile').className = `mode-pill-btn ${topo === 'mobile' ? 'active' : ''}`;
+    }
+
+    // Simulate Miron Steadicam Camera Zoom using pre-baked data-focus-box
+    function zoomModalNode(nodeSlug) {
+      const stage = document.getElementById('modal-stage');
+      const activeSvg = stage.querySelector('svg.vis-desktop[style*="display: block"], svg.vis-desktop') || stage.querySelector('svg');
+      if (!activeSvg) return;
+
+      const targetEl = stage.querySelector(`[data-node="${nodeSlug}"]`);
+      if (targetEl) {
+        // Spotlight class
+        stage.querySelectorAll('.vis-node').forEach(n => n.classList.remove('is-focused'));
+        targetEl.classList.add('is-focused');
+
+        const boxStr = targetEl.getAttribute('data-focus-box');
+        if (boxStr) {
+          activeSvg.setAttribute('viewBox', boxStr);
+        }
+      }
+    }
+
+    function resetModalCamera() {
+      const stage = document.getElementById('modal-stage');
+      const activeSvg = stage.querySelector('svg');
+      if (!activeSvg) return;
+      stage.querySelectorAll('.vis-node').forEach(n => n.classList.remove('is-focused'));
+      const defaultView = activeSvg.getAttribute('data-default-view') || '0 0 780 340';
+      activeSvg.setAttribute('viewBox', defaultView);
+    }
+
+    function testNodeZoom(cardId, nodeSlug) {
+      openFullscreenPreview(cardId);
+      setTimeout(() => zoomModalNode(nodeSlug), 150);
     }
 
     // --- TAB 2: QUEUE MASTER AUDIO LESSON SCRIPT ---
