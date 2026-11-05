@@ -182,24 +182,51 @@ function resolveWordTime(cue, wordsList, fallbackDuration, isVisual = false) {
         return isVisual ? Math.max(0, base - VISUAL_LEAD_OFFSET) : base;
     };
 
+    // 1. Sliding Window with Distance-Minimized Optimal Match (Prevents stop-word bunching)
     if (cleanAnchor && cue.wordIndex !== undefined) {
-        const startWin = Math.max(0, cue.wordIndex - 25);
-        const endWin = Math.min(wordsList.length - 1, cue.wordIndex + 25);
+        const startWin = Math.max(0, cue.wordIndex - 35);
+        const endWin = Math.min(wordsList.length - 1, cue.wordIndex + 35);
+        let bestMatch = null;
+        let minDistance = Infinity;
+
         for (let i = startWin; i <= endWin; i++) {
             const wClean = (wordsList[i].word || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
             if (wClean === cleanAnchor) {
-                return getTimestamp(wordsList[i]);
+                const distance = Math.abs(i - cue.wordIndex);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    bestMatch = wordsList[i];
+                }
             }
+        }
+
+        if (bestMatch) {
+            return getTimestamp(bestMatch);
         }
     }
 
+    // 2. Direct Index Fallback
     if (wordsList[cue.wordIndex]) {
         return getTimestamp(wordsList[cue.wordIndex]);
     }
 
+    // 3. Global Proximity Search (Find closest matching word globally if window missed)
     if (cleanAnchor) {
-        const found = wordsList.find(w => (w.word || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') === cleanAnchor);
-        if (found) return getTimestamp(found);
+        let globalBest = null;
+        let globalMinDist = Infinity;
+        const targetIdx = cue.wordIndex || 0;
+
+        for (let i = 0; i < wordsList.length; i++) {
+            const wClean = (wordsList[i].word || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+            if (wClean === cleanAnchor) {
+                const dist = Math.abs(i - targetIdx);
+                if (dist < globalMinDist) {
+                    globalMinDist = dist;
+                    globalBest = wordsList[i];
+                }
+            }
+        }
+        if (globalBest) return getTimestamp(globalBest);
     }
 
     return fallbackDuration;
