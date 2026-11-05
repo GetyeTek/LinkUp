@@ -19,6 +19,51 @@
       --red: #f43f5e;
       --text: #f8fafc;
       --text-muted: #94a3b8;
+    /* ========================================================
+       HTML BENTO INFOGRAPHIC DESIGN SYSTEM & 3D CAMERA RIG
+       ======================================================== */
+    /* Virtual 3D Camera Rig for HTML Canvases (Figma/Prezi 60fps Steadicam) */
+    .vis-canvas {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      box-sizing: border-box;
+      transform-origin: center center;
+      transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: transform;
+    }
+
+    /* Cinema Spotlight Engine (Inactive cards dim, active card glows) */
+    .vis-card[data-active-node] .vis-node {
+      opacity: 0.35;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .vis-card[data-active-node] .vis-node.is-focused,
+    .vis-card[data-active-node] .vis-node[data-is-active="true"] {
+      opacity: 1 !important;
+      transform: translateY(-2px) scale(1.02);
+      border-color: var(--blue) !important;
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.35) !important;
+    }
+
+    .format-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .format-tag.html {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .format-tag.svg {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -964,18 +1009,19 @@
           throw new Error('No <infographic> tags found in XML.');
         }
 
-        cachedParsedVisuals = infographics.map((el, idx) => {
+                  cachedParsedVisuals = infographics.map((el, idx) => {
           const id = el.getAttribute('id') || `vis_${idx}`;
           const title = (el.querySelector('title')?.textContent || el.querySelector('name')?.textContent || id).trim();
           const taxNode = el.querySelector('taxonomy');
           const unitNumber = taxNode?.querySelector('unit_number')?.textContent?.trim() || '';
           const sectionTag = taxNode?.querySelector('section_tag')?.textContent?.trim() || '';
           const payload = el.querySelector('payload')?.textContent?.trim() || '';
+          const hasSvg = payload.includes('<svg');
 
           const nodeMatches = Array.from(payload.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
           const uniqueNodes = Array.from(new Set(nodeMatches));
 
-          return { id, title, unitNumber, sectionTag, payload, nodes: uniqueNodes };
+          return { id, title, unitNumber, sectionTag, payload, nodes: uniqueNodes, isSvg: hasSvg };
         });
 
         countTag.textContent = `${cachedParsedVisuals.length} diagram(s)`;
@@ -988,6 +1034,7 @@
             <div class="preview-card-header">
               <div class="preview-card-meta">
                 <span class="preview-tag">${v.sectionTag ? 'SEC ' + v.sectionTag : (v.unitNumber ? 'UNIT ' + v.unitNumber : 'VIS')}</span>
+                <span class="format-tag ${v.isSvg ? 'svg' : 'html'}">${v.isSvg ? 'SVG' : 'HTML'}</span>
                 <span class="preview-title" title="${v.title}">${v.title}</span>
               </div>
               <button class="preview-expand-btn" onclick="openFullscreenPreview('${v.id}')" title="Full Screen Cinema Preview">
@@ -1059,39 +1106,92 @@
       document.getElementById('modal-btn-mobile').className = `mode-pill-btn ${topo === 'mobile' ? 'active' : ''}`;
     }
 
-    // Simulate Miron Steadicam Camera Zoom using pre-baked data-focus-box
+    // Universal Visual Director: Handles both SVG Steadicam Zoom & HTML 3D Virtual Camera Rig
     function zoomModalNode(nodeSlug) {
       const stage = document.getElementById('modal-stage');
       const currentTopo = stage.getAttribute('data-topo') || 'desktop';
+      const cardEl = stage.querySelector('.vis-card');
+      const canvasEl = stage.querySelector('.vis-canvas') || stage.querySelector('.vis-box') || cardEl;
+      if (cardEl) {
+        cardEl.setAttribute('data-active-node', nodeSlug);
+      }
+
       const activeSvg = currentTopo === 'mobile'
         ? (stage.querySelector('svg.vis-mobile') || stage.querySelector('svg'))
         : (stage.querySelector('svg.vis-desktop') || stage.querySelector('svg'));
 
-      if (!activeSvg) return;
-
-      const targetEl = activeSvg.querySelector(`[data-node="${nodeSlug}"]`) || stage.querySelector(`[data-node="${nodeSlug}"]`);
+      const targetEl = stage.querySelector(`[data-node="${nodeSlug}"]`);
       if (targetEl) {
-        stage.querySelectorAll('.vis-node').forEach(n => n.classList.remove('is-focused'));
+        stage.querySelectorAll('.vis-node').forEach(n => {
+          n.classList.remove('is-focused');
+          n.removeAttribute('data-is-active');
+        });
         targetEl.classList.add('is-focused');
+        targetEl.setAttribute('data-is-active', 'true');
 
-        const boxStr = targetEl.getAttribute('data-focus-box');
-        if (boxStr) {
-          activeSvg.setAttribute('viewBox', boxStr);
+        if (activeSvg) {
+          // 🎨 PATH A: SVG Steadicam Zoom
+          const boxStr = targetEl.getAttribute('data-focus-box');
+          if (boxStr) {
+            activeSvg.setAttribute('viewBox', boxStr);
+          }
+        } else if (canvasEl) {
+          // ⚡ PATH B: Prezi/Figma 3D Virtual Camera Rig for HTML
+          const isMobile = currentTopo === 'mobile';
+          const zoom = isMobile ? 1.18 : 1.35;
+
+          const stageRect = stage.getBoundingClientRect();
+          const targetRect = targetEl.getBoundingClientRect();
+
+          // Calculate offset needed to shift target card dead-center into the stage viewport
+          const targetCenterX = targetEl.offsetLeft + (targetEl.offsetWidth / 2);
+          const targetCenterY = targetEl.offsetTop + (targetEl.offsetHeight / 2);
+          const stageCenterX = stage.clientWidth / 2;
+          const stageCenterY = stage.clientHeight / 2;
+
+          const moveX = (stageCenterX - targetCenterX) * 0.75;
+          const moveY = (stageCenterY - targetCenterY) * 0.75;
+
+          canvasEl.style.transformOrigin = `${targetCenterX}px ${targetCenterY}px`;
+          canvasEl.style.transform = `translate3d(${moveX}px, ${moveY}px, 0) scale(${zoom})`;
+
+          // For horizontal snap-reels, ensure element is also aligned in scroll context
+          if (targetEl.closest('.bento-snap-reel')) {
+            targetEl.scrollIntoView({
+              behavior: 'smooth',
+              inline: 'center',
+              block: 'nearest'
+            });
+          }
         }
       }
     }
 
     function resetModalCamera() {
       const stage = document.getElementById('modal-stage');
+      const cardEl = stage.querySelector('.vis-card');
+      const canvasEl = stage.querySelector('.vis-canvas') || stage.querySelector('.vis-box') || cardEl;
+      
+      if (cardEl) cardEl.removeAttribute('data-active-node');
+      if (canvasEl) {
+        canvasEl.style.transform = 'none';
+        canvasEl.style.transformOrigin = 'center center';
+      }
+
+      stage.querySelectorAll('.vis-node').forEach(n => {
+        n.classList.remove('is-focused');
+        n.removeAttribute('data-is-active');
+      });
+
       const currentTopo = stage.getAttribute('data-topo') || 'desktop';
       const activeSvg = currentTopo === 'mobile'
         ? (stage.querySelector('svg.vis-mobile') || stage.querySelector('svg'))
         : (stage.querySelector('svg.vis-desktop') || stage.querySelector('svg'));
 
-      if (!activeSvg) return;
-      stage.querySelectorAll('.vis-node').forEach(n => n.classList.remove('is-focused'));
-      const defaultView = activeSvg.getAttribute('data-default-view') || (currentTopo === 'mobile' ? '0 0 340 540' : '0 0 780 340');
-      activeSvg.setAttribute('viewBox', defaultView);
+      if (activeSvg) {
+        const defaultView = activeSvg.getAttribute('data-default-view') || (currentTopo === 'mobile' ? '0 0 340 540' : '0 0 780 340');
+        activeSvg.setAttribute('viewBox', defaultView);
+      }
     }
 
     function testNodeZoom(cardId, nodeSlug) {
