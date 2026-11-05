@@ -548,33 +548,59 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 16px;
       overflow: hidden;
       position: relative;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
     }
-    .vis-modal-stage[data-topo="desktop"] svg.vis-desktop { display: block !important; max-height: calc(100vh - 170px) !important; width: auto !important; }
-    .vis-modal-stage[data-topo="desktop"] svg.vis-mobile  { display: none !important; }
-    .vis-modal-stage[data-topo="mobile"] svg.vis-desktop  { display: none !important; }
-    .vis-modal-stage[data-topo="mobile"] svg.vis-mobile   { display: block !important; max-height: calc(100vh - 170px) !important; width: auto !important; }
-
     .vis-modal-stage .vis-card {
       background: transparent !important;
       border: none !important;
       padding: 0 !important;
       margin: 0 !important;
       box-shadow: none !important;
+      width: 100% !important;
+      height: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
     }
     .vis-modal-stage .vis-head { display: none !important; }
     .vis-modal-stage .vis-box {
       background: transparent !important;
       border: none !important;
       padding: 0 !important;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      width: 100% !important;
+      height: 100% !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
     }
     .vis-modal-stage svg {
+      display: block !important;
       transition: viewBox 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .vis-modal-stage[data-topo="desktop"] svg.vis-desktop {
+      display: block !important;
+      width: 100% !important;
+      max-width: 860px !important;
+      height: auto !important;
+      max-height: calc(100vh - 160px) !important;
+    }
+    .vis-modal-stage[data-topo="desktop"] svg.vis-mobile {
+      display: none !important;
+    }
+    .vis-modal-stage[data-topo="mobile"] svg.vis-desktop {
+      display: none !important;
+    }
+    .vis-modal-stage[data-topo="mobile"] svg.vis-mobile {
+      display: block !important;
+      width: 100% !important;
+      max-width: 380px !important;
+      height: auto !important;
+      max-height: calc(100vh - 160px) !important;
     }
     .vis-modal-nodes-bar {
       padding: 10px 24px;
@@ -1036,12 +1062,15 @@
     // Simulate Miron Steadicam Camera Zoom using pre-baked data-focus-box
     function zoomModalNode(nodeSlug) {
       const stage = document.getElementById('modal-stage');
-      const activeSvg = stage.querySelector('svg.vis-desktop[style*="display: block"], svg.vis-desktop') || stage.querySelector('svg');
+      const currentTopo = stage.getAttribute('data-topo') || 'desktop';
+      const activeSvg = currentTopo === 'mobile'
+        ? (stage.querySelector('svg.vis-mobile') || stage.querySelector('svg'))
+        : (stage.querySelector('svg.vis-desktop') || stage.querySelector('svg'));
+
       if (!activeSvg) return;
 
-      const targetEl = stage.querySelector(`[data-node="${nodeSlug}"]`);
+      const targetEl = activeSvg.querySelector(`[data-node="${nodeSlug}"]`) || stage.querySelector(`[data-node="${nodeSlug}"]`);
       if (targetEl) {
-        // Spotlight class
         stage.querySelectorAll('.vis-node').forEach(n => n.classList.remove('is-focused'));
         targetEl.classList.add('is-focused');
 
@@ -1054,10 +1083,14 @@
 
     function resetModalCamera() {
       const stage = document.getElementById('modal-stage');
-      const activeSvg = stage.querySelector('svg');
+      const currentTopo = stage.getAttribute('data-topo') || 'desktop';
+      const activeSvg = currentTopo === 'mobile'
+        ? (stage.querySelector('svg.vis-mobile') || stage.querySelector('svg'))
+        : (stage.querySelector('svg.vis-desktop') || stage.querySelector('svg'));
+
       if (!activeSvg) return;
       stage.querySelectorAll('.vis-node').forEach(n => n.classList.remove('is-focused'));
-      const defaultView = activeSvg.getAttribute('data-default-view') || '0 0 780 340';
+      const defaultView = activeSvg.getAttribute('data-default-view') || (currentTopo === 'mobile' ? '0 0 340 540' : '0 0 780 340');
       activeSvg.setAttribute('viewBox', defaultView);
     }
 
