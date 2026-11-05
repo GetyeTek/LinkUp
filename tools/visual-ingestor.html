@@ -19,6 +19,8 @@
       --red: #f43f5e;
       --text: #f8fafc;
       --text-muted: #94a3b8;
+    }
+
     /* ========================================================
        HTML BENTO INFOGRAPHIC DESIGN SYSTEM & 3D CAMERA RIG
        ======================================================== */
@@ -65,6 +67,7 @@
       color: var(--blue);
       border: 1px solid rgba(56, 189, 248, 0.3);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%;
@@ -933,10 +936,13 @@
           const nodeMatches = Array.from(payloadContent.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
           const uniqueNodes = Array.from(new Set(nodeMatches));
 
+          const hasSvg = payloadContent.includes('<svg');
+          const assetType = hasSvg ? 'diagram_svg' : 'infographic_html';
+
           const record = {
             id: id,
             course_code: courseCode,
-            asset_type: 'diagram_svg',
+            asset_type: assetType,
             unit_number: unitNumber,
             section_tag: sectionTag,
             title: title,
@@ -947,7 +953,8 @@
               chapter_title: chapterTitle,
               section_title: sectionTitle,
               anchor_query: anchorQuery,
-              camera_nodes: uniqueNodes
+              camera_nodes: uniqueNodes,
+              format: assetType
             },
             updated_at: new Date().toISOString()
           };
@@ -1049,6 +1056,15 @@
               ${v.nodes.map(n => `<span class="node-pill" onclick="testNodeZoom('${v.id}', '${n}')">${n}</span>`).join('')}
             </div>
           `;
+          // Enable direct click-to-focus on cards in gallery
+          card.querySelectorAll('.vis-node').forEach(nodeEl => {
+            nodeEl.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const slug = nodeEl.getAttribute('data-node');
+              if (slug) testNodeZoom(v.id, slug);
+            });
+          });
+
           container.appendChild(card);
         });
       } catch (e) {
