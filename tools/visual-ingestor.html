@@ -1152,6 +1152,7 @@
       stage.setAttribute('data-topo', topo);
       document.getElementById('modal-btn-desktop').className = `mode-pill-btn ${topo === 'desktop' ? 'active' : ''}`;
       document.getElementById('modal-btn-mobile').className = `mode-pill-btn ${topo === 'mobile' ? 'active' : ''}`;
+      resetModalCamera();
     }
 
     // 60fps Steadicam ViewBox Interpolator (Mirrors production MironLiveSession app)
@@ -1206,7 +1207,10 @@
         ? (stage.querySelector('svg.vis-mobile') || stage.querySelector('svg'))
         : (stage.querySelector('svg.vis-desktop') || stage.querySelector('svg'));
 
-      const targetEl = stage.querySelector(`[data-node="${nodeSlug}"]`);
+      // Strictly query targetEl from activeSvg so Mobile gets mobile focus-box and Desktop gets desktop focus-box
+      const targetEl = activeSvg
+        ? (activeSvg.querySelector(`[data-node="${nodeSlug}"]`) || stage.querySelector(`[data-node="${nodeSlug}"]`))
+        : stage.querySelector(`[data-node="${nodeSlug}"]`);
       if (targetEl) {
         stage.querySelectorAll('.vis-node').forEach(n => {
           n.classList.remove('is-focused');
