@@ -838,6 +838,33 @@
     let cachedParsedVisuals = [];
     let cameraAnimRef = null;
 
+    // Self-Healing Payload Extractor: Handles CDATA, raw child nodes, and escaped entities
+    function extractPayload(payloadNode) {
+      if (!payloadNode) return '';
+
+      // 1. If AI omitted CDATA, DOMParser creates child element nodes.
+      // Re-serialize all child nodes back into a full vector markup string:
+      if (payloadNode.children && payloadNode.children.length > 0) {
+        const serializer = new XMLSerializer();
+        return Array.from(payloadNode.childNodes)
+          .map(child => serializer.serializeToString(child))
+          .join('')
+          .trim();
+      }
+
+      // 2. If CDATA was used, textContent contains the raw markup:
+      let content = payloadNode.textContent.trim();
+
+      // 3. Decode entity-escaped HTML (e.g. <div>) if emitted by overly cautious LLMs:
+      if (content.startsWith('<') && (content.includes('>') || content.endsWith('>'))) {
+        const txt = document.createElement('textarea');
+        txt.innerHTML = content;
+        content = txt.value;
+      }
+
+      return content;
+    }
+
     function switchTab(mode) {
       document.getElementById('tab-btn-visuals').className = `tab-btn ${mode === 'visuals' ? 'active' : ''}`;
       document.getElementById('tab-btn-script').className = `tab-btn ${mode === 'script' ? 'active' : ''}`;
@@ -884,8 +911,10 @@
       btn.disabled = true;
 
       try {
+        // Self-healing pre-pass: auto-escape loose ampersands that break XML parsing
+        const sanitizedXml = rawXml.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[a-f\d]+);)/gi, '&amp;');
         const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(rawXml, 'application/xml');
+        const xmlDoc = parser.parseFromString(sanitizedXml, 'application/xml');
 
         if (xmlDoc.querySelector('parsererror')) {
           throw new Error('XML parsing failed. Verify that syntax is well-formed.');
@@ -931,7 +960,7 @@
           }
 
           const payloadNode = el.querySelector('payload');
-          const payloadContent = payloadNode ? payloadNode.textContent.trim() : '';
+          const payloadContent = extractPayload(payloadNode);
 
           // Parse focusable nodes from payload string
           const nodeMatches = Array.from(payloadContent.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
@@ -1005,8 +1034,10 @@
       }
 
       try {
+        // Self-healing pre-pass: auto-escape loose ampersands that break XML parsing
+        const sanitizedXml = rawXml.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[a-f\d]+);)/gi, '&amp;');
         const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(rawXml, 'application/xml');
+        const xmlDoc = parser.parseFromString(sanitizedXml, 'application/xml');
 
         if (xmlDoc.querySelector('parsererror')) {
           throw new Error('XML parsing failed. Verify XML syntax in Tab 1.');
@@ -1023,7 +1054,7 @@
           const taxNode = el.querySelector('taxonomy');
           const unitNumber = taxNode?.querySelector('unit_number')?.textContent?.trim() || '';
           const sectionTag = taxNode?.querySelector('section_tag')?.textContent?.trim() || '';
-          const payload = el.querySelector('payload')?.textContent?.trim() || '';
+          const payload = extractPayload(el.querySelector('payload'));
           const hasSvg = payload.includes('<svg');
 
           const nodeMatches = Array.from(payload.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
@@ -1186,7 +1217,16 @@
 
         if (activeSvg) {
           // 🎨 PATH A: SVG Steadicam Zoom (60fps JS interpolation)
-          const boxStr = targetEl.getAttribute('data-focus-box');
+          let boxStr = targetEl.getAttribute('data-focus-box');
+          if (!boxStr && typeof targetEl.getBBox === 'function') {
+            try {
+              const b = targetEl.getBBox();
+              if (b && b.width > 0 && b.height > 0) {
+                const pad = Math.max(16, Math.min(b.width, b.height) * 0.15);
+                boxStr = `${(b.x - pad).toFixed(2)} ${(b.y - pad).toFixed(2)} ${(b.width + pad * 2).toFixed(2)} ${(b.height + pad * 2).toFixed(2)}`;
+              }
+            } catch (e) {}
+          }
           if (boxStr) {
             animateViewBox(activeSvg, boxStr);
           }
