@@ -704,6 +704,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
     // --- TRANSPORT CONTROLS ---
     const handleTogglePlay = () => {
+        if (!audioLesson?.audio_url) {
+            lastSimTickRef.current = performance.now();
+            setIsPlaying(prev => !prev);
+            return;
+        }
         if (!audioRef.current) return;
         if (!audioRef.current.paused) {
             audioRef.current.pause();
@@ -719,19 +724,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     };
 
     const handleSeek = (e) => {
-        if (!progressBarRef.current || !audioRef.current || duration <= 0) return;
+        if (!progressBarRef.current || duration <= 0) return;
         const rect = progressBarRef.current.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const pct = Math.max(0, Math.min(1, clickX / rect.width));
         const targetTime = pct * duration;
-        audioRef.current.currentTime = targetTime;
+        if (audioRef.current && audioLesson?.audio_url) {
+            audioRef.current.currentTime = targetTime;
+        }
         setCurrentTime(targetTime);
     };
 
     const handleSkip = (seconds) => {
-        if (!audioRef.current) return;
-        const target = Math.max(0, Math.min(duration, audioRef.current.currentTime + seconds));
-        audioRef.current.currentTime = target;
+        const target = Math.max(0, Math.min(duration, currentTime + seconds));
+        if (audioRef.current && audioLesson?.audio_url) {
+            audioRef.current.currentTime = target;
+        }
         setCurrentTime(target);
     };
 
@@ -743,6 +751,117 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (audioRef.current) {
             audioRef.current.playbackRate = nextSpeed;
         }
+    };
+
+    // --- TEMPORARY SCRIPT SIMULATION ENGINE ---
+    const handleStartSimulation = async () => {
+        const raw = (debugScriptText || '').trim();
+        if (!raw) return;
+
+        // Auto-hydrate visual assets if not yet loaded
+        const targetCourse = selectedBook?.course_code || 'ANTH 1012';
+        if (Object.keys(visualAssets).length === 0) {
+            const codeWithSpace = targetCourse.trim();
+            const codeWithUnderscore = codeWithSpace.replace(/\s+/g, '_');
+            const { data: assets } = await supabase
+                .from('course_visual_assets')
+                .select('*')
+                .or(`course_code.eq."${codeWithSpace}",course_code.eq."${codeWithUnderscore}"`);
+
+            if (Array.isArray(assets) && assets.length > 0) {
+                const map = {};
+                assets.forEach(a => { map[a.id] = a; });
+                setVisualAssets(map);
+            }
+        }
+
+        const cueRegex = /\[\[(?:cue|call):([a-zA-Z0-9_\-]+)(?::([\s\S]*?))?\]\]/g;
+        const cues = [];
+        const sections = [];
+        let cleanText = '';
+        let lastIdx = 0;
+        let match;
+
+        while ((match = cueRegex.exec(raw)) !== null) {
+            cleanText += raw.slice(lastIdx, match.index);
+            const wordCount = cleanText.trim().split(/\s+/).filter(Boolean).length;
+            const cueType = match[1].trim();
+            const rawTarget = (match[2] || '').trim();
+
+            if (cueType === 'section' || cueType === 'section_start') {
+                const parts = rawTarget.split(':');
+                sections.push({
+                    type: 'section',
+                    tag: parts[0]?.trim() || '',
+                    title: (parts.slice(1).join(':') || parts[0] || '').trim(),
+                    wordCount
+                });
+            } else {
+                cues.push({ type: cueType, target: rawTarget, wordCount });
+            }
+            lastIdx = match.index + match[0].length;
+        }
+        cleanText += raw.slice(lastIdx);
+        const totalWords = cleanText.trim().split(/\s+/).filter(Boolean).length;
+        const wordsPerSec = 2.4;
+        const totalDuration = Math.max(40, Math.ceil(totalWords / wordsPerSec));
+
+        const cueTimeline = cues.map(c => ({
+            time: Number((c.wordCount / wordsPerSec).toFixed(2)),
+            type: c.type,
+            target: c.target
+        })).sort((a, b) => a.time - b.time);
+
+        let sectionsManifest = [];
+        if (sections.length > 0) {
+            sectionsManifest = sections.map((sec, idx) => {
+                const startTime = Number((sec.wordCount / wordsPerSec).toFixed(2));
+                const nextSec = sections[idx + 1];
+                const endTime = nextSec ? Number((nextSec.wordCount / wordsPerSec).toFixed(2)) : totalDuration;
+                return {
+                    section_tag: sec.tag,
+                    title: sec.title,
+                    start_time: startTime,
+                    end_time: endTime,
+                    duration: Math.max(1, endTime - startTime)
+                };
+            });
+        } else {
+            sectionsManifest = [{
+                section_tag: '1.1',
+                title: 'Simulated Lecture',
+                start_time: 0,
+                end_time: totalDuration,
+                duration: totalDuration
+            }];
+        }
+
+        const simLesson = {
+            id: 'sim-' + Date.now(),
+            book_id: selectedBook?.id || null,
+            course_code: targetCourse,
+            section_title: sectionsManifest[0]?.title || 'Visual Simulation',
+            cue_timeline: cueTimeline,
+            sections_manifest: sectionsManifest,
+            duration_seconds: totalDuration,
+            audio_url: null
+        };
+
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = '';
+        }
+
+        setAudioLesson(simLesson);
+        setDuration(totalDuration);
+        setCurrentTime(0);
+        setSelectedSection({ title: simLesson.section_title });
+        pendingSeekTimeRef.current = 0;
+        lastSimTickRef.current = performance.now();
+        setIsPlaying(true);
+        setStage('studio');
+        setViewMode('cinema');
+        setIsDebugOpen(false);
     };
 
     const handleClose = () => {
