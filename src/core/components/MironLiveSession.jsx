@@ -77,6 +77,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const hideTimeoutRef = useRef(null);
     const [isChromeVisible, setIsChromeVisible] = useState(true);
 
+    // Visual Simulator Debug State
+    const [isDebugOpen, setIsDebugOpen] = useState(false);
+    const [debugScriptText, setDebugScriptText] = useState('');
+    const lastSimTickRef = useRef(performance.now());
+
     // 1. Hydrate Published Curriculum Books & Lesson Availability
     useEffect(() => {
         try {
@@ -120,28 +125,43 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             });
     }, []);
 
-    // 2. High-Precision Audio Sync Loop (60 FPS Locked RAF)
+    // 2. High-Precision Audio & Simulator Sync Loop (60 FPS Locked RAF)
     useEffect(() => {
         const updateTick = () => {
-            if (audioRef.current && !audioRef.current.paused) {
+            const now = performance.now();
+            const delta = (now - lastSimTickRef.current) / 1000;
+            lastSimTickRef.current = now;
+
+            if (audioRef.current && audioLesson?.audio_url && !audioRef.current.paused) {
                 const cur = audioRef.current.currentTime;
                 setCurrentTime(cur);
 
                 if (audioRef.current.duration && !isNaN(audioRef.current.duration)) {
                     setDuration(audioRef.current.duration);
                 }
+            } else if (isPlaying && (!audioLesson?.audio_url || !audioRef.current?.src)) {
+                // Audio-free Simulator Delta Engine
+                setCurrentTime(prev => {
+                    const next = prev + delta * playbackRate;
+                    if (duration > 0 && next >= duration) {
+                        setIsPlaying(false);
+                        return duration;
+                    }
+                    return next;
+                });
             }
             rafIdRef.current = requestAnimationFrame(updateTick);
         };
 
         if (isPlaying) {
+            lastSimTickRef.current = performance.now();
             rafIdRef.current = requestAnimationFrame(updateTick);
         } else {
             cancelAnimationFrame(rafIdRef.current);
         }
 
         return () => cancelAnimationFrame(rafIdRef.current);
-    }, [isPlaying]);
+    }, [isPlaying, audioLesson, duration, playbackRate]);
 
     // Ghost Chrome Inactivity Engine
     const resetInactivityTimer = () => {
@@ -186,52 +206,69 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [selectedBook]);
 
-    // 4. Resolve Active Visual Cue, Node Camera, Continuous HUD Notes & Karaoke Words
-    const { activeCue, activeNodeCue, activeBullets } = useMemo(() => {
+    // 4. Resolve Dual-Stage Cues (Diagram + Supporting Image), Camera & Persistent Notes
+    const { activeDiagramCue, activeImageCue, activeNodeCue, activeBullets } = useMemo(() => {
         if (!audioLesson?.cue_timeline || audioLesson.cue_timeline.length === 0) {
-            return { activeCue: null, activeNodeCue: null, activeBullets: [] };
+            return { activeDiagramCue: null, activeImageCue: null, activeNodeCue: null, activeBullets: [] };
         }
         const timeline = audioLesson.cue_timeline;
-        let latestAsset = null;
+        let latestDiagram = null;
+        let latestImage = null;
         let latestNode = null;
         let currentBullets = [];
 
         for (const cue of timeline) {
             if (cue.time <= currentTime) {
-                if (cue.type === 'show_diagram' || cue.type === 'show_image' || cue.type === 'note_card') {
+                if (cue.type === 'show_diagram') {
                     if (cue.target && cue.target.includes(':') && !visualAssets[cue.target]) {
                         const [assetKey, nodeKey] = cue.target.split(':');
-                        latestAsset = { ...cue, target: assetKey };
+                        latestDiagram = { ...cue, target: assetKey };
                         latestNode = { ...cue, type: 'zoom', target: nodeKey };
                     } else if (cue.target && cue.target.includes('#') && !visualAssets[cue.target]) {
                         const [assetKey, nodeKey] = cue.target.split('#');
-                        latestAsset = { ...cue, target: assetKey };
+                        latestDiagram = { ...cue, target: assetKey };
                         latestNode = { ...cue, type: 'zoom', target: nodeKey };
                     } else {
-                        latestAsset = cue;
+                        latestDiagram = cue;
                         latestNode = null;
                     }
-                    currentBullets = []; // resets strictly when a new visual asset arrives
+                    latestImage = null; // New diagram resets active image to restore diagram hero
+                } else if (cue.type === 'show_image') {
+                    latestImage = cue; // Preserves latestDiagram for dual-stage composition!
+                } else if (cue.type === 'note_card') {
+                    latestDiagram = cue;
+                    latestImage = null;
+                    latestNode = null;
                 } else if (cue.type === 'zoom' || cue.type === 'focus' || cue.type === 'spotlight') {
                     latestNode = cue;
-                    // Intentionally do NOT clear bullets here: lets notes stack below each other as camera tours!
                 } else if (cue.type === 'bullet' || cue.type === 'note') {
                     const text = cue.target || '';
                     if (text && !currentBullets.includes(text)) {
                         currentBullets.push(text);
                     }
-                } else if (cue.type === 'clear_notes' || cue.type === 'notes:clear' || cue.type === 'section') {
+                } else if (cue.type === 'clear_notes' || cue.type === 'notes:clear') {
                     currentBullets = [];
+                } else if (cue.type === 'section') {
+                    currentBullets = []; // Clean section break
+                    latestImage = null;
                 } else if (cue.type === 'anchor_block') {
-                    latestAsset = cue;
+                    latestDiagram = cue;
+                    latestImage = null;
                     currentBullets = [];
                 }
             } else {
                 break;
             }
         }
-        return { activeCue: latestAsset, activeNodeCue: latestNode, activeBullets: currentBullets || [] };
+        return { 
+            activeDiagramCue: latestDiagram, 
+            activeImageCue: latestImage, 
+            activeNodeCue: latestNode, 
+            activeBullets: currentBullets || [] 
+        };
     }, [audioLesson, currentTime, visualAssets]);
+
+    const activeCue = activeImageCue || activeDiagramCue;
 
     // Auto-scroll Notes Deck to newest bullet
     useEffect(() => {
@@ -288,7 +325,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (!container) return;
 
         const targetNode = activeNodeCue?.target || 'overview';
-        const targetCompositeKey = `${activeCue?.target || 'vis'}::${targetNode}`;
+        const targetCompositeKey = `${activeDiagramCue?.target || activeCue?.target || 'vis'}::${targetNode}`;
 
         // Prevent infinite cancellation loop: only initiate camera pan when target node actually changes
         if (lastFocusedNodeRef.current === targetCompositeKey) return;
@@ -727,8 +764,15 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         );
     }
 
-    // Resolve Active Visual Item from Cache
-    const activeAsset = activeCue ? visualAssets[activeCue.target] : null;
+    // Resolve Active Visual Items from Cache (Dual-Stage Architecture)
+    const activeDiagramAsset = activeDiagramCue ? visualAssets[activeDiagramCue.target] : null;
+    const activeImageAsset = activeImageCue ? (visualAssets[activeImageCue.target] || {
+        asset_type: 'image',
+        image_url: activeImageCue.target,
+        title: activeImageCue.target
+    }) : null;
+    const isDualStage = Boolean(activeDiagramAsset && activeImageAsset);
+    const latestBullet = activeBullets.length > 0 ? activeBullets[activeBullets.length - 1] : null;
 
     return (
         <div className="ml-overlay">
@@ -917,6 +961,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 </div>
 
                 <div className="ml-header-right">
+                    <button 
+                        className="ml-debug-sim-btn" 
+                        onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}
+                        title="Open Raw Script Visual Simulator"
+                    >
+                        <i className="fas fa-flask"></i>
+                        <span className="ml-debug-sim-label">Simulate</span>
+                    </button>
                     <button className="athena-close" onClick={handleClose} style={{ color: '#ff5f5f' }} title={t('close', 'Close')}>
                         <i className="fas fa-times"></i>
                     </button>
@@ -1080,6 +1132,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         className="ml-cinema-stage" 
                                         ref={cinemaContainerRef}
                                         data-has-notes={(activeBullets?.length || 0) > 0 ? "true" : "false"}
+                                        data-has-image={Boolean(activeImageAsset) ? "true" : "false"}
+                                        data-dual-stage={isDualStage ? "true" : "false"}
                                         onClick={() => {
                                             if (stage === 'studio') {
                                                 setIsChromeVisible(prev => {
@@ -1090,18 +1144,70 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             }
                                         }}
                                     >
-                                        <div className="ml-cinema-visual-frame">
-                                            {activeAsset ? (
-                                                activeAsset.asset_type === 'diagram_svg' ? (
+                                        <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''}`}>
+                                            {isDualStage ? (
+                                                /* DUAL-STAGE COMPOSITION: VECTOR DIAGRAM + SPECIMEN PHOTO */
+                                                <>
+                                                    <div className="ml-stage-diagram-pane">
+                                                        {activeDiagramAsset?.asset_type === 'diagram_svg' && (
+                                                            <div 
+                                                                className="ml-visual-card-svg" 
+                                                                dangerouslySetInnerHTML={{ __html: activeDiagramAsset.content_payload }} 
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <div className="ml-stage-image-pane">
+                                                        <div className="ml-visual-card-image">
+                                                            <img src={proxyUrl(activeImageAsset.image_url)} alt={activeImageAsset.title || 'Supporting Specimen'} />
+                                                            <div className="ml-image-caption-pill">
+                                                                <span>{activeImageAsset.title || 'Scene Concept'}</span>
+                                                            </div>
+                                                            {/* Mobile Integrated Frosted Caption Pill */}
+                                                            {latestBullet && (
+                                                                <div className="ml-image-frosted-caption">
+                                                                    <div className="ml-frosted-caption-head">
+                                                                        <i className="fas fa-bolt"></i>
+                                                                        <span>TAKEAWAY</span>
+                                                                    </div>
+                                                                    <p className="ml-frosted-caption-body">
+                                                                        {parseBulletItem(latestBullet).content}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : activeImageAsset ? (
+                                                /* PURE SPECIMEN IMAGE STAGE */
+                                                <div className="ml-visual-card-image">
+                                                    <img src={proxyUrl(activeImageAsset.image_url)} alt={activeImageAsset.title || 'Lecture Illustration'} />
+                                                    <div className="ml-image-caption-pill">
+                                                        <span>{activeImageAsset.title || 'Scene Concept'}</span>
+                                                    </div>
+                                                    {latestBullet && (
+                                                        <div className="ml-image-frosted-caption">
+                                                            <div className="ml-frosted-caption-head">
+                                                                <i className="fas fa-bolt"></i>
+                                                                <span>TAKEAWAY</span>
+                                                            </div>
+                                                            <p className="ml-frosted-caption-body">
+                                                                {parseBulletItem(latestBullet).content}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : activeDiagramAsset ? (
+                                                /* PURE VECTOR DIAGRAM STAGE */
+                                                activeDiagramAsset.asset_type === 'diagram_svg' ? (
                                                     <div 
                                                         className="ml-visual-card-svg" 
-                                                        dangerouslySetInnerHTML={{ __html: activeAsset.content_payload }} 
+                                                        dangerouslySetInnerHTML={{ __html: activeDiagramAsset.content_payload }} 
                                                     />
                                                 ) : (
                                                     <div className="ml-visual-card-image">
-                                                        <img src={proxyUrl(activeAsset.image_url)} alt={activeAsset.title || 'Lecture Illustration'} />
+                                                        <img src={proxyUrl(activeDiagramAsset.image_url)} alt={activeDiagramAsset.title || 'Illustration'} />
                                                         <div className="ml-image-caption-pill">
-                                                            <span>{activeAsset.title || 'Scene Concept'}</span>
+                                                            <span>{activeDiagramAsset.title || 'Scene Concept'}</span>
                                                         </div>
                                                     </div>
                                                 )
@@ -1125,10 +1231,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             )}
                                         </div>
 
-                                        {/* Studio Split-Screen Notes Deck */}
+                                        {/* Studio Split-Screen Notes Deck (Tucked on mobile when image is shown) */}
                                         {(activeBullets?.length || 0) > 0 && (
                                             <div 
-                                                className="ml-studio-notes-deck"
+                                                className={`ml-studio-notes-deck ${activeImageAsset ? 'is-tucked-for-image' : ''}`}
                                                 ref={notesDeckRef}
                                                 onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
                                             >
@@ -1277,6 +1383,72 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     </div>
                 )}
             </main>
+
+            {/* TEMPORARY DEBUG SCRIPT SIMULATOR MODAL */}
+            {isDebugOpen && (
+                <div className="ml-debug-modal-overlay" onClick={() => setIsDebugOpen(false)}>
+                    <div className="ml-debug-modal-card" onClick={e => e.stopPropagation()}>
+                        <div className="ml-debug-modal-header">
+                            <div className="ml-debug-modal-title">
+                                <i className="fas fa-flask"></i>
+                                <h3>Lecture Script Visual Simulator</h3>
+                            </div>
+                            <button className="ml-debug-close" onClick={() => setIsDebugOpen(false)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="ml-debug-modal-body">
+                            <p className="ml-debug-hint">
+                                Paste any raw script with <code>[[cue:...]]</code> tags. The simulator calculates pacing, triggers Steadicam zooms, mounts supporting images, and morphs takeaways in real time without audio!
+                            </p>
+                            <textarea 
+                                className="ml-debug-textarea" 
+                                value={debugScriptText} 
+                                onChange={(e) => setDebugScriptText(e.target.value)}
+                                placeholder="Paste raw script containing [[cue:...]] tags here..."
+                                rows={9}
+                            />
+                            <div className="ml-debug-actions-bar">
+                                <button 
+                                    className="ml-debug-sample-btn"
+                                    onClick={() => setDebugScriptText(`[[cue:section:1.1:ትርጓሜ እና የባዮ-ባህላዊ ዑደት]]
+እንኳን ወደ አንትሮፖሎጂ ትምህርት ምዕራፍ አንድ በደህና መጣችሁ። 
+[[cue:show_diagram:vis-01-biocultural-loop]]
+ይህን የባዮ-ባህላዊ የዝግመተ-ለውጥ ዑደት ተመልከቱ።
+[[cue:zoom:biology]]
+[[cue:bullet:ባዮሎጂያዊ መዋቅር፦ የሰውነት አካል፣ ጀነቲክስ እና የአንጎል መጠን]]
+የሰውነታችን ባዮሎጂ ለህልውናችን አስፈላጊውን አናቶሚካዊ አወቃቀር ያቀርባል።
+[[cue:zoom:culture-mod-bio]]
+[[cue:bullet:ባህል ባዮሎጂን ይቀይራል፦ እሳትና ምግብ ማብሰል ጥርስን አሳንሶ አንጎልን አሳደገ]]
+የላይኛውን ቅስት እንይ፦ ባህል ባዮሎጂን በቀጥታ ይለውጣል።
+[[cue:zoom:overview]]
+[[cue:show_image:U01_01_sec1.1_scope_human_diversity.png]]
+[[cue:bullet:ዓለም አቀፍ ልዩነት፦ ከአርክቲክ አዳኞች እስከ አፍሪካ አርብቶ አደሮች]]
+ከአርክቲክ አዳኞች እስከ አፍሪካ አርብቶ አደሮች ድረስ ልዩነቶችን እናጠናለን።
+
+[[cue:section:1.2:አራቱ መሰረታዊ የአንትሮፖሎጂ ዘርፎች]]
+አንትሮፖሎጂ ጥናቱን በአራት ዋና ዋና ምሰሶዎች ይከፍላል።
+[[cue:show_diagram:vis-04-subfield-taxonomy]]
+[[cue:zoom:biological]]
+[[cue:bullet:ባዮሎጂካል አንትሮፖሎጂ፦ ቅሪተ-አካላት እና ጀነቲክስ]]
+አንደኛው ዘርፍ፦ ባዮሎጂካል አንትሮፖሎጂ የዝግመተ ለውጥ ቅሪተ-አካላትን ይመረምራል።
+[[cue:show_image:U01_02_sec1.2.1_paleo_fossil_excavation.png]]
+[[cue:bullet:የኢትዮጵያ አፋር፦ ድንቅነሽ (ሉሲ) በሁለት እግር መቆም ከአንጎል ማደግ ቀድሞ እንደመጣ አረጋገጠች]]
+በኢትዮጵያ ስምጥ ሸለቆ የተገኘችው ድንቅነሽ ወይም ሉሲ፣ በሁለት እግር መቆም ከአንጎል ማደግ እንደሚቀድም አረጋገጠች።`)}
+                                >
+                                    <i className="fas fa-wand-magic-sparkles"></i> Load Anthro 1012 Sample
+                                </button>
+                                <button 
+                                    className="ml-debug-start-btn"
+                                    onClick={handleStartSimulation}
+                                >
+                                    <i className="fas fa-play"></i> Run Visual Simulation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
