@@ -575,11 +575,15 @@ svg.vis-mobile,
 .ml-visual-card-image {
     width: 100%; max-width: 680px; position: relative; border-radius: 16px;
     overflow: hidden; border: 1px solid #1e293b; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-    animation: fadeInCard 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    background: #111827;
     margin: 0 auto;
     will-change: transform, opacity;
     transform: translateZ(0);
     backface-visibility: hidden;
+}
+
+.ml-stage-image-pane .ml-visual-card-image {
+    animation: none;
 }
 .ml-visual-card-image img { width: 100%; height: auto; max-height: 52vh; object-fit: contain; display: block; margin: 0 auto; }
 .ml-image-caption-pill {
@@ -636,6 +640,18 @@ svg.vis-mobile,
     z-index: 10;
     padding-top: 0;
     padding-bottom: 82px;
+    animation: fadeInBookPage 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInBookPage {
+    from {
+        opacity: 0.95;
+        transform: scale(0.995);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 /* ========================================================
@@ -658,8 +674,8 @@ svg.vis-mobile,
 
 @keyframes cinematicExcerptEnter {
     0% {
-        opacity: 0.88;
-        transform: translateY(-6px) scale(0.985);
+        opacity: 1;
+        transform: translateY(-4px) scale(0.99);
     }
     100% {
         opacity: 1;
@@ -746,8 +762,8 @@ mark.miron-active-sentence,
 @keyframes cinematicSpecimenEnter {
     0% {
         opacity: 0;
-        transform: translateY(18px) scale(0.95);
-        filter: blur(6px);
+        transform: translateY(12px) scale(0.97);
+        filter: blur(4px);
     }
     100% {
         opacity: 1;
