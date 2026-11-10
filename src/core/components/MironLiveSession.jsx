@@ -103,6 +103,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const lastFocusedNodeRef = useRef(null);
     const notesDeckRef = useRef(null);
     const hideTimeoutRef = useRef(null);
+    const pageSheetRef = useRef(null);
     const [isChromeVisible, setIsChromeVisible] = useState(true);
 
     // Visual Simulator Debug State
@@ -1024,45 +1025,60 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         title: activeImageCue.target
     }) : null;
 
-    // Resolve Active Page Block data
-    const activeBlockData = useMemo(() => {
-        if (!activeBlockCue) return null;
-        const targetPage = activeBlockCue.page || selectedSection?.page || 1;
-        const pageBlocks = cachedPageBlocks[targetPage] || sectionPages || [];
-        const rawBlock = pageBlocks[activeBlockCue.blockIndex];
+            // Resolve Active Page Block data (Full Page Canvas with Sentence Highlighting)
+        const activeBlockData = useMemo(() => {
+            if (!activeBlockCue) return null;
+            const targetPage = activeBlockCue.page || selectedSection?.page || 1;
+            const pageBlocks = cachedPageBlocks[targetPage] || sectionPages || [];
+            if (!pageBlocks || pageBlocks.length === 0) return null;
 
-        console.log(`🎯 [MironLive:BlockResolver] Cue:`, activeBlockCue, `| TargetPage: ${targetPage} | AvailableBlocksOnPage: ${pageBlocks.length} | RawBlockFound:`, !!rawBlock, rawBlock?.type || '(undefined)');
-
-        if (!rawBlock) return null;
-
-        // Apply sentence-level highlight non-destructively
-        if (activeBlockCue.sentenceIndex !== null && activeBlockCue.sentenceIndex !== undefined) {
-            const cloned = JSON.parse(JSON.stringify(rawBlock));
-            if (typeof cloned.body === 'string' && cloned.body.trim()) {
-                const matches = cloned.body.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g);
-                if (matches && matches[activeBlockCue.sentenceIndex] !== undefined) {
-                    const targetSentence = matches[activeBlockCue.sentenceIndex];
-                    const highlighted = `<mark class="miron-active-sentence">${targetSentence.trim()}</mark>${targetSentence.endsWith(' ') ? ' ' : ''}`;
-                    matches[activeBlockCue.sentenceIndex] = highlighted;
-                    cloned.body = matches.join('');
-                }
-            } else if (Array.isArray(cloned.items) && cloned.items[activeBlockCue.sentenceIndex] !== undefined) {
-                const targetItem = cloned.items[activeBlockCue.sentenceIndex];
-                const itemText = typeof targetItem === 'string' ? targetItem : (targetItem?.text || '');
-                if (itemText) {
-                    const highlighted = `<mark class="miron-active-sentence">${itemText}</mark>`;
-                    if (typeof targetItem === 'string') {
-                        cloned.items[activeBlockCue.sentenceIndex] = highlighted;
-                    } else {
-                        cloned.items[activeBlockCue.sentenceIndex] = { ...targetItem, text: highlighted };
+            const processedBlocks = pageBlocks.map((b, idx) => {
+                if (idx !== activeBlockCue.blockIndex) return b;
+                if (activeBlockCue.sentenceIndex !== null && activeBlockCue.sentenceIndex !== undefined) {
+                    const cloned = JSON.parse(JSON.stringify(b));
+                    if (typeof cloned.body === 'string' && cloned.body.trim()) {
+                        const matches = cloned.body.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g);
+                        if (matches && matches[activeBlockCue.sentenceIndex] !== undefined) {
+                            const targetSentence = matches[activeBlockCue.sentenceIndex];
+                            const highlighted = `<mark class="miron-active-sentence">${targetSentence.trim()}</mark>${targetSentence.endsWith(' ') ? ' ' : ''}`;
+                            matches[activeBlockCue.sentenceIndex] = highlighted;
+                            cloned.body = matches.join('');
+                        }
+                    } else if (Array.isArray(cloned.items) && cloned.items[activeBlockCue.sentenceIndex] !== undefined) {
+                        const targetItem = cloned.items[activeBlockCue.sentenceIndex];
+                        const itemText = typeof targetItem === 'string' ? targetItem : (targetItem?.text || '');
+                        if (itemText) {
+                            const highlighted = `<mark class="miron-active-sentence">${itemText}</mark>`;
+                            if (typeof targetItem === 'string') {
+                                cloned.items[activeBlockCue.sentenceIndex] = highlighted;
+                            } else {
+                                cloned.items[activeBlockCue.sentenceIndex] = { ...targetItem, text: highlighted };
+                            }
+                        }
                     }
+                    return cloned;
                 }
-            }
-            return { block: cloned, page: targetPage, blockIndex: activeBlockCue.blockIndex };
-        }
+                return b;
+            });
 
-        return { block: rawBlock, page: targetPage, blockIndex: activeBlockCue.blockIndex };
-    }, [activeBlockCue, cachedPageBlocks, sectionPages, selectedSection]);
+            return {
+                page: targetPage,
+                blockIndex: activeBlockCue.blockIndex,
+                blocks: processedBlocks
+            };
+        }, [activeBlockCue, cachedPageBlocks, sectionPages, selectedSection]);
+
+        // Steadicam Camera Gliding (Centers focused block in Hero mode, docks to top in Dual-Stage)
+        useEffect(() => {
+            if (!activeBlockData || !pageSheetRef.current) return;
+            const targetEl = pageSheetRef.current.querySelector(`#ml-block-${activeBlockData.blockIndex}`);
+            if (!targetEl) return;
+
+            targetEl.scrollIntoView({
+                behavior: 'smooth',
+                block: isDualStage ? 'start' : 'center'
+            });
+        }, [activeBlockData?.blockIndex, activeBlockData?.page, isDualStage]);
 
     const hasActiveNode = Boolean(activeNodeCue?.target && activeNodeCue.target !== 'overview' && activeNodeCue.target !== 'reset');
     const isDualStage = Boolean(
@@ -1449,26 +1465,39 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         }}
                                     >
                                         <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
-                                            {/* A4 TEXTBOOK BLOCK SNAPSHOT (Hero in solo mode, Docks to top in dual-stage) */}
+                                            {/* FULL A4 PAGE CANVAS WITH STEADICAM SPOTLIGHT GLIDE */}
                                             {activeBlockData && (
                                                 <div className={`ml-stage-block-pane ${isDualStage ? 'is-docked' : 'is-hero'}`}>
                                                     <div className="ml-stage-snapshot-card">
                                                         <div className="ml-snapshot-topbar">
                                                             <span className="ml-snapshot-title">{selectedBook?.title || 'Curriculum Book'}</span>
-                                                            <span className="ml-snapshot-page-pill">Page {activeBlockData.page} • #{activeBlockData.blockIndex}</span>
+                                                            <span className="ml-snapshot-page-pill">Page {activeBlockData.page}</span>
                                                         </div>
-                                                        <div className="ml-snapshot-content ml-book-page-sheet">
-                                                            {renderBookBlock ? (
-                                                                renderBookBlock(activeBlockData.block, activeBlockData.blockIndex, {
-                                                                    bookTitle: selectedBook?.title,
-                                                                    courseCode: selectedBook?.course_code
-                                                                })
-                                                            ) : (
-                                                                <div 
-                                                                    className="book-block type-paragraph"
-                                                                    dangerouslySetInnerHTML={{ __html: activeBlockData.block?.body || '' }} 
-                                                                />
-                                                            )}
+                                                        <div className="ml-snapshot-content ml-book-page-sheet" ref={pageSheetRef}>
+                                                            <div className="ml-page-canvas-sheet is-spotlight-active">
+                                                                {activeBlockData.blocks.map((block, idx) => {
+                                                                    const isFocused = idx === activeBlockData.blockIndex;
+                                                                    return (
+                                                                        <div 
+                                                                            key={idx}
+                                                                            id={`ml-block-${idx}`}
+                                                                            className={`ml-page-block-wrapper ${isFocused ? 'is-focused-block' : 'is-dimmed-block'}`}
+                                                                        >
+                                                                            {renderBookBlock ? (
+                                                                                renderBookBlock(block, idx, {
+                                                                                    bookTitle: selectedBook?.title,
+                                                                                    courseCode: selectedBook?.course_code
+                                                                                })
+                                                                            ) : (
+                                                                                <div 
+                                                                                    className="book-block type-paragraph"
+                                                                                    dangerouslySetInnerHTML={{ __html: block?.body || '' }} 
+                                                                                />
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
