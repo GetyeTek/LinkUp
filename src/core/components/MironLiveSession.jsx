@@ -1269,57 +1269,49 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             }
                                         }}
                                     >
-                                        <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''}`}>
-                                            {isDualStage ? (
-                                                /* DUAL-STAGE COMPOSITION: VECTOR DIAGRAM + SPECIMEN PHOTO */
-                                                <>
-                                                    <div className="ml-stage-diagram-pane">
-                                                        {activeDiagramAsset?.asset_type === 'diagram_svg' && (
-                                                            <div 
-                                                                className="ml-visual-card-svg" 
-                                                                dangerouslySetInnerHTML={{ __html: activeDiagramAsset.content_payload }} 
-                                                            />
-                                                        )}
-                                                    </div>
-                                                    <div className="ml-stage-image-pane">
+                                        <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
+                                            {/* PERSISTENT DIAGRAM PANE (Glides to top HUD without remounting) */}
+                                            {activeDiagramAsset && (!activeImageAsset || hasActiveNode) && (
+                                                <div className={`ml-stage-diagram-pane ${isDualStage ? 'is-docked' : 'is-hero'}`}>
+                                                    {activeDiagramAsset.asset_type === 'diagram_svg' ? (
+                                                        <div 
+                                                            className="ml-visual-card-svg" 
+                                                            dangerouslySetInnerHTML={{ __html: activeDiagramAsset.content_payload }} 
+                                                        />
+                                                    ) : (
                                                         <div className="ml-visual-card-image">
-                                                            <img src={proxyUrl(activeImageAsset.image_url)} alt={activeImageAsset.title || 'Supporting Specimen'} />
+                                                            <img src={proxyUrl(activeDiagramAsset.image_url)} alt={activeDiagramAsset.title || 'Illustration'} />
                                                             <div className="ml-image-caption-pill">
-                                                                <span>{activeImageAsset.title || 'Scene Concept'}</span>
+                                                                <span>{activeDiagramAsset.title || 'Scene Concept'}</span>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </>
-                                            ) : activeImageAsset ? (
-                                                /* PURE SPECIMEN IMAGE STAGE */
-                                                <div className="ml-visual-card-image">
-                                                    <img src={proxyUrl(activeImageAsset.image_url)} alt={activeImageAsset.title || 'Lecture Illustration'} />
-                                                    <div className="ml-image-caption-pill">
-                                                        <span>{activeImageAsset.title || 'Scene Concept'}</span>
-                                                    </div>
+                                                    )}
                                                 </div>
-                                            ) : activeDiagramAsset ? (
-                                                /* PURE VECTOR DIAGRAM STAGE */
-                                                activeDiagramAsset.asset_type === 'diagram_svg' ? (
-                                                    <div 
-                                                        className="ml-visual-card-svg" 
-                                                        dangerouslySetInnerHTML={{ __html: activeDiagramAsset.content_payload }} 
-                                                    />
-                                                ) : (
+                                            )}
+
+                                            {/* PERSISTENT SPECIMEN IMAGE PANE (Slides in smoothly underneath) */}
+                                            {activeImageAsset && (
+                                                <div className="ml-stage-image-pane">
                                                     <div className="ml-visual-card-image">
-                                                        <img src={proxyUrl(activeDiagramAsset.image_url)} alt={activeDiagramAsset.title || 'Illustration'} />
+                                                        <img src={proxyUrl(activeImageAsset.image_url)} alt={activeImageAsset.title || 'Supporting Specimen'} />
                                                         <div className="ml-image-caption-pill">
-                                                            <span>{activeDiagramAsset.title || 'Scene Concept'}</span>
+                                                            <span>{activeImageAsset.title || 'Scene Concept'}</span>
                                                         </div>
                                                     </div>
-                                                )
-                                            ) : activeCue?.type === 'note_card' ? (
+                                                </div>
+                                            )}
+
+                                            {/* STANDALONE NOTE CARD (When active cue is a note card) */}
+                                            {!activeDiagramAsset && !activeImageAsset && activeCue?.type === 'note_card' && (
                                                 <div className="ml-visual-card-note">
                                                     <div className="ml-note-badge"><i className="fas fa-bolt"></i> KEY CONCEPT</div>
                                                     <h3>{activeCue.target?.title || 'Core Takeaway'}</h3>
                                                     <p>{activeCue.target?.body || activeCue.target || ''}</p>
                                                 </div>
-                                            ) : (
+                                            )}
+
+                                            {/* DEFAULT SOUNDWAVE STAGE (When no visuals are active) */}
+                                            {!activeDiagramAsset && !activeImageAsset && activeCue?.type !== 'note_card' && (
                                                 <div className="ml-default-soundwave-stage">
                                                     <div className="ml-soundwave-ambient-glow"></div>
                                                     <div className="ml-soundwave-avatar-wrapper">
