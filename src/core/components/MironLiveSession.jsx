@@ -1568,17 +1568,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 <div 
                                                     className="ml-stage-excerpt-pane"
                                                     style={{ 
-                                                        height: excerptHeight > 0 ? `${excerptHeight}px` : 'auto',
-                                                        minHeight: excerptHeight > 0 ? `${excerptHeight}px` : '0',
-                                                        flex: `0 0 ${excerptHeight > 0 ? excerptHeight : 'auto'}${excerptHeight > 0 ? 'px' : ''}`
+                                                        height: 'max-content',
+                                                        minHeight: '0',
+                                                        flex: '0 0 auto'
                                                     }}
                                                 >
                                                     <div 
                                                         className="ml-tight-scale-wrapper"
                                                         style={{
                                                             width: '794px',
-                                                            transform: `scale(${fitScale})`,
-                                                            transformOrigin: 'top center'
+                                                            zoom: fitScale
                                                         }}
                                                     >
                                                         <div 
