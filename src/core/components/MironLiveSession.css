@@ -614,6 +614,155 @@ svg.vis-mobile,
 }
 
 /* ========================================================
+   AUTHENTIC A4 TEXTBOOK BLOCK SHEET & HIGHLIGHTER
+   ======================================================== */
+.ml-stage-block-pane {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    margin: 0 auto;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 0.25rem 0.5rem;
+}
+
+.ml-stage-block-pane.is-hero {
+    flex: 1 1 auto;
+    max-height: 52vh;
+}
+
+.ml-stage-block-pane.is-docked {
+    flex: 0 0 auto;
+    max-height: 25vh;
+}
+
+.ml-stage-snapshot-card {
+    width: 100%;
+    background-color: #ffffff !important;
+    background-image: linear-gradient(#ffffff, #ffffff) !important;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.25);
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    color-scheme: light only !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: fadeInCard 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    box-sizing: border-box;
+}
+
+.ml-snapshot-topbar {
+    background-color: #f4f4f6 !important;
+    border-bottom: 1px solid #e4e4e7 !important;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-family: 'Poppins', sans-serif;
+    flex-shrink: 0;
+}
+
+.ml-snapshot-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #27272a !important;
+    -webkit-text-fill-color: #27272a !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.3px;
+}
+
+.ml-snapshot-page-pill {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: #e4e4e7;
+    color: #52525b !important;
+    -webkit-text-fill-color: #52525b !important;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.ml-snapshot-content {
+    padding: 16px 20px;
+    background-color: #ffffff !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    font-family: 'Times New Roman', Times, 'Nyala', 'Abyssinica SIL', Georgia, serif;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    text-align: justify;
+    hyphens: auto;
+    letter-spacing: -0.01em;
+    word-spacing: -0.02em;
+    overflow-y: auto;
+    max-height: 100%;
+    box-sizing: border-box;
+}
+
+.ml-snapshot-content * {
+    color: inherit !important;
+    -webkit-text-fill-color: inherit !important;
+}
+
+.ml-snapshot-content .book-block {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    line-height: inherit;
+    text-align: inherit;
+    font-size: inherit;
+}
+
+.ml-snapshot-content .book-block-body,
+.ml-snapshot-content .univ-p-block {
+    margin: 0;
+    line-height: inherit;
+}
+
+/* Authentic Paragraph First-Line Indentation */
+.ml-snapshot-content .type-paragraph .book-block-body {
+    text-indent: 1.5em;
+}
+
+/* Realistic Luminous Highlighter */
+mark.miron-active-sentence,
+.miron-active-sentence {
+    background: rgba(250, 204, 21, 0.42) !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    padding: 2px 5px !important;
+    border-radius: 4px !important;
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.35) !important;
+    font-weight: 600 !important;
+    display: inline !important;
+}
+
+@media (max-width: 768px) {
+    .ml-stage-block-pane.is-docked {
+        flex: 0 0 auto;
+        max-height: 24vh;
+    }
+    .ml-stage-block-pane.is-hero {
+        flex: 1 1 auto;
+        max-height: 48vh;
+    }
+    .ml-snapshot-content {
+        padding: 12px 14px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+}
+
+/* ========================================================
    DUAL-STAGE VISUAL COMPOSITION (DIAGRAM + SUPPORTING IMAGE)
    ======================================================== */
 @keyframes stageSpecimenSlideUp {
