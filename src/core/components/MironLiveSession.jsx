@@ -1455,12 +1455,12 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                     <div className="ml-stage-snapshot-card">
                                                         <div className="ml-snapshot-topbar">
                                                             <div className="ml-snapshot-book-info">
-                                                                <span className="ml-snapshot-badge"><i className="fas fa-bookmark"></i> TEXTBOOK BLOCK</span>
+                                                                <span className="ml-snapshot-badge"><i className="fas fa-bookmark"></i> TEXTBOOK EXCERPT</span>
                                                                 <span className="ml-snapshot-title">{selectedBook?.title || 'Curriculum Book'}</span>
                                                             </div>
                                                             <span className="ml-snapshot-page-pill">Page {activeBlockData.page} • #{activeBlockData.blockIndex}</span>
                                                         </div>
-                                                        <div className="ml-snapshot-content page-canvas">
+                                                        <div className="ml-snapshot-content ml-book-page-sheet">
                                                             {renderBookBlock ? (
                                                                 renderBookBlock(activeBlockData.block, activeBlockData.blockIndex, {
                                                                     bookTitle: selectedBook?.title,
@@ -1468,7 +1468,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                                 })
                                                             ) : (
                                                                 <div 
-                                                                    className="univ-p-block"
+                                                                    className="book-block type-paragraph"
                                                                     dangerouslySetInnerHTML={{ __html: activeBlockData.block?.body || '' }} 
                                                                 />
                                                             )}
