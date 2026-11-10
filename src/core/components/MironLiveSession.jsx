@@ -103,37 +103,64 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     }, []);
 
     useEffect(() => {
+        console.group("📏 [MironLive:HeightSync] Dual Stage Layout Diagnostic");
+        console.log("1. State -> isDualStage:", isDualStage, "| activeBlockData:", !!activeBlockData, "| fitScale:", fitScale);
+        
         if (!isDualStage || !activeBlockData) {
+            console.log("-> Condition not met. Resetting excerptHeight to 0.");
             setExcerptHeight(0);
+            console.groupEnd();
             return;
         }
 
         let ro = null;
+        let attempt = 0;
 
         const updateHeight = () => {
-            if (excerptCardRef.current) {
-                // Mathematical precision: Unscaled physical height * exact CSS scale
-                const unscaledHeight = excerptCardRef.current.offsetHeight;
+            attempt++;
+            const el = excerptCardRef.current;
+            console.log(`\n[Tick ${attempt}] ref exists?`, !!el);
+            
+            if (el) {
+                const unscaledHeight = el.offsetHeight;
+                const rect = el.getBoundingClientRect();
+                const calcHeight = Math.round(unscaledHeight * fitScale);
+                
+                console.log(`   - offsetHeight (unscaled): ${unscaledHeight}px`);
+                console.log(`   - getBoundingClientRect().height (scaled): ${rect.height}px`);
+                console.log(`   - Computed clamp height (unscaled * scale): ${calcHeight}px`);
+
                 if (unscaledHeight > 0) {
-                    setExcerptHeight(Math.round(unscaledHeight * fitScale));
+                    console.log(`   ✅ Dispatching setExcerptHeight(${calcHeight})`);
+                    setExcerptHeight(calcHeight);
+                } else {
+                    console.warn("   ⚠️ Element height is 0. Has it rendered content yet?");
                 }
 
-                // Lazy-attach observer if ref became available late
                 if (!ro) {
                     try {
-                        ro = new ResizeObserver(updateHeight);
-                        ro.observe(excerptCardRef.current);
-                    } catch (e) {}
+                        ro = new ResizeObserver(() => {
+                            console.log("🔄 ResizeObserver triggered update!");
+                            updateHeight();
+                        });
+                        ro.observe(el);
+                        console.log("   👀 ResizeObserver attached.");
+                    } catch (e) {
+                        console.error("   ❌ ResizeObserver err:", e);
+                    }
                 }
+            } else {
+                console.warn("   ⚠️ Ref is null.");
             }
         };
 
-        // Aggressive polling to beat React ref mount race conditions
         updateHeight();
-        const t1 = setTimeout(updateHeight, 20);
-        const t2 = setTimeout(updateHeight, 100);
-        const t3 = setTimeout(updateHeight, 300);
-        const t4 = setTimeout(updateHeight, 800);
+        const t1 = setTimeout(updateHeight, 50);
+        const t2 = setTimeout(updateHeight, 200);
+        const t3 = setTimeout(updateHeight, 500);
+        const t4 = setTimeout(updateHeight, 1500); // late check for async fonts
+
+        console.groupEnd();
 
         return () => {
             clearTimeout(t1);
@@ -143,6 +170,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             if (ro) ro.disconnect();
         };
     }, [isDualStage, activeBlockData, fitScale]);
+
+    useEffect(() => {
+        console.log("🎛️ [MironLive:Render] excerptHeight state successfully updated to:", excerptHeight, "px");
+    }, [excerptHeight]);
 
     const audioRef = useRef(null);
     const progressBarRef = useRef(null);
