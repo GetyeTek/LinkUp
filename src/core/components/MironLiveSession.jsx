@@ -106,13 +106,26 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (isDualStage && activeBlockData && excerptCardRef.current) {
             const updateHeight = () => {
                 if (excerptCardRef.current) {
-                    setExcerptHeight(Math.round(excerptCardRef.current.offsetHeight * fitScale));
+                    // getBoundingClientRect().height captures the exact physical pixels AFTER transform: scale()
+                    const rect = excerptCardRef.current.getBoundingClientRect();
+                    if (rect.height > 0) {
+                        setExcerptHeight(Math.round(rect.height));
+                    }
                 }
             };
             updateHeight();
+            // Staggered checks to guarantee absolute precision after fonts/images render
+            const t1 = setTimeout(updateHeight, 50);
+            const t2 = setTimeout(updateHeight, 250);
+            
             const ro = new ResizeObserver(updateHeight);
             ro.observe(excerptCardRef.current);
-            return () => ro.disconnect();
+            
+            return () => {
+                clearTimeout(t1);
+                clearTimeout(t2);
+                ro.disconnect();
+            };
         } else {
             setExcerptHeight(0);
         }
@@ -1510,7 +1523,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             {activeBlockData && isDualStage && (
                                                 <div 
                                                     className="ml-stage-excerpt-pane"
-                                                    style={{ height: excerptHeight ? `${excerptHeight}px` : 'auto' }}
+                                                    style={{ 
+                                                        height: excerptHeight > 0 ? `${excerptHeight}px` : 'auto',
+                                                        minHeight: excerptHeight > 0 ? `${excerptHeight}px` : '0',
+                                                        flex: `0 0 ${excerptHeight > 0 ? excerptHeight : 'auto'}${excerptHeight > 0 ? 'px' : ''}`
+                                                    }}
                                                 >
                                                     <div 
                                                         className="ml-tight-scale-wrapper"
