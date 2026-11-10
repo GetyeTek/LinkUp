@@ -208,15 +208,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     }, [selectedBook]);
 
     // 4. Resolve Dual-Stage Cues (Diagram + Supporting Image), Camera & Persistent Notes
-    const { activeDiagramCue, activeImageCue, activeNodeCue, activeBullets } = useMemo(() => {
-        if (!audioLesson?.cue_timeline || audioLesson.cue_timeline.length === 0) {
-            return { activeDiagramCue: null, activeImageCue: null, activeNodeCue: null, activeBullets: [] };
-        }
+    const { activeDiagramCue, activeImageCue, activeNodeCue, activeBlockCue, activeBullets } = useMemo(() => {
+                    if (!audioLesson?.cue_timeline || audioLesson.cue_timeline.length === 0) {
+                return { activeDiagramCue: null, activeImageCue: null, activeNodeCue: null, activeBlockCue: null, activeBullets: [] };
+            }
         const timeline = audioLesson.cue_timeline;
-        let latestDiagram = null;
-        let latestImage = null;
-        let latestNode = null;
-        let currentBullets = [];
+                    let latestDiagram = null;
+            let latestImage = null;
+            let latestNode = null;
+            let latestBlock = null;
+            let currentBullets = [];
 
         for (const cue of timeline) {
             if (cue.time <= currentTime) {
@@ -252,22 +253,45 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 } else if (cue.type === 'section') {
                     currentBullets = []; // Clean section break
                     latestImage = null;
-                } else if (cue.type === 'anchor_block') {
-                    latestDiagram = cue;
-                    latestImage = null;
-                    currentBullets = [];
-                }
+                                    } else if (cue.type === 'page_block' || cue.type === 'anchor_block') {
+                        const rawTarget = String(cue.target || '').trim();
+                        const parts = rawTarget.split(':');
+                        let pageNum = null;
+                        let blockIdx = 0;
+                        let sentenceIdx = null;
+
+                        if (parts.length >= 2) {
+                            pageNum = parseInt(parts[0], 10);
+                            blockIdx = parseInt(parts[1], 10);
+                            if (parts.length >= 3 && parts[2] !== '') {
+                                sentenceIdx = parseInt(parts[2], 10);
+                            }
+                        } else if (rawTarget.match(/^B(\d+)/i)) {
+                            blockIdx = parseInt(rawTarget.match(/^B(\d+)/i)[1], 10);
+                        }
+
+                        latestBlock = {
+                            page: pageNum,
+                            blockIndex: isNaN(blockIdx) ? 0 : blockIdx,
+                            sentenceIndex: isNaN(sentenceIdx) ? null : sentenceIdx,
+                            rawTarget: rawTarget,
+                            time: cue.time
+                        };
+                        latestDiagram = null;
+                        latestImage = null;
+                    }
             } else {
                 break;
             }
         }
-        return { 
-            activeDiagramCue: latestDiagram, 
-            activeImageCue: latestImage, 
-            activeNodeCue: latestNode, 
-            activeBullets: currentBullets || [] 
-        };
-    }, [audioLesson, currentTime, visualAssets]);
+                    return { 
+                activeDiagramCue: latestDiagram, 
+                activeImageCue: latestImage, 
+                activeNodeCue: latestNode, 
+                activeBlockCue: latestBlock, 
+                activeBullets: currentBullets || [] 
+            };
+        }, [audioLesson, currentTime, visualAssets]);
 
     const activeCue = activeImageCue || activeDiagramCue;
 
