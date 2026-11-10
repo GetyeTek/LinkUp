@@ -712,22 +712,21 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 });
             }
 
-            const { data: batchPages, error: pagesErr } = await supabase
-                .from('book_pages')
-                .select('id, page_number, content_json, formatted_content_json')
-                .eq('book_id', selectedBook.id)
-                .in('page_number', Array.from(pagesToFetchSet));
+            const { data: batchPages, error: pagesErr } = await supabase.rpc('get_book_page_blocks', {
+                p_book_id: selectedBook.id,
+                p_course_code: selectedBook.course_code,
+                p_page_numbers: Array.from(pagesToFetchSet)
+            });
 
-            console.group(`📚 [MironLive:BatchPages] Loaded for Book "${selectedBook.title}" (ID: ${selectedBook.id})`);
+            console.group(`📚 [MironLive:BatchPages] Loaded via RPC for Book "${selectedBook.title}"`);
             console.log('Requested Page Numbers:', Array.from(pagesToFetchSet));
-            console.log('Supabase Error:', pagesErr);
+            console.log('RPC Error:', pagesErr);
             console.log('Returned Rows:', batchPages?.length || 0);
 
             const blocksMap = {};
             if (Array.isArray(batchPages)) {
                 batchPages.forEach(p => {
-                    const raw = p.formatted_content_json || p.content_json;
-                    const safeBlocks = ensureBlockArray(raw);
+                    const safeBlocks = ensureBlockArray(p.content_json);
                     blocksMap[p.page_number] = safeBlocks;
                     console.log(`  📄 Page ${p.page_number}: Parsed ${safeBlocks.length} block(s)`);
                     if (p.page_number === physicalStart) {
@@ -857,7 +856,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         }
 
-        // Pre-fetch candidate pages for simulator testing with strict book resolution
+        // Pre-fetch candidate pages for simulator testing via RPC
         const targetPagesToSimulate = new Set([11, 12, 13]);
         const simTargetRegex = /\[\[(?:cue|call):page_block:(\d+)/g;
         let pMatch;
@@ -865,38 +864,42 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             targetPagesToSimulate.add(parseInt(pMatch[1], 10));
         }
 
-        // Auto-resolve book reference if starting directly from simulator modal
+        let targetCourse = selectedBook?.course_code || 'ANTH 1012';
         let targetBook = selectedBook;
         if (!targetBook && Array.isArray(books) && books.length > 0) {
             targetBook = books.find(b => 
                 (b.course_code || '').includes('ANTH') || 
                 (b.title || '').toLowerCase().includes('anthro')
-            ) || books[0];
-            if (targetBook) setSelectedBook(targetBook);
+            ) || null;
+            if (targetBook) {
+                targetCourse = targetBook.course_code;
+                setSelectedBook(targetBook);
+            }
         }
 
-        let simQuery = supabase
-            .from('book_pages')
-            .select('id, page_number, content_json, formatted_content_json')
-            .in('page_number', Array.from(targetPagesToSimulate));
-
-        if (targetBook?.id) {
-            simQuery = simQuery.eq('book_id', targetBook.id);
-        }
-
-        const { data: simPages, error: simPagesErr } = await simQuery;
+        const { data: simPages, error: simPagesErr } = await supabase.rpc('get_book_page_blocks', {
+            p_course_code: targetCourse,
+            p_book_id: targetBook?.id || null,
+            p_page_numbers: Array.from(targetPagesToSimulate)
+        });
 
         console.group('🔍 [MironSimulator:Preload]');
-        console.log('Target Course/Book:', targetBook?.title || 'Unknown', '(Book ID:', targetBook?.id || 'Unset', ')');
+        console.log('Target Course:', targetCourse, '| Book ID:', targetBook?.id || '(Auto-resolving in Postgres)');
         console.log('Target Page Numbers:', Array.from(targetPagesToSimulate));
-        console.log('Query Error:', simPagesErr);
-        console.log('Query Result Count:', simPages?.length || 0);
+        console.log('RPC Error:', simPagesErr);
+        console.log('RPC Returned Rows:', simPages?.length || 0);
 
         if (Array.isArray(simPages) && simPages.length > 0) {
+            if (!selectedBook && simPages[0]?.book_title) {
+                setSelectedBook({
+                    id: simPages[0].book_id,
+                    title: simPages[0].book_title,
+                    course_code: simPages[0].course_code
+                });
+            }
             const blocksMap = {};
             simPages.forEach(p => {
-                const r = p.formatted_content_json || p.content_json;
-                const safeBlocks = ensureBlockArray(r);
+                const safeBlocks = ensureBlockArray(p.content_json);
                 blocksMap[p.page_number] = safeBlocks;
                 console.log(`  📄 Page ${p.page_number}: Parsed ${safeBlocks.length} block(s) -> Sample block[0]:`, safeBlocks[0]?.type || '(none)');
             });
@@ -1270,8 +1273,15 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 </div>
             </header>
 
-            {/* Interactive Workspace Body */}
-            <main className={`ml-classroom-body ${stage}`}>
+            {/* Interactive Workspace Body with Universal Tap-to-Wake */}
+            <main 
+                className={`ml-classroom-body ${stage}`}
+                onClick={() => {
+                    if (stage === 'studio' && !isChromeVisible) {
+                        resetInactivityTimer();
+                    }
+                }}
+            >
                 {/* Floating Minimize Button */}
                 <button 
                     className={`ml-page-collapse-btn ${!isChromeVisible && stage === 'studio' ? 'is-hidden' : ''}`}
