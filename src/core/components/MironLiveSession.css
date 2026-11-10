@@ -637,141 +637,54 @@ svg.vis-mobile,
 }
 
 /* ========================================================
-   SCENARIO 2: DOCKED COMPACT BLOCK SHEET (DUAL-STAGE MODE)
+   UNIFIED BOOK PAGE CARRIER (Exact A4 Page - No Faux Cards)
    ======================================================== */
-.ml-stage-block-pane.is-docked {
+.ml-stage-page-carrier {
     width: 100%;
-    max-width: 794px;
-    flex: 0 0 auto;
-    height: 25vh;
-    max-height: 26vh;
-    margin: 0 auto;
-    padding: 0 6px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    animation: slideDownDock 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    z-index: 25;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: height, flex;
 }
 
-@keyframes slideDownDock {
-    from { transform: translateY(-16px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-.ml-stage-snapshot-card {
-    width: 100%;
+.ml-stage-page-carrier.is-full-active {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
     height: 100%;
-    background-color: #ffffff !important;
-    background-image: linear-gradient(#ffffff, #ffffff) !important;
-    border-radius: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
-    color: #111111 !important;
-    -webkit-text-fill-color: #111111 !important;
-    color-scheme: light only !important;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-sizing: border-box;
 }
 
-.ml-snapshot-topbar {
-    background-color: #f8fafc !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    padding: 5px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    flex-shrink: 0;
-}
-
-.ml-snapshot-title {
-    font-size: 0.74rem;
-    font-weight: 700;
-    color: #475569 !important;
-    -webkit-text-fill-color: #475569 !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-}
-
-.ml-snapshot-page-pill {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 0.68rem;
-    font-weight: 700;
-    background: #e2e8f0;
-    color: #475569 !important;
-    -webkit-text-fill-color: #475569 !important;
-    padding: 1px 7px;
-    border-radius: 4px;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-.ml-snapshot-content {
-    flex: 1;
-    min-height: 0;
-    padding: 12px 16px 16px 16px;
-    background-color: #ffffff !important;
-    color: #111111 !important;
-    -webkit-text-fill-color: #111111 !important;
-    font-family: 'Times New Roman', Times, 'Nyala', 'Abyssinica SIL', serif;
-    font-size: clamp(0.72rem, 0.44rem + 1.15vw, 0.98rem);
-    line-height: 1.5;
-    text-align: justify;
-    hyphens: auto;
-    -webkit-hyphens: auto;
-    letter-spacing: normal;
-    word-spacing: normal;
-    text-rendering: optimizeLegibility;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    box-sizing: border-box;
-}
-
-.ml-snapshot-content::-webkit-scrollbar {
-    display: none;
-}
-
-.ml-snapshot-content * {
-    color: inherit !important;
-    -webkit-text-fill-color: inherit !important;
-}
-
-/* Universal Typography & Indentation */
-.ml-stage-fullscreen-page-canvas .book-block,
-.ml-snapshot-content .book-block {
-    margin: 0;
-    padding: 0;
+.ml-stage-page-carrier.is-dual-active {
+    position: relative;
     width: 100%;
-    line-height: inherit;
-    text-align: inherit;
-    font-size: inherit;
-    font-family: inherit;
+    z-index: 15;
 }
 
-.ml-stage-fullscreen-page-canvas .book-block-body,
-.ml-snapshot-content .book-block-body,
-.ml-stage-fullscreen-page-canvas .univ-p-block,
-.ml-snapshot-content .univ-p-block {
-    margin: 0;
-    line-height: inherit;
-    font-size: inherit;
-    font-family: inherit;
+@media (max-width: 768px) {
+    .ml-stage-page-carrier.is-dual-active {
+        flex: 0 0 32vh;
+        height: 32vh;
+        max-height: 34vh;
+        overflow: hidden;
+        border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
 }
 
-.ml-stage-fullscreen-page-canvas .type-paragraph .book-block-body,
-.ml-snapshot-content .type-paragraph .book-block-body,
-.ml-stage-fullscreen-page-canvas .type-paragraph,
-.ml-snapshot-content .type-paragraph {
-    text-indent: 1.6em;
+@media (min-width: 769px) {
+    .ml-cinema-visual-frame.is-dual-stage {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        align-items: center;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0.5rem 1rem;
+    }
+
+    .ml-stage-page-carrier.is-dual-active {
+        height: 100%;
+        overflow: hidden;
+        border-right: 1px solid rgba(56, 189, 248, 0.2);
+    }
 }
 
 /* Realistic Luminous Highlighter */
