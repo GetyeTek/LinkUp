@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { usePlatform, supabase, getComponent, getCachedBook } from '@linkup-platform/sdk-core';
+import { usePlatform, supabase, getComponent, getCachedBook, BookPageCanvas } from '@linkup-platform/sdk-core';
 import FloatingMironOrb from './FloatingMironOrb.jsx';
 import MironConnectionRing from './MironConnectionRing.jsx';
 import './MironLiveSession.css';
@@ -1465,34 +1465,19 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         }}
                                     >
                                         <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
-                                            {/* SCENARIO 1: FULLSCREEN A4 PAGE (Exact BookReader Mode - When no visual assets active) */}
+                                            {/* SCENARIO 1: FULLSCREEN A4 PAGE (Exact BookReader Engine via Core SDK) */}
                                             {activeBlockData && !isDualStage && (
-                                                <div className="ml-stage-fullscreen-page-wrapper" ref={pageSheetRef}>
-                                                    <div className="ml-stage-fullscreen-page-canvas page-canvas is-spotlight-active">
-                                                        {activeBlockData.blocks.map((block, idx) => {
-                                                            const isFocused = idx === activeBlockData.blockIndex;
-                                                            return (
-                                                                <div 
-                                                                    key={idx}
-                                                                    id={`ml-block-${idx}`}
-                                                                    className={`ml-page-block-wrapper ${isFocused ? 'is-focused-block' : 'is-dimmed-block'}`}
-                                                                >
-                                                                    {renderBookBlock ? (
-                                                                        renderBookBlock(block, idx, {
-                                                                            bookTitle: selectedBook?.title,
-                                                                            courseCode: selectedBook?.course_code
-                                                                        })
-                                                                    ) : (
-                                                                        <div 
-                                                                            className="book-block type-paragraph"
-                                                                            dangerouslySetInnerHTML={{ __html: block?.body || '' }} 
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
+                                                <BookPageCanvas
+                                                    blocks={activeBlockData.blocks}
+                                                    pageNumber={activeBlockData.page}
+                                                    bookTitle={selectedBook?.title || 'Curriculum Book'}
+                                                    courseCode={selectedBook?.course_code || ''}
+                                                    prefix={selectedBook?.prefix || ''}
+                                                    focusedBlockIndex={activeBlockData.blockIndex}
+                                                    isSpotlightActive={true}
+                                                    renderBlock={renderBookBlock}
+                                                    className="ml-live-book-stage"
+                                                />
                                             )}
 
                                             {/* SCENARIO 2: DOCKED COMPACT BLOCK SHEET (Dual-Stage Mode - Visuals active below) */}
