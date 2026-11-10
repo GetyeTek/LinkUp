@@ -697,22 +697,26 @@ svg.vis-mobile,
         padding: 0;
     }
 
-    /* Glided Top HUD Dock State */
+    /* Glided Top HUD Dock State (Scaled Full-Width Card) */
     .ml-stage-diagram-pane.is-docked {
         flex: 0 0 auto;
-        height: 18vh;
-        max-height: 20vh;
-        border: 1px solid rgba(56, 189, 248, 0.22);
-        border-radius: 14px;
-        background: rgba(15, 23, 42, 0.65);
-        backdrop-filter: blur(8px);
-        padding: 4px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+        height: 22vh;
+        max-height: 23vh;
+        border: none;
+        background: transparent;
+        padding: 0 2px;
+        box-shadow: none;
+    }
+    .ml-stage-diagram-pane.is-docked .vis-card,
+    .ml-stage-diagram-pane.is-docked .vis-box {
+        height: 100% !important;
+        width: 100% !important;
     }
     .ml-stage-diagram-pane.is-docked .vis-box svg {
-        max-height: 16vh !important;
+        max-height: 22vh !important;
+        height: 100% !important;
         width: 100% !important;
-        height: auto !important;
+        object-fit: contain;
     }
 
     .ml-stage-image-pane {
@@ -727,13 +731,13 @@ svg.vis-mobile,
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
     }
     .ml-stage-image-pane .ml-visual-card-image img {
-        max-height: 38vh;
+        max-height: 36vh;
         width: auto;
         max-width: 100%;
         object-fit: contain;
     }
     .ml-studio-notes-deck {
-        max-height: 28vh;
+        max-height: 26vh;
         padding: 6px 14px calc(14px + env(safe-area-inset-bottom, 10px));
     }
 }
