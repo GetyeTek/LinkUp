@@ -94,7 +94,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [viewState, setViewState] = useState('full');
     const excerptCardRef = useRef(null);
     const [fitScale, setFitScale] = useState(() => (typeof window !== 'undefined' ? Math.min((window.innerWidth - 16) / 794, 1.0) : 0.47));
-    const [excerptHeight, setExcerptHeight] = useState(0);
 
     useEffect(() => {
         const handleResize = () => setFitScale(Math.min((window.innerWidth - 16) / 794, 1.0));
@@ -102,78 +101,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    useEffect(() => {
-        console.group("📏 [MironLive:HeightSync] Dual Stage Layout Diagnostic");
-        console.log("1. State -> isDualStage:", isDualStage, "| activeBlockData:", !!activeBlockData, "| fitScale:", fitScale);
-        
-        if (!isDualStage || !activeBlockData) {
-            console.log("-> Condition not met. Resetting excerptHeight to 0.");
-            setExcerptHeight(0);
-            console.groupEnd();
-            return;
-        }
 
-        let ro = null;
-        let attempt = 0;
-
-        const updateHeight = () => {
-            attempt++;
-            const el = excerptCardRef.current;
-            console.log(`\n[Tick ${attempt}] ref exists?`, !!el);
-            
-            if (el) {
-                const unscaledHeight = el.offsetHeight;
-                const rect = el.getBoundingClientRect();
-                const calcHeight = Math.round(unscaledHeight * fitScale);
-                
-                console.log(`   - offsetHeight (unscaled): ${unscaledHeight}px`);
-                console.log(`   - getBoundingClientRect().height (scaled): ${rect.height}px`);
-                console.log(`   - Computed clamp height (unscaled * scale): ${calcHeight}px`);
-
-                if (unscaledHeight > 0) {
-                    console.log(`   ✅ Dispatching setExcerptHeight(${calcHeight})`);
-                    setExcerptHeight(calcHeight);
-                } else {
-                    console.warn("   ⚠️ Element height is 0. Has it rendered content yet?");
-                }
-
-                if (!ro) {
-                    try {
-                        ro = new ResizeObserver(() => {
-                            console.log("🔄 ResizeObserver triggered update!");
-                            updateHeight();
-                        });
-                        ro.observe(el);
-                        console.log("   👀 ResizeObserver attached.");
-                    } catch (e) {
-                        console.error("   ❌ ResizeObserver err:", e);
-                    }
-                }
-            } else {
-                console.warn("   ⚠️ Ref is null.");
-            }
-        };
-
-        updateHeight();
-        const t1 = setTimeout(updateHeight, 50);
-        const t2 = setTimeout(updateHeight, 200);
-        const t3 = setTimeout(updateHeight, 500);
-        const t4 = setTimeout(updateHeight, 1500); // late check for async fonts
-
-        console.groupEnd();
-
-        return () => {
-            clearTimeout(t1);
-            clearTimeout(t2);
-            clearTimeout(t3);
-            clearTimeout(t4);
-            if (ro) ro.disconnect();
-        };
-    }, [isDualStage, activeBlockData, fitScale]);
-
-    useEffect(() => {
-        console.log("🎛️ [MironLive:Render] excerptHeight state successfully updated to:", excerptHeight, "px");
-    }, [excerptHeight]);
 
     const audioRef = useRef(null);
     const progressBarRef = useRef(null);
