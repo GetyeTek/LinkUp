@@ -93,13 +93,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [pinnedBlockIndex, setPinnedBlockIndex] = useState(0);
     const [viewState, setViewState] = useState('full');
     const excerptCardRef = useRef(null);
-    const [fitScale, setFitScale] = useState(() => (typeof window !== 'undefined' ? Math.min((window.innerWidth - 16) / 794, 1.0) : 0.47));
-
-    useEffect(() => {
-        const handleResize = () => setFitScale(Math.min((window.innerWidth - 16) / 794, 1.0));
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    const [fitScale, setFitScale] = useState(0.47);
 
 
 
@@ -1085,6 +1079,25 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         (activeBlockData && (activeImageAsset || activeDiagramAsset))
     );
     const latestBullet = activeBullets.length > 0 ? activeBullets[activeBullets.length - 1] : null;
+
+    // Fluid viewport & dual-stage responsive scale engine
+    useEffect(() => {
+        const updateScale = () => {
+            if (typeof window === 'undefined') return;
+            const w = window.innerWidth;
+            if (w <= 768) {
+                setFitScale(Math.min((w - 20) / 794, 0.52));
+            } else if (isDualStage) {
+                const availW = Math.min(w * 0.52, 640);
+                setFitScale(Math.min(availW / 794, 0.82));
+            } else {
+                setFitScale(Math.min((w - 32) / 794, 1.0));
+            }
+        };
+        updateScale();
+        window.addEventListener('resize', updateScale);
+        return () => window.removeEventListener('resize', updateScale);
+    }, [isDualStage]);
 
     return (
         <div className="ml-overlay">
