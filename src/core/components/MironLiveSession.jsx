@@ -1466,20 +1466,40 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         }}
                                     >
                                         <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
-                                            {/* UNIFIED A4 BOOK PAGE STAGE: Rendered as-is without compact faux-cards */}
-                                            {activeBlockData && (
-                                                <div className={`ml-stage-page-carrier ${isDualStage ? 'is-dual-active' : 'is-full-active'}`}>
-                                                    <BookPageCanvas
-                                                        blocks={activeBlockData.blocks}
-                                                        pageNumber={activeBlockData.page}
-                                                        bookTitle={selectedBook?.title || 'Curriculum Book'}
-                                                        courseCode={selectedBook?.course_code || ''}
-                                                        prefix={selectedBook?.prefix || ''}
-                                                        focusedBlockIndex={activeBlockData.blockIndex}
-                                                        isSpotlightActive={true}
-                                                        renderBlock={renderBookBlock}
-                                                        className="ml-live-book-stage"
-                                                    />
+                                            {/* FULL A4 PAGE: Initial full-size textbook view before breakdown cue */}
+                                            {activeBlockData && !isDualStage && (
+                                                <BookPageCanvas
+                                                    blocks={activeBlockData.blocks}
+                                                    pageNumber={activeBlockData.page}
+                                                    bookTitle={selectedBook?.title || 'Curriculum Book'}
+                                                    courseCode={selectedBook?.course_code || ''}
+                                                    prefix={selectedBook?.prefix || ''}
+                                                    focusedBlockIndex={activeBlockData.blockIndex}
+                                                    isSpotlightActive={true}
+                                                    renderBlock={renderBookBlock}
+                                                    className="ml-live-book-stage"
+                                                />
+                                            )}
+
+                                            {/* TIGHT EXCERPT CARD: Content-fit white paper block when visual breakdown cue fires */}
+                                            {activeBlockData && isDualStage && (
+                                                <div className="ml-stage-excerpt-pane">
+                                                    <div className="bpc-page-canvas ml-tight-excerpt-card is-spotlight-active">
+                                                        <div className="bpc-block-target is-focused">
+                                                            {renderBookBlock ? (
+                                                                renderBookBlock(activeBlockData.blocks[activeBlockData.blockIndex], activeBlockData.blockIndex, {
+                                                                    bookTitle: selectedBook?.title,
+                                                                    courseCode: selectedBook?.course_code,
+                                                                    prefix: selectedBook?.prefix
+                                                                })
+                                                            ) : (
+                                                                <div 
+                                                                    className="book-block type-paragraph"
+                                                                    dangerouslySetInnerHTML={{ __html: activeBlockData.blocks[activeBlockData.blockIndex]?.body || '' }} 
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
 
