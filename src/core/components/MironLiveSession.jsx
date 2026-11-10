@@ -49,9 +49,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [selectedSection, setSelectedSection] = useState(null);
     const [expandedChapters, setExpandedChapters] = useState(new Set([0]));
     
-    // Audio Lesson & Visual Asset Cache
+    // Audio Lesson, Visual Asset & Pre-Fetched Textbook Blocks Cache
     const [audioLesson, setAudioLesson] = useState(null);
     const [visualAssets, setVisualAssets] = useState({});
+    const [cachedPageBlocks, setCachedPageBlocks] = useState({});
     const [sectionPages, setSectionPages] = useState([]);
     const [isLoadingLesson, setIsLoadingLesson] = useState(false);
     const [availableLessonSections, setAvailableLessonSections] = useState(new Set());
@@ -641,25 +642,43 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             console.groupEnd();
             setVisualAssets(assetMap);
 
-            // 3. Preload Book Page Blocks for Anchor Mode
+            // 3. Pre-Flight Batch Cache for Referenced Pages (0ms instant lookup during playback)
             const offset = selectedBook.page_offset || 0;
             const logicalStart = sectionNode.page || 1;
             const physicalStart = Math.max(1, logicalStart + offset);
 
-            const { data: pages } = await supabase
+            const pagesToFetchSet = new Set([physicalStart]);
+            if (lesson?.cue_timeline && Array.isArray(lesson.cue_timeline)) {
+                lesson.cue_timeline.forEach(cue => {
+                    if (cue.type === 'page_block' || cue.type === 'anchor_block') {
+                        const rawTarget = String(cue.target || '').trim();
+                        const parts = rawTarget.split(':');
+                        if (parts.length >= 2) {
+                            const pNum = parseInt(parts[0], 10);
+                            if (!isNaN(pNum)) pagesToFetchSet.add(pNum);
+                        }
+                    }
+                });
+            }
+
+            const { data: batchPages, error: pagesErr } = await supabase
                 .from('book_pages')
                 .select('id, page_number, content_json')
                 .eq('book_id', selectedBook.id)
-                .eq('page_number', physicalStart)
-                .maybeSingle();
+                .in('page_number', Array.from(pagesToFetchSet));
 
-            if (pages?.content_json) {
-                const raw = pages.content_json;
-                const safeBlocks = Array.isArray(raw) ? raw : (raw.blocks || raw.content || Object.values(raw));
-                setSectionPages(safeBlocks);
-            } else {
-                setSectionPages([]);
+            const blocksMap = {};
+            if (Array.isArray(batchPages)) {
+                batchPages.forEach(p => {
+                    const raw = p.content_json;
+                    const safeBlocks = Array.isArray(raw) ? raw : (raw?.blocks || raw?.content || Object.values(raw || {}));
+                    blocksMap[p.page_number] = safeBlocks;
+                    if (p.page_number === physicalStart) {
+                        setSectionPages(safeBlocks);
+                    }
+                });
             }
+            setCachedPageBlocks(blocksMap);
 
             if (lesson && lesson.audio_url) {
                 // Resolve section offset within master track
@@ -780,6 +799,28 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         }
 
+        // Pre-fetch candidate pages for simulator testing
+        const targetPagesToSimulate = new Set([11, 12, 13]);
+        const simTargetRegex = /\[\[(?:cue|call):page_block:(\d+)/g;
+        let pMatch;
+        while ((pMatch = simTargetRegex.exec(raw)) !== null) {
+            targetPagesToSimulate.add(parseInt(pMatch[1], 10));
+        }
+
+        const { data: simPages } = await supabase
+            .from('book_pages')
+            .select('page_number, content_json')
+            .in('page_number', Array.from(targetPagesToSimulate));
+
+        if (Array.isArray(simPages) && simPages.length > 0) {
+            const blocksMap = {};
+            simPages.forEach(p => {
+                const r = p.content_json;
+                blocksMap[p.page_number] = Array.isArray(r) ? r : (r?.blocks || r?.content || Object.values(r || {}));
+            });
+            setCachedPageBlocks(blocksMap);
+        }
+
         const cueRegex = /\[\[(?:cue|call):([a-zA-Z0-9_\-]+)(?::([\s\S]*?))?\]\]/g;
         const cues = [];
         const sections = [];
@@ -888,15 +929,56 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         );
     }
 
-    // Resolve Active Visual Items from Cache (Dual-Stage Architecture)
+    // Resolve Active Visual Items & Page Block from Cache (Dual-Stage Architecture)
     const activeDiagramAsset = activeDiagramCue ? visualAssets[activeDiagramCue.target] : null;
     const activeImageAsset = activeImageCue ? (visualAssets[activeImageCue.target] || {
         asset_type: 'image',
         image_url: activeImageCue.target,
         title: activeImageCue.target
     }) : null;
+
+    // Resolve Active Page Block data
+    const activeBlockData = useMemo(() => {
+        if (!activeBlockCue) return null;
+        const targetPage = activeBlockCue.page || selectedSection?.page || 1;
+        const pageBlocks = cachedPageBlocks[targetPage] || sectionPages || [];
+        const rawBlock = pageBlocks[activeBlockCue.blockIndex];
+        if (!rawBlock) return null;
+
+        // Apply sentence-level highlight non-destructively
+        if (activeBlockCue.sentenceIndex !== null && activeBlockCue.sentenceIndex !== undefined) {
+            const cloned = JSON.parse(JSON.stringify(rawBlock));
+            if (typeof cloned.body === 'string' && cloned.body.trim()) {
+                const matches = cloned.body.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g);
+                if (matches && matches[activeBlockCue.sentenceIndex] !== undefined) {
+                    const targetSentence = matches[activeBlockCue.sentenceIndex];
+                    const highlighted = `<mark class="miron-active-sentence">${targetSentence.trim()}</mark>${targetSentence.endsWith(' ') ? ' ' : ''}`;
+                    matches[activeBlockCue.sentenceIndex] = highlighted;
+                    cloned.body = matches.join('');
+                }
+            } else if (Array.isArray(cloned.items) && cloned.items[activeBlockCue.sentenceIndex] !== undefined) {
+                const targetItem = cloned.items[activeBlockCue.sentenceIndex];
+                const itemText = typeof targetItem === 'string' ? targetItem : (targetItem?.text || '');
+                if (itemText) {
+                    const highlighted = `<mark class="miron-active-sentence">${itemText}</mark>`;
+                    if (typeof targetItem === 'string') {
+                        cloned.items[activeBlockCue.sentenceIndex] = highlighted;
+                    } else {
+                        cloned.items[activeBlockCue.sentenceIndex] = { ...targetItem, text: highlighted };
+                    }
+                }
+            }
+            return { block: cloned, page: targetPage, blockIndex: activeBlockCue.blockIndex };
+        }
+
+        return { block: rawBlock, page: targetPage, blockIndex: activeBlockCue.blockIndex };
+    }, [activeBlockCue, cachedPageBlocks, sectionPages, selectedSection]);
+
     const hasActiveNode = Boolean(activeNodeCue?.target && activeNodeCue.target !== 'overview' && activeNodeCue.target !== 'reset');
-    const isDualStage = Boolean(activeDiagramAsset && activeImageAsset && hasActiveNode);
+    const isDualStage = Boolean(
+        (activeDiagramAsset && activeImageAsset && hasActiveNode) ||
+        (activeBlockData && (activeImageAsset || activeDiagramAsset))
+    );
     const latestBullet = activeBullets.length > 0 ? activeBullets[activeBullets.length - 1] : null;
 
     return (
@@ -1270,8 +1352,33 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         }}
                                     >
                                         <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
+                                            {/* A4 TEXTBOOK BLOCK SNAPSHOT (Hero in solo mode, Docks to top in dual-stage) */}
+                                            {activeBlockData && (
+                                                <div className={`ml-stage-block-pane ${isDualStage ? 'is-docked' : 'is-hero'}`}>
+                                                    <div className="ml-stage-snapshot-card">
+                                                        <div className="ml-snapshot-topbar">
+                                                            <div className="ml-snapshot-book-info">
+                                                                <span className="ml-snapshot-badge"><i className="fas fa-bookmark"></i> TEXTBOOK BLOCK</span>
+                                                                <span className="ml-snapshot-title">{selectedBook?.title || 'Curriculum Book'}</span>
+                                                            </div>
+                                                            <span className="ml-snapshot-page-pill">Page {activeBlockData.page} • #{activeBlockData.blockIndex}</span>
+                                                        </div>
+                                                        <div className="ml-snapshot-content page-canvas">
+                                                            {renderBookBlock ? (
+                                                                renderBookBlock(activeBlockData.block, activeBlockData.blockIndex, {
+                                                                    bookTitle: selectedBook?.title,
+                                                                    courseCode: selectedBook?.course_code
+                                                                })
+                                                            ) : (
+                                                                <p>{activeBlockData.block?.body || 'Referencing section text...'}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* PERSISTENT DIAGRAM PANE (Glides to top HUD without remounting) */}
-                                            {activeDiagramAsset && (!activeImageAsset || hasActiveNode) && (
+                                            {!activeBlockData && activeDiagramAsset && (!activeImageAsset || hasActiveNode) && (
                                                 <div className={`ml-stage-diagram-pane ${isDualStage ? 'is-docked' : 'is-hero'}`}>
                                                     {activeDiagramAsset.asset_type === 'diagram_svg' ? (
                                                         <div 
@@ -1302,7 +1409,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             )}
 
                                             {/* STANDALONE NOTE CARD (When active cue is a note card) */}
-                                            {!activeDiagramAsset && !activeImageAsset && activeCue?.type === 'note_card' && (
+                                            {!activeBlockData && !activeDiagramAsset && !activeImageAsset && activeCue?.type === 'note_card' && (
                                                 <div className="ml-visual-card-note">
                                                     <div className="ml-note-badge"><i className="fas fa-bolt"></i> KEY CONCEPT</div>
                                                     <h3>{activeCue.target?.title || 'Core Takeaway'}</h3>
@@ -1310,8 +1417,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 </div>
                                             )}
 
-                                            {/* DEFAULT SOUNDWAVE STAGE (When no visuals are active) */}
-                                            {!activeDiagramAsset && !activeImageAsset && activeCue?.type !== 'note_card' && (
+                                            {/* DEFAULT SOUNDWAVE STAGE (When no visuals or blocks are active) */}
+                                            {!activeBlockData && !activeDiagramAsset && !activeImageAsset && activeCue?.type !== 'note_card' && (
                                                 <div className="ml-default-soundwave-stage">
                                                     <div className="ml-soundwave-ambient-glow"></div>
                                                     <div className="ml-soundwave-avatar-wrapper">
@@ -1506,31 +1613,28 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 <button 
                                     className="ml-debug-sample-btn"
                                     onClick={() => setDebugScriptText(`[[cue:section:1.1:ትርጓሜ እና የባዮ-ባህላዊ ዑደት]]
-እንኳን ወደ አንትሮፖሎጂ ትምህርት ምዕራፍ አንድ በደህና መጣችሁ። 
-[[cue:show_diagram:vis-01-biocultural-loop]]
-ይህን የባዮ-ባህላዊ የዝግመተ-ለውጥ ዑደት ተመልከቱ።
-[[cue:zoom:biology]]
-[[cue:bullet:ባዮሎጂያዊ መዋቅር፦ የሰውነት አካል፣ ጀነቲክስ እና የአንጎል መጠን]]
-የሰውነታችን ባዮሎጂ ለህልውናችን አስፈላጊውን አናቶሚካዊ አወቃቀር ያቀርባል።
-[[cue:zoom:culture-mod-bio]]
-[[cue:bullet:ባህል ባዮሎጂን ይቀይራል፦ እሳትና ምግብ ማብሰል ጥርስን አሳንሶ አንጎልን አሳደገ]]
-የላይኛውን ቅስት እንይ፦ ባህል ባዮሎጂን በቀጥታ ይለውጣል።
-[[cue:zoom:overview]]
+እንኳን ወደ አንትሮፖሎጂ ትምህርት ምዕራፍ አንድ በደህና መጣችሁ።
+[[cue:page_block:12:3:1]]
+የመማሪያ መጽሐፋችንን ገጽ 12 ላይ ያለውን ይህንን አንቀጽ ተመልከቱ።
+[[cue:bullet:ባዮ-ባህላዊ ማንነት፦ የማይነጣጠሉ ሁለት ወሳኝ ምሰሶዎች]]
+የሰው ልጅ ሁለት የማይነጣጠሉ ዋና ዋና ባህሪያት አሉት፦ ባዮሎጂካል እና ባህላዊ።
 [[cue:show_image:U01_01_sec1.1_scope_human_diversity.png]]
+ባህልና ባዮሎጂ አንዱ ሌላውን እንዴት እንደሚቀርጽ በዚህ ምስል ላይ በግልጽ እንመልከት።
 [[cue:bullet:ዓለም አቀፍ ልዩነት፦ ከአርክቲክ አዳኞች እስከ አፍሪካ አርብቶ አደሮች]]
-ከአርክቲክ አዳኞች እስከ አፍሪካ አርብቶ አደሮች ድረስ ልዩነቶችን እናጠናለን።
+ከአርክቲክ አዳኞች እስከ አፍሪካ አርብቶ አደሮች ድረስ ያሉትን ልዩነቶች እናጠናለን።
 
-[[cue:section:1.2:አራቱ መሰረታዊ የአንትሮፖሎጂ ዘርፎች]]
-አንትሮፖሎጂ ጥናቱን በአራት ዋና ዋና ምሰሶዎች ይከፍላል።
+[[cue:section:1.2:የአንትሮፖሎጂ ትርጓሜ ጥልቀት]]
+ቀጥሎ ደግሞ በገጽ 12 ላይ የተተነተነውን ፍቺ እንይ።
+[[cue:page_block:12:4:0]]
+ይህንን ትርጓሜ በጥልቀት ስንመለከተው፣ አንትሮፖሎጂ የሰውን ልጅ ከጥንት እስከ ዛሬ በሙሉ ማንነቱ ይመረምራል።
 [[cue:show_diagram:vis-04-subfield-taxonomy]]
 [[cue:zoom:biological]]
-[[cue:bullet:ባዮሎጂካል አንትሮፖሎጂ፦ ቅሪተ-አካላት እና ጀነቲክስ]]
-አንደኛው ዘርፍ፦ ባዮሎጂካል አንትሮፖሎጂ የዝግመተ ለውጥ ቅሪተ-አካላትን ይመረምራል።
+[[cue:bullet:አራቱ ዘርፎች፦ ባዮሎጂካል፣ አርኪኦሎጂ፣ ሊንግዊስቲክስ እና ማህበራዊ]]
+አንትሮፖሎጂ ጥናቱን በአራት ዋና ዋና ምሰሶዎች ይከፍላል።
 [[cue:show_image:U01_02_sec1.2.1_paleo_fossil_excavation.png]]
-[[cue:bullet:የኢትዮጵያ አፋር፦ ድንቅነሽ (ሉሲ) በሁለት እግር መቆም ከአንጎል ማደግ ቀድሞ እንደመጣ አረጋገጠች]]
 በኢትዮጵያ ስምጥ ሸለቆ የተገኘችው ድንቅነሽ ወይም ሉሲ፣ በሁለት እግር መቆም ከአንጎል ማደግ እንደሚቀድም አረጋገጠች።`)}
                                 >
-                                    <i className="fas fa-wand-magic-sparkles"></i> Load Anthro 1012 Sample
+                                    <i className="fas fa-wand-magic-sparkles"></i> Load Anthro 1012 Sample (Textbook Block + Dual Stage)
                                 </button>
                                 <button 
                                     className="ml-debug-start-btn"
