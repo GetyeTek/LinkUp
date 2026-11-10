@@ -16,6 +16,33 @@ const proxyUrl = (url) => {
     return url.replace(/https:\/\/[^/]+\.supabase\.co/gi, 'https://linkup-gateway.getyeteklu2.workers.dev');
 };
 
+const ensureBlockArray = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && typeof parsed === 'object') {
+                if (Array.isArray(parsed.content)) return parsed.content;
+                if (Array.isArray(parsed.blocks)) return parsed.blocks;
+                return [parsed];
+            }
+        } catch (e) {
+            console.warn('[Miron:JSONParseError] Failed to parse block JSON string:', e.message);
+            return [];
+        }
+    }
+    if (typeof raw === 'object') {
+        if (Array.isArray(raw.content)) return raw.content;
+        if (Array.isArray(raw.blocks)) return raw.blocks;
+        const values = Object.values(raw);
+        if (values.length > 0 && typeof values[0] === 'object') return values;
+        return [raw];
+    }
+    return [];
+};
+
 const parseBulletItem = (rawText) => {
     if (!rawText) return { glyph: '—', content: '' };
     const trimmed = rawText.trim();
@@ -687,21 +714,28 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
             const { data: batchPages, error: pagesErr } = await supabase
                 .from('book_pages')
-                .select('id, page_number, content_json')
+                .select('id, page_number, content_json, formatted_content_json')
                 .eq('book_id', selectedBook.id)
                 .in('page_number', Array.from(pagesToFetchSet));
+
+            console.group(`📚 [MironLive:BatchPages] Loaded for Book "${selectedBook.title}" (ID: ${selectedBook.id})`);
+            console.log('Requested Page Numbers:', Array.from(pagesToFetchSet));
+            console.log('Supabase Error:', pagesErr);
+            console.log('Returned Rows:', batchPages?.length || 0);
 
             const blocksMap = {};
             if (Array.isArray(batchPages)) {
                 batchPages.forEach(p => {
-                    const raw = p.content_json;
-                    const safeBlocks = Array.isArray(raw) ? raw : (raw?.blocks || raw?.content || Object.values(raw || {}));
+                    const raw = p.formatted_content_json || p.content_json;
+                    const safeBlocks = ensureBlockArray(raw);
                     blocksMap[p.page_number] = safeBlocks;
+                    console.log(`  📄 Page ${p.page_number}: Parsed ${safeBlocks.length} block(s)`);
                     if (p.page_number === physicalStart) {
                         setSectionPages(safeBlocks);
                     }
                 });
             }
+            console.groupEnd();
             setCachedPageBlocks(blocksMap);
 
             if (lesson && lesson.audio_url) {
@@ -823,7 +857,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             }
         }
 
-        // Pre-fetch candidate pages for simulator testing
+        // Pre-fetch candidate pages for simulator testing with strict book resolution
         const targetPagesToSimulate = new Set([11, 12, 13]);
         const simTargetRegex = /\[\[(?:cue|call):page_block:(\d+)/g;
         let pMatch;
@@ -831,19 +865,46 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             targetPagesToSimulate.add(parseInt(pMatch[1], 10));
         }
 
-        const { data: simPages } = await supabase
+        // Auto-resolve book reference if starting directly from simulator modal
+        let targetBook = selectedBook;
+        if (!targetBook && Array.isArray(books) && books.length > 0) {
+            targetBook = books.find(b => 
+                (b.course_code || '').includes('ANTH') || 
+                (b.title || '').toLowerCase().includes('anthro')
+            ) || books[0];
+            if (targetBook) setSelectedBook(targetBook);
+        }
+
+        let simQuery = supabase
             .from('book_pages')
-            .select('page_number, content_json')
+            .select('id, page_number, content_json, formatted_content_json')
             .in('page_number', Array.from(targetPagesToSimulate));
+
+        if (targetBook?.id) {
+            simQuery = simQuery.eq('book_id', targetBook.id);
+        }
+
+        const { data: simPages, error: simPagesErr } = await simQuery;
+
+        console.group('🔍 [MironSimulator:Preload]');
+        console.log('Target Course/Book:', targetBook?.title || 'Unknown', '(Book ID:', targetBook?.id || 'Unset', ')');
+        console.log('Target Page Numbers:', Array.from(targetPagesToSimulate));
+        console.log('Query Error:', simPagesErr);
+        console.log('Query Result Count:', simPages?.length || 0);
 
         if (Array.isArray(simPages) && simPages.length > 0) {
             const blocksMap = {};
             simPages.forEach(p => {
-                const r = p.content_json;
-                blocksMap[p.page_number] = Array.isArray(r) ? r : (r?.blocks || r?.content || Object.values(r || {}));
+                const r = p.formatted_content_json || p.content_json;
+                const safeBlocks = ensureBlockArray(r);
+                blocksMap[p.page_number] = safeBlocks;
+                console.log(`  📄 Page ${p.page_number}: Parsed ${safeBlocks.length} block(s) -> Sample block[0]:`, safeBlocks[0]?.type || '(none)');
             });
             setCachedPageBlocks(blocksMap);
+        } else {
+            console.warn('⚠️ No page records returned for simulation pages:', Array.from(targetPagesToSimulate));
         }
+        console.groupEnd();
 
         const cueRegex = /\[\[(?:cue|call):([a-zA-Z0-9_\-]+)(?::([\s\S]*?))?\]\]/g;
         const cues = [];
@@ -967,6 +1028,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         const targetPage = activeBlockCue.page || selectedSection?.page || 1;
         const pageBlocks = cachedPageBlocks[targetPage] || sectionPages || [];
         const rawBlock = pageBlocks[activeBlockCue.blockIndex];
+
+        console.log(`🎯 [MironLive:BlockResolver] Cue:`, activeBlockCue, `| TargetPage: ${targetPage} | AvailableBlocksOnPage: ${pageBlocks.length} | RawBlockFound:`, !!rawBlock, rawBlock?.type || '(undefined)');
+
         if (!rawBlock) return null;
 
         // Apply sentence-level highlight non-destructively
@@ -1394,7 +1458,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                                     courseCode: selectedBook?.course_code
                                                                 })
                                                             ) : (
-                                                                <p>{activeBlockData.block?.body || 'Referencing section text...'}</p>
+                                                                <div 
+                                                                    className="univ-p-block"
+                                                                    dangerouslySetInnerHTML={{ __html: activeBlockData.block?.body || '' }} 
+                                                                />
                                                             )}
                                                         </div>
                                                     </div>
