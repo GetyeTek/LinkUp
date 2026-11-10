@@ -840,7 +840,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (!raw) return;
 
         // Auto-hydrate visual assets if not yet loaded
-        const targetCourse = selectedBook?.course_code || 'ANTH 1012';
+        let targetCourse = selectedBook?.course_code || 'ANTH 1012';
         if (Object.keys(visualAssets).length === 0) {
             const codeWithSpace = targetCourse.trim();
             const codeWithUnderscore = codeWithSpace.replace(/\s+/g, '_');
@@ -864,7 +864,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             targetPagesToSimulate.add(parseInt(pMatch[1], 10));
         }
 
-        let targetCourse = selectedBook?.course_code || 'ANTH 1012';
         let targetBook = selectedBook;
         if (!targetBook && Array.isArray(books) && books.length > 0) {
             targetBook = books.find(b => 
