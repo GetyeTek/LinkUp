@@ -57,6 +57,7 @@ function parseScriptCues(rawScript) {
                 anchorWord: anchorWord.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase()
             });
         } else {
+            // Handles visual cues: show_diagram, show_image, zoom, bullet, note_card, and page_block (e.g. page_block:12:3:1)
             visualCues.push({
                 type: cueType,
                 target: rawTarget,
