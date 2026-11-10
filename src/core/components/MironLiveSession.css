@@ -614,32 +614,96 @@ svg.vis-mobile,
 }
 
 /* ========================================================
-   AUTHENTIC A4 TEXTBOOK BLOCK SHEET & STEADICAM SPOTLIGHT
+   SCENARIO 1: FULLSCREEN A4 PAGE CANVAS (EXACT BOOKREADER)
    ======================================================== */
-.ml-stage-block-pane {
+.ml-stage-fullscreen-page-wrapper {
     width: 100%;
-    max-width: 794px;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    padding: 48px 8px 84px 8px;
     box-sizing: border-box;
-    margin: 0 auto;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    padding: 0 6px;
-    overflow: hidden;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    z-index: 10;
+}
+.ml-stage-fullscreen-page-wrapper::-webkit-scrollbar {
+    display: none;
 }
 
-.ml-stage-block-pane.is-hero {
-    flex: 1 1 auto;
-    height: 100%;
-    max-height: 56vh;
+.ml-stage-fullscreen-page-canvas {
+    width: 100%;
+    max-width: 794px;
+    min-height: 1123px;
+    background-color: #ffffff !important;
+    background-image: linear-gradient(#ffffff, #ffffff) !important;
+    color: #111111 !important;
+    -webkit-text-fill-color: #111111 !important;
+    color-scheme: light only !important;
+    padding: 50px 48px 60px 48px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    box-shadow: 0 12px 45px rgba(0, 0, 0, 0.7);
+    font-family: 'Times New Roman', Times, 'Nyala', 'Abyssinica SIL', serif;
+    font-size: clamp(0.74rem, 0.46rem + 1.15vw, 0.98rem);
+    line-height: 1.55;
+    text-align: justify;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    text-rendering: optimizeLegibility;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: fadeInCard 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+.ml-stage-fullscreen-page-canvas * {
+    color: inherit !important;
+    -webkit-text-fill-color: inherit !important;
+}
+
+/* Steadicam Spotlight Dimming on Full Page */
+.ml-stage-fullscreen-page-canvas.is-spotlight-active .ml-page-block-wrapper {
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+    will-change: opacity, filter;
+    width: 100%;
+    scroll-margin-top: 140px;
+}
+
+.ml-stage-fullscreen-page-canvas.is-spotlight-active .ml-page-block-wrapper.is-dimmed-block {
+    opacity: 0.22;
+    filter: grayscale(40%) blur(0.2px);
+}
+
+.ml-stage-fullscreen-page-canvas.is-spotlight-active .ml-page-block-wrapper.is-focused-block {
+    opacity: 1;
+    filter: none;
+}
+
+/* ========================================================
+   SCENARIO 2: DOCKED COMPACT BLOCK SHEET (DUAL-STAGE MODE)
+   ======================================================== */
 .ml-stage-block-pane.is-docked {
+    width: 100%;
+    max-width: 794px;
     flex: 0 0 auto;
-    height: 26vh;
-    max-height: 28vh;
-    margin-top: 0;
+    height: 25vh;
+    max-height: 26vh;
+    margin: 0 auto;
+    padding: 0 6px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    animation: slideDownDock 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    z-index: 25;
+}
+
+@keyframes slideDownDock {
+    from { transform: translateY(-16px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 .ml-stage-snapshot-card {
@@ -647,23 +711,22 @@ svg.vis-mobile,
     height: 100%;
     background-color: #ffffff !important;
     background-image: linear-gradient(#ffffff, #ffffff) !important;
-    border-radius: 12px;
+    border-radius: 10px;
     border: 1px solid rgba(0, 0, 0, 0.12);
-    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
     color: #111111 !important;
     -webkit-text-fill-color: #111111 !important;
     color-scheme: light only !important;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: fadeInCard 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     box-sizing: border-box;
 }
 
 .ml-snapshot-topbar {
     background-color: #f8fafc !important;
     border-bottom: 1px solid #e2e8f0 !important;
-    padding: 6px 14px;
+    padding: 5px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -675,8 +738,8 @@ svg.vis-mobile,
 .ml-snapshot-title {
     font-size: 0.74rem;
     font-weight: 700;
-    color: #334155 !important;
-    -webkit-text-fill-color: #334155 !important;
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -700,13 +763,13 @@ svg.vis-mobile,
 .ml-snapshot-content {
     flex: 1;
     min-height: 0;
-    padding: 16px 20px 24px 20px;
+    padding: 12px 16px 16px 16px;
     background-color: #ffffff !important;
     color: #111111 !important;
     -webkit-text-fill-color: #111111 !important;
     font-family: 'Times New Roman', Times, 'Nyala', 'Abyssinica SIL', serif;
     font-size: clamp(0.72rem, 0.44rem + 1.15vw, 0.98rem);
-    line-height: 1.55;
+    line-height: 1.5;
     text-align: justify;
     hyphens: auto;
     -webkit-hyphens: auto;
@@ -717,7 +780,6 @@ svg.vis-mobile,
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     box-sizing: border-box;
-    scroll-behavior: smooth;
 }
 
 .ml-snapshot-content::-webkit-scrollbar {
@@ -729,33 +791,8 @@ svg.vis-mobile,
     -webkit-text-fill-color: inherit !important;
 }
 
-/* Steadicam Page Spotlight & Backdrop Dimming */
-.ml-page-canvas-sheet {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    width: 100%;
-}
-
-.ml-page-block-wrapper {
-    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-                filter 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    will-change: opacity, filter;
-    width: 100%;
-    scroll-margin-top: 10px;
-}
-
-.ml-page-block-wrapper.is-dimmed-block {
-    opacity: 0.26;
-    filter: grayscale(40%) blur(0.2px);
-}
-
-.ml-page-block-wrapper.is-focused-block {
-    opacity: 1;
-    filter: none;
-}
-
+/* Universal Typography & Indentation */
+.ml-stage-fullscreen-page-canvas .book-block,
 .ml-snapshot-content .book-block {
     margin: 0;
     padding: 0;
@@ -766,7 +803,9 @@ svg.vis-mobile,
     font-family: inherit;
 }
 
+.ml-stage-fullscreen-page-canvas .book-block-body,
 .ml-snapshot-content .book-block-body,
+.ml-stage-fullscreen-page-canvas .univ-p-block,
 .ml-snapshot-content .univ-p-block {
     margin: 0;
     line-height: inherit;
@@ -774,16 +813,17 @@ svg.vis-mobile,
     font-family: inherit;
 }
 
-/* Authentic Academic First-Line Indentation */
+.ml-stage-fullscreen-page-canvas .type-paragraph .book-block-body,
 .ml-snapshot-content .type-paragraph .book-block-body,
+.ml-stage-fullscreen-page-canvas .type-paragraph,
 .ml-snapshot-content .type-paragraph {
     text-indent: 1.6em;
 }
 
-/* Luminous Academic Highlighter with Multi-Line Box Clone */
+/* Realistic Luminous Highlighter */
 mark.miron-active-sentence,
 .miron-active-sentence {
-    background-color: rgba(254, 240, 138, 0.82) !important;
+    background-color: rgba(254, 240, 138, 0.85) !important;
     color: #000000 !important;
     -webkit-text-fill-color: #000000 !important;
     padding: 1px 4px !important;
@@ -796,28 +836,13 @@ mark.miron-active-sentence,
 }
 
 @media (max-width: 768px) {
-    .ml-stage-block-pane {
-        padding: 0 4px;
-    }
-    .ml-stage-block-pane.is-hero {
-        flex: 1 1 auto;
-        max-height: 52vh;
+    .ml-stage-fullscreen-page-canvas {
+        padding: 24px 16px 40px 16px;
+        min-height: auto;
     }
     .ml-stage-block-pane.is-docked {
-        flex: 0 0 auto;
-        height: 25vh;
-        max-height: 27vh;
-    }
-    .ml-snapshot-content {
-        padding: 12px 14px 20px 14px;
-        line-height: 1.48;
-    }
-}
-
-@media (min-width: 769px) {
-    .ml-snapshot-content {
-        padding: 24px 36px;
-        line-height: 1.55;
+        height: 24vh;
+        max-height: 25vh;
     }
 }
 
