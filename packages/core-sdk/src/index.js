@@ -7,6 +7,7 @@ export { logQuestionAttempt, logBatchQuestionAttempts, evaluateQuestionAnswer } 
 export { telemetry } from './telemetry.js';
 export { GoldBadge } from './components/GoldBadge.jsx';
 export { default as FullscreenMediaGallery } from './components/FullscreenMediaGallery.jsx';
+export { default as BookPageCanvas } from './components/BookPageCanvas.jsx';
 export * from './deviceSession.js';
 import translations from './translations.json';
 export { translations };
