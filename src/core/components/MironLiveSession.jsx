@@ -92,6 +92,31 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [viewMode, setViewMode] = useState('cinema'); // 'cinema' | 'anchor'
     const [pinnedBlockIndex, setPinnedBlockIndex] = useState(0);
     const [viewState, setViewState] = useState('full');
+    const excerptCardRef = useRef(null);
+    const [fitScale, setFitScale] = useState(() => (typeof window !== 'undefined' ? Math.min((window.innerWidth - 16) / 794, 1.0) : 0.47));
+    const [excerptHeight, setExcerptHeight] = useState(0);
+
+    useEffect(() => {
+        const handleResize = () => setFitScale(Math.min((window.innerWidth - 16) / 794, 1.0));
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        if (isDualStage && activeBlockData && excerptCardRef.current) {
+            const updateHeight = () => {
+                if (excerptCardRef.current) {
+                    setExcerptHeight(Math.round(excerptCardRef.current.offsetHeight * fitScale));
+                }
+            };
+            updateHeight();
+            const ro = new ResizeObserver(updateHeight);
+            ro.observe(excerptCardRef.current);
+            return () => ro.disconnect();
+        } else {
+            setExcerptHeight(0);
+        }
+    }, [isDualStage, activeBlockData, fitScale]);
 
     const audioRef = useRef(null);
     const progressBarRef = useRef(null);
@@ -1481,23 +1506,38 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 />
                                             )}
 
-                                            {/* TIGHT EXCERPT CARD: Content-fit white paper block when visual breakdown cue fires */}
+                                            {/* TIGHT EXCERPT CARD: Locked 794px virtual canvas clone (Zero re-wrap, zero void) */}
                                             {activeBlockData && isDualStage && (
-                                                <div className="ml-stage-excerpt-pane">
-                                                    <div className="bpc-page-canvas ml-tight-excerpt-card is-spotlight-active">
-                                                        <div className="bpc-block-target is-focused">
-                                                            {renderBookBlock ? (
-                                                                renderBookBlock(activeBlockData.blocks[activeBlockData.blockIndex], activeBlockData.blockIndex, {
-                                                                    bookTitle: selectedBook?.title,
-                                                                    courseCode: selectedBook?.course_code,
-                                                                    prefix: selectedBook?.prefix
-                                                                })
-                                                            ) : (
-                                                                <div 
-                                                                    className="book-block type-paragraph"
-                                                                    dangerouslySetInnerHTML={{ __html: activeBlockData.blocks[activeBlockData.blockIndex]?.body || '' }} 
-                                                                />
-                                                            )}
+                                                <div 
+                                                    className="ml-stage-excerpt-pane"
+                                                    style={{ height: excerptHeight ? `${excerptHeight}px` : 'auto' }}
+                                                >
+                                                    <div 
+                                                        className="ml-tight-scale-wrapper"
+                                                        style={{
+                                                            width: '794px',
+                                                            transform: `scale(${fitScale})`,
+                                                            transformOrigin: 'top center'
+                                                        }}
+                                                    >
+                                                        <div 
+                                                            ref={excerptCardRef}
+                                                            className={`bpc-page-canvas ml-tight-excerpt-card is-spotlight-active ${selectedBook?.prefix ? `engine-${selectedBook.prefix}` : ''}`}
+                                                        >
+                                                            <div className="bpc-block-target is-focused">
+                                                                {renderBookBlock ? (
+                                                                    renderBookBlock(activeBlockData.blocks[activeBlockData.blockIndex], activeBlockData.blockIndex, {
+                                                                        bookTitle: selectedBook?.title,
+                                                                        courseCode: selectedBook?.course_code,
+                                                                        prefix: selectedBook?.prefix
+                                                                    })
+                                                                ) : (
+                                                                    <div 
+                                                                        className="book-block type-paragraph"
+                                                                        dangerouslySetInnerHTML={{ __html: activeBlockData.blocks[activeBlockData.blockIndex]?.body || '' }} 
+                                                                    />
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
