@@ -616,6 +616,18 @@ svg.vis-mobile,
 /* ========================================================
    SCENARIO 1: FULLSCREEN A4 PAGE (Core SDK Engine Override)
    ======================================================== */
+.ml-cinema-stage[data-has-book="true"],
+.ml-cinema-stage:has(.ml-live-book-stage) {
+    padding-top: 0;
+}
+
+.ml-cinema-stage[data-has-book="true"] .ml-cinema-visual-frame,
+.ml-cinema-stage:has(.ml-live-book-stage) .ml-cinema-visual-frame {
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
 .ml-live-book-stage {
     position: absolute;
     inset: 0;
