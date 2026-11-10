@@ -1068,15 +1068,15 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             };
         }, [activeBlockCue, cachedPageBlocks, sectionPages, selectedSection]);
 
-        // Steadicam Camera Gliding (Centers focused block in Hero mode, docks to top in Dual-Stage)
+        // Steadicam Camera Gliding (Centers focused block in Fullscreen A4 page mode)
         useEffect(() => {
-            if (!activeBlockData || !pageSheetRef.current) return;
+            if (!activeBlockData || isDualStage || !pageSheetRef.current) return;
             const targetEl = pageSheetRef.current.querySelector(`#ml-block-${activeBlockData.blockIndex}`);
             if (!targetEl) return;
 
             targetEl.scrollIntoView({
                 behavior: 'smooth',
-                block: isDualStage ? 'start' : 'center'
+                block: 'center'
             });
         }, [activeBlockData?.blockIndex, activeBlockData?.page, isDualStage]);
 
@@ -1465,39 +1465,56 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         }}
                                     >
                                         <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
-                                            {/* FULL A4 PAGE CANVAS WITH STEADICAM SPOTLIGHT GLIDE */}
-                                            {activeBlockData && (
-                                                <div className={`ml-stage-block-pane ${isDualStage ? 'is-docked' : 'is-hero'}`}>
+                                            {/* SCENARIO 1: FULLSCREEN A4 PAGE (Exact BookReader Mode - When no visual assets active) */}
+                                            {activeBlockData && !isDualStage && (
+                                                <div className="ml-stage-fullscreen-page-wrapper" ref={pageSheetRef}>
+                                                    <div className="ml-stage-fullscreen-page-canvas page-canvas is-spotlight-active">
+                                                        {activeBlockData.blocks.map((block, idx) => {
+                                                            const isFocused = idx === activeBlockData.blockIndex;
+                                                            return (
+                                                                <div 
+                                                                    key={idx}
+                                                                    id={`ml-block-${idx}`}
+                                                                    className={`ml-page-block-wrapper ${isFocused ? 'is-focused-block' : 'is-dimmed-block'}`}
+                                                                >
+                                                                    {renderBookBlock ? (
+                                                                        renderBookBlock(block, idx, {
+                                                                            bookTitle: selectedBook?.title,
+                                                                            courseCode: selectedBook?.course_code
+                                                                        })
+                                                                    ) : (
+                                                                        <div 
+                                                                            className="book-block type-paragraph"
+                                                                            dangerouslySetInnerHTML={{ __html: block?.body || '' }} 
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* SCENARIO 2: DOCKED COMPACT BLOCK SHEET (Dual-Stage Mode - Visuals active below) */}
+                                            {activeBlockData && isDualStage && (
+                                                <div className="ml-stage-block-pane is-docked">
                                                     <div className="ml-stage-snapshot-card">
                                                         <div className="ml-snapshot-topbar">
                                                             <span className="ml-snapshot-title">{selectedBook?.title || 'Curriculum Book'}</span>
                                                             <span className="ml-snapshot-page-pill">Page {activeBlockData.page}</span>
                                                         </div>
-                                                        <div className="ml-snapshot-content ml-book-page-sheet" ref={pageSheetRef}>
-                                                            <div className="ml-page-canvas-sheet is-spotlight-active">
-                                                                {activeBlockData.blocks.map((block, idx) => {
-                                                                    const isFocused = idx === activeBlockData.blockIndex;
-                                                                    return (
-                                                                        <div 
-                                                                            key={idx}
-                                                                            id={`ml-block-${idx}`}
-                                                                            className={`ml-page-block-wrapper ${isFocused ? 'is-focused-block' : 'is-dimmed-block'}`}
-                                                                        >
-                                                                            {renderBookBlock ? (
-                                                                                renderBookBlock(block, idx, {
-                                                                                    bookTitle: selectedBook?.title,
-                                                                                    courseCode: selectedBook?.course_code
-                                                                                })
-                                                                            ) : (
-                                                                                <div 
-                                                                                    className="book-block type-paragraph"
-                                                                                    dangerouslySetInnerHTML={{ __html: block?.body || '' }} 
-                                                                                />
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
+                                                        <div className="ml-snapshot-content">
+                                                            {renderBookBlock ? (
+                                                                renderBookBlock(activeBlockData.blocks[activeBlockData.blockIndex], activeBlockData.blockIndex, {
+                                                                    bookTitle: selectedBook?.title,
+                                                                    courseCode: selectedBook?.course_code
+                                                                })
+                                                            ) : (
+                                                                <div 
+                                                                    className="book-block type-paragraph"
+                                                                    dangerouslySetInnerHTML={{ __html: activeBlockData.blocks[activeBlockData.blockIndex]?.body || '' }} 
+                                                                />
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
