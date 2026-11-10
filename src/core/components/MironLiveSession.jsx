@@ -1446,15 +1446,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         ) : (
                             <div className={`ml-studio-content-layout ${viewMode}`}>
                                 
-                                {/* VIEW 1: CINEMA STAGE (Tap to Toggle Chrome) */}
-                                {viewMode === 'cinema' && (
-                                    <div 
-                                        className="ml-cinema-stage" 
-                                        ref={cinemaContainerRef}
-                                        data-has-notes={(activeBullets?.length || 0) > 0 ? "true" : "false"}
-                                        data-has-image={Boolean(activeImageAsset) ? "true" : "false"}
-                                        data-dual-stage={isDualStage ? "true" : "false"}
-                                        onClick={() => {
+                                                    {/* VIEW 1: CINEMA STAGE (Tap to Toggle Chrome) */}
+                    {viewMode === 'cinema' && (
+                        <div 
+                            className="ml-cinema-stage" 
+                            ref={cinemaContainerRef}
+                            data-has-notes={(activeBullets?.length || 0) > 0 ? "true" : "false"}
+                            data-has-image={Boolean(activeImageAsset) ? "true" : "false"}
+                            data-dual-stage={isDualStage ? "true" : "false"}
+                            data-has-book={Boolean(activeBlockData && !isDualStage) ? "true" : "false"}
+                            onClick={() => {
                                             if (stage === 'studio') {
                                                 setIsChromeVisible(prev => {
                                                     const next = !prev;
