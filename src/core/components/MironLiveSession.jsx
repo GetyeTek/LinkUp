@@ -1466,43 +1466,20 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                         }}
                                     >
                                         <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
-                                            {/* SCENARIO 1: FULLSCREEN A4 PAGE (Exact BookReader Engine via Core SDK) */}
-                                            {activeBlockData && !isDualStage && (
-                                                <BookPageCanvas
-                                                    blocks={activeBlockData.blocks}
-                                                    pageNumber={activeBlockData.page}
-                                                    bookTitle={selectedBook?.title || 'Curriculum Book'}
-                                                    courseCode={selectedBook?.course_code || ''}
-                                                    prefix={selectedBook?.prefix || ''}
-                                                    focusedBlockIndex={activeBlockData.blockIndex}
-                                                    isSpotlightActive={true}
-                                                    renderBlock={renderBookBlock}
-                                                    className="ml-live-book-stage"
-                                                />
-                                            )}
-
-                                            {/* SCENARIO 2: DOCKED COMPACT BLOCK SHEET (Dual-Stage Mode - Visuals active below) */}
-                                            {activeBlockData && isDualStage && (
-                                                <div className="ml-stage-block-pane is-docked">
-                                                    <div className="ml-stage-snapshot-card">
-                                                        <div className="ml-snapshot-topbar">
-                                                            <span className="ml-snapshot-title">{selectedBook?.title || 'Curriculum Book'}</span>
-                                                            <span className="ml-snapshot-page-pill">Page {activeBlockData.page}</span>
-                                                        </div>
-                                                        <div className="ml-snapshot-content">
-                                                            {renderBookBlock ? (
-                                                                renderBookBlock(activeBlockData.blocks[activeBlockData.blockIndex], activeBlockData.blockIndex, {
-                                                                    bookTitle: selectedBook?.title,
-                                                                    courseCode: selectedBook?.course_code
-                                                                })
-                                                            ) : (
-                                                                <div 
-                                                                    className="book-block type-paragraph"
-                                                                    dangerouslySetInnerHTML={{ __html: activeBlockData.blocks[activeBlockData.blockIndex]?.body || '' }} 
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                            {/* UNIFIED A4 BOOK PAGE STAGE: Rendered as-is without compact faux-cards */}
+                                            {activeBlockData && (
+                                                <div className={`ml-stage-page-carrier ${isDualStage ? 'is-dual-active' : 'is-full-active'}`}>
+                                                    <BookPageCanvas
+                                                        blocks={activeBlockData.blocks}
+                                                        pageNumber={activeBlockData.page}
+                                                        bookTitle={selectedBook?.title || 'Curriculum Book'}
+                                                        courseCode={selectedBook?.course_code || ''}
+                                                        prefix={selectedBook?.prefix || ''}
+                                                        focusedBlockIndex={activeBlockData.blockIndex}
+                                                        isSpotlightActive={true}
+                                                        renderBlock={renderBookBlock}
+                                                        className="ml-live-book-stage"
+                                                    />
                                                 </div>
                                             )}
 
