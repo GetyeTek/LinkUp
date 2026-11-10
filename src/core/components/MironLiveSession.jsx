@@ -103,32 +103,45 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     }, []);
 
     useEffect(() => {
-        if (isDualStage && activeBlockData && excerptCardRef.current) {
-            const updateHeight = () => {
-                if (excerptCardRef.current) {
-                    // getBoundingClientRect().height captures the exact physical pixels AFTER transform: scale()
-                    const rect = excerptCardRef.current.getBoundingClientRect();
-                    if (rect.height > 0) {
-                        setExcerptHeight(Math.round(rect.height));
-                    }
-                }
-            };
-            updateHeight();
-            // Staggered checks to guarantee absolute precision after fonts/images render
-            const t1 = setTimeout(updateHeight, 50);
-            const t2 = setTimeout(updateHeight, 250);
-            
-            const ro = new ResizeObserver(updateHeight);
-            ro.observe(excerptCardRef.current);
-            
-            return () => {
-                clearTimeout(t1);
-                clearTimeout(t2);
-                ro.disconnect();
-            };
-        } else {
+        if (!isDualStage || !activeBlockData) {
             setExcerptHeight(0);
+            return;
         }
+
+        let ro = null;
+
+        const updateHeight = () => {
+            if (excerptCardRef.current) {
+                // Mathematical precision: Unscaled physical height * exact CSS scale
+                const unscaledHeight = excerptCardRef.current.offsetHeight;
+                if (unscaledHeight > 0) {
+                    setExcerptHeight(Math.round(unscaledHeight * fitScale));
+                }
+
+                // Lazy-attach observer if ref became available late
+                if (!ro) {
+                    try {
+                        ro = new ResizeObserver(updateHeight);
+                        ro.observe(excerptCardRef.current);
+                    } catch (e) {}
+                }
+            }
+        };
+
+        // Aggressive polling to beat React ref mount race conditions
+        updateHeight();
+        const t1 = setTimeout(updateHeight, 20);
+        const t2 = setTimeout(updateHeight, 100);
+        const t3 = setTimeout(updateHeight, 300);
+        const t4 = setTimeout(updateHeight, 800);
+
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+            clearTimeout(t3);
+            clearTimeout(t4);
+            if (ro) ro.disconnect();
+        };
     }, [isDualStage, activeBlockData, fitScale]);
 
     const audioRef = useRef(null);
