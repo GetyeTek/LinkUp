@@ -645,25 +645,35 @@ svg.vis-mobile,
 @media (max-width: 768px) {
     .ml-cinema-visual-frame.is-dual-stage {
         flex-direction: column;
-        gap: 8px;
-        height: 100%;
-        padding: 4px 6px;
+        gap: 6px;
+        height: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+        padding: 2px 6px;
     }
     .ml-stage-diagram-pane {
-        flex: 0 0 34%;
-        max-height: 34vh;
+        flex: 0 0 auto;
+        height: 18vh;
+        max-height: 20vh;
         width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
         overflow: hidden;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(56, 189, 248, 0.22);
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(8px);
+        padding: 4px;
+        box-sizing: border-box;
     }
     .ml-stage-diagram-pane .vis-box svg {
-        max-height: 32vh !important;
+        max-height: 16vh !important;
+        width: 100% !important;
+        height: auto !important;
     }
     .ml-stage-image-pane {
-        flex: 1 1 66%;
+        flex: 1 1 auto;
         min-height: 0;
         width: 100%;
         display: flex;
@@ -673,14 +683,18 @@ svg.vis-mobile,
     }
     .ml-stage-image-pane .ml-visual-card-image {
         max-height: 100%;
+        width: 100%;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
     }
     .ml-stage-image-pane .ml-visual-card-image img {
-        max-height: calc(52vh - 70px);
+        max-height: 38vh;
+        width: auto;
+        max-width: 100%;
+        object-fit: contain;
     }
-
-    /* Auto-hide the crowded bottom notes deck on phones when an image is active */
-    .ml-studio-notes-deck.is-tucked-for-image {
-        display: none !important;
+    .ml-studio-notes-deck {
+        max-height: 28vh;
+        padding: 6px 14px calc(14px + env(safe-area-inset-bottom, 10px));
     }
 }
 
