@@ -388,9 +388,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     }
 
                     if (isDualStage && b && b.width > 0 && b.height > 0) {
-                        // Tight node-only isolation framing for top HUD slot
-                        const padX = Math.max(16, b.width * 0.12);
-                        const padY = Math.max(12, b.height * 0.14);
+                        // Razor-sharp node isolation: 3px padding preserves card border while eliminating stray connector lines
+                        const padX = 3;
+                        const padY = 3;
                         const calcBox = `${(b.x - padX).toFixed(2)} ${(b.y - padY).toFixed(2)} ${(b.width + padX * 2).toFixed(2)} ${(b.height + padY * 2).toFixed(2)}`;
                         animateViewBox(activeSvg, calcBox);
                     } else {
