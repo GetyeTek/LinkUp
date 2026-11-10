@@ -1454,10 +1454,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                 <div className={`ml-stage-block-pane ${isDualStage ? 'is-docked' : 'is-hero'}`}>
                                                     <div className="ml-stage-snapshot-card">
                                                         <div className="ml-snapshot-topbar">
-                                                            <div className="ml-snapshot-book-info">
-                                                                <span className="ml-snapshot-badge"><i className="fas fa-bookmark"></i> TEXTBOOK EXCERPT</span>
-                                                                <span className="ml-snapshot-title">{selectedBook?.title || 'Curriculum Book'}</span>
-                                                            </div>
+                                                            <span className="ml-snapshot-title">{selectedBook?.title || 'Curriculum Book'}</span>
                                                             <span className="ml-snapshot-page-pill">Page {activeBlockData.page} • #{activeBlockData.blockIndex}</span>
                                                         </div>
                                                         <div className="ml-snapshot-content ml-book-page-sheet">
