@@ -109,6 +109,27 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const hideTimeoutRef = useRef(null);
     const [isChromeVisible, setIsChromeVisible] = useState(true);
 
+    // Hardware GPU Pre-warming: Pre-decodes cue timeline images into VRAM ahead of time
+    useEffect(() => {
+        if (!audioLesson?.cue_timeline) return;
+        const urlsToWarm = new Set();
+        audioLesson.cue_timeline.forEach(cue => {
+            if (cue.type === 'show_image' && cue.target) {
+                const asset = visualAssets[cue.target];
+                const rawUrl = asset?.image_url || cue.target;
+                if (rawUrl) urlsToWarm.add(proxyUrl(rawUrl));
+            }
+        });
+
+        urlsToWarm.forEach(url => {
+            const img = new Image();
+            img.src = url;
+            if (typeof img.decode === 'function') {
+                img.decode().catch(() => {});
+            }
+        });
+    }, [audioLesson, visualAssets]);
+
     // Visual Simulator Debug State
     const [isDebugOpen, setIsDebugOpen] = useState(false);
     const [debugScriptText, setDebugScriptText] = useState('');
@@ -1534,7 +1555,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             )}
 
                                             {/* PERSISTENT DIAGRAM PANE (Glides to top HUD without remounting) */}
-                                            {!activeBlockData && activeDiagramAsset && (!activeImageAsset || hasActiveNode) && (
+{activeDiagramAsset && (!activeImageAsset || hasActiveNode || !activeBlockData) && (
                                                 <div className={`ml-stage-diagram-pane ${isDualStage ? 'is-docked' : 'is-hero'}`}>
                                                     {activeDiagramAsset.asset_type === 'diagram_svg' ? (
                                                         <div 
