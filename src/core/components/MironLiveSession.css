@@ -618,19 +618,19 @@ svg.vis-mobile,
    ======================================================== */
 .ml-stage-block-pane {
     width: 100%;
-    max-width: 680px;
+    max-width: 794px;
     display: flex;
     justify-content: center;
     align-items: center;
     box-sizing: border-box;
     margin: 0 auto;
     transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    padding: 0.25rem 0.5rem;
+    padding: 0 8px;
 }
 
 .ml-stage-block-pane.is-hero {
     flex: 1 1 auto;
-    max-height: 52vh;
+    max-height: 56vh;
 }
 
 .ml-stage-block-pane.is-docked {
@@ -642,11 +642,11 @@ svg.vis-mobile,
     width: 100%;
     background-color: #ffffff !important;
     background-image: linear-gradient(#ffffff, #ffffff) !important;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.25);
-    color: #1a1a1a !important;
-    -webkit-text-fill-color: #1a1a1a !important;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.2);
+    color: #111111 !important;
+    -webkit-text-fill-color: #111111 !important;
     color-scheme: light only !important;
     display: flex;
     flex-direction: column;
@@ -656,53 +656,56 @@ svg.vis-mobile,
 }
 
 .ml-snapshot-topbar {
-    background-color: #f4f4f6 !important;
-    border-bottom: 1px solid #e4e4e7 !important;
-    padding: 8px 14px;
+    background-color: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 5px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    font-family: 'Poppins', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     flex-shrink: 0;
 }
 
 .ml-snapshot-title {
-    font-size: 0.82rem;
+    font-size: 0.74rem;
     font-weight: 700;
-    color: #27272a !important;
-    -webkit-text-fill-color: #27272a !important;
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
 }
 
 .ml-snapshot-page-pill {
     font-family: 'Roboto Mono', monospace;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 700;
-    background: #e4e4e7;
-    color: #52525b !important;
-    -webkit-text-fill-color: #52525b !important;
-    padding: 2px 8px;
-    border-radius: 6px;
+    background: #e2e8f0;
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+    padding: 1px 7px;
+    border-radius: 4px;
     white-space: nowrap;
     flex-shrink: 0;
 }
 
 .ml-snapshot-content {
-    padding: 16px 20px;
+    padding: 16px 22px;
     background-color: #ffffff !important;
-    color: #1a1a1a !important;
-    -webkit-text-fill-color: #1a1a1a !important;
-    font-family: 'Times New Roman', Times, 'Nyala', 'Abyssinica SIL', Georgia, serif;
-    font-size: 1.02rem;
-    line-height: 1.6;
+    color: #111111 !important;
+    -webkit-text-fill-color: #111111 !important;
+    font-family: 'Times New Roman', Times, 'Nyala', 'Abyssinica SIL', serif;
+    font-size: clamp(0.72rem, 0.44rem + 1.15vw, 0.98rem);
+    line-height: 1.5;
     text-align: justify;
     hyphens: auto;
-    letter-spacing: -0.01em;
-    word-spacing: -0.02em;
+    -webkit-hyphens: auto;
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-rendering: optimizeLegibility;
     overflow-y: auto;
     max-height: 100%;
     box-sizing: border-box;
@@ -720,45 +723,60 @@ svg.vis-mobile,
     line-height: inherit;
     text-align: inherit;
     font-size: inherit;
+    font-family: inherit;
 }
 
 .ml-snapshot-content .book-block-body,
 .ml-snapshot-content .univ-p-block {
     margin: 0;
     line-height: inherit;
+    font-size: inherit;
+    font-family: inherit;
 }
 
-/* Authentic Paragraph First-Line Indentation */
-.ml-snapshot-content .type-paragraph .book-block-body {
-    text-indent: 1.5em;
+/* Authentic Academic First-Line Indentation */
+.ml-snapshot-content .type-paragraph .book-block-body,
+.ml-snapshot-content .type-paragraph {
+    text-indent: 1.6em;
 }
 
-/* Realistic Luminous Highlighter */
+/* Luminous Academic Highlighter with Multi-Line Box Clone */
 mark.miron-active-sentence,
 .miron-active-sentence {
-    background: rgba(250, 204, 21, 0.42) !important;
+    background-color: rgba(254, 240, 138, 0.75) !important;
     color: #000000 !important;
     -webkit-text-fill-color: #000000 !important;
-    padding: 2px 5px !important;
-    border-radius: 4px !important;
-    box-shadow: 0 0 10px rgba(250, 204, 21, 0.35) !important;
+    padding: 1px 4px !important;
+    border-radius: 3px !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
+    box-shadow: 0 0 6px rgba(254, 240, 138, 0.5) !important;
     font-weight: 600 !important;
     display: inline !important;
 }
 
 @media (max-width: 768px) {
+    .ml-stage-block-pane {
+        padding: 0 4px;
+    }
     .ml-stage-block-pane.is-docked {
         flex: 0 0 auto;
-        max-height: 24vh;
+        max-height: 25vh;
     }
     .ml-stage-block-pane.is-hero {
         flex: 1 1 auto;
-        max-height: 48vh;
+        max-height: 50vh;
     }
     .ml-snapshot-content {
         padding: 12px 14px;
-        font-size: 0.95rem;
-        line-height: 1.5;
+        line-height: 1.48;
+    }
+}
+
+@media (min-width: 769px) {
+    .ml-snapshot-content {
+        padding: 24px 36px;
+        line-height: 1.55;
     }
 }
 
