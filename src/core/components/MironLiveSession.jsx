@@ -1479,7 +1479,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             data-has-notes={(activeBullets?.length || 0) > 0 ? "true" : "false"}
                             data-has-image={Boolean(activeImageAsset) ? "true" : "false"}
                             data-dual-stage={isDualStage ? "true" : "false"}
-                            data-has-book={Boolean(activeBlockData && !isDualStage) ? "true" : "false"}
+                            data-has-book={Boolean(activeBlockData) ? "true" : "false"}
                             onClick={() => {
                                             if (stage === 'studio') {
                                                 setIsChromeVisible(prev => {
