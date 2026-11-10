@@ -325,7 +325,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         if (!container) return;
 
         const targetNode = activeNodeCue?.target || 'overview';
-        const targetCompositeKey = `${activeDiagramCue?.target || activeCue?.target || 'vis'}::${targetNode}`;
+        const targetCompositeKey = `${activeDiagramCue?.target || activeCue?.target || 'vis'}::${targetNode}::dual_${isDualStage}`;
 
         // Prevent infinite cancellation loop: only initiate camera pan when target node actually changes
         if (lastFocusedNodeRef.current === targetCompositeKey) return;
@@ -374,60 +374,65 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
             const targetEl = activeSvg.querySelector(`[data-node="${targetNode}"]`);
             if (targetEl) {
-                const boxStr = targetEl.getAttribute('data-focus-box');
-                if (boxStr) {
-                    animateViewBox(activeSvg, boxStr);
-                } else {
-                    try {
-                        const cacheKey = `${activeCue?.target || 'vis'}::${targetNode}`;
-                        let b = bboxCacheRef.current.get(cacheKey);
-                        if (!b) {
-                            const rawBox = targetEl.getBBox();
-                            if (rawBox && rawBox.width > 0 && rawBox.height > 0) {
-                                b = { x: rawBox.x, y: rawBox.y, width: rawBox.width, height: rawBox.height };
-                                bboxCacheRef.current.set(cacheKey, b);
+                try {
+                    const cacheKey = `${activeCue?.target || 'vis'}::${targetNode}`;
+                    let b = bboxCacheRef.current.get(cacheKey);
+                    if (!b) {
+                        const rawBox = targetEl.getBBox();
+                        if (rawBox && rawBox.width > 0 && rawBox.height > 0) {
+                            b = { x: rawBox.x, y: rawBox.y, width: rawBox.width, height: rawBox.height };
+                            bboxCacheRef.current.set(cacheKey, b);
+                        } else {
+                            b = rawBox;
+                        }
+                    }
+
+                    if (isDualStage && b && b.width > 0 && b.height > 0) {
+                        // Tight node-only isolation framing for top HUD slot
+                        const padX = Math.max(16, b.width * 0.12);
+                        const padY = Math.max(12, b.height * 0.14);
+                        const calcBox = `${(b.x - padX).toFixed(2)} ${(b.y - padY).toFixed(2)} ${(b.width + padX * 2).toFixed(2)} ${(b.height + padY * 2).toFixed(2)}`;
+                        animateViewBox(activeSvg, calcBox);
+                    } else {
+                        const boxStr = targetEl.getAttribute('data-focus-box');
+                        if (boxStr) {
+                            animateViewBox(activeSvg, boxStr);
+                        } else {
+                            const defaultViewStr = activeSvg.getAttribute('data-default-view') || '0 0 360 520';
+                            const [defX, defY, defW, defH] = defaultViewStr.trim().split(/\s+/).map(Number);
+
+                            if (defW && defH && b) {
+                                const baseCX = defX + defW / 2;
+                                const baseCY = defY + defH / 2;
+                                const targetCX = b.x + b.width / 2;
+                                const targetCY = b.y + b.height / 2;
+
+                                const camCX = baseCX + (targetCX - baseCX) * 0.6;
+                                const camCY = baseCY + (targetCY - baseCY) * 0.6;
+
+                                const zoomRatio = window.innerWidth <= 768 ? 0.74 : 0.68;
+                                const targetW = defW * zoomRatio;
+                                const targetH = defH * zoomRatio;
+
+                                let camX = camCX - targetW / 2;
+                                let camY = camCY - targetH / 2;
+                                camX = Math.max(defX, Math.min(defX + defW - targetW, camX));
+                                camY = Math.max(defY, Math.min(defY + defH - targetH, camY));
+
+                                const calcBox = `${camX.toFixed(2)} ${camY.toFixed(2)} ${targetW.toFixed(2)} ${targetH.toFixed(2)}`;
+                                animateViewBox(activeSvg, calcBox);
                             } else {
-                                b = rawBox;
+                                animateViewBox(activeSvg, defaultViewStr);
                             }
                         }
-                        const defaultViewStr = activeSvg.getAttribute('data-default-view') || '0 0 360 520';
-                        const [defX, defY, defW, defH] = defaultViewStr.trim().split(/\s+/).map(Number);
-
-                        if (defW && defH) {
-                            // Virtual Steadicam: Focal Anchor Tracking with Controlled Optical Zoom
-                            const baseCX = defX + defW / 2;
-                            const baseCY = defY + defH / 2;
-                            const targetCX = b.x + b.width / 2;
-                            const targetCY = b.y + b.height / 2;
-
-                            // Weighted camera pan towards target (60% bias keeps contextual anchors in frame)
-                            const camCX = baseCX + (targetCX - baseCX) * 0.6;
-                            const camCY = baseCY + (targetCY - baseCY) * 0.6;
-
-                            // Optical push-in: 74% of full frame (crisp 1.35x zoom without buzzsaw cropping)
-                            const zoomRatio = window.innerWidth <= 768 ? 0.74 : 0.68;
-                            const targetW = defW * zoomRatio;
-                            const targetH = defH * zoomRatio;
-
-                            // Calculate camera origin and clamp strictly within natural canvas boundaries
-                            let camX = camCX - targetW / 2;
-                            let camY = camCY - targetH / 2;
-                            camX = Math.max(defX, Math.min(defX + defW - targetW, camX));
-                            camY = Math.max(defY, Math.min(defY + defH - targetH, camY));
-
-                            const calcBox = `${camX.toFixed(2)} ${camY.toFixed(2)} ${targetW.toFixed(2)} ${targetH.toFixed(2)}`;
-                            animateViewBox(activeSvg, calcBox);
-                        } else {
-                            animateViewBox(activeSvg, defaultViewStr);
-                        }
-                    } catch (e) {
-                        const defaultViewStr = activeSvg.getAttribute('data-default-view');
-                        if (defaultViewStr) animateViewBox(activeSvg, defaultViewStr);
                     }
+                } catch (e) {
+                    const defaultViewStr = activeSvg.getAttribute('data-default-view');
+                    if (defaultViewStr) animateViewBox(activeSvg, defaultViewStr);
                 }
             }
         }
-    }, [activeNodeCue, activeCue, viewMode]);
+    }, [activeNodeCue, activeCue, viewMode, isDualStage]);
 
     // Automatic Dual-Mode Switcher: Flips to anchor on block cue, snaps to cinema on visuals
     useEffect(() => {
@@ -890,7 +895,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         image_url: activeImageCue.target,
         title: activeImageCue.target
     }) : null;
-    const isDualStage = Boolean(activeDiagramAsset && activeImageAsset);
+    const hasActiveNode = Boolean(activeNodeCue?.target && activeNodeCue.target !== 'overview' && activeNodeCue.target !== 'reset');
+    const isDualStage = Boolean(activeDiagramAsset && activeImageAsset && hasActiveNode);
     const latestBullet = activeBullets.length > 0 ? activeBullets[activeBullets.length - 1] : null;
 
     return (
@@ -1281,18 +1287,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                             <div className="ml-image-caption-pill">
                                                                 <span>{activeImageAsset.title || 'Scene Concept'}</span>
                                                             </div>
-                                                            {/* Mobile Integrated Frosted Caption Pill */}
-                                                            {latestBullet && (
-                                                                <div className="ml-image-frosted-caption">
-                                                                    <div className="ml-frosted-caption-head">
-                                                                        <i className="fas fa-bolt"></i>
-                                                                        <span>TAKEAWAY</span>
-                                                                    </div>
-                                                                    <p className="ml-frosted-caption-body">
-                                                                        {parseBulletItem(latestBullet).content}
-                                                                    </p>
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     </div>
                                                 </>
@@ -1303,17 +1297,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                                     <div className="ml-image-caption-pill">
                                                         <span>{activeImageAsset.title || 'Scene Concept'}</span>
                                                     </div>
-                                                    {latestBullet && (
-                                                        <div className="ml-image-frosted-caption">
-                                                            <div className="ml-frosted-caption-head">
-                                                                <i className="fas fa-bolt"></i>
-                                                                <span>TAKEAWAY</span>
-                                                            </div>
-                                                            <p className="ml-frosted-caption-body">
-                                                                {parseBulletItem(latestBullet).content}
-                                                            </p>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             ) : activeDiagramAsset ? (
                                                 /* PURE VECTOR DIAGRAM STAGE */
@@ -1350,10 +1333,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                             )}
                                         </div>
 
-                                        {/* Studio Split-Screen Notes Deck (Tucked on mobile when image is shown) */}
+                                        {/* Studio Split-Screen Notes Deck */}
                                         {(activeBullets?.length || 0) > 0 && (
                                             <div 
-                                                className={`ml-studio-notes-deck ${activeImageAsset ? 'is-tucked-for-image' : ''}`}
+                                                className="ml-studio-notes-deck"
                                                 ref={notesDeckRef}
                                                 onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
                                             >
