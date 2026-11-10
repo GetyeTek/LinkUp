@@ -113,7 +113,6 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const lastFocusedNodeRef = useRef(null);
     const notesDeckRef = useRef(null);
     const hideTimeoutRef = useRef(null);
-    const pageSheetRef = useRef(null);
     const [isChromeVisible, setIsChromeVisible] = useState(true);
 
     // Visual Simulator Debug State
@@ -1078,17 +1077,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             };
         }, [activeBlockCue, cachedPageBlocks, sectionPages, selectedSection]);
 
-        // Steadicam Camera Gliding (Centers focused block in Fullscreen A4 page mode)
-        useEffect(() => {
-            if (!activeBlockData || isDualStage || !pageSheetRef.current) return;
-            const targetEl = pageSheetRef.current.querySelector(`#ml-block-${activeBlockData.blockIndex}`);
-            if (!targetEl) return;
 
-            targetEl.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-        }, [activeBlockData?.blockIndex, activeBlockData?.page, isDualStage]);
 
     const hasActiveNode = Boolean(activeNodeCue?.target && activeNodeCue.target !== 'overview' && activeNodeCue.target !== 'reset');
     const isDualStage = Boolean(
