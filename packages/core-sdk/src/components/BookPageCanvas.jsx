@@ -43,13 +43,15 @@ const BookPageCanvas = ({
         return () => ro.disconnect();
     }, [blocks]);
 
-    // Center the focused block within the viewport
+    // Smoothly glide the focused block to the top ceiling during spotlight, or center on standard reading
     useEffect(() => {
         if (focusedBlockIndex === null || focusedBlockIndex === undefined || !layoutReady) return;
         const timer = setTimeout(() => {
             const el = document.getElementById(`bpc-block-${focusedBlockIndex}`);
             if (el && viewportRef.current) {
-                const targetY = (el.offsetTop * scale) - (viewportRef.current.clientHeight / 2) + ((el.offsetHeight * scale) / 2);
+                const targetY = isSpotlightActive
+                    ? Math.max(0, (el.offsetTop * scale) - (14 * scale))
+                    : (el.offsetTop * scale) - (viewportRef.current.clientHeight / 2) + ((el.offsetHeight * scale) / 2);
                 viewportRef.current.scrollTo({
                     top: Math.max(0, targetY),
                     behavior: 'smooth'
@@ -57,7 +59,7 @@ const BookPageCanvas = ({
             }
         }, 80);
         return () => clearTimeout(timer);
-    }, [focusedBlockIndex, scale, layoutReady]);
+    }, [focusedBlockIndex, scale, layoutReady, isSpotlightActive]);
 
     return (
         <div className={`bpc-viewport ${className}`} ref={viewportRef}>
