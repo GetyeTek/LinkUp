@@ -3,6 +3,8 @@ import { BookPageCanvas } from '@linkup-platform/sdk-core';
 import { proxyUrl, formatTime, parseBulletItem } from './useMironLecture.js';
 import MironQuizCard from './MironQuizCard.jsx';
 import './MironQuizCard.css';
+import MironStageCard from './MironStageCard.jsx';
+import './MironStageCard.css';
 
 const MironStudioStage = ({
     isLoadingLesson,
@@ -39,6 +41,8 @@ const MironStudioStage = ({
         activeQuizCue,
         activeQuizData,
         resumeFromQuiz,
+        activeCardCue,
+        activeCardData,
         hasActiveNode,
         isDualStage,
         manifest,
@@ -97,8 +101,13 @@ const MironStudioStage = ({
                                     />
                                 )}
 
+                                {/* PRESENTATION CARD (Intro Roadmap, Compare, Exam Alert, Summary, Note) */}
+                                {!activeQuizData && activeCardData && (
+                                    <MironStageCard cardData={activeCardData} />
+                                )}
+
                                 {/* FULL A4 PAGE: Initial full-size textbook view before breakdown cue */}
-                                {!activeQuizData && activeBlockData && !isDualStage && (
+                                {!activeQuizData && !activeCardData && activeBlockData && !isDualStage && (
                                     <BookPageCanvas
                                         blocks={activeBlockData.blocks}
                                         pageNumber={activeBlockData.page}
