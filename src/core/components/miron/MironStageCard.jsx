@@ -49,15 +49,10 @@ const MironStageCard = ({ cardData }) => {
                                 <ul className="ml-compare-points">
                                     {(cardData.left?.points || []).map((pt, pIdx) => (
                                         <li key={pIdx}>
-                                            <i className="fas fa-circle-dot"></i>
                                             <span>{pt}</span>
                                         </li>
                                     ))}
                                 </ul>
-                            </div>
-
-                            <div className="ml-compare-vs-divider">
-                                <span className="ml-vs-chip">VS</span>
                             </div>
 
                             <div className="ml-compare-col right-col">
@@ -65,7 +60,6 @@ const MironStageCard = ({ cardData }) => {
                                 <ul className="ml-compare-points">
                                     {(cardData.right?.points || []).map((pt, pIdx) => (
                                         <li key={pIdx}>
-                                            <i className="fas fa-circle-dot"></i>
                                             <span>{pt}</span>
                                         </li>
                                     ))}
