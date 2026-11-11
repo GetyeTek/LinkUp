@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Miron Ingestor & Lecture Queue Studio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>LinkUp Miron Studio</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -11,8 +11,9 @@
       --surface: #111827;
       --surface-card: #162032;
       --border: #24324a;
+      --border-light: #334464;
       --blue: #38bdf8;
-      --blue-glow: rgba(56, 189, 248, 0.15);
+      --blue-glow: rgba(56, 189, 248, 0.18);
       --green: #10b981;
       --green-dim: rgba(16, 185, 129, 0.12);
       --amber: #f59e0b;
@@ -21,202 +22,97 @@
       --text-muted: #94a3b8;
     }
 
-    /* ========================================================
-       HTML BENTO INFOGRAPHIC DESIGN SYSTEM & 3D CAMERA RIG
-       ======================================================== */
-    /* Virtual 3D Camera Rig for HTML Canvases (Figma/Prezi 60fps Steadicam) */
-    .vis-canvas {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      box-sizing: border-box;
-      transform-origin: center center;
-      transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-      will-change: transform;
-    }
-
-    /* Cinema Spotlight Engine (Inactive cards dim, active card glows) */
-    .vis-card[data-active-node] .vis-node {
-      opacity: 0.35;
-      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .vis-card[data-active-node] .vis-node.is-focused,
-    .vis-card[data-active-node] .vis-node[data-is-active="true"] {
-      opacity: 1 !important;
-      transform: translateY(-2px) scale(1.02);
-      border-color: var(--blue) !important;
-      box-shadow: 0 0 25px rgba(56, 189, 248, 0.35) !important;
-    }
-
-    .format-tag {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 9px;
-      font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-    .format-tag.html {
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--green);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    .format-tag.svg {
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--blue);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html, body {
       width: 100%;
       max-width: 100vw;
       overflow-x: hidden;
-    }
-    body {
       background: var(--bg);
       color: var(--text);
       font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-      padding: 32px 20px;
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      padding: 24px 16px;
       display: flex;
       justify-content: center;
-      -webkit-text-size-adjust: 100%;
+      min-height: 100vh;
     }
     .container {
       width: 100%;
-      max-width: 920px;
+      max-width: 1020px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      box-sizing: border-box;
+      gap: 18px;
       min-width: 0;
     }
+
+    /* HEADER */
     .header {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 24px;
+      border-radius: 16px;
+      padding: 20px 22px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 14px;
-      min-width: 0;
+      flex-wrap: wrap;
     }
-    .header h1 {
-      font-size: 22px;
-      font-weight: 800;
-      color: #fff;
+    .brand-title {
       display: flex;
       align-items: center;
       gap: 10px;
-      word-break: break-word;
     }
-    .header p {
-      font-size: 13px;
+    .brand-title h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+    .brand-desc {
+      font-size: 12px;
       color: var(--text-muted);
-      margin-top: 4px;
-      word-break: break-word;
+      margin-top: 3px;
     }
-    .tabs-nav {
-      display: flex;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 6px;
-      gap: 8px;
-      min-width: 0;
-    }
-    .tab-btn {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      padding: 10px 16px;
-      border-radius: 10px;
-      cursor: pointer;
-      display: flex;
+    .badge-pill {
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s;
+      gap: 6px;
+      background: var(--green-dim);
+      border: 1px solid var(--green);
+      color: var(--green);
+      padding: 5px 12px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
     }
-    .tab-btn.active {
-      background: var(--blue);
-      color: #090e18;
-      box-shadow: 0 4px 15px rgba(56, 189, 248, 0.35);
-    }
+
+    /* CARDS & INPUTS */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 24px;
+      border-radius: 16px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
     }
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 14px;
     }
     .grid-3 {
       display: grid;
       grid-template-columns: 1.2fr 1.8fr 1fr;
-      gap: 16px;
+      gap: 14px;
     }
-    @media (max-width: 720px) {
-      body {
-        padding: 16px 12px;
-      }
-      .container {
-        gap: 14px;
-      }
-      .header {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 18px 16px;
-        gap: 12px;
-      }
-      .header h1 {
-        font-size: 18px;
-      }
-      .header p {
-        font-size: 12px;
-      }
-      .pill-tip {
-        align-self: flex-start;
-      }
-      .tabs-nav {
-        flex-direction: column;
-        padding: 4px;
-        gap: 4px;
-      }
-      .tab-btn {
-        width: 100%;
-        padding: 10px 12px;
-        font-size: 12px;
-        justify-content: center;
-      }
-      .card {
-        padding: 16px 14px;
-        gap: 14px;
-        border-radius: 14px;
-      }
-      .grid-2, .grid-3 {
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
-      textarea {
-        min-height: 200px;
-      }
-      .btn {
-        padding: 12px 16px;
-        font-size: 13px;
-      }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.5fr 1.5fr;
+      gap: 14px;
     }
     label {
       font-size: 11px;
@@ -232,113 +128,230 @@
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px 14px;
+      padding: 11px 13px;
       color: var(--text);
       font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
+      font-size: 13px;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      min-height: 42px;
     }
     input:focus, textarea:focus {
       border-color: var(--blue);
       box-shadow: 0 0 12px var(--blue-glow);
     }
     textarea {
-      min-height: 280px;
+      min-height: 220px;
       resize: vertical;
       line-height: 1.55;
     }
+
+    /* BUTTONS */
     .btn {
       background: var(--blue);
       color: #090e18;
       border: none;
-      padding: 14px 20px;
-      border-radius: 12px;
+      padding: 12px 18px;
+      border-radius: 10px;
       font-weight: 800;
-      font-size: 14px;
+      font-size: 13px;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       transition: all 0.15s;
+      min-height: 42px;
+      white-space: nowrap;
     }
-    .btn:hover { opacity: 0.92; transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn.btn-green {
+    .btn:hover { opacity: 0.93; transform: translateY(-1px); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-green {
       background: var(--green);
       color: #042f2e;
-      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
     }
-    .log-box {
+    .btn-secondary {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      background: #1e293b;
+      border-color: var(--border-light);
+    }
+    .btn-sm {
+      padding: 7px 12px;
+      font-size: 12px;
+      min-height: 32px;
+      border-radius: 8px;
+    }
+
+    /* NAVIGATION TABS */
+    .tabs-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 5px;
+      gap: 6px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+      min-height: 42px;
+      text-align: center;
+    }
+    .tab-btn.active {
+      background: var(--blue);
+      color: #090e18;
+      font-weight: 800;
+      box-shadow: 0 3px 12px rgba(56, 189, 248, 0.35);
+    }
+
+    /* SUB SEGMENTED TOGGLE (FLUX TAB) */
+    .segmented-control {
+      display: flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+      width: fit-content;
+    }
+    .segment-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .segment-btn.active {
+      background: var(--surface-card);
+      color: var(--blue);
+      border: 1px solid var(--border-light);
+    }
+
+    /* PROGRESS BAR */
+    .progress-bar-container {
+      width: 100%;
+      height: 7px;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+      display: none;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--green);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    /* ITEM GRIDS (FLUX & PREVIEW) */
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .item-card {
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 16px;
-      max-height: 320px;
-      overflow-y: auto;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s;
+    }
+    .item-card:hover {
+      border-color: var(--border-light);
+    }
+    .item-preview {
+      height: 180px;
+      background: #060911;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .item-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.25s;
+    }
+    .item-preview img:hover {
+      transform: scale(1.03);
+    }
+    .item-preview .placeholder {
+      color: var(--text-muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 12px;
+    }
+    .item-details {
+      padding: 12px 14px;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      font-family: 'JetBrains Mono', monospace;
+      flex: 1;
+    }
+    .item-title {
       font-size: 12px;
+      font-weight: 700;
+      word-break: break-all;
     }
-    .log-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      border-radius: 6px;
-      background: var(--surface-card);
-      border-left: 3px solid var(--blue);
+    .item-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.45;
     }
-    .log-item.success { border-left-color: var(--green); }
-    .log-item.error { border-left-color: var(--red); color: #fca5a5; }
-    .status-badge {
+    .item-status {
       font-size: 10px;
       font-weight: 800;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 4px;
-      background: rgba(255, 255, 255, 0.08);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      width: fit-content;
     }
-    .pill-tip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--green-dim);
-      border: 1px solid var(--green);
-      color: var(--green);
-      padding: 4px 10px;
-      border-radius: 99px;
-      font-size: 11px;
-      font-weight: 700;
-    }
+    .status-pending { background: #1e293b; color: #94a3b8; }
+    .status-running { background: #1e3a8a; color: #93c5fd; }
+    .status-success { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-error   { background: rgba(244, 63, 94, 0.15); color: #fca5a5; border: 1px solid rgba(244, 63, 94, 0.3); }
 
-    /* Universal SVG Design Tokens */
-    :root {
-      --vis-bg: #090e18;
-      --vis-surface: #111827;
-      --vis-surface-card: #162032;
-      --vis-border: #24324a;
-      --vis-border-light: #334464;
-      --vis-text: #f8fafc;
-      --vis-text-muted: #94a3b8;
-      --vis-accent-1: #38bdf8;
-      --vis-accent-2: #10b981;
-      --vis-accent-3: #f59e0b;
-      --vis-accent-4: #a855f7;
-      --vis-accent-5: #f43f5e;
-    }
-
-    /* Preview Gallery Styles */
+    /* PREVIEW GALLERY & CINEMA STAGE */
     .preview-toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 12px;
-      padding-bottom: 14px;
+      padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
     }
     .preview-actions-left {
@@ -346,11 +359,6 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-    }
-    .btn-sm {
-      padding: 8px 14px;
-      font-size: 12px;
-      border-radius: 8px;
     }
     .view-mode-pill {
       display: inline-flex;
@@ -366,7 +374,7 @@
       color: var(--text-muted);
       font-size: 11px;
       font-weight: 700;
-      padding: 4px 12px;
+      padding: 4px 10px;
       border-radius: 99px;
       cursor: pointer;
       transition: all 0.15s;
@@ -388,24 +396,24 @@
     .preview-gallery-grid {
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 18px;
       width: 100%;
     }
     .preview-card {
       background: var(--surface-card);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 14px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
       transition: border-color 0.2s;
     }
     .preview-card:hover {
       border-color: var(--blue);
     }
     .preview-card-header {
-      padding: 12px 18px;
+      padding: 10px 16px;
       background: rgba(15, 23, 42, 0.85);
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -430,8 +438,27 @@
       border-radius: 4px;
       white-space: nowrap;
     }
+    .format-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .format-tag.html {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .format-tag.svg {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
     .preview-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       color: #fff;
       white-space: nowrap;
@@ -442,14 +469,14 @@
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--border);
       color: #cbd5e1;
-      width: 34px;
-      height: 34px;
+      width: 32px;
+      height: 32px;
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 15px;
+      font-size: 14px;
       transition: all 0.2s;
       flex-shrink: 0;
     }
@@ -457,26 +484,25 @@
       background: var(--blue);
       color: #090e18;
       border-color: var(--blue);
-      transform: scale(1.08);
     }
     .preview-viewport-frame {
       width: 100%;
-      min-height: 240px;
+      min-height: 220px;
       background: var(--bg);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: 14px;
       overflow: hidden;
       box-sizing: border-box;
     }
     .preview-card-footer {
-      padding: 10px 16px;
+      padding: 9px 14px;
       background: rgba(11, 17, 32, 0.6);
       border-top: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
     }
     .node-pill {
@@ -485,7 +511,7 @@
       color: var(--text-muted);
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 2px 8px;
+      padding: 3px 8px;
       border-radius: 4px;
       cursor: pointer;
       transition: all 0.15s;
@@ -496,13 +522,12 @@
       background: var(--blue-glow);
     }
 
-    /* Topology Dynamic Overrides for Preview Container */
+    /* TOPOLOGY OVERRIDES */
     .preview-viewport-frame[data-topo="desktop"] svg.vis-desktop { display: block !important; width: 100% !important; max-width: 780px !important; height: auto !important; }
     .preview-viewport-frame[data-topo="desktop"] svg.vis-mobile  { display: none !important; }
     .preview-viewport-frame[data-topo="mobile"] svg.vis-desktop  { display: none !important; }
     .preview-viewport-frame[data-topo="mobile"] svg.vis-mobile   { display: block !important; width: 100% !important; max-width: 360px !important; height: auto !important; }
 
-    /* Clean full-bleed SVG render inside preview */
     .preview-viewport-frame .vis-card {
       background: transparent !important;
       border: none !important;
@@ -524,7 +549,7 @@
       justify-content: center;
     }
 
-    /* Fullscreen Cinema Modal Overlay */
+    /* FULLSCREEN MODAL (CINEMA STAGE) */
     .vis-modal-overlay {
       position: fixed;
       inset: 0;
@@ -532,26 +557,28 @@
       background: rgba(9, 14, 24, 0.96);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
-      display: flex;
+      display: none;
       flex-direction: column;
-      animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     @keyframes modalFadeIn {
       from { opacity: 0; transform: scale(0.98); }
       to { opacity: 1; transform: scale(1); }
     }
     .vis-modal-header {
-      padding: 12px 24px;
+      padding: 10px 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid var(--border);
       background: rgba(15, 23, 42, 0.95);
+      gap: 10px;
     }
     .vis-modal-meta {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      min-width: 0;
     }
     .vis-modal-badge {
       font-family: 'JetBrains Mono', monospace;
@@ -562,23 +589,28 @@
       padding: 3px 8px;
       border-radius: 6px;
       border: 1px solid rgba(56, 189, 248, 0.3);
+      white-space: nowrap;
     }
     .vis-modal-header h3 {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .vis-modal-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      flex-shrink: 0;
     }
     .modal-close-btn {
       background: transparent;
       border: none;
       color: #cbd5e1;
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -596,7 +628,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: 14px;
       overflow: hidden;
       position: relative;
       width: 100%;
@@ -626,38 +658,31 @@
       justify-content: center !important;
       align-items: center !important;
     }
-    .vis-modal-stage svg {
-      display: block !important;
-      /* CSS viewBox transitions are buggy on mobile; using 60fps JS Steadicam instead */
-    }
     .vis-modal-stage[data-topo="desktop"] svg.vis-desktop {
       display: block !important;
       width: 100% !important;
       height: 100% !important;
       max-width: 860px !important;
-      max-height: calc(100vh - 160px) !important;
+      max-height: calc(100vh - 150px) !important;
     }
-    .vis-modal-stage[data-topo="desktop"] svg.vis-mobile {
-      display: none !important;
-    }
-    .vis-modal-stage[data-topo="mobile"] svg.vis-desktop {
-      display: none !important;
-    }
+    .vis-modal-stage[data-topo="desktop"] svg.vis-mobile { display: none !important; }
+    .vis-modal-stage[data-topo="mobile"] svg.vis-desktop { display: none !important; }
     .vis-modal-stage[data-topo="mobile"] svg.vis-mobile {
       display: block !important;
       width: 100% !important;
-      height: 100% !important; /* Prevents aspect-ratio physical collapse during zoom */
+      height: 100% !important;
       max-width: 380px !important;
-      max-height: calc(100vh - 160px) !important;
+      max-height: calc(100vh - 150px) !important;
     }
     .vis-modal-nodes-bar {
-      padding: 10px 24px;
+      padding: 10px 18px;
       background: rgba(15, 23, 42, 0.95);
       border-top: 1px solid var(--border);
       display: flex;
       align-items: center;
       gap: 10px;
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .vis-modal-nodes-label {
       font-size: 11px;
@@ -667,675 +692,548 @@
       letter-spacing: 0.5px;
       white-space: nowrap;
     }
+
+    /* LIGHTBOX IMAGE MODAL (FOR FLUX IMAGES) */
+    .img-lightbox-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0, 0, 0, 0.88);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    .img-lightbox-content {
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .img-lightbox-content img {
+      width: 100%;
+      max-height: calc(90vh - 90px);
+      object-fit: contain;
+      background: #000;
+    }
+    .img-lightbox-footer {
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--border);
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* LOGS CONSOLE */
+    .log-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+    .log-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 11px;
+      border-radius: 6px;
+      background: var(--surface-card);
+      border-left: 3px solid var(--blue);
+      gap: 8px;
+    }
+    .log-item.success { border-left-color: var(--green); }
+    .log-item.error   { border-left-color: var(--red); color: #fca5a5; }
+
+    /* ========================================================
+       MOBILE FIRST RESPONSIVENESS (< 768px)
+       ======================================================== */
+    @media (max-width: 768px) {
+      body {
+        padding: 14px 10px;
+      }
+      .container {
+        gap: 14px;
+      }
+      .header {
+        padding: 16px 14px;
+        gap: 10px;
+      }
+      .header h1 {
+        font-size: 18px;
+      }
+      .tabs-nav {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .tab-btn {
+        padding: 9px 8px;
+        font-size: 11px;
+      }
+      .card {
+        padding: 16px 14px;
+        gap: 14px;
+      }
+      .grid-2, .grid-3, .grid-4 {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .item-grid {
+        grid-template-columns: 1fr;
+      }
+      .preview-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .preview-actions-left {
+        justify-content: space-between;
+      }
+      .segmented-control {
+        width: 100%;
+      }
+      .segment-btn {
+        flex: 1;
+        text-align: center;
+      }
+      .img-lightbox-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .img-lightbox-footer .btn {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
+
+<div class="container">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand-title">
       <div>
-        <h1>⚡ Miron Ingestor & Lecture Queue Studio</h1>
-        <p>Direct Supabase REST bridge for visual SVG diagrams and master audio lesson scripts.</p>
-      </div>
-      <span class="pill-tip">✔ Auto-Saves Credentials</span>
-    </div>
-
-    <!-- Credentials Card -->
-    <div class="card">
-      <div class="grid-2">
-        <div>
-          <label>Supabase URL</label>
-          <input type="text" id="supa-url" placeholder="https://xyz.supabase.co">
-        </div>
-        <div>
-          <label>Supabase Service Role Key</label>
-          <input type="password" id="supa-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
-        </div>
+        <h1>⚡ LinkUp Miron Studio</h1>
+        <p class="brand-desc">Interactive diagrams, Flux AI imagery, and master audio lectures.</p>
       </div>
     </div>
+    <span class="badge-pill">✔ Unified Pipeline Active</span>
+  </header>
 
-    <!-- Navigation Tabs -->
-    <div class="tabs-nav">
-      <button class="tab-btn active" id="tab-btn-visuals" onclick="switchTab('visuals')">
-        🎨 1. Ingest Course Visuals (XML)
-      </button>
-      <button class="tab-btn" id="tab-btn-script" onclick="switchTab('script')">
-        🎙️ 2. Queue Audio Lesson Script
-      </button>
-      <button class="tab-btn" id="tab-btn-preview" onclick="switchTab('preview')">
-        👁️ 3. Visual Gallery & Live Preview
-      </button>
-    </div>
-
-    <!-- TAB 1: XML VISUALS INGESTION -->
-    <div class="card" id="tab-panel-visuals">
+  <!-- UNIFIED PIPELINE CONFIG BAR -->
+  <div class="card">
+    <div class="grid-4">
       <div>
-        <label>Course Visuals XML</label>
-        <textarea id="xml-input" placeholder="Paste <course_visuals> XML content here..."></textarea>
+        <label>Course Code</label>
+        <input type="text" id="global-course-code" value="ANTH_1012" placeholder="e.g. ANTH_1012" oninput="handleGlobalCourseChange(this.value)">
       </div>
-      <button class="btn" id="btn-ingest-xml" onclick="handleIngestXml()">
-        🚀 Parse & Ingest Visuals
-      </button>
-    </div>
-
-    <!-- TAB 2: MASTER SCRIPT QUEUE -->
-    <div class="card" id="tab-panel-script" style="display: none;">
-      <div class="grid-3">
-        <div>
-          <label>Course Code</label>
-          <input type="text" id="script-course-code" value="ANTH 1012">
-        </div>
-        <div>
-          <label>Book ID (UUID)</label>
-          <input type="text" id="script-book-id" value="d59179fa-23a7-470a-b071-9e632e85e6ae">
-        </div>
-        <div>
-          <label>Start Page</label>
-          <input type="number" id="script-page-num" value="11">
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div>
-          <label>Chapter Title</label>
-          <input type="text" id="script-chapter-title" value="Unit One: Introducing Anthropology and its Subject Matter">
-        </div>
-        <div>
-          <label>Section Title (Master Track Title)</label>
-          <input type="text" id="script-section-title" value="Unit One: Introducing Anthropology and its Subject Matter">
-        </div>
-      </div>
-
       <div>
-        <label>Master Audio Script (With Section & Visual Cues)</label>
-        <textarea id="script-text-input" placeholder="Paste master lecture script here..."></textarea>
+        <label>Flux Cloudflare Worker</label>
+        <input type="text" id="global-worker-url" value="https://flux-image-worker.getyeteklu2.workers.dev" placeholder="https://worker.dev" oninput="saveCredentials()">
       </div>
-
-      <button class="btn btn-green" id="btn-queue-script" onclick="handleQueueScript()">
-        ⚡ Queue Audio Lesson for Processing
-      </button>
-    </div>
-
-    <!-- TAB 3: VISUAL GALLERY & PREVIEW -->
-    <div class="card" id="tab-panel-preview" style="display: none;">
-      <div class="preview-toolbar">
-        <div class="preview-actions-left">
-          <button class="btn btn-sm" onclick="renderPreviewFromInput()">
-            🔄 Render from XML
-          </button>
-          <div class="view-mode-pill">
-            <button class="mode-pill-btn active" id="btn-topo-desktop" onclick="setPreviewTopology('desktop')">
-              💻 Desktop
-            </button>
-            <button class="mode-pill-btn" id="btn-topo-mobile" onclick="setPreviewTopology('mobile')">
-              📱 Mobile
-            </button>
-          </div>
-        </div>
-        <span class="preview-count-tag" id="preview-count">0 diagrams loaded</span>
+      <div>
+        <label>Supabase URL</label>
+        <input type="text" id="supa-url" placeholder="https://xyz.supabase.co" oninput="saveCredentials()">
       </div>
-      <div class="preview-gallery-grid" id="preview-gallery-container">
-        <p style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0;">
-          Paste your <course_visuals> XML in Tab 1, then click <strong>Render from XML</strong> to view all rendered graphics.
-        </p>
+      <div>
+        <label>Supabase Service Role Key</label>
+        <input type="password" id="supa-key" placeholder="eyJhbGciOiJIUz..." oninput="saveCredentials()">
       </div>
-    </div>
-
-    <!-- Output Logs Console -->
-    <div class="card" id="output-card" style="display: none;">
-      <label id="log-summary">Execution Logs</label>
-      <div class="log-box" id="log-container"></div>
     </div>
   </div>
 
-  <!-- Fullscreen Immersive Modal (Simulating Miron Live Session Stage) -->
-  <div class="vis-modal-overlay" id="vis-modal" style="display: none;">
-    <div class="vis-modal-header">
-      <div class="vis-modal-meta">
-        <span class="vis-modal-badge" id="modal-badge"></span>
-        <h3 id="modal-title"></h3>
+  <!-- NAVIGATION TABS (4 TABS) -->
+  <nav class="tabs-nav">
+    <button class="tab-btn active" id="tab-btn-visuals" onclick="switchMainTab('visuals')">
+      🎨 1. Visuals XML
+    </button>
+    <button class="tab-btn" id="tab-btn-script" onclick="switchMainTab('script')">
+      🎙️ 2. Audio Queue
+    </button>
+    <button class="tab-btn" id="tab-btn-preview" onclick="switchMainTab('preview')">
+      👁️ 3. Cinema Stage
+    </button>
+    <button class="tab-btn" id="tab-btn-flux" onclick="switchMainTab('flux')">
+      📸 4. Flux AI Studio
+    </button>
+  </nav>
+
+  <!-- TAB 1: XML VISUALS INGESTION -->
+  <div class="card" id="tab-panel-visuals">
+    <div>
+      <label>Course Visuals XML (<infographic> / <course_visuals>)</label>
+      <textarea id="xml-input" placeholder="Paste <course_visuals> XML content here..."></textarea>
+    </div>
+    <button class="btn" id="btn-ingest-xml" onclick="handleIngestXml()">
+      🚀 Parse & Ingest Visuals to Supabase
+    </button>
+  </div>
+
+  <!-- TAB 2: MASTER SCRIPT QUEUE -->
+  <div class="card" id="tab-panel-script" style="display: none;">
+    <div class="grid-3">
+      <div>
+        <label>Course Code (Synced)</label>
+        <input type="text" id="script-course-code" value="ANTH_1012">
       </div>
-      <div class="vis-modal-actions">
+      <div>
+        <label>Book ID (UUID)</label>
+        <input type="text" id="script-book-id" value="d59179fa-23a7-470a-b071-9e632e85e6ae">
+      </div>
+      <div>
+        <label>Start Page</label>
+        <input type="number" id="script-page-num" value="11">
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label>Chapter Title</label>
+        <input type="text" id="script-chapter-title" value="Unit One: Introducing Anthropology and its Subject Matter">
+      </div>
+      <div>
+        <label>Section Title (Master Track Title)</label>
+        <input type="text" id="script-section-title" value="Unit One: Introducing Anthropology and its Subject Matter">
+      </div>
+    </div>
+
+    <div>
+      <label>Master Audio Script (With Section & Visual Cues)</label>
+      <textarea id="script-text-input" placeholder="Paste master lecture script here..."></textarea>
+    </div>
+
+    <button class="btn btn-green" id="btn-queue-script" onclick="handleQueueScript()">
+      ⚡ Queue Audio Lesson for Processing
+    </button>
+  </div>
+
+  <!-- TAB 3: VISUAL GALLERY & PREVIEW -->
+  <div class="card" id="tab-panel-preview" style="display: none;">
+    <div class="preview-toolbar">
+      <div class="preview-actions-left">
+        <button class="btn btn-sm" onclick="renderPreviewFromInput()">
+          🔄 Render from XML
+        </button>
         <div class="view-mode-pill">
-          <button class="mode-pill-btn active" id="modal-btn-desktop" onclick="setModalTopology('desktop')">💻 Desktop</button>
-          <button class="mode-pill-btn" id="modal-btn-mobile" onclick="setModalTopology('mobile')">📱 Mobile</button>
+          <button class="mode-pill-btn active" id="btn-topo-desktop" onclick="setPreviewTopology('desktop')">
+            💻 Desktop
+          </button>
+          <button class="mode-pill-btn" id="btn-topo-mobile" onclick="setPreviewTopology('mobile')">
+            📱 Mobile
+          </button>
         </div>
-        <button class="modal-close-btn" onclick="closeModal()" title="Close Fullscreen">✕</button>
       </div>
+      <span class="preview-count-tag" id="preview-count">0 diagrams loaded</span>
     </div>
-    <div class="vis-modal-stage" id="modal-stage" data-topo="desktop"></div>
-    <div class="vis-modal-nodes-bar" id="modal-nodes-bar">
-      <span class="vis-modal-nodes-label">Camera Nodes:</span>
-      <div id="modal-nodes-list" style="display: flex; gap: 6px;"></div>
+    <div class="preview-gallery-grid" id="preview-gallery-container">
+      <p style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0;">
+        Paste your <course_visuals> XML in Tab 1, then click <strong>Render from XML</strong> to view all rendered graphics.
+      </p>
     </div>
   </div>
 
-  <script>
-    const STORAGE_KEY_URL = 'miron_ingestor_supa_url';
-    const STORAGE_KEY_KEY = 'miron_ingestor_supa_key';
+  <!-- TAB 4: FLUX AI IMAGE STUDIO -->
+  <div class="card" id="tab-panel-flux" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div class="segmented-control">
+        <button class="segment-btn active" id="subtab-btn-generator" onclick="switchFluxSubTab('generator')">
+          ⚡ Batch Generator
+        </button>
+        <button class="segment-btn" id="subtab-btn-browser" onclick="switchFluxSubTab('browser')">
+          🗂️ Storage Explorer
+        </button>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="btn-load-sample" onclick="loadSampleFluxData()">
+        Load Anthro Unit 1 Preset (8 Prompts)
+      </button>
+    </div>
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const savedUrl = localStorage.getItem(STORAGE_KEY_URL);
-      const savedKey = localStorage.getItem(STORAGE_KEY_KEY);
-      if (savedUrl) document.getElementById('supa-url').value = savedUrl;
-      if (savedKey) document.getElementById('supa-key').value = savedKey;
+    <!-- FLUX SUBVIEW A: BATCH GENERATOR -->
+    <div id="flux-subview-generator" style="display: flex; flex-direction: column; gap: 14px;">
+      <div>
+        <label>Paste JSON Prompts List</label>
+        <textarea id="fluxJsonInput" placeholder='[
+  { "name": "U01_01_sec1.1_scope_human_diversity.png", "description": "High contrast scene..." }
+]'></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn btn-secondary" onclick="parseFluxJson()">1. Parse & Review Queue</button>
+          <button class="btn btn-green" id="btnConcurrent" onclick="startFluxGeneration('concurrent')" disabled>⚡ Concurrent Burst</button>
+          <button class="btn" id="btnSequential" onclick="startFluxGeneration('sequential')" disabled>⏳ Sequential Pace</button>
+        </div>
+        <span id="queueCount" style="font-size: 12px; color: var(--text-muted); font-weight: 700;">Queue: 0 items</span>
+      </div>
+
+      <div class="progress-bar-container" id="fluxProgressContainer">
+        <div class="progress-bar" id="fluxProgressBar"></div>
+      </div>
+
+      <div class="item-grid" id="fluxGenerationGrid"></div>
+    </div>
+
+    <!-- FLUX SUBVIEW B: STORAGE EXPLORER -->
+    <div id="flux-subview-browser" style="display: none; flex-direction: column; gap: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px;">
+        <div style="flex: 1; min-width: 220px;">
+          <label>Course Subfolder in Supabase Storage</label>
+          <input type="text" id="browsePrefix" value="ANTH_1012" placeholder="e.g. ANTH_1012">
+        </div>
+        <button class="btn btn-secondary" onclick="fetchSupabaseGallery()">Refresh Storage Gallery</button>
+      </div>
+      <span id="galleryStatus" style="font-size: 12px; color: var(--text-muted); font-weight: 600;"></span>
+      <div class="item-grid" id="supabaseGrid"></div>
+    </div>
+  </div>
+
+  <!-- OUTPUT LOGS CONSOLE -->
+  <div class="card" id="output-card" style="display: none;">
+    <label id="log-summary">Execution Logs</label>
+    <div class="log-box" id="log-container"></div>
+  </div>
+</div>
+
+<!-- DIAGRAM FULLSCREEN CINEMA MODAL (TAB 3) -->
+<div class="vis-modal-overlay" id="vis-modal">
+  <div class="vis-modal-header">
+    <div class="vis-modal-meta">
+      <span class="vis-modal-badge" id="modal-badge"></span>
+      <h3 id="modal-title"></h3>
+    </div>
+    <div class="vis-modal-actions">
+      <div class="view-mode-pill">
+        <button class="mode-pill-btn active" id="modal-btn-desktop" onclick="setModalTopology('desktop')">💻 Desktop</button>
+        <button class="mode-pill-btn" id="modal-btn-mobile" onclick="setModalTopology('mobile')">📱 Mobile</button>
+      </div>
+      <button class="modal-close-btn" onclick="closeVisModal()" title="Close Fullscreen">✕</button>
+    </div>
+  </div>
+  <div class="vis-modal-stage" id="modal-stage" data-topo="desktop"></div>
+  <div class="vis-modal-nodes-bar" id="modal-nodes-bar">
+    <span class="vis-modal-nodes-label">Camera Nodes:</span>
+    <div id="modal-nodes-list" style="display: flex; gap: 6px;"></div>
+  </div>
+</div>
+
+<!-- IMAGE LIGHTBOX MODAL (TAB 4) -->
+<div class="img-lightbox-modal" id="img-modal" onclick="closeImgModal(event)">
+  <div class="img-lightbox-content" onclick="event.stopPropagation()">
+    <img id="img-modal-pic" src="" alt="Preview">
+    <div class="img-lightbox-footer">
+      <span id="img-modal-title" style="font-size: 13px; font-weight: 700; word-break: break-all;"></span>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn btn-green btn-sm" onclick="downloadCurrentFluxImage()">Download</button>
+        <button class="btn btn-secondary btn-sm" onclick="copyCurrentFluxUrl()">Copy CDN URL</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeImgModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY_URL = 'miron_ingestor_supa_url';
+  const STORAGE_KEY_KEY = 'miron_ingestor_supa_key';
+  const STORAGE_KEY_WORKER = 'miron_flux_worker_url';
+  const STORAGE_KEY_COURSE = 'miron_course_code';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const savedUrl = localStorage.getItem(STORAGE_KEY_URL);
+    const savedKey = localStorage.getItem(STORAGE_KEY_KEY);
+    const savedWorker = localStorage.getItem(STORAGE_KEY_WORKER);
+    const savedCourse = localStorage.getItem(STORAGE_KEY_COURSE) || 'ANTH_1012';
+
+    if (savedUrl) document.getElementById('supa-url').value = savedUrl;
+    if (savedKey) document.getElementById('supa-key').value = savedKey;
+    if (savedWorker) document.getElementById('global-worker-url').value = savedWorker;
+    if (savedCourse) {
+      document.getElementById('global-course-code').value = savedCourse;
+      handleGlobalCourseChange(savedCourse);
+    }
+  });
+
+  function saveCredentials() {
+    const supaUrl = (document.getElementById('supa-url').value || '').trim().replace(/\/$/, '');
+    const supaKey = (document.getElementById('supa-key').value || '').trim();
+    const workerUrl = (document.getElementById('global-worker-url').value || '').trim().replace(/\/$/, '');
+    const courseCode = (document.getElementById('global-course-code').value || '').trim();
+
+    localStorage.setItem(STORAGE_KEY_URL, supaUrl);
+    localStorage.setItem(STORAGE_KEY_KEY, supaKey);
+    localStorage.setItem(STORAGE_KEY_WORKER, workerUrl);
+    localStorage.setItem(STORAGE_KEY_COURSE, courseCode);
+  }
+
+  function getCredentials() {
+    const supaUrl = (document.getElementById('supa-url').value || '').trim().replace(/\/$/, '');
+    const supaKey = (document.getElementById('supa-key').value || '').trim();
+    const workerUrl = (document.getElementById('global-worker-url').value || '').trim().replace(/\/$/, '');
+    const courseCode = (document.getElementById('global-course-code').value || '').trim() || 'MISC';
+
+    saveCredentials();
+    return { supaUrl, supaKey, workerUrl, courseCode };
+  }
+
+  function handleGlobalCourseChange(val) {
+    const clean = (val || '').trim();
+    localStorage.setItem(STORAGE_KEY_COURSE, clean);
+    const scriptCourse = document.getElementById('script-course-code');
+    if (scriptCourse) scriptCourse.value = clean;
+    const browsePrefix = document.getElementById('browsePrefix');
+    if (browsePrefix) browsePrefix.value = clean;
+  }
+
+  function appendLog(title, subtitle, status) {
+    const outputCard = document.getElementById('output-card');
+    const container = document.getElementById('log-container');
+    outputCard.style.display = 'flex';
+
+    const row = document.createElement('div');
+    row.className = `log-item ${status}`;
+    row.innerHTML = `
+      <span><strong>${title}</strong></span>
+      <span style="font-size: 11px;">${subtitle}</span>
+    `;
+    container.appendChild(row);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // --- TAB SWITCHING ---
+  function switchMainTab(mode) {
+    ['visuals', 'script', 'preview', 'flux'].forEach(m => {
+      document.getElementById(`tab-btn-${m}`).className = `tab-btn ${mode === m ? 'active' : ''}`;
+      document.getElementById(`tab-panel-${m}`).style.display = mode === m ? 'flex' : 'none';
     });
 
-    function getCredentials() {
-      const supaUrl = (document.getElementById('supa-url').value || '').trim().replace(/\/$/, '');
-      const supaKey = (document.getElementById('supa-key').value || '').trim();
+    if (mode === 'preview' && cachedParsedVisuals.length === 0) {
+      renderPreviewFromInput();
+    }
+    if (mode === 'flux') {
+      const isBrowserActive = document.getElementById('subtab-btn-browser').classList.contains('active');
+      if (isBrowserActive) fetchSupabaseGallery();
+    }
+  }
 
-      if (!supaUrl || !supaKey) {
-        alert('Please provide your Supabase URL and Service Role Key.');
-        return null;
-      }
+  // ========================================================
+  // TAB 1: COURSE VISUALS XML INGESTION
+  // ========================================================
+  function extractPayload(payloadNode) {
+    if (!payloadNode) return '';
+    if (payloadNode.children && payloadNode.children.length > 0) {
+      const serializer = new XMLSerializer();
+      return Array.from(payloadNode.childNodes)
+        .map(child => serializer.serializeToString(child))
+        .join('')
+        .trim();
+    }
+    let content = payloadNode.textContent.trim();
+    if (content.startsWith('<') && (content.includes('>') || content.endsWith('>'))) {
+      const txt = document.createElement('textarea');
+      txt.innerHTML = content;
+      content = txt.value;
+    }
+    return content;
+  }
 
-      localStorage.setItem(STORAGE_KEY_URL, supaUrl);
-      localStorage.setItem(STORAGE_KEY_KEY, supaKey);
-      return { supaUrl, supaKey };
+  async function handleIngestXml() {
+    const creds = getCredentials();
+    if (!creds.supaUrl || !creds.supaKey) {
+      alert('Please fill in Supabase URL and Service Role Key.');
+      return;
     }
 
-    let activePreviewTopology = 'desktop';
-    let cachedParsedVisuals = [];
-    let cameraAnimRef = null;
+    const rawXml = (document.getElementById('xml-input').value || '').trim();
+    if (!rawXml) return alert('Please paste the course visuals XML content.');
 
-    // Self-Healing Payload Extractor: Handles CDATA, raw child nodes, and escaped entities
-    function extractPayload(payloadNode) {
-      if (!payloadNode) return '';
+    const btn = document.getElementById('btn-ingest-xml');
+    const logSummary = document.getElementById('log-summary');
+    document.getElementById('log-container').innerHTML = '';
+    btn.disabled = true;
 
-      // 1. If AI omitted CDATA, DOMParser creates child element nodes.
-      // Re-serialize all child nodes back into a full vector markup string:
-      if (payloadNode.children && payloadNode.children.length > 0) {
-        const serializer = new XMLSerializer();
-        return Array.from(payloadNode.childNodes)
-          .map(child => serializer.serializeToString(child))
-          .join('')
-          .trim();
+    try {
+      const sanitizedXml = rawXml.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[a-f\d]+);)/gi, '&');
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(sanitizedXml, 'application/xml');
+
+      if (xmlDoc.querySelector('parsererror')) {
+        throw new Error('XML parsing failed. Verify that syntax is well-formed.');
       }
 
-      // 2. If CDATA was used, textContent contains the raw markup:
-      let content = payloadNode.textContent.trim();
+      const courseCode = (xmlDoc.querySelector('course_code')?.textContent || creds.courseCode || 'GENERAL').trim();
+      const infographics = Array.from(xmlDoc.querySelectorAll('infographic'));
 
-      // 3. Decode entity-escaped HTML (e.g. <div>) if emitted by overly cautious LLMs:
-      if (content.startsWith('<') && (content.includes('>') || content.endsWith('>'))) {
-        const txt = document.createElement('textarea');
-        txt.innerHTML = content;
-        content = txt.value;
-      }
+      if (infographics.length === 0) throw new Error('No <infographic> tags found in XML.');
 
-      return content;
-    }
+      logSummary.textContent = `Ingesting ${infographics.length} visual(s) for ${courseCode}...`;
 
-    function switchTab(mode) {
-      document.getElementById('tab-btn-visuals').className = `tab-btn ${mode === 'visuals' ? 'active' : ''}`;
-      document.getElementById('tab-btn-script').className = `tab-btn ${mode === 'script' ? 'active' : ''}`;
-      document.getElementById('tab-btn-preview').className = `tab-btn ${mode === 'preview' ? 'active' : ''}`;
+      let count = 0;
+      for (let i = 0; i !== infographics.length; i++) {
+        const el = infographics[i];
+        const id = el.getAttribute('id') || `vis_${Date.now()}_${i}`;
+        const title = (el.querySelector('title')?.textContent || el.querySelector('name')?.textContent || id).trim();
 
-      document.getElementById('tab-panel-visuals').style.display = mode === 'visuals' ? 'flex' : 'none';
-      document.getElementById('tab-panel-script').style.display = mode === 'script' ? 'flex' : 'none';
-      document.getElementById('tab-panel-preview').style.display = mode === 'preview' ? 'flex' : 'none';
+        const taxNode = el.querySelector('taxonomy');
+        let unitNumber = null;
+        let sectionTag = null;
+        let chapterTitle = null;
+        let sectionTitle = null;
+        let anchorQuery = null;
 
-      if (mode === 'preview' && cachedParsedVisuals.length === 0) {
-        renderPreviewFromInput();
-      }
-    }
-
-    function appendLog(title, subtitle, status) {
-      const outputCard = document.getElementById('output-card');
-      const container = document.getElementById('log-container');
-      outputCard.style.display = 'flex';
-
-      const row = document.createElement('div');
-      row.className = `log-item ${status}`;
-      row.innerHTML = `
-        <span><strong>${title}</strong></span>
-        <span class="status-badge">${subtitle}</span>
-      `;
-      container.appendChild(row);
-      container.scrollTop = container.scrollHeight;
-    }
-
-    // --- TAB 1: INGEST XML INFOGRAPHICS ---
-    async function handleIngestXml() {
-      const creds = getCredentials();
-      if (!creds) return;
-
-      const rawXml = (document.getElementById('xml-input').value || '').trim();
-      if (!rawXml) {
-        alert('Please paste the course visuals XML content.');
-        return;
-      }
-
-      const btn = document.getElementById('btn-ingest-xml');
-      const logSummary = document.getElementById('log-summary');
-      document.getElementById('log-container').innerHTML = '';
-      btn.disabled = true;
-
-      try {
-        // Self-healing pre-pass: auto-escape loose ampersands that break XML parsing
-        const sanitizedXml = rawXml.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[a-f\d]+);)/gi, '&amp;');
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(sanitizedXml, 'application/xml');
-
-        if (xmlDoc.querySelector('parsererror')) {
-          throw new Error('XML parsing failed. Verify that syntax is well-formed.');
+        if (taxNode) {
+          unitNumber = taxNode.querySelector('unit_number')?.textContent ? parseInt(taxNode.querySelector('unit_number').textContent.trim(), 10) : null;
+          sectionTag = taxNode.querySelector('section_tag')?.textContent?.trim() || null;
+          chapterTitle = taxNode.querySelector('chapter_title')?.textContent?.trim() || null;
+          sectionTitle = taxNode.querySelector('section_title')?.textContent?.trim() || null;
+          anchorQuery = taxNode.querySelector('anchor_query')?.textContent?.trim() || null;
         }
 
-        const courseCode = (xmlDoc.querySelector('course_code')?.textContent || 'GENERAL').trim();
-        const infographics = Array.from(xmlDoc.querySelectorAll('infographic'));
-
-        if (infographics.length === 0) {
-          throw new Error('No <infographic> tags found in XML.');
+        if (!sectionTag) {
+          const targetQuery = (el.querySelector('routing > target_query')?.textContent || '').trim();
+          const secMatch = targetQuery.match(/^([0-9]+(?:\.[0-9]+)*)/);
+          sectionTag = secMatch ? secMatch[1] : null;
+          if (!unitNumber && sectionTag) unitNumber = parseInt(sectionTag.split('.')[0], 10);
+          anchorQuery = targetQuery;
         }
 
-        logSummary.textContent = `Ingesting ${infographics.length} visual(s) for ${courseCode}...`;
-
-        let count = 0;
-        for (let i = 0; i !== infographics.length; i++) {
-          const el = infographics[i];
-          const id = el.getAttribute('id') || `vis_${Date.now()}_${i}`;
-          const title = (el.querySelector('title')?.textContent || el.querySelector('name')?.textContent || id).trim();
-
-          // V3 Taxonomy Parser with V2 Routing Fallback
-          const taxNode = el.querySelector('taxonomy');
-          let unitNumber = null;
-          let sectionTag = null;
-          let chapterTitle = null;
-          let sectionTitle = null;
-          let anchorQuery = null;
-
-          if (taxNode) {
-            unitNumber = taxNode.querySelector('unit_number')?.textContent ? parseInt(taxNode.querySelector('unit_number').textContent.trim(), 10) : null;
-            sectionTag = taxNode.querySelector('section_tag')?.textContent?.trim() || null;
-            chapterTitle = taxNode.querySelector('chapter_title')?.textContent?.trim() || null;
-            sectionTitle = taxNode.querySelector('section_title')?.textContent?.trim() || null;
-            anchorQuery = taxNode.querySelector('anchor_query')?.textContent?.trim() || null;
-          }
-
-          if (!sectionTag) {
-            const targetQuery = (el.querySelector('routing > target_query')?.textContent || '').trim();
-            const secMatch = targetQuery.match(/^([0-9]+(?:\.[0-9]+)*)/);
-            sectionTag = secMatch ? secMatch[1] : null;
-            if (!unitNumber && sectionTag) unitNumber = parseInt(sectionTag.split('.')[0], 10);
-            anchorQuery = targetQuery;
-          }
-
-          const payloadNode = el.querySelector('payload');
-          const payloadContent = extractPayload(payloadNode);
-
-          // Parse focusable nodes from payload string
-          const nodeMatches = Array.from(payloadContent.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
-          const uniqueNodes = Array.from(new Set(nodeMatches));
-
-          const hasSvg = payloadContent.includes('<svg');
-          const assetType = hasSvg ? 'diagram_svg' : 'infographic_html';
-
-          const record = {
-            id: id,
-            course_code: courseCode,
-            asset_type: assetType,
-            unit_number: unitNumber,
-            section_tag: sectionTag,
-            title: title,
-            content_payload: payloadContent,
-            storage_path: null,
-            image_url: null,
-            metadata: {
-              chapter_title: chapterTitle,
-              section_title: sectionTitle,
-              anchor_query: anchorQuery,
-              camera_nodes: uniqueNodes,
-              format: assetType
-            },
-            updated_at: new Date().toISOString()
-          };
-
-          const endpoint = `${creds.supaUrl}/rest/v1/course_visual_assets`;
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${creds.supaKey}`,
-              'apikey': creds.supaKey,
-              'Content-Type': 'application/json',
-              'Prefer': 'resolution=merge-duplicates'
-            },
-            body: JSON.stringify(record)
-          });
-
-          if (!res.ok) {
-            const err = await res.text();
-            appendLog(`[${i + 1}/${infographics.length}] ${id}`, `Error: ${err}`, 'error');
-          } else {
-            count++;
-            appendLog(`[${i + 1}/${infographics.length}] ${id}`, `Section ${sectionTag || 'N/A'} • Saved`, 'success');
-          }
-        }
-
-        logSummary.textContent = `Completed: ${count} of ${infographics.length} visuals ingested.`;
-      } catch (err) {
-        appendLog('Fatal Ingest Error', err.message, 'error');
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    // --- TAB 3: LIVE PREVIEW & FULLSCREEN CINEMA ENGINE ---
-    function renderPreviewFromInput() {
-      const rawXml = (document.getElementById('xml-input').value || '').trim();
-      const container = document.getElementById('preview-gallery-container');
-      const countTag = document.getElementById('preview-count');
-
-      if (!rawXml) {
-        container.innerHTML = `
-          <p style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0;">
-            No XML found. Paste your <course_visuals> XML in Tab 1 first.
-          </p>`;
-        countTag.textContent = '0 diagrams';
-        return;
-      }
-
-      try {
-        // Self-healing pre-pass: auto-escape loose ampersands that break XML parsing
-        const sanitizedXml = rawXml.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[a-f\d]+);)/gi, '&amp;');
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(sanitizedXml, 'application/xml');
-
-        if (xmlDoc.querySelector('parsererror')) {
-          throw new Error('XML parsing failed. Verify XML syntax in Tab 1.');
-        }
-
-        const infographics = Array.from(xmlDoc.querySelectorAll('infographic'));
-        if (infographics.length === 0) {
-          throw new Error('No <infographic> tags found in XML.');
-        }
-
-                  cachedParsedVisuals = infographics.map((el, idx) => {
-          const id = el.getAttribute('id') || `vis_${idx}`;
-          const title = (el.querySelector('title')?.textContent || el.querySelector('name')?.textContent || id).trim();
-          const taxNode = el.querySelector('taxonomy');
-          const unitNumber = taxNode?.querySelector('unit_number')?.textContent?.trim() || '';
-          const sectionTag = taxNode?.querySelector('section_tag')?.textContent?.trim() || '';
-          const payload = extractPayload(el.querySelector('payload'));
-          const hasSvg = payload.includes('<svg');
-
-          const nodeMatches = Array.from(payload.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
-          const uniqueNodes = Array.from(new Set(nodeMatches));
-
-          return { id, title, unitNumber, sectionTag, payload, nodes: uniqueNodes, isSvg: hasSvg };
-        });
-
-        countTag.textContent = `${cachedParsedVisuals.length} diagram(s)`;
-        container.innerHTML = '';
-
-        cachedParsedVisuals.forEach(v => {
-          const card = document.createElement('div');
-          card.className = 'preview-card';
-          card.innerHTML = `
-            <div class="preview-card-header">
-              <div class="preview-card-meta">
-                <span class="preview-tag">${v.sectionTag ? 'SEC ' + v.sectionTag : (v.unitNumber ? 'UNIT ' + v.unitNumber : 'VIS')}</span>
-                <span class="format-tag ${v.isSvg ? 'svg' : 'html'}">${v.isSvg ? 'SVG' : 'HTML'}</span>
-                <span class="preview-title" title="${v.title}">${v.title}</span>
-              </div>
-              <button class="preview-expand-btn" onclick="openFullscreenPreview('${v.id}')" title="Full Screen Cinema Preview">
-                ⛶
-              </button>
-            </div>
-            <div class="preview-viewport-frame" id="frame-${v.id}" data-topo="${activePreviewTopology}">
-              ${v.payload}
-            </div>
-            <div class="preview-card-footer">
-              <span style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Nodes:</span>
-              ${v.nodes.map(n => `<span class="node-pill" onclick="testNodeZoom('${v.id}', '${n}')">${n}</span>`).join('')}
-            </div>
-          `;
-          // Enable direct click-to-focus on cards in gallery
-          card.querySelectorAll('.vis-node').forEach(nodeEl => {
-            nodeEl.addEventListener('click', (e) => {
-              e.stopPropagation();
-              const slug = nodeEl.getAttribute('data-node');
-              if (slug) testNodeZoom(v.id, slug);
-            });
-          });
-
-          container.appendChild(card);
-        });
-      } catch (e) {
-        container.innerHTML = `<div class="log-item error" style="margin: 20px 0;"><span>Error: ${e.message}</span></div>`;
-      }
-    }
-
-    function setPreviewTopology(topo) {
-      activePreviewTopology = topo;
-      document.getElementById('btn-topo-desktop').className = `mode-pill-btn ${topo === 'desktop' ? 'active' : ''}`;
-      document.getElementById('btn-topo-mobile').className = `mode-pill-btn ${topo === 'mobile' ? 'active' : ''}`;
-      document.querySelectorAll('.preview-viewport-frame').forEach(el => {
-        el.setAttribute('data-topo', topo);
-      });
-    }
-
-    // Modal Fullscreen Cinema Viewer
-    function openFullscreenPreview(id) {
-      const visual = cachedParsedVisuals.find(v => v.id === id);
-      if (!visual) return;
-
-      const modal = document.getElementById('vis-modal');
-      const stage = document.getElementById('modal-stage');
-      const badge = document.getElementById('modal-badge');
-      const title = document.getElementById('modal-title');
-      const nodesList = document.getElementById('modal-nodes-list');
-
-      badge.textContent = visual.sectionTag ? `SEC ${visual.sectionTag}` : visual.id;
-      title.textContent = visual.title;
-      stage.innerHTML = visual.payload;
-      stage.setAttribute('data-topo', activePreviewTopology);
-
-      setModalTopology(activePreviewTopology);
-
-      // Render camera testing buttons in modal bar
-      nodesList.innerHTML = `
-        <span class="node-pill" style="color:var(--blue); border-color:var(--blue);" onclick="resetModalCamera()">↺ Overview</span>
-        ${visual.nodes.map(n => `<span class="node-pill" onclick="zoomModalNode('${n}')">${n}</span>`).join('')}
-      `;
-
-      modal.style.display = 'flex';
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closeModal() {
-      document.getElementById('vis-modal').style.display = 'none';
-      document.getElementById('modal-stage').innerHTML = '';
-      document.body.style.overflow = '';
-    }
-
-    function setModalTopology(topo) {
-      const stage = document.getElementById('modal-stage');
-      stage.setAttribute('data-topo', topo);
-      document.getElementById('modal-btn-desktop').className = `mode-pill-btn ${topo === 'desktop' ? 'active' : ''}`;
-      document.getElementById('modal-btn-mobile').className = `mode-pill-btn ${topo === 'mobile' ? 'active' : ''}`;
-      resetModalCamera();
-    }
-
-    // 60fps Steadicam ViewBox Interpolator (Mirrors production MironLiveSession app)
-    const animateViewBox = (svg, targetBoxStr) => {
-      if (!svg || !targetBoxStr) return;
-      const target = targetBoxStr.trim().split(/\s+/).map(Number);
-      if (target.length !== 4 || target.some(isNaN)) return;
-
-      cancelAnimationFrame(cameraAnimRef);
-      const currentBoxStr = svg.getAttribute('viewBox') || targetBoxStr;
-      const start = currentBoxStr.trim().split(/\s+/).map(Number);
-      if (start.length !== 4 || start.some(isNaN)) {
-          svg.setAttribute('viewBox', targetBoxStr);
-          return;
-      }
-
-      const startTime = performance.now();
-      const duration = 650; // Smooth 650ms camera pan
-
-      const step = (now) => {
-          const elapsed = now - startTime;
-          const progress = Math.min(1, elapsed / duration);
-          const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-
-          const cur = [
-              start[0] + (target[0] - start[0]) * ease,
-              start[1] + (target[1] - start[1]) * ease,
-              start[2] + (target[2] - start[2]) * ease,
-              start[3] + (target[3] - start[3]) * ease
-          ];
-
-          svg.setAttribute('viewBox', `${cur[0].toFixed(2)} ${cur[1].toFixed(2)} ${cur[2].toFixed(2)} ${cur[3].toFixed(2)}`);
-
-          if (progress < 1) {
-              cameraAnimRef = requestAnimationFrame(step);
-          }
-      };
-      cameraAnimRef = requestAnimationFrame(step);
-    };
-
-    // Universal Visual Director: Handles both SVG Steadicam Zoom & HTML 3D Virtual Camera Rig
-    function zoomModalNode(nodeSlug) {
-      const stage = document.getElementById('modal-stage');
-      const currentTopo = stage.getAttribute('data-topo') || 'desktop';
-      const cardEl = stage.querySelector('.vis-card');
-      const canvasEl = stage.querySelector('.vis-canvas') || stage.querySelector('.vis-box') || cardEl;
-      if (cardEl) {
-        cardEl.setAttribute('data-active-node', nodeSlug);
-      }
-
-      const activeSvg = currentTopo === 'mobile'
-        ? (stage.querySelector('svg.vis-mobile') || stage.querySelector('svg'))
-        : (stage.querySelector('svg.vis-desktop') || stage.querySelector('svg'));
-
-      // Strictly query targetEl from activeSvg so Mobile gets mobile focus-box and Desktop gets desktop focus-box
-      const targetEl = activeSvg
-        ? (activeSvg.querySelector(`[data-node="${nodeSlug}"]`) || stage.querySelector(`[data-node="${nodeSlug}"]`))
-        : stage.querySelector(`[data-node="${nodeSlug}"]`);
-      if (targetEl) {
-        stage.querySelectorAll('.vis-node').forEach(n => {
-          n.classList.remove('is-focused');
-          n.removeAttribute('data-is-active');
-        });
-        targetEl.classList.add('is-focused');
-        targetEl.setAttribute('data-is-active', 'true');
-
-        if (activeSvg) {
-          // 🎨 PATH A: SVG Steadicam Zoom (60fps JS interpolation)
-          let boxStr = targetEl.getAttribute('data-focus-box');
-          if (!boxStr && typeof targetEl.getBBox === 'function') {
-            try {
-              const b = targetEl.getBBox();
-              if (b && b.width > 0 && b.height > 0) {
-                const pad = Math.max(16, Math.min(b.width, b.height) * 0.15);
-                boxStr = `${(b.x - pad).toFixed(2)} ${(b.y - pad).toFixed(2)} ${(b.width + pad * 2).toFixed(2)} ${(b.height + pad * 2).toFixed(2)}`;
-              }
-            } catch (e) {}
-          }
-          if (boxStr) {
-            animateViewBox(activeSvg, boxStr);
-          }
-        } else if (canvasEl) {
-          // ⚡ PATH B: Prezi/Figma 3D Virtual Camera Rig for HTML
-          const isMobile = currentTopo === 'mobile';
-          const zoom = isMobile ? 1.18 : 1.35;
-
-          const stageRect = stage.getBoundingClientRect();
-          const targetRect = targetEl.getBoundingClientRect();
-
-          // Calculate offset needed to shift target card dead-center into the stage viewport
-          const targetCenterX = targetEl.offsetLeft + (targetEl.offsetWidth / 2);
-          const targetCenterY = targetEl.offsetTop + (targetEl.offsetHeight / 2);
-          const stageCenterX = stage.clientWidth / 2;
-          const stageCenterY = stage.clientHeight / 2;
-
-          const moveX = (stageCenterX - targetCenterX) * 0.75;
-          const moveY = (stageCenterY - targetCenterY) * 0.75;
-
-          canvasEl.style.transformOrigin = `${targetCenterX}px ${targetCenterY}px`;
-          canvasEl.style.transform = `translate3d(${moveX}px, ${moveY}px, 0) scale(${zoom})`;
-
-          // For horizontal snap-reels, ensure element is also aligned in scroll context
-          if (targetEl.closest('.bento-snap-reel')) {
-            targetEl.scrollIntoView({
-              behavior: 'smooth',
-              inline: 'center',
-              block: 'nearest'
-            });
-          }
-        }
-      }
-    }
-
-    function resetModalCamera() {
-      const stage = document.getElementById('modal-stage');
-      const cardEl = stage.querySelector('.vis-card');
-      const canvasEl = stage.querySelector('.vis-canvas') || stage.querySelector('.vis-box') || cardEl;
-      
-      if (cardEl) cardEl.removeAttribute('data-active-node');
-      if (canvasEl) {
-        canvasEl.style.transform = 'none';
-        canvasEl.style.transformOrigin = 'center center';
-      }
-
-      stage.querySelectorAll('.vis-node').forEach(n => {
-        n.classList.remove('is-focused');
-        n.removeAttribute('data-is-active');
-      });
-
-      const currentTopo = stage.getAttribute('data-topo') || 'desktop';
-      const activeSvg = currentTopo === 'mobile'
-        ? (stage.querySelector('svg.vis-mobile') || stage.querySelector('svg'))
-        : (stage.querySelector('svg.vis-desktop') || stage.querySelector('svg'));
-
-      if (activeSvg) {
-        const defaultView = activeSvg.getAttribute('data-default-view') || (currentTopo === 'mobile' ? '0 0 340 540' : '0 0 780 340');
-        animateViewBox(activeSvg, defaultView);
-      }
-    }
-
-    function testNodeZoom(cardId, nodeSlug) {
-      openFullscreenPreview(cardId);
-      setTimeout(() => zoomModalNode(nodeSlug), 150);
-    }
-
-    // --- TAB 2: QUEUE MASTER AUDIO LESSON SCRIPT ---
-    async function handleQueueScript() {
-      const creds = getCredentials();
-      if (!creds) return;
-
-      const courseCode = (document.getElementById('script-course-code').value || '').trim();
-      const bookId = (document.getElementById('script-book-id').value || '').trim();
-      const pageNum = parseInt(document.getElementById('script-page-num').value || '1', 10);
-      const chapterTitle = (document.getElementById('script-chapter-title').value || '').trim();
-      const sectionTitle = (document.getElementById('script-section-title').value || '').trim();
-      const scriptRaw = (document.getElementById('script-text-input').value || '').trim();
-
-      if (!bookId || !sectionTitle || !scriptRaw) {
-        alert('Please fill in Book ID, Section Title, and paste the Master Script.');
-        return;
-      }
-
-      const btn = document.getElementById('btn-queue-script');
-      const logSummary = document.getElementById('log-summary');
-      document.getElementById('log-container').innerHTML = '';
-      btn.disabled = true;
-
-      try {
-        logSummary.textContent = 'Queueing Master Audio Lesson into Supabase...';
+        const payloadContent = extractPayload(el.querySelector('payload'));
+        const nodeMatches = Array.from(payloadContent.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
+        const uniqueNodes = Array.from(new Set(nodeMatches));
+        const hasSvg = payloadContent.includes('<svg');
+        const assetType = hasSvg ? 'diagram_svg' : 'infographic_html';
 
         const record = {
-          book_id: bookId,
+          id: id,
           course_code: courseCode,
-          chapter_title: chapterTitle,
-          section_title: sectionTitle,
-          page_number: pageNum,
-          script_raw: scriptRaw,
-          status: 'pending',
-          error_message: null,
+          asset_type: assetType,
+          unit_number: unitNumber,
+          section_tag: sectionTag,
+          title: title,
+          content_payload: payloadContent,
+          storage_path: null,
+          image_url: null,
+          metadata: {
+            chapter_title: chapterTitle,
+            section_title: sectionTitle,
+            anchor_query: anchorQuery,
+            camera_nodes: uniqueNodes,
+            format: assetType
+          },
           updated_at: new Date().toISOString()
         };
 
-        const endpoint = `${creds.supaUrl}/rest/v1/book_audio_lessons`;
+        const endpoint = `${creds.supaUrl}/rest/v1/course_visual_assets`;
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -1349,23 +1247,639 @@
 
         if (!res.ok) {
           const err = await res.text();
-          throw new Error(err);
+          appendLog(`[${i + 1}/${infographics.length}] ${id}`, `Error: ${err}`, 'error');
+        } else {
+          count++;
+          appendLog(`[${i + 1}/${infographics.length}] ${id}`, `Section ${sectionTag || 'N/A'} • Saved`, 'success');
         }
+      }
 
-        // Count cues inside the pasted script
-        const visualCues = (scriptRaw.match(/\[\[(?:cue|call):(?!section)[a-zA-Z0-9_\-]+(?::[\s\S]*?)?\]\]/g) || []).length;
-        const sectionCues = (scriptRaw.match(/\[\[(?:cue|call):section(?::[\s\S]*?)?\]\]/g) || []).length;
+      logSummary.textContent = `Completed: ${count} of ${infographics.length} visuals ingested.`;
+    } catch (err) {
+      appendLog('Fatal Ingest Error', err.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
 
-        appendLog('Master Script Queued', `Status: PENDING`, 'success');
-        appendLog(`Course: ${courseCode}`, `Book: ${bookId.slice(0, 8)}...`, 'success');
-        appendLog(`Structure Detected`, `${sectionCues} Sections • ${visualCues} Visual Cues`, 'success');
-        logSummary.textContent = 'Success! Script is queued. Trigger GitHub Action to process audio & alignment.';
-      } catch (err) {
-        appendLog('Queue Failed', err.message, 'error');
-      } finally {
-        btn.disabled = false;
+  // ========================================================
+  // TAB 2: MASTER SCRIPT QUEUE
+  // ========================================================
+  async function handleQueueScript() {
+    const creds = getCredentials();
+    if (!creds.supaUrl || !creds.supaKey) {
+      alert('Please fill in Supabase URL and Service Role Key.');
+      return;
+    }
+
+    const courseCode = (document.getElementById('script-course-code').value || creds.courseCode || '').trim();
+    const bookId = (document.getElementById('script-book-id').value || '').trim();
+    const pageNum = parseInt(document.getElementById('script-page-num').value || '1', 10);
+    const chapterTitle = (document.getElementById('script-chapter-title').value || '').trim();
+    const sectionTitle = (document.getElementById('script-section-title').value || '').trim();
+    const scriptRaw = (document.getElementById('script-text-input').value || '').trim();
+
+    if (!bookId || !sectionTitle || !scriptRaw) {
+      alert('Please fill in Book ID, Section Title, and paste the Master Script.');
+      return;
+    }
+
+    const btn = document.getElementById('btn-queue-script');
+    const logSummary = document.getElementById('log-summary');
+    document.getElementById('log-container').innerHTML = '';
+    btn.disabled = true;
+
+    try {
+      logSummary.textContent = 'Queueing Master Audio Lesson into Supabase...';
+
+      const record = {
+        book_id: bookId,
+        course_code: courseCode,
+        chapter_title: chapterTitle,
+        section_title: sectionTitle,
+        page_number: pageNum,
+        script_raw: scriptRaw,
+        status: 'pending',
+        error_message: null,
+        updated_at: new Date().toISOString()
+      };
+
+      const endpoint = `${creds.supaUrl}/rest/v1/book_audio_lessons`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${creds.supaKey}`,
+          'apikey': creds.supaKey,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(record)
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      const visualCues = (scriptRaw.match(/\[\[(?:cue|call):(?!section)[a-zA-Z0-9_\-]+(?::[\s\S]*?)?\]\]/g) || []).length;
+      const sectionCues = (scriptRaw.match(/\[\[(?:cue|call):section(?::[\s\S]*?)?\]\]/g) || []).length;
+
+      appendLog('Master Script Queued', `Status: PENDING`, 'success');
+      appendLog(`Course: ${courseCode}`, `Book: ${bookId.slice(0, 8)}...`, 'success');
+      appendLog(`Structure Detected`, `${sectionCues} Sections • ${visualCues} Visual Cues`, 'success');
+      logSummary.textContent = 'Success! Script is queued. Trigger GitHub Action to process audio & alignment.';
+    } catch (err) {
+      appendLog('Queue Failed', err.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ========================================================
+  // TAB 3: VISUAL GALLERY & 60FPS CINEMA ENGINE
+  // ========================================================
+  let activePreviewTopology = 'desktop';
+  let cachedParsedVisuals = [];
+  let cameraAnimRef = null;
+
+  function renderPreviewFromInput() {
+    const rawXml = (document.getElementById('xml-input').value || '').trim();
+    const container = document.getElementById('preview-gallery-container');
+    const countTag = document.getElementById('preview-count');
+
+    if (!rawXml) {
+      container.innerHTML = `
+        <p style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0;">
+          No XML found. Paste your <course_visuals> XML in Tab 1 first.
+        </p>`;
+      countTag.textContent = '0 diagrams';
+      return;
+    }
+
+    try {
+      const sanitizedXml = rawXml.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[a-f\d]+);)/gi, '&');
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(sanitizedXml, 'application/xml');
+
+      if (xmlDoc.querySelector('parsererror')) throw new Error('XML parsing failed. Verify XML syntax in Tab 1.');
+
+      const infographics = Array.from(xmlDoc.querySelectorAll('infographic'));
+      if (infographics.length === 0) throw new Error('No <infographic> tags found in XML.');
+
+      cachedParsedVisuals = infographics.map((el, idx) => {
+        const id = el.getAttribute('id') || `vis_${idx}`;
+        const title = (el.querySelector('title')?.textContent || el.querySelector('name')?.textContent || id).trim();
+        const taxNode = el.querySelector('taxonomy');
+        const unitNumber = taxNode?.querySelector('unit_number')?.textContent?.trim() || '';
+        const sectionTag = taxNode?.querySelector('section_tag')?.textContent?.trim() || '';
+        const payload = extractPayload(el.querySelector('payload'));
+        const hasSvg = payload.includes('<svg');
+        const nodeMatches = Array.from(payload.matchAll(/data-node=["']([^"']+)["']/g)).map(m => m[1]);
+        const uniqueNodes = Array.from(new Set(nodeMatches));
+
+        return { id, title, unitNumber, sectionTag, payload, nodes: uniqueNodes, isSvg: hasSvg };
+      });
+
+      countTag.textContent = `${cachedParsedVisuals.length} diagram(s)`;
+      container.innerHTML = '';
+
+      cachedParsedVisuals.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'preview-card';
+        card.innerHTML = `
+          <div class="preview-card-header">
+            <div class="preview-card-meta">
+              <span class="preview-tag">${v.sectionTag ? 'SEC ' + v.sectionTag : (v.unitNumber ? 'UNIT ' + v.unitNumber : 'VIS')}</span>
+              <span class="format-tag ${v.isSvg ? 'svg' : 'html'}">${v.isSvg ? 'SVG' : 'HTML'}</span>
+              <span class="preview-title" title="${v.title}">${v.title}</span>
+            </div>
+            <button class="preview-expand-btn" onclick="openFullscreenPreview('${v.id}')" title="Full Screen Cinema Preview">
+              ⛶
+            </button>
+          </div>
+          <div class="preview-viewport-frame" id="frame-${v.id}" data-topo="${activePreviewTopology}">
+            ${v.payload}
+          </div>
+          <div class="preview-card-footer">
+            <span style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Nodes:</span>
+            ${v.nodes.map(n => `<span class="node-pill" onclick="testNodeZoom('${v.id}', '${n}')">${n}</span>`).join('')}
+          </div>
+        `;
+
+        card.querySelectorAll('.vis-node').forEach(nodeEl => {
+          nodeEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const slug = nodeEl.getAttribute('data-node');
+            if (slug) testNodeZoom(v.id, slug);
+          });
+        });
+
+        container.appendChild(card);
+      });
+    } catch (e) {
+      container.innerHTML = `<div class="log-item error" style="margin: 20px 0;"><span>Error: ${e.message}</span></div>`;
+    }
+  }
+
+  function setPreviewTopology(topo) {
+    activePreviewTopology = topo;
+    document.getElementById('btn-topo-desktop').className = `mode-pill-btn ${topo === 'desktop' ? 'active' : ''}`;
+    document.getElementById('btn-topo-mobile').className = `mode-pill-btn ${topo === 'mobile' ? 'active' : ''}`;
+    document.querySelectorAll('.preview-viewport-frame').forEach(el => el.setAttribute('data-topo', topo));
+  }
+
+  function openFullscreenPreview(id) {
+    const visual = cachedParsedVisuals.find(v => v.id === id);
+    if (!visual) return;
+
+    const modal = document.getElementById('vis-modal');
+    const stage = document.getElementById('modal-stage');
+    const badge = document.getElementById('modal-badge');
+    const title = document.getElementById('modal-title');
+    const nodesList = document.getElementById('modal-nodes-list');
+
+    badge.textContent = visual.sectionTag ? `SEC ${visual.sectionTag}` : visual.id;
+    title.textContent = visual.title;
+    stage.innerHTML = visual.payload;
+    stage.setAttribute('data-topo', activePreviewTopology);
+
+    setModalTopology(activePreviewTopology);
+
+    nodesList.innerHTML = `
+      <span class="node-pill" style="color:var(--blue); border-color:var(--blue);" onclick="resetModalCamera()">↺ Overview</span>
+      ${visual.nodes.map(n => `<span class="node-pill" onclick="zoomModalNode('${n}')">${n}</span>`).join('')}
+    `;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeVisModal() {
+    document.getElementById('vis-modal').style.display = 'none';
+    document.getElementById('modal-stage').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  function setModalTopology(topo) {
+    const stage = document.getElementById('modal-stage');
+    stage.setAttribute('data-topo', topo);
+    document.getElementById('modal-btn-desktop').className = `mode-pill-btn ${topo === 'desktop' ? 'active' : ''}`;
+    document.getElementById('modal-btn-mobile').className = `mode-pill-btn ${topo === 'mobile' ? 'active' : ''}`;
+    resetModalCamera();
+  }
+
+  const animateViewBox = (svg, targetBoxStr) => {
+    if (!svg || !targetBoxStr) return;
+    const target = targetBoxStr.trim().split(/\s+/).map(Number);
+    if (target.length !== 4 || target.some(isNaN)) return;
+
+    cancelAnimationFrame(cameraAnimRef);
+    const currentBoxStr = svg.getAttribute('viewBox') || targetBoxStr;
+    const start = currentBoxStr.trim().split(/\s+/).map(Number);
+    if (start.length !== 4 || start.some(isNaN)) {
+      svg.setAttribute('viewBox', targetBoxStr);
+      return;
+    }
+
+    const startTime = performance.now();
+    const duration = 650;
+
+    const step = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const ease = 1 - Math.pow(1 - progress, 3);
+
+      const cur = [
+        start[0] + (target[0] - start[0]) * ease,
+        start[1] + (target[1] - start[1]) * ease,
+        start[2] + (target[2] - start[2]) * ease,
+        start[3] + (target[3] - start[3]) * ease
+      ];
+
+      svg.setAttribute('viewBox', `${cur[0].toFixed(2)} ${cur[1].toFixed(2)} ${cur[2].toFixed(2)} ${cur[3].toFixed(2)}`);
+
+      if (progress < 1) cameraAnimRef = requestAnimationFrame(step);
+    };
+    cameraAnimRef = requestAnimationFrame(step);
+  };
+
+  function zoomModalNode(nodeSlug) {
+    const stage = document.getElementById('modal-stage');
+    const currentTopo = stage.getAttribute('data-topo') || 'desktop';
+    const cardEl = stage.querySelector('.vis-card');
+    const canvasEl = stage.querySelector('.vis-canvas') || stage.querySelector('.vis-box') || cardEl;
+    if (cardEl) cardEl.setAttribute('data-active-node', nodeSlug);
+
+    const activeSvg = currentTopo === 'mobile'
+      ? (stage.querySelector('svg.vis-mobile') || stage.querySelector('svg'))
+      : (stage.querySelector('svg.vis-desktop') || stage.querySelector('svg'));
+
+    const targetEl = activeSvg
+      ? (activeSvg.querySelector(`[data-node="${nodeSlug}"]`) || stage.querySelector(`[data-node="${nodeSlug}"]`))
+      : stage.querySelector(`[data-node="${nodeSlug}"]`);
+
+    if (targetEl) {
+      stage.querySelectorAll('.vis-node').forEach(n => {
+        n.classList.remove('is-focused');
+        n.removeAttribute('data-is-active');
+      });
+      targetEl.classList.add('is-focused');
+      targetEl.setAttribute('data-is-active', 'true');
+
+      if (activeSvg) {
+        let boxStr = targetEl.getAttribute('data-focus-box');
+        if (!boxStr && typeof targetEl.getBBox === 'function') {
+          try {
+            const b = targetEl.getBBox();
+            if (b && b.width > 0 && b.height > 0) {
+              const pad = Math.max(16, Math.min(b.width, b.height) * 0.15);
+              boxStr = `${(b.x - pad).toFixed(2)} ${(b.y - pad).toFixed(2)} ${(b.width + pad * 2).toFixed(2)} ${(b.height + pad * 2).toFixed(2)}`;
+            }
+          } catch (e) {}
+        }
+        if (boxStr) animateViewBox(activeSvg, boxStr);
+      } else if (canvasEl) {
+        const isMobile = currentTopo === 'mobile';
+        const zoom = isMobile ? 1.18 : 1.35;
+        const targetCenterX = targetEl.offsetLeft + (targetEl.offsetWidth / 2);
+        const targetCenterY = targetEl.offsetTop + (targetEl.offsetHeight / 2);
+        const stageCenterX = stage.clientWidth / 2;
+        const stageCenterY = stage.clientHeight / 2;
+
+        const moveX = (stageCenterX - targetCenterX) * 0.75;
+        const moveY = (stageCenterY - targetCenterY) * 0.75;
+
+        canvasEl.style.transformOrigin = `${targetCenterX}px ${targetCenterY}px`;
+        canvasEl.style.transform = `translate3d(${moveX}px, ${moveY}px, 0) scale(${zoom})`;
       }
     }
-  </script>
+  }
+
+  function resetModalCamera() {
+    const stage = document.getElementById('modal-stage');
+    const cardEl = stage.querySelector('.vis-card');
+    const canvasEl = stage.querySelector('.vis-canvas') || stage.querySelector('.vis-box') || cardEl;
+
+    if (cardEl) cardEl.removeAttribute('data-active-node');
+    if (canvasEl) {
+      canvasEl.style.transform = 'none';
+      canvasEl.style.transformOrigin = 'center center';
+    }
+
+    stage.querySelectorAll('.vis-node').forEach(n => {
+      n.classList.remove('is-focused');
+      n.removeAttribute('data-is-active');
+    });
+
+    const currentTopo = stage.getAttribute('data-topo') || 'desktop';
+    const activeSvg = currentTopo === 'mobile'
+      ? (stage.querySelector('svg.vis-mobile') || stage.querySelector('svg'))
+      : (stage.querySelector('svg.vis-desktop') || stage.querySelector('svg'));
+
+    if (activeSvg) {
+      const defaultView = activeSvg.getAttribute('data-default-view') || (currentTopo === 'mobile' ? '0 0 340 540' : '0 0 780 340');
+      animateViewBox(activeSvg, defaultView);
+    }
+  }
+
+  function testNodeZoom(cardId, nodeSlug) {
+    openFullscreenPreview(cardId);
+    setTimeout(() => zoomModalNode(nodeSlug), 150);
+  }
+
+  // ========================================================
+  // TAB 4: FLUX AI IMAGE STUDIO ENGINE
+  // ========================================================
+  let parsedFluxQueue = [];
+  let currentFluxModalUrl = '';
+
+  function switchFluxSubTab(subTab) {
+    document.getElementById('subtab-btn-generator').className = `segment-btn ${subTab === 'generator' ? 'active' : ''}`;
+    document.getElementById('subtab-btn-browser').className = `segment-btn ${subTab === 'browser' ? 'active' : ''}`;
+
+    document.getElementById('flux-subview-generator').style.display = subTab === 'generator' ? 'flex' : 'none';
+    document.getElementById('flux-subview-browser').style.display = subTab === 'browser' ? 'flex' : 'none';
+
+    if (subTab === 'browser') {
+      fetchSupabaseGallery();
+    }
+  }
+
+  function loadSampleFluxData() {
+    const sample = {
+      course_code: document.getElementById('global-course-code').value || "ANTH_1012",
+      images: [
+        {
+          name: "U01_01_sec1.1_scope_human_diversity.png",
+          description: "Photorealistic contrasting split montage representing human environmental adaptation: Arctic Inuit hunter in traditional warm fur parka facing icy tundra, alongside an African pastoralist in vivid woven cloth in vast arid sunlit savanna, highly detailed, dramatic lighting."
+        },
+        {
+          name: "U01_02_sec1.2.1_paleo_fossil_excavation.png",
+          description: "Close-up macro documentary shot of a paleoanthropologist carefully brushing sediment off an ancient hominid fossil skull embedded in dry African excavation soil trench, paleontological tools, intense focus."
+        },
+        {
+          name: "U01_03_sec1.2.1_primatology_field_observation.png",
+          description: "Documentary wildlife scene: A primatologist quietly sitting in deep lush tropical forest holding binoculars and notebook, observing a family of wild chimpanzees interacting in the trees, natural cinematic lighting."
+        },
+        {
+          name: "U01_04_sec1.2.2_archaeology_artifact_feature.png",
+          description: "Archaeological excavation pit showing in-situ material remains: ancient crafted chipped stone tools and pottery shards resting beside an uncovered ancient stone foundation wall, measuring scale ruler visible."
+        },
+        {
+          name: "U01_05_sec1.2.3_linguistic_oral_fieldwork.png",
+          description: "Linguistic anthropologist holding a field microphone, sitting outside a traditional village dwelling with a wise elder sharing oral stories, expressive hand gestures, warm golden hour."
+        },
+        {
+          name: "U01_06_sec1.2.4_ethnography_participant_observation.png",
+          description: "Ethnographer actively participating in daily village activities, sitting with a circle of indigenous community members sharing tea and conversation, genuine authentic interaction, ethnographic field research."
+        },
+        {
+          name: "U01_07_sec1.4_misconceptions_urban_fieldwork.png",
+          description: "Modern urban anthropology: A researcher with clipboard interviewing a young vendor in a dense, bustling neon-lit night market in a contemporary metropolis, vibrant atmosphere."
+        },
+        {
+          name: "U01_08_sec1.6_applied_community_development.png",
+          description: "Applied anthropology in action: Anthropologist facilitator sitting in a participatory community meeting under a large shade tree with local community members discussing village project plans."
+        }
+      ]
+    };
+    document.getElementById('fluxJsonInput').value = JSON.stringify(sample, null, 2);
+    parseFluxJson();
+  }
+
+  function parseFluxJson() {
+    const raw = document.getElementById('fluxJsonInput').value.trim();
+    if (!raw) return alert('Paste JSON first!');
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed.course_code) {
+        const cleanCode = parsed.course_code.replace(/\s+/g, '_');
+        document.getElementById('global-course-code').value = cleanCode;
+        handleGlobalCourseChange(cleanCode);
+      }
+      parsedFluxQueue = Array.isArray(parsed) ? parsed : (parsed.images || []);
+
+      if (!parsedFluxQueue.length) {
+        return alert('Could not find image objects in JSON. Format: [{ name, description }]');
+      }
+
+      document.getElementById('queueCount').innerText = `Queue: ${parsedFluxQueue.length} items`;
+      document.getElementById('btnConcurrent').disabled = false;
+      document.getElementById('btnSequential').disabled = false;
+
+      renderFluxQueueCards();
+    } catch (e) {
+      alert('Invalid JSON syntax: ' + e.message);
+    }
+  }
+
+  function renderFluxQueueCards() {
+    const grid = document.getElementById('fluxGenerationGrid');
+    grid.innerHTML = '';
+    parsedFluxQueue.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.id = `flux-card-${index}`;
+      card.innerHTML = `
+        <div class="item-preview" id="flux-preview-${index}">
+          <span class="placeholder">Waiting to generate...</span>
+        </div>
+        <div class="item-details">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div class="item-title">${item.name || 'Image ' + (index+1)}</div>
+            <span class="item-status status-pending" id="flux-status-${index}">Pending</span>
+          </div>
+          <div class="item-desc">${item.prompt || item.description || ''}</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  async function startFluxGeneration(mode) {
+    const creds = getCredentials();
+    const workerUrl = creds.workerUrl;
+    const courseCode = creds.courseCode;
+
+    if (!workerUrl) return alert('Please provide the Cloudflare Worker Endpoint URL.');
+
+    const pContainer = document.getElementById('fluxProgressContainer');
+    const pBar = document.getElementById('fluxProgressBar');
+    pContainer.style.display = 'block';
+    pBar.style.width = '0%';
+
+    document.getElementById('btnConcurrent').disabled = true;
+    document.getElementById('btnSequential').disabled = true;
+
+    if (mode === 'concurrent') {
+      try {
+        parsedFluxQueue.forEach((_, idx) => updateFluxStatus(idx, 'Generating...', 'status-running'));
+        pBar.style.width = '40%';
+
+        const res = await fetch(`${workerUrl}/api/batch-generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ course_code: courseCode, images: parsedFluxQueue })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Server error');
+
+        pBar.style.width = '100%';
+        data.results.forEach((r, idx) => {
+          if (r.status === 'fulfilled') {
+            updateFluxSuccess(idx, r.url);
+          } else {
+            updateFluxStatus(idx, 'Failed: ' + (r.error || 'Error'), 'status-error');
+          }
+        });
+      } catch (err) {
+        alert('Batch Concurrent Error: ' + err.message);
+        parsedFluxQueue.forEach((_, idx) => updateFluxStatus(idx, 'Failed', 'status-error'));
+      }
+    } else {
+      let completed = 0;
+      for (let i = 0; i < parsedFluxQueue.length; i++) {
+        updateFluxStatus(i, 'Generating...', 'status-running');
+        try {
+          const item = parsedFluxQueue[i];
+          const res = await fetch(`${workerUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              course_code: courseCode,
+              name: item.name,
+              prompt: item.prompt || item.description
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed');
+
+          updateFluxSuccess(i, data.url);
+        } catch (err) {
+          updateFluxStatus(i, 'Error: ' + err.message, 'status-error');
+        }
+        completed++;
+        pBar.style.width = `${Math.round((completed / parsedFluxQueue.length) * 100)}%`;
+      }
+    }
+
+    document.getElementById('btnConcurrent').disabled = false;
+    document.getElementById('btnSequential').disabled = false;
+  }
+
+  function updateFluxStatus(idx, text, statusClass) {
+    const el = document.getElementById(`flux-status-${idx}`);
+    if (el) {
+      el.innerText = text;
+      el.className = `item-status ${statusClass}`;
+    }
+  }
+
+  function updateFluxSuccess(idx, imgUrl) {
+    updateFluxStatus(idx, 'Saved to Supabase', 'status-success');
+    const preview = document.getElementById(`flux-preview-${idx}`);
+    if (preview) {
+      preview.innerHTML = `<img src="${imgUrl}" alt="Generated" onclick="openImgModal('${imgUrl}', '${parsedFluxQueue[idx].name}')" />`;
+    }
+  }
+
+  // SUPABASE STORAGE EXPLORER
+  async function fetchSupabaseGallery() {
+    const creds = getCredentials();
+    const workerUrl = creds.workerUrl;
+    const course = (document.getElementById('browsePrefix').value || creds.courseCode).trim();
+    const statusEl = document.getElementById('galleryStatus');
+    const grid = document.getElementById('supabaseGrid');
+
+    if (!workerUrl) {
+      statusEl.innerText = 'Please supply Cloudflare Worker endpoint above.';
+      return;
+    }
+
+    statusEl.innerText = 'Connecting to Supabase Storage via Worker...';
+    grid.innerHTML = '';
+
+    try {
+      const res = await fetch(`${workerUrl}/api/browse?course=${encodeURIComponent(course)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to list');
+
+      statusEl.innerText = `Found ${data.count} image(s) in tutor_images/${data.folder}`;
+
+      if (data.items.length === 0) {
+        grid.innerHTML = '<p style="color: var(--text-muted); padding: 20px;">No images found in this folder yet.</p>';
+        return;
+      }
+
+      data.items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.innerHTML = `
+          <div class="item-preview">
+            <img src="${item.url}" loading="lazy" onclick="openImgModal('${item.url}', '${item.filename}')" />
+          </div>
+          <div class="item-details">
+            <div class="item-title">${item.filename}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${(item.size / 1024).toFixed(1)} KB | ${item.storage_path}</div>
+            <div style="display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${item.url}'); alert('Supabase CDN URL copied!')">Copy URL</button>
+              <button class="btn btn-secondary btn-sm" onclick="downloadImageFile('${item.url}', '${item.filename}')">Download</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    } catch (e) {
+      statusEl.innerText = 'Error: ' + e.message;
+    }
+  }
+
+  // LIGHTBOX LOGIC
+  function openImgModal(url, title) {
+    currentFluxModalUrl = url;
+    document.getElementById('img-modal-pic').src = url;
+    document.getElementById('img-modal-title').innerText = title || 'Image Preview';
+    document.getElementById('img-modal').style.display = 'flex';
+  }
+
+  function closeImgModal() {
+    document.getElementById('img-modal').style.display = 'none';
+  }
+
+  function copyCurrentFluxUrl() {
+    if (currentFluxModalUrl) {
+      navigator.clipboard.writeText(currentFluxModalUrl);
+      alert('Public Supabase CDN URL copied!');
+    }
+  }
+
+  async function downloadImageFile(url, filename) {
+    const safeName = filename || 'image.png';
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error('Fetch failed');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = safeName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    } catch (err) {
+      const sep = url.includes('?') ? '&' : '?';
+      const forceUrl = `${url}${sep}download=${encodeURIComponent(safeName)}`;
+      const link = document.createElement('a');
+      link.href = forceUrl;
+      link.setAttribute('download', safeName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+
+  function downloadCurrentFluxImage() {
+    const title = document.getElementById('img-modal-title').innerText || 'image.png';
+    if (currentFluxModalUrl) downloadImageFile(currentFluxModalUrl, title);
+  }
+</script>
 </body>
 </html>
