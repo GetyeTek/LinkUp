@@ -117,44 +117,56 @@
     margin: 0;
 }
 
-/* --- 1. INTRO / ROADMAP SPECIFIC --- */
+/* --- 1. INTRO / ROADMAP SPECIFIC (A4 Timeline Stream) --- */
 .ml-card-roadmap-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 4px;
+    gap: 0;
+    margin-top: 6px;
+    border-left: 2px solid rgba(56, 189, 248, 0.22);
+    padding-left: 12px;
+    margin-left: 6px;
 }
 
 .ml-roadmap-item {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    background: #090e18;
-    border: 1px solid #1e293b;
-    border-radius: 12px;
-    padding: 10px 14px;
+    align-items: baseline;
+    gap: 10px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 10px 0;
+    position: relative;
     animation: stageCardSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ml-roadmap-item:last-child {
+    border-bottom: none;
 }
 
 .ml-roadmap-index {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    background: rgba(56, 189, 248, 0.15);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(56, 189, 248, 0.18);
+    border: 1px solid rgba(56, 189, 248, 0.45);
     color: #38bdf8;
     font-family: 'Roboto Mono', monospace;
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    margin-top: 1px;
 }
 
 .ml-roadmap-label {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: #f1f5f9;
+    line-height: 1.45;
+    flex: 1;
+    word-break: break-word;
 }
 
 /* --- 2. COMPARE / BENTO SPECIFIC --- */
@@ -278,7 +290,7 @@
     flex-shrink: 0;
 }
 
-/* --- 4. SUMMARY SPECIFIC --- */
+/* --- 4. SUMMARY SPECIFIC (High-Density A4 Bullet Sheet) --- */
 .card-summary {
     border-color: rgba(52, 211, 153, 0.3);
 }
@@ -286,32 +298,38 @@
 .ml-card-summary-stream {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 4px;
+    gap: 2px;
+    margin-top: 6px;
 }
 
 .ml-summary-row {
     display: flex;
     align-items: baseline;
     gap: 10px;
-    background: #090e18;
-    border: 1px solid #1e293b;
-    border-radius: 12px;
-    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 7px 2px;
     animation: stageCardSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ml-summary-row:last-child {
+    border-bottom: none;
 }
 
 .ml-summary-glyph {
     color: #34d399;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     flex-shrink: 0;
+    margin-top: 3px;
 }
 
 .ml-summary-text {
-    font-size: 0.85rem;
-    color: #f1f5f9;
-    font-weight: 600;
-    line-height: 1.4;
+    font-size: 0.88rem;
+    color: #e2e8f0;
+    font-weight: 500;
+    line-height: 1.45;
+    flex: 1;
+    word-break: break-word;
 }
 
 /* --- 5. NOTE SPECIFIC --- */
@@ -372,18 +390,42 @@
 
 /* --- MOBILE RESPONSIVE TWEAKS --- */
 @media (max-width: 768px) {
+    .ml-stage-card-wrapper {
+        padding: 0.25rem 0.5rem;
+    }
     .ml-stage-card {
-        padding: 16px 14px;
+        padding: 14px 14px;
         border-radius: 16px;
+        gap: 10px;
     }
     .ml-card-title {
         font-size: 1.05rem;
     }
     .ml-compare-bento-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 6px;
+    }
+    .ml-compare-col {
+        padding: 10px 8px;
+        border-radius: 10px;
+        gap: 6px;
+    }
+    .ml-compare-col-title {
+        font-size: 0.8rem;
+    }
+    .ml-compare-points {
+        gap: 5px;
+    }
+    .ml-compare-points li {
+        font-size: 0.74rem;
+        line-height: 1.35;
+        gap: 5px;
+    }
+    .ml-vs-chip {
+        font-size: 0.58rem;
+        padding: 4px 5px;
     }
     .ml-compare-vs-divider {
-        padding: 2px 0;
+        padding: 0;
     }
 }
