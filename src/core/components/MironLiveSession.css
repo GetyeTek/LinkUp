@@ -374,6 +374,12 @@ svg.vis-mobile,
     padding: 0.25rem 0.5rem;
     box-sizing: border-box;
 }
+.ml-cinema-visual-frame:has(.ml-stage-card-wrapper),
+.ml-cinema-visual-frame:has(.ml-quiz-card-wrapper) {
+    align-items: flex-start;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
 
 /* ELASTIC DOCKED STATE: Content-Fit Scaling */
 .ml-cinema-stage[data-has-notes="true"] .ml-cinema-visual-frame {
