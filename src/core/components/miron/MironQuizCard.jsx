@@ -10,6 +10,10 @@ const MironQuizCard = ({ quizData, onComplete }) => {
     const currentQ = questions[currentIndex] || questions[0];
     if (!currentQ) return null;
 
+    const isTF = currentQ.type === 'tf' || 
+        (Array.isArray(currentQ.options) && currentQ.options.length === 2 && 
+         currentQ.options.some(o => String(o.id).toLowerCase() === 'true' || String(o.text).toLowerCase() === 'true'));
+
     const currentAnswer = userAnswers[currentQ.id || currentIndex];
     const isAnswered = currentAnswer !== undefined;
 
@@ -75,7 +79,7 @@ const MironQuizCard = ({ quizData, onComplete }) => {
                 <h3 className="ml-quiz-prompt">{currentQ.prompt}</h3>
 
                 {/* Options List (Stacked for MC, Split Grid for TF) */}
-                <div className={`ml-quiz-options-container ${currentQ.type === 'tf' ? 'tf-grid' : 'mc-stack'}`}>
+                <div className={`ml-quiz-options-container ${isTF ? 'tf-grid' : 'mc-stack'}`}>
                     {(currentQ.options || []).map((opt, oIdx) => {
                         const isSelected = currentAnswer === opt.id;
                         const isCorrect = Boolean(opt.correct);
@@ -97,9 +101,9 @@ const MironQuizCard = ({ quizData, onComplete }) => {
                             >
                                 <div className="ml-option-left">
                                     <span className="ml-option-letter">
-                                        {currentQ.type === 'tf' 
-                                            ? (opt.id === 'true' || opt.text === 'True' ? 'T' : 'F') 
-                                            : (opt.id || String.fromCharCode(65 + oIdx))}
+                                        {isTF 
+                                            ? (String(opt.id).toLowerCase() === 'true' || String(opt.text).toLowerCase() === 'true' ? 'T' : 'F') 
+                                            : (['A', 'B', 'C', 'D', 'E'][oIdx] || String.fromCharCode(65 + oIdx))}
                                     </span>
                                     <span className="ml-option-text">{opt.text}</span>
                                 </div>
