@@ -435,6 +435,9 @@
 
 /* Mobile Tweaks */
 @media (max-width: 768px) {
+    .ml-quiz-card-wrapper {
+        padding: 0.25rem 0.5rem;
+    }
     .ml-quiz-card {
         padding: 16px 14px;
         border-radius: 16px;
