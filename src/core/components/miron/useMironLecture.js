@@ -79,6 +79,7 @@ export const useMironLecture = ({
     const [playbackRate, setPlaybackRate] = useState(1.0);
     const [fitScale, setFitScale] = useState(0.47);
     const [isChromeVisible, setIsChromeVisible] = useState(true);
+    const [completedQuizTimes, setCompletedQuizTimes] = useState(new Set());
 
     const audioRef = useRef(null);
     const progressBarRef = useRef(null);
@@ -174,20 +175,23 @@ export const useMironLecture = ({
     }, [isPlaying]);
 
     // Resolve Dual-Stage Cues (Diagram + Supporting Image), Camera & Persistent Notes
-    const { activeDiagramCue, activeImageCue, activeNodeCue, activeBlockCue, activeBullets } = useMemo(() => {
+    const { activeDiagramCue, activeImageCue, activeNodeCue, activeBlockCue, activeBullets, activeQuizCue } = useMemo(() => {
         if (!audioLesson?.cue_timeline || audioLesson.cue_timeline.length === 0) {
-            return { activeDiagramCue: null, activeImageCue: null, activeNodeCue: null, activeBlockCue: null, activeBullets: [] };
+            return { activeDiagramCue: null, activeImageCue: null, activeNodeCue: null, activeBlockCue: null, activeBullets: [], activeQuizCue: null };
         }
         const timeline = audioLesson.cue_timeline;
         let latestDiagram = null;
         let latestImage = null;
         let latestNode = null;
         let latestBlock = null;
+        let latestQuiz = null;
         let currentBullets = [];
 
         for (const cue of timeline) {
             if (cue.time <= currentTime) {
-                if (cue.type === 'show_diagram') {
+                if (cue.type === 'quiz' || cue.type === 'interactive_quiz') {
+                    latestQuiz = cue;
+                } else if (cue.type === 'show_diagram') {
                     if (cue.target && cue.target.includes(':') && !visualAssets[cue.target]) {
                         const [assetKey, nodeKey] = cue.target.split(':');
                         latestDiagram = { ...cue, target: assetKey };
@@ -255,7 +259,8 @@ export const useMironLecture = ({
             activeImageCue: latestImage, 
             activeNodeCue: latestNode, 
             activeBlockCue: latestBlock, 
-            activeBullets: currentBullets || [] 
+            activeBullets: currentBullets || [],
+            activeQuizCue: latestQuiz
         };
     }, [audioLesson, currentTime, visualAssets]);
 
@@ -318,6 +323,49 @@ export const useMironLecture = ({
         (activeBlockData && (activeImageAsset || activeDiagramAsset))
     );
     const latestBullet = activeBullets.length > 0 ? activeBullets[activeBullets.length - 1] : null;
+
+    // Parse Quiz Payload (Supports JSON string, prefix "mc:{...}", or object)
+    const activeQuizData = useMemo(() => {
+        if (!activeQuizCue || completedQuizTimes.has(activeQuizCue.time)) return null;
+        const raw = activeQuizCue.target;
+        if (!raw) return null;
+        if (typeof raw === 'object') return raw;
+        if (typeof raw === 'string') {
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                const match = raw.match(/^(?:mc|tf):([\s\S]*)$/i);
+                if (match) {
+                    try { return JSON.parse(match[1]); } catch (err) {}
+                }
+            }
+        }
+        return null;
+    }, [activeQuizCue, completedQuizTimes]);
+
+    // Auto-Pause Checkpoint Gate: pauses audio when an uncompleted quiz cue is reached
+    useEffect(() => {
+        if (activeQuizCue && activeQuizData && !completedQuizTimes.has(activeQuizCue.time) && isPlaying) {
+            if (audioRef.current && !audioRef.current.paused) {
+                audioRef.current.pause();
+            }
+            setIsPlaying(false);
+            console.log(`🛑 [Miron Quiz Checkpoint] Auto-paused at ${activeQuizCue.time}s for interactive quiz`);
+        }
+    }, [activeQuizCue, activeQuizData, completedQuizTimes, isPlaying]);
+
+    const resumeFromQuiz = (quizTime) => {
+        if (quizTime !== undefined) {
+            setCompletedQuizTimes(prev => new Set(prev).add(quizTime));
+        }
+        if (audioRef.current && audioLesson?.audio_url) {
+            audioRef.current.play()
+                .then(() => setIsPlaying(true))
+                .catch(() => setIsPlaying(false));
+        } else {
+            setIsPlaying(true);
+        }
+    };
 
     // Auto-scroll Notes Deck to newest bullet
     useEffect(() => {
@@ -804,6 +852,9 @@ export const useMironLecture = ({
         activeDiagramAsset,
         activeImageAsset,
         activeBlockData,
+        activeQuizCue,
+        activeQuizData,
+        resumeFromQuiz,
         hasActiveNode,
         isDualStage,
 
