@@ -25,7 +25,7 @@
     width: 100%;
     max-width: 680px;
     margin: 0 auto;
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem calc(84px + env(safe-area-inset-bottom, 16px)) 0.75rem;
     box-sizing: border-box;
     display: flex;
     align-self: flex-start;
@@ -440,7 +440,7 @@
 /* Mobile Tweaks */
 @media (max-width: 768px) {
     .ml-quiz-card-wrapper {
-        padding: 0.25rem 0.5rem;
+        padding: 0.25rem 0.5rem calc(84px + env(safe-area-inset-bottom, 16px)) 0.5rem;
     }
     .ml-quiz-card {
         padding: 16px 14px;
