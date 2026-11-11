@@ -732,63 +732,128 @@
       flex-wrap: wrap;
     }
 
-    /* STORAGE EXPLORER CHAPTER CATEGORIZATION */
-    .storage-root-banner {
+    /* FILE MANAGER ARCHITECTURE & FOLDER TILES */
+    .storage-breadcrumb-bar {
       background: var(--surface-card);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .storage-unit-section {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .storage-unit-header {
+      padding: 10px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
     }
-    .unit-badge {
+    .breadcrumb-trail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      font-weight: 800;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .breadcrumb-trail .active {
       color: var(--blue);
-      background: var(--blue-glow);
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .folder-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .folder-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .folder-card:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+    .folder-card:active {
+      transform: scale(0.98);
+    }
+    .folder-icon-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .folder-icon {
+      font-size: 32px;
+      line-height: 1;
+    }
+    .folder-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .folder-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .folder-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 10px;
+      gap: 8px;
+    }
+    .folder-open-hint {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--blue);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
     .btn-zip {
       background: rgba(16, 185, 129, 0.15);
       border: 1px solid rgba(16, 185, 129, 0.4);
       color: var(--green);
       font-weight: 700;
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-zip:hover {
+      background: var(--green);
+      color: #042f2e;
+    }
+    .btn-back {
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: #fff;
+      font-weight: 700;
       font-size: 12px;
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 8px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
-    .btn-zip:hover {
-      background: var(--green);
-      color: #042f2e;
+    .btn-back:hover {
+      background: #27354f;
+      border-color: var(--blue);
     }
 
     /* LOGS CONSOLE */
@@ -1054,14 +1119,44 @@
         </div>
         <button class="btn btn-secondary" onclick="fetchSupabaseGallery()">Refresh Storage Gallery</button>
       </div>
-      <div id="storageCourseBanner" style="display: none;" class="storage-root-banner">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 16px;">📁</span>
-          <span id="storageFolderText" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #fff;"></span>
+
+      <!-- BREADCRUMB NAVIGATION -->
+      <div id="storageBreadcrumbBar" style="display: none;" class="storage-breadcrumb-bar">
+        <div class="breadcrumb-trail">
+          <span id="bc-root" onclick="closeUnitFolder()" style="cursor: pointer;">📁 tutor_images</span>
+          <span>/</span>
+          <span id="bc-course" onclick="closeUnitFolder()" style="cursor: pointer;"></span>
+          <span id="bc-sep" style="display: none;">/</span>
+          <span id="bc-unit" class="active" style="display: none;"></span>
         </div>
-        <span id="galleryStatus" style="font-size: 12px; color: var(--text-muted); font-weight: 600;"></span>
+        <div id="breadcrumb-actions" style="display: flex; align-items: center; gap: 8px;">
+          <span id="galleryStatus" style="font-size: 12px; color: var(--text-muted); font-weight: 600;"></span>
+          <button id="btn-back-folders" class="btn-back" style="display: none;" onclick="closeUnitFolder()">
+            ⬅️ Back to Folders
+          </button>
+        </div>
       </div>
-      <div id="storageUnitsContainer" style="display: flex; flex-direction: column; gap: 18px;">
+
+      <!-- VIEW 1: CHAPTER FOLDERS GRID (ROOT VIEW) -->
+      <div id="storageFoldersView" style="display: none; flex-direction: column; gap: 14px;">
+        <div class="folder-grid" id="foldersGrid"></div>
+      </div>
+
+      <!-- VIEW 2: INSIDE CHAPTER IMAGE GRID (DRILL-DOWN VIEW) -->
+      <div id="storageChapterView" style="display: none; flex-direction: column; gap: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 14px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="chapterViewTitle" style="font-size: 15px; font-weight: 800; color: #fff;"></span>
+            <span id="chapterViewCount" style="font-size: 12px; color: var(--text-muted); font-weight: 600;"></span>
+          </div>
+          <button class="btn-zip" id="btn-chapter-zip" onclick="downloadCurrentChapterZip()">
+            📦 Download Chapter ZIP
+          </button>
+        </div>
+        <div class="item-grid" id="chapterImageGrid"></div>
+      </div>
+
+      <div id="storageEmptyNotice">
         <p style="color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align: center;">Click Refresh to load images categorized by chapter.</p>
       </div>
     </div>
@@ -1665,6 +1760,9 @@
     document.getElementById('flux-subview-generator').style.display = subTab === 'generator' ? 'flex' : 'none';
     document.getElementById('flux-subview-browser').style.display = subTab === 'browser' ? 'flex' : 'none';
 
+    const sampleBtn = document.getElementById('btn-load-sample');
+    if (sampleBtn) sampleBtn.style.display = subTab === 'generator' ? 'inline-flex' : 'none';
+
     if (subTab === 'browser') {
       fetchSupabaseGallery();
     }
@@ -1848,63 +1946,92 @@
     }
   }
 
-  // SUPABASE STORAGE EXPLORER & CHAPTER GROUPING
+  // ========================================================
+  // FILE MANAGER ENGINE (ROOT DIRECTORY & CHAPTER VIEWS)
+  // ========================================================
   let cachedGalleryUnits = {};
+  let currentActiveUnit = null;
+  let currentActiveCourse = '';
 
   async function fetchSupabaseGallery() {
     const creds = getCredentials();
     const workerUrl = creds.workerUrl;
     const course = (document.getElementById('browsePrefix').value || creds.courseCode).trim();
+    currentActiveCourse = course;
+
     const statusEl = document.getElementById('galleryStatus');
-    const banner = document.getElementById('storageCourseBanner');
-    const folderText = document.getElementById('storageFolderText');
-    const container = document.getElementById('storageUnitsContainer');
+    const breadcrumbBar = document.getElementById('storageBreadcrumbBar');
+    const emptyNotice = document.getElementById('storageEmptyNotice');
+    const bcCourse = document.getElementById('bc-course');
 
     if (!workerUrl) {
       alert('Please supply Cloudflare Worker endpoint above.');
       return;
     }
 
-    banner.style.display = 'flex';
-    folderText.textContent = `tutor_images / ${course}`;
-    statusEl.innerText = 'Scanning storage bucket...';
-    container.innerHTML = '<p style="color: var(--text-muted); padding: 20px; text-align: center;">Loading images...</p>';
+    breadcrumbBar.style.display = 'flex';
+    bcCourse.textContent = course;
+    statusEl.innerText = 'Scanning storage...';
+    emptyNotice.innerHTML = '<p style="color: var(--text-muted); padding: 20px; text-align: center;">Scanning files...</p>';
+    emptyNotice.style.display = 'block';
+
+    document.getElementById('storageFoldersView').style.display = 'none';
+    document.getElementById('storageChapterView').style.display = 'none';
 
     try {
       const res = await fetch(`${workerUrl}/api/browse?course=${encodeURIComponent(course)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to list');
 
-      statusEl.innerText = `${data.count} image(s) total`;
+      statusEl.innerText = `${data.count} image(s)`;
 
       if (data.items.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted); padding: 20px; text-align: center;">No images found in this folder yet.</p>';
+        emptyNotice.innerHTML = '<p style="color: var(--text-muted); padding: 20px; text-align: center;">No images found in this folder yet.</p>';
         return;
       }
 
-      // Group images by Unit / Chapter based on U[XX] filename convention
+      emptyNotice.style.display = 'none';
+
+      // Group images with robust unit regex (U01, U1, Unit01, Unit_1)
       cachedGalleryUnits = {};
       data.items.forEach(item => {
-        const match = item.filename.match(/^U(\d+)/i);
-        const unitKey = match ? `Unit ${match[1]}` : 'General / Uncategorized';
+        const match = item.filename.match(/^U(?:nit)?[-_]?(\d+)/i);
+        const unitNum = match ? match[1].padStart(2, '0') : null;
+        const unitKey = unitNum ? `Unit ${unitNum}` : 'Other / Unsorted';
+
         if (!cachedGalleryUnits[unitKey]) cachedGalleryUnits[unitKey] = [];
         cachedGalleryUnits[unitKey].push(item);
       });
 
-      renderCategorizedGallery(course);
+      if (currentActiveUnit && cachedGalleryUnits[currentActiveUnit]) {
+        openUnitFolder(currentActiveUnit);
+      } else {
+        renderFolderDirectory();
+      }
     } catch (e) {
       statusEl.innerText = 'Error: ' + e.message;
-      container.innerHTML = `<div class="log-item error"><span>${e.message}</span></div>`;
+      emptyNotice.innerHTML = `<div class="log-item error"><span>${e.message}</span></div>`;
+      emptyNotice.style.display = 'block';
     }
   }
 
-  function renderCategorizedGallery(courseCode) {
-    const container = document.getElementById('storageUnitsContainer');
-    container.innerHTML = '';
+  // LEVEL 1: RENDER DIRECTORY FOLDER TILES
+  function renderFolderDirectory() {
+    currentActiveUnit = null;
+
+    document.getElementById('bc-sep').style.display = 'none';
+    document.getElementById('bc-unit').style.display = 'none';
+    document.getElementById('btn-back-folders').style.display = 'none';
+    document.getElementById('storageChapterView').style.display = 'none';
+
+    const foldersView = document.getElementById('storageFoldersView');
+    const grid = document.getElementById('foldersGrid');
+    grid.innerHTML = '';
+    foldersView.style.display = 'flex';
 
     const unitKeys = Object.keys(cachedGalleryUnits).sort((a, b) => {
-      if (a.includes('General')) return 1;
-      if (b.includes('General')) return -1;
+      if (a.includes('Other')) return 1;
+      if (b.includes('Other')) return -1;
       return a.localeCompare(b, undefined, { numeric: true });
     });
 
@@ -1913,47 +2040,89 @@
       const totalBytes = items.reduce((acc, it) => acc + (it.size || 0), 0);
       const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
 
-      const sectionEl = document.createElement('div');
-      sectionEl.className = 'storage-unit-section';
-      sectionEl.id = `unit-section-${unitKey.replace(/\s+/g, '_')}`;
+      const card = document.createElement('div');
+      card.className = 'folder-card';
+      card.onclick = () => openUnitFolder(unitKey);
 
-      sectionEl.innerHTML = `
-        <div class="storage-unit-header">
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span class="unit-badge">📘 ${unitKey}</span>
-            <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">${items.length} image(s) • ${totalMb} MB</span>
+      card.innerHTML = `
+        <div class="folder-icon-row">
+          <span class="folder-icon">📁</span>
+          <div>
+            <div class="folder-title">${unitKey}</div>
+            <div class="folder-meta">${items.length} image(s) • ${totalMb} MB</div>
           </div>
-          <button class="btn-zip" id="btn-zip-${unitKey.replace(/\s+/g, '_')}" onclick="downloadUnitZip('${unitKey}', '${courseCode}')">
-            📦 Download ${unitKey} ZIP
+        </div>
+        <div class="folder-card-footer" onclick="event.stopPropagation()">
+          <span class="folder-open-hint" onclick="openUnitFolder('${unitKey}')">Open Folder ➔</span>
+          <button class="btn-zip" id="btn-zip-root-${unitKey.replace(/\s+/g, '_')}" onclick="downloadUnitZip('${unitKey}', '${currentActiveCourse}')">
+            📦 ZIP
           </button>
         </div>
-        <div class="item-grid" id="grid-${unitKey.replace(/\s+/g, '_')}"></div>
       `;
-
-      container.appendChild(sectionEl);
-
-      const grid = sectionEl.querySelector('.item-grid');
-      items.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'item-card';
-        card.id = `storage-card-${item.filename.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-        card.innerHTML = `
-          <div class="item-preview">
-            <img src="${item.url}" loading="lazy" id="img-thumb-${item.filename.replace(/[^a-zA-Z0-9_-]/g, '_')}" onclick="openImgModal('${item.url}', '${item.filename}')" />
-          </div>
-          <div class="item-details">
-            <div class="item-title">${item.filename}</div>
-            <div style="font-size: 11px; color: var(--text-muted);">${(item.size / 1024).toFixed(1)} KB</div>
-            <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${item.url}'); alert('Supabase CDN URL copied!')">📋 CDN</button>
-              <button class="btn btn-secondary btn-sm" onclick="downloadImageFile('${item.url}', '${item.filename}')">⬇️ Download</button>
-              <button class="btn btn-secondary btn-sm" id="btn-retry-${item.filename.replace(/[^a-zA-Z0-9_-]/g, '_')}" onclick="retryStorageImage('${item.filename}', '${item.url}', '${courseCode}')">🔄 Retry</button>
-            </div>
-          </div>
-        `;
-        grid.appendChild(card);
-      });
+      grid.appendChild(card);
     });
+  }
+
+  // LEVEL 2: DRILL DOWN INSIDE A CHAPTER FOLDER
+  function openUnitFolder(unitKey) {
+    currentActiveUnit = unitKey;
+    const items = cachedGalleryUnits[unitKey] || [];
+
+    document.getElementById('storageFoldersView').style.display = 'none';
+    document.getElementById('storageChapterView').style.display = 'flex';
+
+    // Update Breadcrumb Bar
+    document.getElementById('bc-sep').style.display = 'inline';
+    const bcUnit = document.getElementById('bc-unit');
+    bcUnit.textContent = unitKey;
+    bcUnit.style.display = 'inline';
+    document.getElementById('btn-back-folders').style.display = 'inline-flex';
+
+    // Header info
+    document.getElementById('chapterViewTitle').textContent = `📁 ${unitKey}`;
+    const totalBytes = items.reduce((acc, it) => acc + (it.size || 0), 0);
+    const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
+    document.getElementById('chapterViewCount').textContent = `${items.length} image(s) • ${totalMb} MB`;
+
+    // Render image grid for just this unit
+    const grid = document.getElementById('chapterImageGrid');
+    grid.innerHTML = '';
+
+    items.forEach(item => {
+      const safeId = item.filename.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.id = `storage-card-${safeId}`;
+      card.innerHTML = `
+        <div class="item-preview">
+          <img src="${item.url}" loading="lazy" id="img-thumb-${safeId}" onclick="openImgModal('${item.url}', '${item.filename}')" />
+        </div>
+        <div class="item-details">
+          <div class="item-title">${item.filename}</div>
+          <div style="font-size: 11px; color: var(--text-muted);">${(item.size / 1024).toFixed(1)} KB</div>
+          <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${item.url}'); alert('Supabase CDN URL copied!')">📋 CDN</button>
+            <button class="btn btn-secondary btn-sm" onclick="downloadImageFile('${item.url}', '${item.filename}')">⬇️ Download</button>
+            <button class="btn btn-secondary btn-sm" id="btn-retry-${safeId}" onclick="retryStorageImage('${item.filename}', '${item.url}', '${currentActiveCourse}')">🔄 Retry</button>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    // Scroll smoothly to top of folder content
+    document.getElementById('storageBreadcrumbBar').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // NAVIGATE BACK TO ROOT FOLDERS
+  function closeUnitFolder() {
+    renderFolderDirectory();
+  }
+
+  function downloadCurrentChapterZip() {
+    if (currentActiveUnit) {
+      downloadUnitZip(currentActiveUnit, currentActiveCourse);
+    }
   }
 
   // RETRY / REGENERATE SINGLE IMAGE IN BROWSER
@@ -1962,7 +2131,6 @@
     const workerUrl = creds.workerUrl;
     if (!workerUrl) return alert('Cloudflare Worker Endpoint missing in settings.');
 
-    // Look up prompt from active queue or prompt user
     const matchedQueueItem = parsedFluxQueue.find(q => q.name === filename);
     const defaultPrompt = matchedQueueItem ? (matchedQueueItem.prompt || matchedQueueItem.description) : '';
 
@@ -1992,7 +2160,6 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Generation failed');
 
-      // Update image preview with cache-busting timestamp
       const freshUrl = `${data.url}?t=${Date.now()}`;
       if (thumbImg) {
         thumbImg.src = freshUrl;
@@ -2014,19 +2181,21 @@
   // DOWNLOAD CHAPTER AS ZIP
   async function downloadUnitZip(unitKey, courseCode) {
     if (typeof JSZip === 'undefined') {
-      return alert('JSZip library is still loading. Please check your internet connection and try again.');
+      return alert('JSZip library is still loading. Please check your internet connection.');
     }
 
     const items = cachedGalleryUnits[unitKey];
     if (!items || items.length === 0) return alert('No images found in this chapter.');
 
     const safeUnitId = unitKey.replace(/\s+/g, '_');
-    const btn = document.getElementById(`btn-zip-${safeUnitId}`);
-    const originalText = btn ? btn.innerHTML : '';
+    const rootBtn = document.getElementById(`btn-zip-root-${safeUnitId}`);
+    const chapterBtn = document.getElementById('btn-chapter-zip');
+    const targetBtn = rootBtn || chapterBtn;
+    const originalText = targetBtn ? targetBtn.innerHTML : '';
 
-    if (btn) {
-      btn.disabled = true;
-      btn.innerText = `⏳ Zipping (0/${items.length})...`;
+    if (targetBtn) {
+      targetBtn.disabled = true;
+      targetBtn.innerText = `⏳ (0/${items.length})...`;
     }
 
     try {
@@ -2043,10 +2212,10 @@
           console.warn(`Failed to fetch ${item.filename} for ZIP:`, fetchErr);
         }
         completed++;
-        if (btn) btn.innerText = `⏳ Zipping (${completed}/${items.length})...`;
+        if (targetBtn) targetBtn.innerText = `⏳ (${completed}/${items.length})...`;
       }
 
-      if (btn) btn.innerText = '📦 Compressing...';
+      if (targetBtn) targetBtn.innerText = '📦 Packing...';
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       const safeZipName = `${courseCode}_${safeUnitId}_images.zip`;
 
@@ -2064,9 +2233,9 @@
       alert(`Error building chapter ZIP: ${err.message}`);
       appendLog('ZIP Error', err.message, 'error');
     } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+      if (targetBtn) {
+        targetBtn.disabled = false;
+        targetBtn.innerHTML = originalText;
       }
     }
   }
