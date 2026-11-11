@@ -175,9 +175,9 @@ export const useMironLecture = ({
     }, [isPlaying]);
 
     // Resolve Dual-Stage Cues (Diagram + Supporting Image), Camera & Persistent Notes
-    const { activeDiagramCue, activeImageCue, activeNodeCue, activeBlockCue, activeBullets, activeQuizCue } = useMemo(() => {
+    const { activeDiagramCue, activeImageCue, activeNodeCue, activeBlockCue, activeBullets, activeQuizCue, activeCardCue } = useMemo(() => {
         if (!audioLesson?.cue_timeline || audioLesson.cue_timeline.length === 0) {
-            return { activeDiagramCue: null, activeImageCue: null, activeNodeCue: null, activeBlockCue: null, activeBullets: [], activeQuizCue: null };
+            return { activeDiagramCue: null, activeImageCue: null, activeNodeCue: null, activeBlockCue: null, activeBullets: [], activeQuizCue: null, activeCardCue: null };
         }
         const timeline = audioLesson.cue_timeline;
         let latestDiagram = null;
@@ -185,13 +185,20 @@ export const useMironLecture = ({
         let latestNode = null;
         let latestBlock = null;
         let latestQuiz = null;
+        let latestCard = null;
         let currentBullets = [];
 
         for (const cue of timeline) {
             if (cue.time <= currentTime) {
                 if (cue.type === 'quiz' || cue.type === 'interactive_quiz') {
                     latestQuiz = cue;
+                } else if (cue.type === 'card' || cue.type === 'intro' || cue.type === 'summary' || cue.type === 'compare' || cue.type === 'exam' || cue.type === 'note') {
+                    latestCard = cue;
+                    latestDiagram = null;
+                    latestImage = null;
+                    latestNode = null;
                 } else if (cue.type === 'show_diagram') {
+                    latestCard = null;
                     if (cue.target && cue.target.includes(':') && !visualAssets[cue.target]) {
                         const [assetKey, nodeKey] = cue.target.split(':');
                         latestDiagram = { ...cue, target: assetKey };
@@ -207,13 +214,15 @@ export const useMironLecture = ({
                     latestImage = null; // New diagram resets active image to restore diagram hero
                 } else if (cue.type === 'show_image') {
                     latestImage = cue; // Preserves latestDiagram for dual-stage composition!
+                    latestCard = null;
                 } else if (cue.type === 'note_card') {
                     latestDiagram = cue;
                     latestImage = null;
                     latestNode = null;
+                    latestCard = null;
                 } else if (cue.type === 'zoom' || cue.type === 'focus' || cue.type === 'spotlight') {
                     latestNode = cue;
-                } else if (cue.type === 'bullet' || cue.type === 'note') {
+                } else if (cue.type === 'bullet') {
                     const text = cue.target || '';
                     if (text && !currentBullets.includes(text)) {
                         currentBullets.push(text);
@@ -247,9 +256,10 @@ export const useMironLecture = ({
                         rawTarget: rawTarget,
                         time: cue.time
                     };
-                    latestDiagram = null;
-                    latestImage = null;
-                }
+                                            latestDiagram = null;
+                        latestImage = null;
+                        latestCard = null;
+                    }
             } else {
                 break;
             }
@@ -260,7 +270,8 @@ export const useMironLecture = ({
             activeNodeCue: latestNode, 
             activeBlockCue: latestBlock, 
             activeBullets: currentBullets || [],
-            activeQuizCue: latestQuiz
+            activeQuizCue: latestQuiz,
+            activeCardCue: latestCard
         };
     }, [audioLesson, currentTime, visualAssets]);
 
@@ -323,6 +334,36 @@ export const useMironLecture = ({
         (activeBlockData && (activeImageAsset || activeDiagramAsset))
     );
     const latestBullet = activeBullets.length > 0 ? activeBullets[activeBullets.length - 1] : null;
+
+    // Parse Presentation Card Payload (Intro, Compare, Exam, Summary, Note)
+    const activeCardData = useMemo(() => {
+        if (!activeCardCue) return null;
+        const raw = activeCardCue.target;
+        let parsed = null;
+        let defaultMode = activeCardCue.type === 'card' ? 'note' : activeCardCue.type;
+
+        if (raw && typeof raw === 'object') {
+            parsed = raw;
+        } else if (typeof raw === 'string') {
+            try {
+                parsed = JSON.parse(raw);
+            } catch (e) {
+                const match = raw.match(/^([a-zA-Z0-9_\-]+):([\s\S]*)$/);
+                if (match) {
+                    defaultMode = match[1];
+                    try { parsed = JSON.parse(match[2]); } catch (err) {}
+                }
+            }
+        }
+
+        if (parsed && typeof parsed === 'object') {
+            return {
+                mode: parsed.mode || defaultMode,
+                ...parsed
+            };
+        }
+        return null;
+    }, [activeCardCue]);
 
     // Parse Quiz Payload (Supports JSON string, prefix "mc:{...}", or object)
     const activeQuizData = useMemo(() => {
@@ -855,6 +896,8 @@ export const useMironLecture = ({
         activeQuizCue,
         activeQuizData,
         resumeFromQuiz,
+        activeCardCue,
+        activeCardData,
         hasActiveNode,
         isDualStage,
 
