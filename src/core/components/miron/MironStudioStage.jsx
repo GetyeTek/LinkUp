@@ -1,6 +1,8 @@
 import React from 'react';
 import { BookPageCanvas } from '@linkup-platform/sdk-core';
 import { proxyUrl, formatTime, parseBulletItem } from './useMironLecture.js';
+import MironQuizCard from './MironQuizCard.jsx';
+import './MironQuizCard.css';
 
 const MironStudioStage = ({
     isLoadingLesson,
@@ -34,6 +36,9 @@ const MironStudioStage = ({
         activeBlockData,
         activeBullets,
         activeCue,
+        activeQuizCue,
+        activeQuizData,
+        resumeFromQuiz,
         hasActiveNode,
         isDualStage,
         manifest,
@@ -84,8 +89,16 @@ const MironStudioStage = ({
                             }}
                         >
                             <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
+                                {/* INTERACTIVE CHECKPOINT QUIZ (Takes center stage during checkpoint gate) */}
+                                {activeQuizData && (
+                                    <MironQuizCard
+                                        quizData={activeQuizData}
+                                        onComplete={() => resumeFromQuiz(activeQuizCue?.time)}
+                                    />
+                                )}
+
                                 {/* FULL A4 PAGE: Initial full-size textbook view before breakdown cue */}
-                                {activeBlockData && !isDualStage && (
+                                {!activeQuizData && activeBlockData && !isDualStage && (
                                     <BookPageCanvas
                                         blocks={activeBlockData.blocks}
                                         pageNumber={activeBlockData.page}
