@@ -372,14 +372,18 @@ export const useMironLecture = ({
         if (!raw) return null;
         if (typeof raw === 'object') return raw;
         if (typeof raw === 'string') {
+            const match = raw.match(/^(mc|tf):([\s\S]*)$/i);
+            if (match) {
+                try {
+                    const parsed = JSON.parse(match[2]);
+                    if (parsed && typeof parsed === 'object') {
+                        return { type: match[1].toLowerCase(), ...parsed };
+                    }
+                } catch (err) {}
+            }
             try {
                 return JSON.parse(raw);
-            } catch (e) {
-                const match = raw.match(/^(?:mc|tf):([\s\S]*)$/i);
-                if (match) {
-                    try { return JSON.parse(match[1]); } catch (err) {}
-                }
-            }
+            } catch (e) {}
         }
         return null;
     }, [activeQuizCue, completedQuizTimes]);
