@@ -380,6 +380,10 @@ svg.vis-mobile,
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
+.ml-cinema-stage:has(.ml-stage-card-wrapper),
+.ml-cinema-stage:has(.ml-quiz-card-wrapper) {
+    padding-bottom: 0 !important;
+}
 
 /* ELASTIC DOCKED STATE: Content-Fit Scaling */
 .ml-cinema-stage[data-has-notes="true"] .ml-cinema-visual-frame {
