@@ -122,7 +122,7 @@ const MironStudioStage = ({
                                 )}
 
                                 {/* TIGHT EXCERPT CARD: Locked 794px virtual canvas clone (Zero re-wrap, zero void) */}
-                                {activeBlockData && isDualStage && (
+                                {activeBlockData && isDualStage && !activeQuizData && !activeCardData && (
                                     <div 
                                         className="ml-stage-excerpt-pane"
                                         style={{ 
@@ -162,7 +162,7 @@ const MironStudioStage = ({
                                 )}
 
                                 {/* PERSISTENT DIAGRAM PANE (Glides to top HUD without remounting) */}
-                                {activeDiagramAsset && (!activeImageAsset || hasActiveNode || !activeBlockData) && (
+                                {activeDiagramAsset && (!activeImageAsset || hasActiveNode || !activeBlockData) && !activeQuizData && !activeCardData && (
                                     <div className={`ml-stage-diagram-pane ${isDualStage ? 'is-docked' : 'is-hero'}`}>
                                         {activeDiagramAsset.asset_type === 'diagram_svg' ? (
                                             <div 
@@ -181,7 +181,7 @@ const MironStudioStage = ({
                                 )}
 
                                 {/* PERSISTENT SPECIMEN IMAGE PANE (Slides in smoothly underneath) */}
-                                {activeImageAsset && (
+                                {activeImageAsset && !activeQuizData && !activeCardData && (
                                     <div className="ml-stage-image-pane">
                                         <div className="ml-visual-card-image">
                                             <img src={proxyUrl(activeImageAsset.image_url)} alt={activeImageAsset.title || 'Supporting Specimen'} />
@@ -202,7 +202,7 @@ const MironStudioStage = ({
                                 )}
 
                                 {/* DEFAULT SOUNDWAVE STAGE (When no visuals or blocks are active) */}
-                                {!activeBlockData && !activeDiagramAsset && !activeImageAsset && activeCue?.type !== 'note_card' && (
+                                {!activeQuizData && !activeCardData && !activeBlockData && !activeDiagramAsset && !activeImageAsset && activeCue?.type !== 'note_card' && (
                                     <div className="ml-default-soundwave-stage">
                                         <div className="ml-soundwave-ambient-glow"></div>
                                         <div className="ml-soundwave-avatar-wrapper">
@@ -217,7 +217,7 @@ const MironStudioStage = ({
                             </div>
 
                             {/* Studio Split-Screen Notes Deck */}
-                            {(activeBullets?.length || 0) > 0 && (
+                            {(activeBullets?.length || 0) > 0 && !activeQuizData && (
                                 <div 
                                     className="ml-studio-notes-deck"
                                     ref={notesDeckRef}
