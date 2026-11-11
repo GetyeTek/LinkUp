@@ -1,0 +1,389 @@
+/* --- MIRON PRESENTATION CARD ENGINE (INTRO, COMPARE, EXAM, SUMMARY, NOTE) --- */
+@keyframes stageCardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes beaconPulse {
+    0% { transform: scale(0.95); opacity: 0.9; box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+    70% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+    100% { transform: scale(0.95); opacity: 0.9; box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.ml-stage-card-wrapper {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0.5rem 1rem;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    animation: stageCardSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ml-stage-card {
+    background: #111827;
+    border: 1px solid #1e293b;
+    border-radius: 20px;
+    padding: 22px 26px;
+    width: 100%;
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Card Header & Badge Pills */
+.ml-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ml-card-mode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    text-transform: uppercase;
+}
+
+.ml-card-mode-pill.intro {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+}
+
+.ml-card-mode-pill.compare {
+    color: #c084fc;
+    background: rgba(192, 132, 252, 0.12);
+    border: 1px solid rgba(192, 132, 252, 0.3);
+}
+
+.ml-card-mode-pill.exam {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.ml-card-mode-pill.summary {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.ml-card-mode-pill.note {
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.ml-card-meta {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.68rem;
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+/* Card Titles & Body Text */
+.ml-card-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #f8fafc;
+    margin: 0;
+    line-height: 1.35;
+}
+
+.ml-card-body-text {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    line-height: 1.55;
+    margin: 0;
+}
+
+/* --- 1. INTRO / ROADMAP SPECIFIC --- */
+.ml-card-roadmap-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.ml-roadmap-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #090e18;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 10px 14px;
+    animation: stageCardSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ml-roadmap-index {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ml-roadmap-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+/* --- 2. COMPARE / BENTO SPECIFIC --- */
+.ml-compare-bento-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: stretch;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.ml-compare-col {
+    background: #090e18;
+    border: 1px solid #1e293b;
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ml-compare-col.left-col {
+    border-left: 3px solid #38bdf8;
+}
+
+.ml-compare-col.right-col {
+    border-left: 3px solid #c084fc;
+}
+
+.ml-compare-col-title {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 0;
+}
+
+.ml-compare-points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ml-compare-points li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    line-height: 1.4;
+}
+
+.ml-compare-points li i {
+    font-size: 0.45rem;
+    color: #94a3b8;
+    margin-top: 4px;
+    flex-shrink: 0;
+}
+
+.ml-compare-vs-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ml-vs-chip {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 900;
+    color: #38bdf8;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    padding: 6px 8px;
+    border-radius: 99px;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+}
+
+/* --- 3. EXAM ALERT SPECIFIC --- */
+.card-exam {
+    border-color: rgba(245, 158, 11, 0.4);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7), 0 0 25px rgba(245, 158, 11, 0.12);
+}
+
+.ml-exam-pulse-beacon {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    animation: beaconPulse 1.8s infinite ease-out;
+}
+
+.ml-card-title.exam-title {
+    color: #fef08a;
+}
+
+.ml-exam-content-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ml-exam-trap-callout {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.82rem;
+    color: #fef3c7;
+    line-height: 1.45;
+}
+
+.ml-exam-trap-callout i {
+    color: #f59e0b;
+    margin-top: 2px;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+/* --- 4. SUMMARY SPECIFIC --- */
+.card-summary {
+    border-color: rgba(52, 211, 153, 0.3);
+}
+
+.ml-card-summary-stream {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.ml-summary-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    background: #090e18;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 10px 14px;
+    animation: stageCardSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ml-summary-glyph {
+    color: #34d399;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.ml-summary-text {
+    font-size: 0.85rem;
+    color: #f1f5f9;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+/* --- 5. NOTE SPECIFIC --- */
+.ml-card-note-points {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ml-card-note-points li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+}
+
+.ml-card-note-points li i {
+    font-size: 0.65rem;
+    color: #38bdf8;
+    flex-shrink: 0;
+}
+
+/* --- LIGHT THEME ADAPTATION --- */
+.theme-light .ml-stage-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 16px 45px rgba(0, 0, 0, 0.08);
+}
+.theme-light .ml-card-title { color: #0f172a; }
+.theme-light .ml-card-body-text { color: #334155; }
+.theme-light .ml-roadmap-item,
+.theme-light .ml-compare-col,
+.theme-light .ml-summary-row {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+.theme-light .ml-roadmap-label,
+.theme-light .ml-compare-col-title,
+.theme-light .ml-summary-text {
+    color: #0f172a;
+}
+.theme-light .ml-compare-points li { color: #475569; }
+.theme-light .ml-vs-chip {
+    background: #ffffff;
+    border-color: #0284c7;
+    color: #0284c7;
+}
+.theme-light .ml-card-title.exam-title { color: #b45309; }
+.theme-light .ml-exam-trap-callout {
+    background: #fef3c7;
+    border-color: #fde68a;
+    color: #78350f;
+}
+
+/* --- MOBILE RESPONSIVE TWEAKS --- */
+@media (max-width: 768px) {
+    .ml-stage-card {
+        padding: 16px 14px;
+        border-radius: 16px;
+    }
+    .ml-card-title {
+        font-size: 1.05rem;
+    }
+    .ml-compare-bento-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .ml-compare-vs-divider {
+        padding: 2px 0;
+    }
+}
