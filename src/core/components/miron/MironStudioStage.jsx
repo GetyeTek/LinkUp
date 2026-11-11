@@ -217,7 +217,7 @@ const MironStudioStage = ({
                             </div>
 
                             {/* Studio Split-Screen Notes Deck */}
-                            {(activeBullets?.length || 0) > 0 && !activeQuizData && (
+                            {(activeBullets?.length || 0) > 0 && !activeQuizData && !activeCardData && (
                                 <div 
                                     className="ml-studio-notes-deck"
                                     ref={notesDeckRef}
