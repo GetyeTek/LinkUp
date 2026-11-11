@@ -20,7 +20,7 @@
     width: 100%;
     max-width: 720px;
     margin: 0 auto;
-    padding: 0.5rem 0.5rem;
+    padding: 0.5rem 0.5rem calc(84px + env(safe-area-inset-bottom, 16px)) 0.5rem;
     box-sizing: border-box;
     display: flex;
     align-self: flex-start;
@@ -381,7 +381,7 @@
 /* --- MOBILE RESPONSIVE TWEAKS --- */
 @media (max-width: 768px) {
     .ml-stage-card-wrapper {
-        padding: 0.25rem 0.25rem;
+        padding: 0.25rem 0.25rem calc(84px + env(safe-area-inset-bottom, 16px)) 0.25rem;
         align-self: flex-start;
     }
     .ml-stage-card {
