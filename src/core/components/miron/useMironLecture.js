@@ -232,19 +232,31 @@ export const useMironLecture = ({
                 } else if (cue.type === 'section') {
                     currentBullets = []; // Clean section break
                     latestImage = null;
-                } else if (cue.type === 'page_block' || cue.type === 'anchor_block') {
+                                } else if (['page_block', 'show_page', 'page', 'highlight', 'block', 'anchor_block'].includes(cue.type)) {
                     const rawTarget = String(cue.target || '').trim();
                     const parts = rawTarget.split(':');
                     let pageNum = null;
                     let blockIdx = 0;
-                    let sentenceIdx = null;
+                    let sentenceTarget = null;
 
-                    if (parts.length >= 2) {
+                    if (parts.length === 1) {
+                        const p = parseInt(parts[0], 10);
+                        if (!isNaN(p)) pageNum = p;
+                    } else if (parts.length === 2) {
                         pageNum = parseInt(parts[0], 10);
-                        blockIdx = parseInt(parts[1], 10);
-                        if (parts.length >= 3 && parts[2] !== '') {
-                            sentenceIdx = parseInt(parts[2], 10);
+                        const b = parseInt(parts[1], 10);
+                        if (!isNaN(b)) {
+                            blockIdx = b;
+                        } else {
+                            sentenceTarget = parts.slice(1).join(':').trim();
                         }
+                    } else if (parts.length >= 3) {
+                        pageNum = parseInt(parts[0], 10);
+                        const b = parseInt(parts[1], 10);
+                        blockIdx = isNaN(b) ? 0 : b;
+                        const rawSent = parts.slice(2).join(':').trim();
+                        const sNum = parseInt(rawSent, 10);
+                        sentenceTarget = (!isNaN(sNum) && String(sNum) === rawSent) ? sNum : rawSent;
                     } else if (rawTarget.match(/^B(\d+)/i)) {
                         blockIdx = parseInt(rawTarget.match(/^B(\d+)/i)[1], 10);
                     }
@@ -252,14 +264,15 @@ export const useMironLecture = ({
                     latestBlock = {
                         page: pageNum,
                         blockIndex: isNaN(blockIdx) ? 0 : blockIdx,
-                        sentenceIndex: isNaN(sentenceIdx) ? null : sentenceIdx,
+                        sentenceIndex: typeof sentenceTarget === 'number' ? sentenceTarget : null,
+                        sentencePhrase: typeof sentenceTarget === 'string' && sentenceTarget ? sentenceTarget : null,
                         rawTarget: rawTarget,
                         time: cue.time
                     };
-                                            latestDiagram = null;
-                        latestImage = null;
-                        latestCard = null;
-                    }
+                    latestDiagram = null;
+                    latestImage = null;
+                    latestCard = null;
+                }
             } else {
                 break;
             }
@@ -292,8 +305,71 @@ export const useMironLecture = ({
         const pageBlocks = cachedPageBlocks[targetPage] || sectionPages || [];
         if (!pageBlocks || pageBlocks.length === 0) return null;
 
+        let effectiveBlockIdx = activeBlockCue.blockIndex;
+        const phrase = activeBlockCue.sentencePhrase;
+
+        // Auto-locate block if a phrase is provided and not present in initial blockIndex
+        if (phrase) {
+            const lowerPhrase = phrase.toLowerCase();
+            const curBlock = pageBlocks[effectiveBlockIdx];
+            const curText = typeof curBlock?.body === 'string' ? curBlock.body : JSON.stringify(curBlock || '');
+            if (!curText.toLowerCase().includes(lowerPhrase)) {
+                const found = pageBlocks.findIndex(b => {
+                    const text = typeof b?.body === 'string' ? b.body : (Array.isArray(b?.items) ? b.items.join(' ') : '');
+                    return text.toLowerCase().includes(lowerPhrase);
+                });
+                if (found !== -1) effectiveBlockIdx = found;
+            }
+        }
+
         const processedBlocks = pageBlocks.map((b, idx) => {
-            if (idx !== activeBlockCue.blockIndex) return b;
+            if (idx !== effectiveBlockIdx) return b;
+
+            // 1. Highlight by Exact Quote / Phrase Match
+            if (phrase) {
+                const cloned = JSON.parse(JSON.stringify(b));
+                const lowerPhrase = phrase.toLowerCase();
+                if (typeof cloned.body === 'string' && cloned.body.trim()) {
+                    const sentences = cloned.body.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g);
+                    if (sentences) {
+                        let matched = false;
+                        for (let i = 0; i < sentences.length; i++) {
+                            if (sentences[i].toLowerCase().includes(lowerPhrase)) {
+                                const s = sentences[i];
+                                sentences[i] = `<mark class="miron-active-sentence">${s.trim()}</mark>${s.endsWith(' ') ? ' ' : ''}`;
+                                matched = true;
+                                break;
+                            }
+                        }
+                        if (matched) {
+                            cloned.body = sentences.join('');
+                            return cloned;
+                        }
+                    }
+                    const foundIdx = cloned.body.toLowerCase().indexOf(lowerPhrase);
+                    if (foundIdx !== -1) {
+                        const actualPhrase = cloned.body.slice(foundIdx, foundIdx + phrase.length);
+                        cloned.body = cloned.body.slice(0, foundIdx) + `<mark class="miron-active-sentence">${actualPhrase}</mark>` + cloned.body.slice(foundIdx + phrase.length);
+                        return cloned;
+                    }
+                } else if (Array.isArray(cloned.items)) {
+                    for (let i = 0; i < cloned.items.length; i++) {
+                        const itemText = typeof cloned.items[i] === 'string' ? cloned.items[i] : (cloned.items[i]?.text || '');
+                        if (itemText.toLowerCase().includes(lowerPhrase)) {
+                            const highlighted = `<mark class="miron-active-sentence">${itemText}</mark>`;
+                            if (typeof cloned.items[i] === 'string') {
+                                cloned.items[i] = highlighted;
+                            } else {
+                                cloned.items[i] = { ...cloned.items[i], text: highlighted };
+                            }
+                            return cloned;
+                        }
+                    }
+                }
+                return cloned;
+            }
+
+            // 2. Highlight by Numeric Sentence Index
             if (activeBlockCue.sentenceIndex !== null && activeBlockCue.sentenceIndex !== undefined) {
                 const cloned = JSON.parse(JSON.stringify(b));
                 if (typeof cloned.body === 'string' && cloned.body.trim()) {
@@ -318,12 +394,13 @@ export const useMironLecture = ({
                 }
                 return cloned;
             }
+
             return b;
         });
 
         return {
             page: targetPage,
-            blockIndex: activeBlockCue.blockIndex,
+            blockIndex: effectiveBlockIdx,
             blocks: processedBlocks
         };
     }, [activeBlockCue, cachedPageBlocks, sectionPages, selectedSection]);
