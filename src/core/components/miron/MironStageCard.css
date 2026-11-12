@@ -10,12 +10,6 @@
     }
 }
 
-@keyframes beaconPulse {
-    0% { transform: scale(0.95); opacity: 0.9; box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-    70% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
-    100% { transform: scale(0.95); opacity: 0.9; box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-}
-
 .ml-stage-card-wrapper {
     width: 100%;
     max-width: 720px;
@@ -73,28 +67,10 @@
     border: 1px solid rgba(56, 189, 248, 0.28);
 }
 
-.ml-card-mode-pill.compare {
-    color: #c084fc;
-    background: rgba(192, 132, 252, 0.12);
-    border: 1px solid rgba(192, 132, 252, 0.3);
-}
-
-.ml-card-mode-pill.exam {
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.15);
-    border: 1px solid rgba(245, 158, 11, 0.4);
-}
-
 .ml-card-mode-pill.summary {
     color: #34d399;
     background: rgba(52, 211, 153, 0.12);
     border: 1px solid rgba(52, 211, 153, 0.3);
-}
-
-.ml-card-mode-pill.note {
-    color: #cbd5e1;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .ml-card-meta {
@@ -172,115 +148,7 @@
     word-break: break-word;
 }
 
-/* --- 2. COMPARE / BENTO SPECIFIC (Ultra-Dense 2-Column Split) --- */
-.ml-compare-bento-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: stretch;
-    gap: 0;
-    margin-top: 6px;
-    border: 1px solid #1e293b;
-    border-radius: 12px;
-    background: #090e18;
-    overflow: hidden;
-}
-
-.ml-compare-col {
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    background: transparent;
-    border: none;
-}
-
-.ml-compare-col.left-col {
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.ml-compare-col-title {
-    font-size: 0.84rem;
-    font-weight: 800;
-    color: #38bdf8;
-    margin: 0;
-    padding-bottom: 5px;
-    border-bottom: 1px solid rgba(56, 189, 248, 0.2);
-    letter-spacing: 0.2px;
-}
-
-.ml-compare-col.right-col .ml-compare-col-title {
-    color: #c084fc;
-    border-bottom-color: rgba(192, 132, 252, 0.2);
-}
-
-.ml-compare-points {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.ml-compare-points li {
-    display: block;
-    font-size: 0.78rem;
-    color: #cbd5e1;
-    line-height: 1.35;
-    padding: 4px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    word-break: break-word;
-}
-
-.ml-compare-points li:last-child {
-    border-bottom: none;
-}
-
-/* --- 3. EXAM ALERT SPECIFIC --- */
-.card-exam {
-    border-color: rgba(245, 158, 11, 0.4);
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7), 0 0 25px rgba(245, 158, 11, 0.12);
-}
-
-.ml-exam-pulse-beacon {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #f59e0b;
-    animation: beaconPulse 1.8s infinite ease-out;
-}
-
-.ml-card-title.exam-title {
-    color: #fef08a;
-}
-
-.ml-exam-content-box {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.ml-exam-trap-callout {
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    border-radius: 12px;
-    padding: 10px 14px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    font-size: 0.82rem;
-    color: #fef3c7;
-    line-height: 1.45;
-}
-
-.ml-exam-trap-callout i {
-    color: #f59e0b;
-    margin-top: 2px;
-    font-size: 0.9rem;
-    flex-shrink: 0;
-}
-
-/* --- 4. SUMMARY SPECIFIC (High-Density A4 Bullet Sheet) --- */
+/* --- 2. SUMMARY SPECIFIC (High-Density A4 Bullet Sheet) --- */
 .card-summary {
     border-color: rgba(52, 211, 153, 0.3);
 }
@@ -322,30 +190,6 @@
     word-break: break-word;
 }
 
-/* --- 5. NOTE SPECIFIC --- */
-.ml-card-note-points {
-    list-style: none;
-    padding: 0;
-    margin: 4px 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.ml-card-note-points li {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    font-size: 0.85rem;
-    color: #cbd5e1;
-}
-
-.ml-card-note-points li i {
-    font-size: 0.65rem;
-    color: #38bdf8;
-    flex-shrink: 0;
-}
-
 /* --- LIGHT THEME ADAPTATION --- */
 .theme-light .ml-stage-card {
     background: #ffffff;
@@ -355,27 +199,13 @@
 .theme-light .ml-card-title { color: #0f172a; }
 .theme-light .ml-card-body-text { color: #334155; }
 .theme-light .ml-roadmap-item,
-.theme-light .ml-compare-col,
 .theme-light .ml-summary-row {
     background: #f8fafc;
     border-color: #e2e8f0;
 }
 .theme-light .ml-roadmap-label,
-.theme-light .ml-compare-col-title,
 .theme-light .ml-summary-text {
     color: #0f172a;
-}
-.theme-light .ml-compare-points li { color: #475569; }
-.theme-light .ml-vs-chip {
-    background: #ffffff;
-    border-color: #0284c7;
-    color: #0284c7;
-}
-.theme-light .ml-card-title.exam-title { color: #b45309; }
-.theme-light .ml-exam-trap-callout {
-    background: #fef3c7;
-    border-color: #fde68a;
-    color: #78350f;
 }
 
 /* --- MOBILE RESPONSIVE TWEAKS --- */
@@ -392,25 +222,5 @@
     .ml-card-title {
         font-size: 0.95rem;
         line-height: 1.3;
-    }
-    .ml-compare-bento-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 0;
-    }
-    .ml-compare-col {
-        padding: 8px 6px;
-        gap: 4px;
-    }
-    .ml-compare-col-title {
-        font-size: 0.76rem;
-        padding-bottom: 3px;
-    }
-    .ml-compare-points {
-        gap: 4px;
-    }
-    .ml-compare-points li {
-        font-size: 0.72rem;
-        line-height: 1.28;
-        padding: 3px 0;
     }
 }
