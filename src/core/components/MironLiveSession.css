@@ -872,6 +872,10 @@ mark.miron-active-sentence,
         border: none;
         background: transparent;
         padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
     }
 
     /* Glided Top HUD Dock State (Scaled Full-Width Card) */
