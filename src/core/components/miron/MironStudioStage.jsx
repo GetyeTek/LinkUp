@@ -101,7 +101,7 @@ const MironStudioStage = ({
                                     />
                                 )}
 
-                                {/* PRESENTATION CARD (Intro Roadmap, Compare, Exam Alert, Summary, Note) */}
+                                {/* PRESENTATION BOOKEND (Intro Roadmap & Summary Recap) */}
                                 {!activeQuizData && activeCardData && (
                                     <MironStageCard cardData={activeCardData} />
                                 )}
@@ -192,17 +192,8 @@ const MironStudioStage = ({
                                     </div>
                                 )}
 
-                                {/* STANDALONE NOTE CARD (When active cue is a note card) */}
-                                {!activeBlockData && !activeDiagramAsset && !activeImageAsset && activeCue?.type === 'note_card' && (
-                                    <div className="ml-visual-card-note">
-                                        <div className="ml-note-badge"><i className="fas fa-bolt"></i> KEY CONCEPT</div>
-                                        <h3>{activeCue.target?.title || 'Core Takeaway'}</h3>
-                                        <p>{activeCue.target?.body || activeCue.target || ''}</p>
-                                    </div>
-                                )}
-
-                                {/* DEFAULT SOUNDWAVE STAGE (When no visuals or blocks are active) */}
-                                {!activeQuizData && !activeCardData && !activeBlockData && !activeDiagramAsset && !activeImageAsset && activeCue?.type !== 'note_card' && (
+                                {/* DEFAULT SOUNDWAVE STAGE (When no visuals, cards, or blocks are active) */}
+                                {!activeQuizData && !activeCardData && !activeBlockData && !activeDiagramAsset && !activeImageAsset && (
                                     <div className="ml-default-soundwave-stage">
                                         <div className="ml-soundwave-ambient-glow"></div>
                                         <div className="ml-soundwave-avatar-wrapper">
