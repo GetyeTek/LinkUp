@@ -3,7 +3,7 @@ import React from 'react';
 const MironStageCard = ({ cardData }) => {
     if (!cardData) return null;
 
-    const mode = (cardData.mode || 'note').toLowerCase();
+    const mode = (cardData.mode || 'intro').toLowerCase();
 
     return (
         <div className={`ml-stage-card-wrapper mode-${mode}`}>
@@ -33,66 +33,7 @@ const MironStageCard = ({ cardData }) => {
                     </>
                 )}
 
-                {/* 2. COMPARE / BENTO VERSUS MODE */}
-                {mode === 'compare' && (
-                    <>
-                        <div className="ml-card-head">
-                            <span className="ml-card-mode-pill compare">
-                                <i className="fas fa-arrows-left-right"></i>
-                                {cardData.badge || 'COMPARATIVE ANALYSIS'}
-                            </span>
-                        </div>
-                        {cardData.title && <h3 className="ml-card-title compare-title">{cardData.title}</h3>}
-                        <div className="ml-compare-bento-grid">
-                            <div className="ml-compare-col left-col">
-                                <h4 className="ml-compare-col-title">{cardData.left?.title || 'Concept A'}</h4>
-                                <ul className="ml-compare-points">
-                                    {(cardData.left?.points || []).map((pt, pIdx) => (
-                                        <li key={pIdx}>
-                                            <span>{pt}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            <div className="ml-compare-col right-col">
-                                <h4 className="ml-compare-col-title">{cardData.right?.title || 'Concept B'}</h4>
-                                <ul className="ml-compare-points">
-                                    {(cardData.right?.points || []).map((pt, pIdx) => (
-                                        <li key={pIdx}>
-                                            <span>{pt}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                {/* 3. EXAM ALERT / HIGH YIELD MODE */}
-                {mode === 'exam' && (
-                    <>
-                        <div className="ml-card-head">
-                            <span className="ml-card-mode-pill exam">
-                                <i className="fas fa-graduation-cap"></i>
-                                {cardData.badge || 'HIGH YIELD EXAM ALERT'}
-                            </span>
-                            <span className="ml-exam-pulse-beacon"></span>
-                        </div>
-                        <h3 className="ml-card-title exam-title">{cardData.title || 'Watch Out on the Exam!'}</h3>
-                        <div className="ml-exam-content-box">
-                            <p className="ml-card-body-text">{cardData.body}</p>
-                            {cardData.trap && (
-                                <div className="ml-exam-trap-callout">
-                                    <i className="fas fa-triangle-exclamation"></i>
-                                    <span><strong>Common Trap:</strong> {cardData.trap}</span>
-                                </div>
-                            )}
-                        </div>
-                    </>
-                )}
-
-                {/* 4. SUMMARY / RECAP MODE */}
+                {/* 2. SUMMARY / RECAP MODE */}
                 {mode === 'summary' && (
                     <>
                         <div className="ml-card-head">
@@ -112,30 +53,6 @@ const MironStageCard = ({ cardData }) => {
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </>
-                )}
-
-                {/* 5. GENERIC NOTE / DEFINITION / CONCEPT CALLOUT */}
-                {(mode === 'note' || (mode !== 'intro' && mode !== 'compare' && mode !== 'exam' && mode !== 'summary')) && (
-                    <>
-                        <div className="ml-card-head">
-                            <span className="ml-card-mode-pill note">
-                                <i className="fas fa-lightbulb"></i>
-                                {cardData.badge || 'CONCEPT CALLOUT'}
-                            </span>
-                        </div>
-                        {cardData.title && <h3 className="ml-card-title">{cardData.title}</h3>}
-                        {cardData.body && <p className="ml-card-body-text">{cardData.body}</p>}
-                        {Array.isArray(cardData.items) && cardData.items.length > 0 && (
-                            <ul className="ml-card-note-points">
-                                {cardData.items.map((item, idx) => (
-                                    <li key={idx}>
-                                        <i className="fas fa-chevron-right"></i>
-                                        <span>{typeof item === 'string' ? item : item.text}</span>
-                                    </li>
-                                ))}
-                            </ul>
                         )}
                     </>
                 )}
