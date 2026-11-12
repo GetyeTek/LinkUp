@@ -163,7 +163,7 @@ const MironStudioStage = ({
 
                                 {/* PERSISTENT DIAGRAM PANE (Glides to top HUD without remounting) */}
                                 {activeDiagramAsset && (!activeImageAsset || hasActiveNode || !activeBlockData) && !activeQuizData && !activeCardData && (
-                                    <div className={`ml-stage-diagram-pane ${isDualStage ? 'is-docked' : 'is-hero'}`}>
+                                    <div className={`ml-stage-diagram-pane ${isDualStage && activeImageAsset ? 'is-docked' : 'is-hero'}`}>
                                         {activeDiagramAsset.asset_type === 'diagram_svg' ? (
                                             <div 
                                                 className="ml-visual-card-svg" 
