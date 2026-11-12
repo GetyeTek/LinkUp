@@ -221,12 +221,13 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             const physicalStart = Math.max(1, logicalStart + offset);
 
             const pagesToFetchSet = new Set([physicalStart]);
+            const isTextbookCue = (t) => ['page_block', 'show_page', 'page', 'highlight', 'block', 'anchor_block'].includes(t);
             if (lesson?.cue_timeline && Array.isArray(lesson.cue_timeline)) {
                 lesson.cue_timeline.forEach(cue => {
-                    if (cue.type === 'page_block' || cue.type === 'anchor_block') {
+                    if (isTextbookCue(cue.type)) {
                         const rawTarget = String(cue.target || '').trim();
                         const parts = rawTarget.split(':');
-                        if (parts.length >= 2) {
+                        if (parts.length >= 1) {
                             const pNum = parseInt(parts[0], 10);
                             if (!isNaN(pNum)) pagesToFetchSet.add(pNum);
                         }
@@ -326,10 +327,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         }
 
         const targetPagesToSimulate = new Set([11, 12, 13]);
-        const simTargetRegex = /\[\[(?:cue|call):page_block:(\d+)/g;
+        const simTargetRegex = /\[\[(?:cue|call):(page_block|show_page|page|highlight|block):(\d+)/g;
         let pMatch;
         while ((pMatch = simTargetRegex.exec(raw)) !== null) {
-            targetPagesToSimulate.add(parseInt(pMatch[1], 10));
+            targetPagesToSimulate.add(parseInt(pMatch[2], 10));
         }
 
         let targetBook = selectedBook;
