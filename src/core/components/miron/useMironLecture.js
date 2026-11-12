@@ -604,10 +604,18 @@ export const useMironLecture = ({
                         }
                     }
 
-                    if (isDualStage && b && b.width > 0 && b.height > 0) {
-                        // Razor-sharp node isolation: 3px padding preserves card border while eliminating stray connector lines
-                        const padX = 3;
-                        const padY = 3;
+                    const isMobile = window.innerWidth <= 768;
+
+                    if (isMobile && b && b.width > 0 && b.height > 0) {
+                        // Mobile Portrait: Razor-sharp node isolation (Zero neighbor peeking, perfectly centered)
+                        const padX = 14;
+                        const padY = 14;
+                        const calcBox = `${(b.x - padX).toFixed(2)} ${(b.y - padY).toFixed(2)} ${(b.width + padX * 2).toFixed(2)} ${(b.height + padY * 2).toFixed(2)}`;
+                        animateViewBox(activeSvg, calcBox);
+                    } else if (isDualStage && activeImageAsset && b && b.width > 0 && b.height > 0) {
+                        // Desktop Dual-Stage with Specimen: Tight HUD isolation
+                        const padX = 6;
+                        const padY = 6;
                         const calcBox = `${(b.x - padX).toFixed(2)} ${(b.y - padY).toFixed(2)} ${(b.width + padX * 2).toFixed(2)} ${(b.height + padY * 2).toFixed(2)}`;
                         animateViewBox(activeSvg, calcBox);
                     } else {
@@ -618,16 +626,16 @@ export const useMironLecture = ({
                             const defaultViewStr = activeSvg.getAttribute('data-default-view') || '0 0 360 520';
                             const [defX, defY, defW, defH] = defaultViewStr.trim().split(/\s+/).map(Number);
 
-                            if (defW && defH && b) {
+                            if (defW && defH && b && b.width > 0 && b.height > 0) {
                                 const baseCX = defX + defW / 2;
                                 const baseCY = defY + defH / 2;
                                 const targetCX = b.x + b.width / 2;
                                 const targetCY = b.y + b.height / 2;
 
-                                const camCX = baseCX + (targetCX - baseCX) * 0.6;
-                                const camCY = baseCY + (targetCY - baseCY) * 0.6;
+                                const camCX = baseCX + (targetCX - baseCX) * 0.85;
+                                const camCY = baseCY + (targetCY - baseCY) * 0.85;
 
-                                const zoomRatio = window.innerWidth <= 768 ? 0.74 : 0.68;
+                                const zoomRatio = 0.65;
                                 const targetW = defW * zoomRatio;
                                 const targetH = defH * zoomRatio;
 
