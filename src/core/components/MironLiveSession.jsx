@@ -38,6 +38,29 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const cinemaContainerRef = useRef(null);
     const notesDeckRef = useRef(null);
 
+    const handleAdvanceToNextSection = () => {
+        if (!selectedBook?.toc || !selectedSection) return;
+        const allSections = [];
+        (selectedBook.toc || []).forEach(ch => {
+            if (Array.isArray(ch.children) && ch.children.length > 0) {
+                ch.children.forEach(sub => allSections.push({ ...sub, parentTitle: ch.title }));
+            } else {
+                allSections.push({ ...ch, parentTitle: ch.title });
+            }
+        });
+
+        const currentIdx = allSections.findIndex(s => 
+            (s.title && s.title.toLowerCase() === selectedSection.title?.toLowerCase()) ||
+            (s.section_tag && selectedSection.title?.startsWith(s.section_tag))
+        );
+
+        if (currentIdx !== -1 && currentIdx < allSections.length - 1) {
+            const nextSec = allSections[currentIdx + 1];
+            console.log(`⏩ [MironLecture] Auto-advancing to next section: "${nextSec.title}"`);
+            handleSelectSection(nextSec, nextSec.parentTitle);
+        }
+    };
+
     // Initialize Headless Lecture Engine
     const lectureEngine = useMironLecture({
         audioLesson,
@@ -50,7 +73,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         viewMode,
         setViewMode,
         setPinnedBlockIndex,
-        stage
+        stage,
+        onLessonEnded: handleAdvanceToNextSection
     });
 
     // 1. Hydrate Published Curriculum Books & Lesson Availability
