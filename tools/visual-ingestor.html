@@ -962,7 +962,7 @@
     <div class="grid-4">
       <div>
         <label>Course Code</label>
-        <input type="text" id="global-course-code" value="ANTH_1012" placeholder="e.g. ANTH_1012" oninput="handleGlobalCourseChange(this.value)">
+        <input type="text" id="global-course-code" value="" placeholder="e.g. PSYC 1011" oninput="handleGlobalCourseChange(this.value)">
       </div>
       <div>
         <label>Flux Cloudflare Worker</label>
@@ -1011,37 +1011,46 @@
     <div class="grid-3">
       <div>
         <label>Course Code (Synced)</label>
-        <input type="text" id="script-course-code" value="ANTH_1012">
+        <input type="text" id="script-course-code" placeholder="e.g. PSYC 1011" onchange="autoResolveBookId()">
       </div>
       <div>
         <label>Book ID (UUID)</label>
-        <input type="text" id="script-book-id" value="d59179fa-23a7-470a-b071-9e632e85e6ae">
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="script-book-id" placeholder="Auto-resolved or paste UUID">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="autoResolveBookId()" title="Lookup Book UUID in Supabase">🔍</button>
+        </div>
       </div>
       <div>
         <label>Start Page</label>
-        <input type="number" id="script-page-num" value="11">
+        <input type="number" id="script-page-num" placeholder="Auto or 1" value="1">
       </div>
     </div>
 
     <div class="grid-2">
       <div>
         <label>Chapter Title</label>
-        <input type="text" id="script-chapter-title" value="Unit One: Introducing Anthropology and its Subject Matter">
+        <input type="text" id="script-chapter-title" placeholder="e.g. Chapter ONE: ESSENCE OF PSYCHOLOGY">
       </div>
       <div>
-        <label>Section Title (Master Track Title)</label>
-        <input type="text" id="script-section-title" value="Unit One: Introducing Anthropology and its Subject Matter">
+        <label>Section Title (or Batch Queue Label)</label>
+        <input type="text" id="script-section-title" placeholder="Auto-populated from section cue">
       </div>
     </div>
 
     <div>
-      <label>Master Audio Script (With Section & Visual Cues)</label>
-      <textarea id="script-text-input" placeholder="Paste master lecture script here..."></textarea>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <label style="margin: 0;">Audio Script (Paste single section or full chapter)</label>
+        <span id="script-parse-status" style="font-size: 11px; font-weight: 700; color: var(--blue);"></span>
+      </div>
+      <textarea id="script-text-input" placeholder="Paste lecture script here (with [[cue:meta:...]] or [[cue:section:...]] tags)..." oninput="handleScriptTextChange()"></textarea>
     </div>
 
-    <button class="btn btn-green" id="btn-queue-script" onclick="handleQueueScript()">
-      ⚡ Queue Audio Lesson for Processing
-    </button>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <button class="btn btn-green" id="btn-queue-script" onclick="handleQueueScript()">
+        ⚡ Queue Audio Lesson(s) for Processing
+      </button>
+      <span id="queue-mode-indicator" style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Mode: Ready</span>
+    </div>
   </div>
 
   <!-- TAB 3: VISUAL GALLERY & PREVIEW -->
@@ -1216,7 +1225,7 @@
     const savedUrl = localStorage.getItem(STORAGE_KEY_URL);
     const savedKey = localStorage.getItem(STORAGE_KEY_KEY);
     const savedWorker = localStorage.getItem(STORAGE_KEY_WORKER);
-    const savedCourse = localStorage.getItem(STORAGE_KEY_COURSE) || 'ANTH_1012';
+    const savedCourse = localStorage.getItem(STORAGE_KEY_COURSE) || '';
 
     if (savedUrl) document.getElementById('supa-url').value = savedUrl;
     if (savedKey) document.getElementById('supa-key').value = savedKey;
@@ -1426,8 +1435,114 @@
   }
 
   // ========================================================
-  // TAB 2: MASTER SCRIPT QUEUE
+  // TAB 2: MASTER SCRIPT QUEUE & DYNAMIC PARSER
   // ========================================================
+  let lastParsedMetaRaw = '';
+
+  function handleScriptTextChange() {
+    const raw = (document.getElementById('script-text-input').value || '').trim();
+    if (!raw) return;
+
+    const statusEl = document.getElementById('script-parse-status');
+    const queueModeEl = document.getElementById('queue-mode-indicator');
+
+    // 1. Extract [[cue:meta:{...}]]
+    const metaMatch = raw.match(/\[\[(?:cue|call):meta:([\s\S]*?)\]\]/i);
+    let parsedMeta = null;
+    if (metaMatch) {
+      try {
+        parsedMeta = JSON.parse(metaMatch[1].trim());
+      } catch (e) {}
+    }
+
+    // 2. Scan section cues
+    const sectionRegex = /\[\[(?:cue|call):section:([a-zA-Z0-9_\.\-]+)?(?::([^\]]+))?\]\]/g;
+    const detectedSections = [];
+    let sMatch;
+    while ((sMatch = sectionRegex.exec(raw)) !== null) {
+      detectedSections.push({
+        tag: (sMatch[1] || '').trim(),
+        title: (sMatch[2] || sMatch[1] || '').trim()
+      });
+    }
+
+    // 3. Scan first page reference
+    const pageMatch = raw.match(/\[\[(?:cue|call):(show_page|page|highlight|page_block):(\d+)/i);
+    const inferredStartPage = pageMatch ? parseInt(pageMatch[2], 10) : null;
+
+    // 4. Update UI non-destructively
+    if (parsedMeta) {
+      if (parsedMeta.course_code && !document.getElementById('script-course-code').value) {
+        document.getElementById('script-course-code').value = parsedMeta.course_code;
+        handleGlobalCourseChange(parsedMeta.course_code);
+      }
+      if (parsedMeta.book_id && !document.getElementById('script-book-id').value) {
+        document.getElementById('script-book-id').value = parsedMeta.book_id;
+      }
+      if (parsedMeta.chapter_title && !document.getElementById('script-chapter-title').value) {
+        document.getElementById('script-chapter-title').value = parsedMeta.chapter_title;
+      }
+      if (parsedMeta.section_title && !document.getElementById('script-section-title').value) {
+        document.getElementById('script-section-title').value = parsedMeta.section_title;
+      }
+      if ((parsedMeta.start_page || parsedMeta.page_number) && !document.getElementById('script-page-num').value) {
+        document.getElementById('script-page-num').value = parsedMeta.start_page || parsedMeta.page_number;
+      }
+    } else {
+      if (inferredStartPage && (!document.getElementById('script-page-num').value || document.getElementById('script-page-num').value === '1')) {
+        document.getElementById('script-page-num').value = inferredStartPage;
+      }
+      if (detectedSections.length === 1 && !document.getElementById('script-section-title').value) {
+        document.getElementById('script-section-title').value = detectedSections[0].title;
+      }
+    }
+
+    if (detectedSections.length > 1) {
+      statusEl.textContent = `✔ Multi-Section: ${detectedSections.length} sections found`;
+      queueModeEl.textContent = `Mode: Modular Batch (${detectedSections.length} independent lessons)`;
+    } else if (detectedSections.length === 1) {
+      statusEl.textContent = `✔ Single Section: ${detectedSections[0].title.slice(0, 30)}...`;
+      queueModeEl.textContent = `Mode: Single Section Lesson`;
+    } else {
+      statusEl.textContent = parsedMeta ? `✔ Metadata Parsed` : '';
+      queueModeEl.textContent = `Mode: Standard Queue`;
+    }
+
+    // Auto-resolve Book ID if still empty
+    if (!document.getElementById('script-book-id').value.trim()) {
+      autoResolveBookId();
+    }
+  }
+
+  async function autoResolveBookId() {
+    const creds = getCredentials();
+    const courseCode = (document.getElementById('script-course-code').value || creds.courseCode || '').trim();
+    if (!creds.supaUrl || !creds.supaKey || !courseCode) return;
+
+    try {
+      const codeWithSpace = courseCode.replace(/_/g, ' ');
+      const codeWithUnderscore = courseCode.replace(/\s+/g, '_');
+      const endpoint = `${creds.supaUrl}/rest/v1/books?or=(course_code.eq."${encodeURIComponent(codeWithSpace)}",course_code.eq."${encodeURIComponent(codeWithUnderscore)}")&select=id,title,toc,page_offset&limit=1`;
+
+      const res = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${creds.supaKey}`,
+          'apikey': creds.supaKey
+        }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const book = data[0];
+        document.getElementById('script-book-id').value = book.id;
+        if (!document.getElementById('script-chapter-title').value.trim() && book.toc && book.toc[0]?.title) {
+          document.getElementById('script-chapter-title').value = book.toc[0].title;
+        }
+        appendLog('Book Resolved', `${book.title} (${book.id.slice(0, 8)}...)`, 'success');
+      }
+    } catch (e) {}
+  }
+
   async function handleQueueScript() {
     const creds = getCredentials();
     if (!creds.supaUrl || !creds.supaKey) {
@@ -1437,13 +1552,13 @@
 
     const courseCode = (document.getElementById('script-course-code').value || creds.courseCode || '').trim();
     const bookId = (document.getElementById('script-book-id').value || '').trim();
-    const pageNum = parseInt(document.getElementById('script-page-num').value || '1', 10);
-    const chapterTitle = (document.getElementById('script-chapter-title').value || '').trim();
-    const sectionTitle = (document.getElementById('script-section-title').value || '').trim();
+    const defaultPageNum = parseInt(document.getElementById('script-page-num').value || '1', 10);
+    const defaultChapterTitle = (document.getElementById('script-chapter-title').value || '').trim() || 'Core Chapter';
+    const defaultSectionTitle = (document.getElementById('script-section-title').value || '').trim();
     const scriptRaw = (document.getElementById('script-text-input').value || '').trim();
 
-    if (!bookId || !sectionTitle || !scriptRaw) {
-      alert('Please fill in Book ID, Section Title, and paste the Master Script.');
+    if (!bookId || !scriptRaw) {
+      alert('Please fill in Book ID and paste the script.');
       return;
     }
 
@@ -1453,41 +1568,88 @@
     btn.disabled = true;
 
     try {
-      logSummary.textContent = 'Queueing Master Audio Lesson into Supabase...';
+      // 1. Detect if script contains multiple sections
+      const sectionIndices = [];
+      const sectionRegex = /\[\[(?:cue|call):section:([a-zA-Z0-9_\.\-]+)?(?::([^\]]+))?\]\]/g;
+      let match;
+      while ((match = sectionRegex.exec(scriptRaw)) !== null) {
+        sectionIndices.push({
+          index: match.index,
+          length: match[0].length,
+          tag: (match[1] || '').trim(),
+          title: (match[2] || match[1] || '').trim(),
+          fullTag: match[0]
+        });
+      }
 
-      const record = {
-        book_id: bookId,
-        course_code: courseCode,
-        chapter_title: chapterTitle,
-        section_title: sectionTitle,
-        page_number: pageNum,
-        script_raw: scriptRaw,
-        status: 'pending',
-        error_message: null,
-        updated_at: new Date().toISOString()
-      };
+      const lessonsToQueue = [];
+
+      if (sectionIndices.length > 1) {
+        // Multi-section split: generate individual modular lessons
+        logSummary.textContent = `Splitting script into ${sectionIndices.length} modular section lessons...`;
+
+        for (let i = 0; i < sectionIndices.length; i++) {
+          const current = sectionIndices[i];
+          const next = sectionIndices[i + 1];
+          const sectionScript = scriptRaw.slice(current.index, next ? next.index : scriptRaw.length).trim();
+
+          const pageMatch = sectionScript.match(/\[\[(?:cue|call):(show_page|page|highlight|page_block):(\d+)/i);
+          const pageNum = pageMatch ? parseInt(pageMatch[2], 10) : defaultPageNum;
+
+          lessonsToQueue.push({
+            book_id: bookId,
+            course_code: courseCode,
+            chapter_title: defaultChapterTitle,
+            section_title: current.title || `${current.tag} Section`,
+            page_number: pageNum,
+            script_raw: sectionScript,
+            status: 'pending',
+            error_message: null,
+            updated_at: new Date().toISOString()
+          });
+        }
+      } else {
+        // Single section queue
+        const secTitle = defaultSectionTitle || (sectionIndices[0]?.title) || 'Core Lecture';
+        lessonsToQueue.push({
+          book_id: bookId,
+          course_code: courseCode,
+          chapter_title: defaultChapterTitle,
+          section_title: secTitle,
+          page_number: defaultPageNum,
+          script_raw: scriptRaw,
+          status: 'pending',
+          error_message: null,
+          updated_at: new Date().toISOString()
+        });
+      }
 
       const endpoint = `${creds.supaUrl}/rest/v1/book_audio_lessons`;
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${creds.supaKey}`,
-          'apikey': creds.supaKey,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates'
-        },
-        body: JSON.stringify(record)
-      });
+      let queuedCount = 0;
 
-      if (!res.ok) throw new Error(await res.text());
+      for (let j = 0; j < lessonsToQueue.length; j++) {
+        const item = lessonsToQueue[j];
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${creds.supaKey}`,
+            'apikey': creds.supaKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify(item)
+        });
 
-      const visualCues = (scriptRaw.match(/\[\[(?:cue|call):(?!section)[a-zA-Z0-9_\-]+(?::[\s\S]*?)?\]\]/g) || []).length;
-      const sectionCues = (scriptRaw.match(/\[\[(?:cue|call):section(?::[\s\S]*?)?\]\]/g) || []).length;
+        if (!res.ok) {
+          const err = await res.text();
+          appendLog(`[${j + 1}/${lessonsToQueue.length}] ${item.section_title}`, `Error: ${err}`, 'error');
+        } else {
+          queuedCount++;
+          appendLog(`[${j + 1}/${lessonsToQueue.length}] ${item.section_title}`, `Queued (p.${item.page_number})`, 'success');
+        }
+      }
 
-      appendLog('Master Script Queued', `Status: PENDING`, 'success');
-      appendLog(`Course: ${courseCode}`, `Book: ${bookId.slice(0, 8)}...`, 'success');
-      appendLog(`Structure Detected`, `${sectionCues} Sections • ${visualCues} Visual Cues`, 'success');
-      logSummary.textContent = 'Success! Script is queued. Trigger GitHub Action to process audio & alignment.';
+      logSummary.textContent = `Success! Queued ${queuedCount} of ${lessonsToQueue.length} modular lesson(s).`;
     } catch (err) {
       appendLog('Queue Failed', err.message, 'error');
     } finally {
