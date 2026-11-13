@@ -103,7 +103,10 @@ const MironCatalogView = ({
                                             {isExpanded && hasChildren && (
                                                 <div className="ml-toc-sections-list">
                                                     {node.children.map((sub, sIdx) => {
-                                                        const isReady = availableLessonSections.has(`${selectedBook.id}::${sub.title}`);
+                                                        const subTagMatch = (sub.title || '').match(/^([0-9]+(?:\.[0-9]+)*)/);
+                                                        const subTag = subTagMatch ? subTagMatch[1] : null;
+                                                        const isReady = availableLessonSections.has(`${selectedBook.id}::${sub.title}`) ||
+                                                                        (subTag && availableLessonSections.has(`${selectedBook.id}::${subTag}`));
                                                         return (
                                                             <div 
                                                                 key={sIdx} 
