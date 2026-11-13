@@ -71,7 +71,8 @@ export const useMironLecture = ({
     viewMode,
     setViewMode,
     setPinnedBlockIndex,
-    stage
+    stage,
+    onLessonEnded
 }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -215,8 +216,13 @@ export const useMironLecture = ({
                 } else if (cue.type === 'show_image') {
                     latestImage = cue; // Preserves latestDiagram for dual-stage composition!
                     latestCard = null;
+                } else if (cue.type === 'clear_image' || cue.type === 'image:clear' || cue.type === 'reset_image') {
+                    latestImage = null;
                 } else if (cue.type === 'zoom' || cue.type === 'focus' || cue.type === 'spotlight') {
                     latestNode = cue;
+                    if (cue.target === 'overview' || cue.target === 'reset') {
+                        latestImage = null;
+                    }
                 } else if (cue.type === 'bullet') {
                     const text = cue.target || '';
                     if (text && !currentBullets.includes(text)) {
@@ -836,7 +842,12 @@ export const useMironLecture = ({
     const audioHandlers = {
         onPlay: () => setIsPlaying(true),
         onPause: () => setIsPlaying(false),
-        onEnded: () => setIsPlaying(false),
+        onEnded: () => {
+            setIsPlaying(false);
+            if (typeof onLessonEnded === 'function') {
+                onLessonEnded();
+            }
+        },
         onTimeUpdate: () => {
             if (audioRef.current && !isPlaying) {
                 setCurrentTime(audioRef.current.currentTime);
