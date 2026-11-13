@@ -44,6 +44,11 @@ function parseScriptCues(rawScript) {
         const cueType = match[1].trim();
         const rawTarget = (match[2] || '').trim();
 
+        if (cueType === 'meta') {
+            lastIdx = match.index + match[0].length;
+            continue;
+        }
+
         if (cueType === 'section' || cueType === 'section_start') {
             const parts = rawTarget.split(':');
             const sectionTag = parts[0]?.trim() || '';
