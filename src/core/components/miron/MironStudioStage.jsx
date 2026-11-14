@@ -131,6 +131,12 @@ const MironStudioStage = ({
     const showKaraoke = ccEnabled && viewMode === 'cinema' && !activeQuizData && !activeCardData && karaokeData?.sentenceSnippet?.length > 0;
 
     const activeAsset = activeDiagramAsset || activeImageAsset;
+    const showQuiz = Boolean(activeQuizData);
+    const showCard = !showQuiz && Boolean(activeCardData);
+    const showExcerpt = !showQuiz && !showCard && Boolean(activeBlockData) && isDualStage;
+    const showDiagram = !showQuiz && !showCard && Boolean(activeDiagramAsset) && (!activeImageAsset || hasActiveNode || !activeBlockData);
+    const showImage = !showQuiz && !showCard && Boolean(activeImageAsset);
+    const isTripleStage = showExcerpt && showDiagram && showImage;
 
     return (
         <div className="ml-studio-viewport">
@@ -170,7 +176,7 @@ const MironStudioStage = ({
                                 }
                             }}
                         >
-                            <div className={`ml-cinema-visual-frame ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
+                            <div className={`ml-cinema-visual-frame ${isTripleStage ? 'is-triple-stage' : ''} ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
                                 {/* INTERACTIVE CHECKPOINT QUIZ (Takes center stage during checkpoint gate) */}
                                 {activeQuizData && (
                                     <MironQuizCard
@@ -201,14 +207,7 @@ const MironStudioStage = ({
 
                                 {/* TIGHT EXCERPT CARD: Locked 794px virtual canvas clone (Zero re-wrap, zero void) */}
                                 {activeBlockData && isDualStage && !activeQuizData && !activeCardData && (
-                                    <div 
-                                        className="ml-stage-excerpt-pane"
-                                        style={{ 
-                                            height: 'max-content',
-                                            minHeight: '0',
-                                            flex: '0 0 auto'
-                                        }}
-                                    >
+                                    <div className="ml-stage-excerpt-pane">
                                         <div 
                                             className="ml-tight-scale-wrapper"
                                             style={{
