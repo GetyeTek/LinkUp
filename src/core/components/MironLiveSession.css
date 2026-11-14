@@ -365,6 +365,16 @@
 .ml-studio-content-layout {
     flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative;
 }
+.ml-player-column {
+    flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; position: relative;
+}
+.ml-sidebar-toggle-btn,
+.ml-header-minimize-btn {
+    display: none;
+}
+.ml-desktop-sidebar {
+    display: none;
+}
 
 /* CINEMA STAGE */
 /* --- DUAL-TOPOLOGY SVG ENGINE & DESIGN TOKENS --- */
@@ -930,13 +940,20 @@ mark.miron-active-sentence,
 
 /* Desktop Dual-Stage Split (Keynote Bento Stage) */
 @media (min-width: 769px) {
+    .ml-stage-diagram-pane.is-hero {
+        flex: 1 1 100%;
+        width: 100%;
+        max-width: 1120px;
+        height: 100%;
+        margin: 0 auto;
+    }
     .ml-cinema-visual-frame.is-dual-stage {
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: center;
         gap: 20px;
-        max-width: 1220px;
+        max-width: 1280px;
         margin: 0 auto;
         padding: 0.5rem 1rem;
     }
@@ -946,17 +963,18 @@ mark.miron-active-sentence,
         min-width: 0;
         height: auto;
         max-height: 100%;
+        overflow-y: auto;
         display: flex;
         align-items: center;
         justify-content: center;
     }
-    .ml-stage-diagram-pane {
+    .ml-cinema-visual-frame.is-dual-stage .ml-stage-diagram-pane {
         flex: 1 1 46%;
         max-width: 48%;
         min-width: 0;
         height: 100%;
     }
-    .ml-stage-image-pane {
+    .ml-cinema-visual-frame.is-dual-stage .ml-stage-image-pane {
         flex: 1 1 46%;
         max-width: 48%;
         min-width: 0;
@@ -1695,4 +1713,551 @@ mark.miron-active-sentence,
 .theme-light .vis-box path[stroke="#223352"],
 .theme-light .vis-box path[stroke="#253554"] {
     stroke: #94a3b8 !important;
+}
+
+/* ==============================================================================
+   PC / DESKTOP WIDESCREEN STUDIO ARCHITECTURE (>= 1024px)
+   ============================================================================== */
+@media (min-width: 1024px) {
+    /* Header: Docked Cleanly Above Studio Workspace (Zero Page Overlap) */
+    .ml-header {
+        padding: 0.45rem 1.25rem;
+        min-height: 54px;
+    }
+    .ml-header.studio-mode {
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        flex-shrink: 0;
+        background: rgba(15, 23, 42, 0.96);
+    }
+    .ml-header.studio-mode.is-hidden {
+        transform: none;
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .ml-studio-section-name {
+        max-width: 440px;
+        font-size: 0.84rem;
+    }
+    .ml-sidebar-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #1e293b;
+        color: #94a3b8;
+        font-size: 0.74rem;
+        font-weight: 700;
+        padding: 5px 11px;
+        border-radius: 99px;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+    .ml-sidebar-toggle-btn:hover {
+        border-color: #38bdf8;
+        color: #f8fafc;
+    }
+    .ml-sidebar-toggle-btn.active {
+        background: rgba(56, 189, 248, 0.15);
+        border-color: rgba(56, 189, 248, 0.45);
+        color: #38bdf8;
+    }
+    .ml-header-minimize-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #1e293b;
+        color: #cbd5e1;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+    .ml-header-minimize-btn:hover {
+        border-color: #38bdf8;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.12);
+    }
+    .ml-page-collapse-btn {
+        display: none;
+    }
+
+    /* Catalog & Chapters Hub Scaling on PC */
+    .ml-stage-content {
+        max-width: 1320px;
+        padding: 1.5rem 2.25rem 2.25rem;
+    }
+    .ml-stage-header {
+        margin-bottom: 1.4rem;
+    }
+    .ml-stage-header h2 {
+        font-size: 1.75rem;
+    }
+    .ml-stage-header p {
+        font-size: 0.94rem;
+    }
+    .ml-resume-banner {
+        padding: 16px 22px;
+        margin-bottom: 18px;
+    }
+    .ml-resume-title {
+        font-size: 1.06rem;
+    }
+    .ml-courses-grid {
+        grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+        gap: 18px;
+    }
+    .ml-course-card {
+        min-height: 152px;
+        padding: 16px 18px;
+        border-radius: 18px;
+    }
+    .ml-card-icon-box {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        font-size: 1.15rem;
+    }
+    .ml-card-name {
+        font-size: 1rem;
+    }
+    .ml-toc-split-layout {
+        gap: 2.25rem;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+    .ml-toc-interactive-pane {
+        height: 100%;
+        padding-right: 8px;
+    }
+
+    /* Two-Column Theater + Right Studio Sidebar Shell */
+    .ml-studio-content-layout {
+        flex-direction: row;
+    }
+    .ml-player-column {
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+    }
+    .ml-cinema-stage {
+        padding: 14px 24px 16px;
+    }
+    .ml-cinema-stage[data-has-book="true"],
+    .ml-cinema-stage:has(.ml-live-book-stage),
+    .ml-cinema-stage:has(.ml-stage-excerpt-pane) {
+        padding-top: 12px !important;
+    }
+    .ml-live-book-stage {
+        padding-top: 8px;
+        padding-bottom: 58px;
+    }
+    .ml-stage-mode-chip {
+        top: 14px;
+        left: 18px;
+    }
+
+    /* Hide Bottom Mobile Notes Deck on Desktop (Relocated to Right Sidebar!) */
+    .ml-cinema-stage .ml-studio-notes-deck {
+        display: none !important;
+    }
+
+    /* Generous Visual Scaling on PC */
+    .ml-cinema-visual-frame.is-single-image .ml-visual-card-image,
+    .ml-cinema-visual-frame:not(.is-dual-stage) .ml-visual-card-image {
+        max-width: 920px;
+        width: auto;
+    }
+    .ml-cinema-visual-frame:not(.is-dual-stage) .ml-visual-card-image img {
+        max-height: calc(100vh - 210px);
+        width: auto;
+        max-width: 100%;
+    }
+    .ml-cinema-stage[data-has-notes="true"] .ml-visual-card-image img {
+        max-height: calc(100vh - 210px);
+    }
+    .vis-box svg {
+        max-height: calc(100vh - 190px) !important;
+    }
+    .ml-cinema-visual-frame.is-dual-stage {
+        gap: 24px;
+        padding: 8px 18px;
+        max-width: 1340px;
+    }
+    .ml-cinema-visual-frame.is-dual-stage .ml-stage-image-pane {
+        max-height: calc(100vh - 210px);
+    }
+    .ml-cinema-visual-frame.is-dual-stage .ml-stage-image-pane .ml-visual-card-image img {
+        max-height: calc(100vh - 220px);
+    }
+
+    /* Floating Cinema Subtitles (Docked Above Desktop Transport) */
+    .ml-karaoke-float,
+    .ml-karaoke-float.above-notes {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 14px;
+        margin: 0;
+        max-width: 760px;
+        padding: 8px 18px;
+    }
+    .ml-karaoke-float .ml-karaoke-stream {
+        font-size: 0.94rem;
+    }
+
+    /* Docked Desktop Transport Bar (Non-Overlapping & Always Accessible) */
+    .ml-transport-bar {
+        position: relative;
+        bottom: auto;
+        left: auto;
+        right: auto;
+        flex-shrink: 0;
+        padding: 10px 24px 12px;
+        background: rgba(11, 17, 32, 0.96);
+        gap: 8px;
+    }
+    .ml-transport-bar.is-hidden {
+        transform: none;
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .ml-studio-content-layout.has-desktop-sidebar .ml-section-rail-row {
+        display: none;
+    }
+
+    /* Anchor Block Split View -> Side-by-Side Columns on PC */
+    .ml-anchor-split-workspace {
+        grid-template-columns: 1.05fr 0.95fr;
+        grid-template-rows: 1fr;
+        gap: 22px;
+        padding: 20px 28px;
+        align-items: stretch;
+    }
+    .ml-pinned-block-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        max-width: none;
+    }
+    .ml-pinned-block-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px 24px;
+        font-size: 1rem;
+    }
+    .ml-anchor-sub-visual {
+        height: 100%;
+        max-width: none;
+        overflow: hidden;
+    }
+
+    /* Right Studio Sidebar */
+    .ml-desktop-sidebar {
+        display: flex;
+        flex-direction: column;
+        width: 360px;
+        flex-shrink: 0;
+        height: 100%;
+        background: #0d1424;
+        border-left: 1px solid #1e293b;
+        overflow: hidden;
+        z-index: 20;
+    }
+    .ml-sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid #1e293b;
+        background: rgba(15, 23, 42, 0.85);
+        flex-shrink: 0;
+    }
+    .ml-sidebar-tabs {
+        display: flex;
+        flex: 1;
+        background: #090e18;
+        border: 1px solid #1e293b;
+        border-radius: 12px;
+        padding: 3px;
+        gap: 4px;
+    }
+    .ml-sidebar-tab {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 7px 10px;
+        border-radius: 9px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.16s ease;
+    }
+    .ml-sidebar-tab:hover {
+        color: #f8fafc;
+    }
+    .ml-sidebar-tab.active {
+        background: rgba(56, 189, 248, 0.16);
+        color: #38bdf8;
+        box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.3);
+    }
+    .ml-sidebar-tab-badge {
+        background: #38bdf8;
+        color: #090e18;
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 1px 6px;
+        border-radius: 99px;
+    }
+    .ml-sidebar-tab-count {
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.68rem;
+        opacity: 0.75;
+    }
+    .ml-sidebar-collapse-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid #1e293b;
+        color: #94a3b8;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+    }
+    .ml-sidebar-collapse-btn:hover {
+        border-color: #38bdf8;
+        color: #38bdf8;
+    }
+    .ml-sidebar-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 0;
+    }
+    .ml-sidebar-now-card {
+        background: rgba(56, 189, 248, 0.06);
+        border: 1px solid rgba(56, 189, 248, 0.22);
+        border-radius: 14px;
+        padding: 11px 13px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        flex-shrink: 0;
+    }
+    .ml-sidebar-now-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .ml-sidebar-now-eyebrow {
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.6px;
+        color: #38bdf8;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .ml-sidebar-focus-chip {
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.64rem;
+        font-weight: 700;
+        color: #34d399;
+        background: rgba(16, 185, 129, 0.14);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 2px 7px;
+        border-radius: 99px;
+        text-transform: uppercase;
+    }
+    .ml-sidebar-now-title {
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: #f8fafc;
+        line-height: 1.35;
+    }
+    .ml-sidebar-bullets-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .ml-sidebar-bullet-card {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        background: #111827;
+        border: 1px solid #1e293b;
+        border-radius: 13px;
+        padding: 11px 13px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        line-height: 1.48;
+        animation: bulletSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .ml-sidebar-empty {
+        margin: auto 0;
+        padding: 28px 16px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    .ml-sidebar-empty-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: rgba(56, 189, 248, 0.1);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        color: #38bdf8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+    }
+    .ml-sidebar-empty h4 {
+        margin: 0;
+        font-size: 0.96rem;
+        font-weight: 800;
+        color: #f8fafc;
+    }
+    .ml-sidebar-empty p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        line-height: 1.5;
+    }
+    .ml-sidebar-empty-btn {
+        margin-top: 6px;
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        color: #38bdf8;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 8px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        transition: all 0.16s ease;
+    }
+    .ml-sidebar-empty-btn:hover {
+        background: rgba(56, 189, 248, 0.2);
+        border-color: #38bdf8;
+    }
+    .ml-sidebar-outline-head {
+        padding-bottom: 6px;
+        border-bottom: 1px solid #1e293b;
+    }
+    .ml-sidebar-outline-title {
+        margin: 4px 0 0;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #f8fafc;
+        line-height: 1.35;
+    }
+    .ml-sidebar-outline-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* Light Theme Overrides for Desktop Studio Shell */
+    .theme-light .ml-header.studio-mode {
+        background: rgba(255, 255, 255, 0.96);
+    }
+    .theme-light .ml-sidebar-toggle-btn,
+    .theme-light .ml-header-minimize-btn {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #475569;
+    }
+    .theme-light .ml-sidebar-toggle-btn.active {
+        background: rgba(2, 132, 199, 0.12);
+        border-color: rgba(2, 132, 199, 0.4);
+        color: #0284c7;
+    }
+    .theme-light .ml-desktop-sidebar {
+        background: #f8fafc;
+        border-left-color: #e2e8f0;
+    }
+    .theme-light .ml-sidebar-header {
+        background: #ffffff;
+        border-bottom-color: #e2e8f0;
+    }
+    .theme-light .ml-sidebar-tabs {
+        background: #f1f5f9;
+        border-color: #e2e8f0;
+    }
+    .theme-light .ml-sidebar-tab {
+        color: #475569;
+    }
+    .theme-light .ml-sidebar-tab.active {
+        background: #ffffff;
+        color: #0284c7;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+    .theme-light .ml-sidebar-tab-badge {
+        background: #0284c7;
+        color: #ffffff;
+    }
+    .theme-light .ml-sidebar-collapse-btn {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #475569;
+    }
+    .theme-light .ml-sidebar-now-card {
+        background: rgba(2, 132, 199, 0.06);
+        border-color: rgba(2, 132, 199, 0.22);
+    }
+    .theme-light .ml-sidebar-now-eyebrow {
+        color: #0284c7;
+    }
+    .theme-light .ml-sidebar-now-title,
+    .theme-light .ml-sidebar-empty h4,
+    .theme-light .ml-sidebar-outline-title {
+        color: #0f172a;
+    }
+    .theme-light .ml-sidebar-bullet-card {
+        background: #ffffff;
+        border-color: #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .theme-light .ml-sidebar-outline-head {
+        border-bottom-color: #e2e8f0;
+    }
+    .theme-light .ml-sidebar-empty p {
+        color: #64748b;
+    }
+    .theme-light .ml-sidebar-empty-btn {
+        background: rgba(2, 132, 199, 0.1);
+        border-color: rgba(2, 132, 199, 0.3);
+        color: #0284c7;
+    }
+}
+
+@media (min-width: 1360px) {
+    .ml-desktop-sidebar {
+        width: 390px;
+    }
 }
