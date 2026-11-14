@@ -278,9 +278,10 @@ async function processSynthesis(lesson) {
 
         const { data } = supabase.storage.from('book-audio-lectures').getPublicUrl(storagePath);
         const publicUrl = data?.publicUrl;
+        const versionedUrl = publicUrl ? `${publicUrl}?v=${Date.now()}` : publicUrl;
 
         const updatePayload = {
-            audio_url: publicUrl,
+            audio_url: versionedUrl,
             duration_seconds: trueDuration,
             status: 'audio_ready',
             error_message: null,
