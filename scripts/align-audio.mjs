@@ -554,6 +554,37 @@ async function transcribeDualPassSurgical(mp3Base64, scriptWords, hardwareDurati
         });
     }
 
+    // Sentry: Detect leading silence or >3.5s inter-word untranscribed dead zones
+    const silenceGaps = [];
+    if (reconciled.finalWords.length > 0 && reconciled.finalWords[0].start > 3.5) {
+        const leadGap = Number(reconciled.finalWords[0].start.toFixed(2));
+        silenceGaps.push({
+            gap_sec: leadGap,
+            between: `[Audio Start] (0.00s) -> "${reconciled.finalWords[0].word}" (${reconciled.finalWords[0].start}s)`
+        });
+        combinedIssues.push({
+            severity: 'flagged',
+            code: 'LEADING_SILENCE_GAP',
+            message: `Detected ${leadGap}s untranscribed audio before first word "${reconciled.finalWords[0].word}".`
+        });
+    }
+    for (let i = 0; i < reconciled.finalWords.length - 1; i++) {
+        const curW = reconciled.finalWords[i];
+        const nextW = reconciled.finalWords[i + 1];
+        const gap = Number((nextW.start - curW.end).toFixed(2));
+        if (gap > 3.5) {
+            silenceGaps.push({
+                gap_sec: gap,
+                between: `"${curW.word}" (${curW.end}s) -> "${nextW.word}" (${nextW.start}s)`
+            });
+            combinedIssues.push({
+                severity: 'flagged',
+                code: 'UNTRANSCRIBED_SILENCE_GAP',
+                message: `Detected ${gap}s dead-zone gap between "${curW.word}" (${curW.end}s) and "${nextW.word}" (${nextW.start}s) — possible double-dropped quote or long pause.`
+            });
+        }
+    }
+
     return {
         duration: finalDuration,
         words: reconciled.finalWords,
@@ -564,9 +595,14 @@ async function transcribeDualPassSurgical(mp3Base64, scriptWords, hardwareDurati
             restored_count: reconciled.restoredCount,
             pass1_fallback_used: pass1FallbackUsed,
             blocked_infeasible_chunks: reconciled.blockedChunks,
+            silence_gaps: silenceGaps,
             issues: combinedIssues
         }
     };
+}
+
+function isEthiopicWord(word) {
+    return /[\u1200-\u137F]/.test(word || '');
 }
 
 function buildScriptAlignmentMap(scriptWords, reconciledWords) {
@@ -582,8 +618,36 @@ function buildScriptAlignmentMap(scriptWords, reconciledWords) {
         }
     }
 
+    // Sentry: Detect contiguous unmatched runs containing >= 6 Ethiopic words
+    const droppedAmharicRuns = [];
+    let spanStart = -1;
+    let ethiopicInSpan = 0;
+
+    const flushSpan = (endIdx) => {
+        if (spanStart !== -1 && ethiopicInSpan >= 6) {
+            droppedAmharicRuns.push({
+                start_word_index: spanStart,
+                end_word_index: endIdx,
+                ethiopic_word_count: ethiopicInSpan,
+                snippet: scriptWords.slice(spanStart, Math.min(endIdx + 1, spanStart + 10)).join(' ')
+            });
+        }
+        spanStart = -1;
+        ethiopicInSpan = 0;
+    };
+
+    for (let s = 0; s < scriptWords.length; s++) {
+        if (scriptToReconciled[s] === null) {
+            if (spanStart === -1) spanStart = s;
+            if (isEthiopicWord(scriptWords[s])) ethiopicInSpan++;
+        } else {
+            flushSpan(s - 1);
+        }
+    }
+    flushSpan(scriptWords.length - 1);
+
     const matchRate = scriptWords.length > 0 ? Number((matchedCount / scriptWords.length).toFixed(3)) : 1.0;
-    return { scriptToReconciled, matchRate };
+    return { scriptToReconciled, matchRate, droppedAmharicRuns };
 }
 
 function resolveScriptPositionTime(wordIndexBefore, wordIndexAfter, scriptWords, reconciledWords, scriptToReconciled, fallbackDuration, leadOffset) {
@@ -661,6 +725,16 @@ function resolveScriptPositionTime(wordIndexBefore, wordIndexAfter, scriptWords,
     return { time: fallbackDuration, distance: scriptWords.length, ambiguous: true };
 }
 
+function resolvePrevWordEndTime(wordIndexBefore, scriptWords, reconciledWords, scriptToReconciled) {
+    if (!Array.isArray(reconciledWords) || reconciledWords.length === 0) return null;
+    for (let s = Math.min(wordIndexBefore, scriptWords.length - 1); s >= 0; s--) {
+        if (scriptToReconciled[s] !== null) {
+            return reconciledWords[scriptToReconciled[s]].end;
+        }
+    }
+    return null;
+}
+
 function alignVisualCuesWithDP(visualCues, scriptWords, reconciledWords, scriptToReconciled, fallbackDuration) {
     const monotonicClamps = [];
     const lowConfidenceCues = [];
@@ -668,6 +742,9 @@ function alignVisualCuesWithDP(visualCues, scriptWords, reconciledWords, scriptT
 
     for (let i = 0; i < visualCues.length; i++) {
         const cue = visualCues[i];
+        const isQuiz = cue.type === 'quiz' || cue.type === 'interactive_quiz';
+        const leadOffset = isQuiz ? 0 : VISUAL_LEAD_OFFSET;
+
         const resolved = resolveScriptPositionTime(
             cue.wordIndexBefore,
             cue.wordIndexAfter,
@@ -675,10 +752,25 @@ function alignVisualCuesWithDP(visualCues, scriptWords, reconciledWords, scriptT
             reconciledWords,
             scriptToReconciled,
             fallbackDuration,
-            VISUAL_LEAD_OFFSET
+            leadOffset
         );
 
-        let cueTime = Number(Math.min(fallbackDuration, Math.max(0, resolved.time)).toFixed(2));
+        let rawTime = resolved.time;
+
+        // Zero-clipping quiz gate: land cleanly in the natural breath after the preceding spoken word
+        if (isQuiz && cue.wordIndexBefore >= 0) {
+            const prevEnd = resolvePrevWordEndTime(cue.wordIndexBefore, scriptWords, reconciledWords, scriptToReconciled);
+            if (prevEnd !== null) {
+                if (rawTime >= prevEnd) {
+                    const pauseSpan = rawTime - prevEnd;
+                    rawTime = prevEnd + Math.min(0.15, pauseSpan * 0.5);
+                } else {
+                    rawTime = prevEnd;
+                }
+            }
+        }
+
+        let cueTime = Number(Math.min(fallbackDuration, Math.max(0, rawTime)).toFixed(2));
 
         if (resolved.ambiguous) {
             lowConfidenceCues.push({
@@ -717,17 +809,31 @@ function auditCueOrchestration(timeline) {
     const issues = [];
     let hasDiagram = false;
     let lastQuizTime = null;
+    let lastZoomTime = null;
 
     for (let i = 0; i < timeline.length; i++) {
         const c = timeline[i];
 
         if (c.type === 'show_diagram') hasDiagram = true;
-        if ((c.type === 'zoom' || c.type === 'focus' || c.type === 'spotlight') && !hasDiagram) {
-            issues.push({
-                severity: 'flagged',
-                code: 'ORPHAN_ZOOM_BEFORE_DIAGRAM',
-                message: `Camera cue ${c.type}:${c.target} at ${c.time}s fired before any show_diagram cue.`
-            });
+        if (c.type === 'zoom' || c.type === 'focus' || c.type === 'spotlight') {
+            if (!hasDiagram) {
+                issues.push({
+                    severity: 'flagged',
+                    code: 'ORPHAN_ZOOM_BEFORE_DIAGRAM',
+                    message: `Camera cue ${c.type}:${c.target} at ${c.time}s fired before any show_diagram cue.`
+                });
+            }
+            if (lastZoomTime !== null) {
+                const delta = Number((c.time - lastZoomTime).toFixed(2));
+                if (delta > 0 && delta < 1.0) {
+                    issues.push({
+                        severity: 'warning',
+                        code: 'RAPID_CAMERA_FLICKER',
+                        message: `Camera cue ${c.type}:${c.target} at ${c.time}s fired only ${delta}s after previous zoom (650ms pan may flicker).`
+                    });
+                }
+            }
+            lastZoomTime = c.time;
         }
 
         if (c.type === 'quiz' || c.type === 'interactive_quiz') {
@@ -770,6 +876,236 @@ function auditCueOrchestration(timeline) {
     }
 
     return issues;
+}
+
+function ensureBlockArrayLocal(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && typeof parsed === 'object') {
+                if (Array.isArray(parsed.content)) return parsed.content;
+                if (Array.isArray(parsed.blocks)) return parsed.blocks;
+                return [parsed];
+            }
+        } catch (e) {
+            return [];
+        }
+    }
+    if (typeof raw === 'object') {
+        if (Array.isArray(raw.content)) return raw.content;
+        if (Array.isArray(raw.blocks)) return raw.blocks;
+        const values = Object.values(raw);
+        if (values.length > 0 && typeof values[0] === 'object') return values;
+        return [raw];
+    }
+    return [];
+}
+
+async function auditDatabaseReferences(lesson, timeline) {
+    const issues = [];
+    const missingAssets = [];
+    const missingSvgNodes = [];
+    const highlightMismatches = [];
+
+    const codeWithSpace = (lesson.course_code || '').trim().replace(/_/g, ' ');
+    const codeWithUnderscore = codeWithSpace.replace(/\s+/g, '_');
+
+    // 1. Verify course_visual_assets & SVG data-nodes
+    const assetMap = {};
+    const assetNodesMap = {};
+    if (codeWithSpace) {
+        try {
+            const { data: assets, error: assetErr } = await supabase
+                .from('course_visual_assets')
+                .select('id, asset_type, content_payload, image_url')
+                .or(`course_code.eq."${codeWithSpace}",course_code.eq."${codeWithUnderscore}"`);
+
+            if (assetErr) {
+                issues.push({
+                    severity: 'warning',
+                    code: 'DB_ASSET_VERIFY_SKIPPED',
+                    message: `Could not query course_visual_assets: ${assetErr.message}`
+                });
+            } else if (Array.isArray(assets)) {
+                for (const a of assets) {
+                    assetMap[a.id] = a;
+                    if (a.content_payload) {
+                        const nodes = new Set();
+                        for (const m of a.content_payload.matchAll(/data-node=["']([^"']+)["']/g)) {
+                            nodes.add(m[1]);
+                        }
+                        assetNodesMap[a.id] = nodes;
+                    }
+                }
+
+                let activeDiagramId = null;
+                for (const c of timeline) {
+                    if (c.type === 'show_diagram') {
+                        let assetId = (c.target || '').trim();
+                        let inlineNode = null;
+                        if (assetId && !assetMap[assetId]) {
+                            if (assetId.includes(':')) {
+                                [assetId, inlineNode] = assetId.split(':');
+                            } else if (assetId.includes('#')) {
+                                [assetId, inlineNode] = assetId.split('#');
+                            }
+                        }
+
+                        if (!assetMap[assetId]) {
+                            missingAssets.push({ time: c.time, type: 'diagram', target: c.target });
+                            issues.push({
+                                severity: 'flagged',
+                                code: 'MISSING_VISUAL_ASSET',
+                                message: `Diagram asset "${c.target}" (at ${c.time}s) was not found in course_visual_assets for "${codeWithSpace}".`
+                            });
+                            activeDiagramId = null;
+                        } else {
+                            activeDiagramId = assetId;
+                            if (inlineNode && assetNodesMap[assetId] && !assetNodesMap[assetId].has(inlineNode)) {
+                                missingSvgNodes.push({ time: c.time, diagram: assetId, node: inlineNode });
+                                issues.push({
+                                    severity: 'flagged',
+                                    code: 'MISSING_SVG_NODE',
+                                    message: `SVG node "${inlineNode}" (at ${c.time}s) does not exist in diagram "${assetId}".`
+                                });
+                            }
+                        }
+                    } else if (c.type === 'show_image') {
+                        const target = (c.target || '').trim();
+                        if (target && !/^https?:\/\//i.test(target)) {
+                            const imgAsset = assetMap[target];
+                            if (!imgAsset || !imgAsset.image_url) {
+                                missingAssets.push({ time: c.time, type: 'image', target });
+                                issues.push({
+                                    severity: 'flagged',
+                                    code: 'MISSING_IMAGE_ASSET',
+                                    message: `Image asset "${target}" (at ${c.time}s) was not found (or lacks image_url) in course_visual_assets.`
+                                });
+                            }
+                        }
+                    } else if (c.type === 'zoom' || c.type === 'focus' || c.type === 'spotlight') {
+                        const nodeSlug = (c.target || '').trim();
+                        if (nodeSlug && nodeSlug !== 'overview' && nodeSlug !== 'reset' && activeDiagramId) {
+                            const diag = assetMap[activeDiagramId];
+                            const nodesSet = assetNodesMap[activeDiagramId];
+                            if (diag?.asset_type === 'diagram_svg' && nodesSet && !nodesSet.has(nodeSlug)) {
+                                missingSvgNodes.push({ time: c.time, diagram: activeDiagramId, node: nodeSlug });
+                                issues.push({
+                                    severity: 'flagged',
+                                    code: 'MISSING_SVG_NODE',
+                                    message: `Camera node "${nodeSlug}" (at ${c.time}s) was not found in SVG "${activeDiagramId}".`
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            issues.push({
+                severity: 'warning',
+                code: 'DB_ASSET_VERIFY_SKIPPED',
+                message: `Asset audit threw exception: ${e.message}`
+            });
+        }
+    }
+
+    // 2. Verify textbook pages & highlight phrase matches via get_book_page_blocks RPC
+    const pageCueTypes = new Set(['page_block', 'show_page', 'page', 'highlight', 'block', 'anchor_block']);
+    const pagesToCheck = new Set();
+    const highlightChecks = [];
+
+    for (const c of timeline) {
+        if (!pageCueTypes.has(c.type)) continue;
+        const parts = String(c.target || '').trim().split(':');
+        const pNum = parseInt(parts[0], 10);
+        if (isNaN(pNum)) continue;
+        pagesToCheck.add(pNum);
+
+        if (parts.length >= 2) {
+            let blockIdx = 0;
+            let phrase = null;
+            if (parts.length === 2) {
+                const b = parseInt(parts[1], 10);
+                if (!isNaN(b)) blockIdx = b;
+                else phrase = parts.slice(1).join(':').trim();
+            } else {
+                const b = parseInt(parts[1], 10);
+                blockIdx = isNaN(b) ? 0 : b;
+                const rawSent = parts.slice(2).join(':').trim();
+                const sNum = parseInt(rawSent, 10);
+                if (isNaN(sNum) || String(sNum) !== rawSent) phrase = rawSent;
+            }
+            if (phrase) {
+                highlightChecks.push({ time: c.time, page: pNum, blockIdx, phrase });
+            }
+        }
+    }
+
+    if (pagesToCheck.size > 0 && lesson.book_id) {
+        try {
+            const { data: batchPages, error: pagesErr } = await supabase.rpc('get_book_page_blocks', {
+                p_book_id: lesson.book_id,
+                p_course_code: lesson.course_code,
+                p_page_numbers: Array.from(pagesToCheck)
+            });
+
+            if (pagesErr) {
+                issues.push({
+                    severity: 'warning',
+                    code: 'DB_PAGE_VERIFY_SKIPPED',
+                    message: `Could not verify textbook pages via RPC: ${pagesErr.message}`
+                });
+            } else {
+                const pageBlocksMap = {};
+                if (Array.isArray(batchPages)) {
+                    for (const p of batchPages) {
+                        pageBlocksMap[p.page_number] = ensureBlockArrayLocal(p.content_json);
+                    }
+                }
+
+                for (const pNum of pagesToCheck) {
+                    if (!pageBlocksMap[pNum] || pageBlocksMap[pNum].length === 0) {
+                        issues.push({
+                            severity: 'flagged',
+                            code: 'MISSING_TEXTBOOK_PAGE',
+                            message: `Referenced textbook page ${pNum} returned 0 blocks from get_book_page_blocks.`
+                        });
+                    }
+                }
+
+                for (const hc of highlightChecks) {
+                    const blocks = pageBlocksMap[hc.page];
+                    if (!blocks || blocks.length === 0) continue;
+                    const lowerPhrase = hc.phrase.toLowerCase();
+                    const found = blocks.some(b => {
+                        const text = typeof b?.body === 'string'
+                            ? b.body
+                            : (Array.isArray(b?.items) ? b.items.map(it => typeof it === 'string' ? it : (it?.text || '')).join(' ') : '');
+                        return text.toLowerCase().includes(lowerPhrase);
+                    });
+                    if (!found) {
+                        highlightMismatches.push(hc);
+                        issues.push({
+                            severity: 'flagged',
+                            code: 'HIGHLIGHT_PHRASE_MISMATCH',
+                            message: `Highlight phrase at ${hc.time}s on page ${hc.page} did not match any block text: "${hc.phrase.slice(0, 70)}..."`
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            issues.push({
+                severity: 'warning',
+                code: 'DB_PAGE_VERIFY_SKIPPED',
+                message: `Page/highlight audit threw exception: ${e.message}`
+            });
+        }
+    }
+
+    return { issues, missingAssets, missingSvgNodes, highlightMismatches };
 }
 
 function buildSectionsManifestWithDP(sectionCues, scriptWords, reconciledWords, scriptToReconciled, totalDuration, defaultLesson) {
@@ -864,8 +1200,8 @@ async function processAlignment(lesson) {
         const finalDuration = result.duration;
         console.log(`⏱️ Final Acoustic Duration: ${finalDuration}s | Reconciled Words: ${words.length} (Restored: ${result.stats.restored_count}, Blocked Gaps: ${result.stats.blocked_infeasible_chunks.length})`);
 
-        const { scriptToReconciled, matchRate } = buildScriptAlignmentMap(scriptWords, words);
-        console.log(`🧬 Script ↔ Reconciled Transcript DP Match Rate: ${(matchRate * 100).toFixed(1)}%`);
+        const { scriptToReconciled, matchRate, droppedAmharicRuns } = buildScriptAlignmentMap(scriptWords, words);
+        console.log(`🧬 Script ↔ Reconciled Transcript DP Match Rate: ${(matchRate * 100).toFixed(1)}% | Dropped Amharic Runs: ${droppedAmharicRuns.length}`);
 
         const { timeline: visualTimeline, monotonicClamps, lowConfidenceCues } = alignVisualCuesWithDP(
             visualCues,
@@ -885,7 +1221,16 @@ async function processAlignment(lesson) {
         console.log(`🎯 Aligned Events: ${visualTimeline.length} | Sections in Manifest: ${sectionsManifest.length}`);
 
         const orchestrationIssues = auditCueOrchestration(visualTimeline);
-        const allAlignmentIssues = [...result.stats.issues, ...orchestrationIssues];
+        const dbAudit = await auditDatabaseReferences(lesson, visualTimeline);
+        const allAlignmentIssues = [...result.stats.issues, ...orchestrationIssues, ...dbAudit.issues];
+
+        for (const run of droppedAmharicRuns) {
+            allAlignmentIssues.push({
+                severity: 'flagged',
+                code: 'DROPPED_AMHARIC_RUN',
+                message: `${run.ethiopic_word_count} contiguous Amharic words in script_raw went unmatched around index ${run.start_word_index}: "${run.snippet}..."`
+            });
+        }
 
         if (matchRate < 0.65) {
             allAlignmentIssues.push({
@@ -928,6 +1273,11 @@ async function processAlignment(lesson) {
                 pass1_fallback_used: result.stats.pass1_fallback_used,
                 script_dp_match_rate: matchRate,
                 blocked_infeasible_chunks: result.stats.blocked_infeasible_chunks,
+                silence_gaps: result.stats.silence_gaps,
+                dropped_amharic_runs: droppedAmharicRuns,
+                missing_assets: dbAudit.missingAssets,
+                missing_svg_nodes: dbAudit.missingSvgNodes,
+                highlight_mismatches: dbAudit.highlightMismatches,
                 monotonic_clamps: monotonicClamps,
                 low_confidence_cues: lowConfidenceCues,
                 issues: allAlignmentIssues
