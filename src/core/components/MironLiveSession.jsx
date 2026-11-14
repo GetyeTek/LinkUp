@@ -53,6 +53,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [pinnedBlockIndex, setPinnedBlockIndex] = useState(0);
     const [viewState, setViewState] = useState('full');
     const [isDebugOpen, setIsDebugOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [desktopSidebarTab, setDesktopSidebarTab] = useState('outline');
 
     // DOM & Element Refs
     const excerptCardRef = useRef(null);
@@ -759,7 +761,16 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             <button
                                 type="button"
                                 className="ml-studio-title-pill is-interactive"
-                                onClick={(e) => { e.stopPropagation(); setIsOutlineOpen(prev => !prev); lectureEngine.resetInactivityTimer(); }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                                        setIsSidebarOpen(true);
+                                        setDesktopSidebarTab('outline');
+                                    } else {
+                                        setIsOutlineOpen(prev => !prev);
+                                    }
+                                    lectureEngine.resetInactivityTimer();
+                                }}
                                 title="Open Chapter Sections"
                             >
                                 <span className="ml-studio-course-tag">{selectedBook?.course_code || 'COURSE'}</span>
@@ -781,26 +792,37 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
                 <div className="ml-header-right">
                     {stage === 'studio' && audioLesson && (
-                        <div className="ml-mode-switch-pill" onClick={(e) => e.stopPropagation()}>
+                        <>
+                            <div className="ml-mode-switch-pill" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                    type="button"
+                                    className={`ml-mode-btn ${viewMode === 'cinema' ? 'active' : ''}`}
+                                    onClick={() => setViewMode('cinema')}
+                                    title="Cinema Stage"
+                                >
+                                    <i className="fas fa-clapperboard"></i>
+                                    <span className="ml-mode-label">Stage</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`ml-mode-btn ${viewMode === 'anchor' ? 'active' : ''}`}
+                                    onClick={() => setViewMode('anchor')}
+                                    title="Textbook Block View"
+                                >
+                                    <i className="fas fa-book-open"></i>
+                                    <span className="ml-mode-label">Book</span>
+                                </button>
+                            </div>
                             <button
                                 type="button"
-                                className={`ml-mode-btn ${viewMode === 'cinema' ? 'active' : ''}`}
-                                onClick={() => setViewMode('cinema')}
-                                title="Cinema Stage"
+                                className={`ml-sidebar-toggle-btn ${isSidebarOpen ? 'active' : ''}`}
+                                onClick={(e) => { e.stopPropagation(); setIsSidebarOpen(prev => !prev); }}
+                                title={isSidebarOpen ? 'Collapse Studio Panel' : 'Open Takeaways & Outline Panel'}
                             >
-                                <i className="fas fa-clapperboard"></i>
-                                <span className="ml-mode-label">Stage</span>
+                                <i className="fas fa-table-columns"></i>
+                                <span className="ml-mode-label">{isSidebarOpen ? 'Panel' : 'Notes'}</span>
                             </button>
-                            <button
-                                type="button"
-                                className={`ml-mode-btn ${viewMode === 'anchor' ? 'active' : ''}`}
-                                onClick={() => setViewMode('anchor')}
-                                title="Textbook Block View"
-                            >
-                                <i className="fas fa-book-open"></i>
-                                <span className="ml-mode-label">Book</span>
-                            </button>
-                        </div>
+                        </>
                     )}
                     <button 
                         className="ml-debug-sim-btn" 
@@ -809,6 +831,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     >
                         <i className="fas fa-flask"></i>
                         <span className="ml-debug-sim-label">Simulate</span>
+                    </button>
+                    <button
+                        type="button"
+                        className="ml-header-minimize-btn"
+                        onClick={(e) => { e.stopPropagation(); setViewState('minimized'); }}
+                        title={t('minimize_to_orb', 'Minimize to Floating Orb')}
+                    >
+                        <i className="fas fa-compress-alt"></i>
                     </button>
                     <button className="athena-close" onClick={handleClose} style={{ color: '#ff5f5f' }} title={t('close', 'Close')}>
                         <i className="fas fa-times"></i>
@@ -864,6 +894,10 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         completedLessonIds={completedLessonIds}
                         isOutlineOpen={isOutlineOpen}
                         setIsOutlineOpen={setIsOutlineOpen}
+                        isSidebarOpen={isSidebarOpen}
+                        setIsSidebarOpen={setIsSidebarOpen}
+                        desktopSidebarTab={desktopSidebarTab}
+                        setDesktopSidebarTab={setDesktopSidebarTab}
                         onSelectSectionItem={handleSelectSectionItem}
                         onStepSection={handleStepSection}
                         onReturnToToc={() => setStage('toc_select')}
