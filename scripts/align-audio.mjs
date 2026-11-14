@@ -355,8 +355,8 @@ function reconcileDualPassTranscripts(pass1Words, pass2Tokens, scriptWords, hard
             const realGap = nextStart - prevEnd;
 
             if (realGap < minFeasibleSec) {
-                // Tiny 1-2 word Pass 2 boundary bleed can be clamped inside realGap if >= 0.02s
-                if (missingChunk.length <= 2 && totalChars <= 15 && realGap >= 0.02) {
+                // Tiny 1-2 word Pass 2 continuous-speech seams can be clamped inside realGap if >= 0.00s
+                if (missingChunk.length <= 2 && totalChars <= 15 && realGap >= 0) {
                     issues.push({
                         severity: 'warning',
                         code: 'TIGHT_GAP_CLAMPED',
