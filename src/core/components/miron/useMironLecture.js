@@ -154,10 +154,11 @@ export const useMironLecture = ({
         return () => cancelAnimationFrame(rafIdRef.current);
     }, [isPlaying, audioLesson, duration, playbackRate]);
 
-    // Ghost Chrome Inactivity Engine
+    // Ghost Chrome Inactivity Engine (Mobile/Compact Only; Desktop stays docked)
     const resetInactivityTimer = () => {
         setIsChromeVisible(true);
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        if (typeof window !== 'undefined' && window.innerWidth >= 1024) return;
         if (isPlaying) {
             hideTimeoutRef.current = setTimeout(() => {
                 setIsChromeVisible(false);
@@ -682,24 +683,33 @@ export const useMironLecture = ({
         }
     }, [activeCue, setPinnedBlockIndex, setViewMode]);
 
-    // Fluid viewport & dual-stage responsive scale engine
+    // Fluid viewport, container-aware & dual-stage responsive scale engine
     useEffect(() => {
         const updateScale = () => {
             if (typeof window === 'undefined') return;
             const w = window.innerWidth;
+            const stageW = cinemaContainerRef?.current?.clientWidth || w;
             if (w <= 768) {
                 setFitScale(Math.min((w - 20) / 794, 0.52));
             } else if (isDualStage) {
-                const availW = Math.min(w * 0.52, 640);
+                const availW = Math.min(stageW * 0.50, 640);
                 setFitScale(Math.min(availW / 794, 0.82));
             } else {
-                setFitScale(Math.min((w - 32) / 794, 1.0));
+                setFitScale(Math.min((stageW - 32) / 794, 1.0));
             }
         };
         updateScale();
         window.addEventListener('resize', updateScale);
-        return () => window.removeEventListener('resize', updateScale);
-    }, [isDualStage]);
+        let ro;
+        if (typeof ResizeObserver !== 'undefined' && cinemaContainerRef?.current) {
+            ro = new ResizeObserver(updateScale);
+            ro.observe(cinemaContainerRef.current);
+        }
+        return () => {
+            window.removeEventListener('resize', updateScale);
+            if (ro) ro.disconnect();
+        };
+    }, [isDualStage, cinemaContainerRef]);
 
     // Safe Manifest Parsing & Fallback (Guarantees visible chapter segments)
     const manifest = useMemo(() => {
@@ -970,12 +980,46 @@ export const useMironLecture = ({
                 audioRef.current.play()
                     .then(() => setIsPlaying(true))
                     .catch((err) => {
-                        console.warn('⚠️ [Audio Autoplay Prevented by Browser]: Tap Play to begin lecture', err.message);
-                        setIsPlaying(false);
-                    });
+                                            console.warn('⚠️ [Audio Autoplay Prevented by Browser]: Tap Play to begin lecture', err.message);
+                    setIsPlaying(false);
+                });
             }
         }
     };
+
+    // Desktop Keyboard Shortcuts (Space/K: Play-Pause, Left/Right: Skip 10s, C: Captions)
+    const keyHandlersRef = useRef({});
+    keyHandlersRef.current = {
+        togglePlay: handleTogglePlay,
+        skip: handleSkip,
+        toggleCc: () => setCcEnabled(prev => !prev),
+        isQuizBlocked: Boolean(activeQuizData)
+    };
+
+    useEffect(() => {
+        if (stage !== 'studio') return;
+        const onKeyDown = (e) => {
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            const tag = e.target?.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
+
+            if (e.code === 'Space' || e.key === 'k' || e.key === 'K') {
+                if (keyHandlersRef.current.isQuizBlocked) return;
+                e.preventDefault();
+                keyHandlersRef.current.togglePlay();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                keyHandlersRef.current.skip(-10);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                keyHandlersRef.current.skip(10);
+            } else if (e.key === 'c' || e.key === 'C') {
+                keyHandlersRef.current.toggleCc();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [stage]);
 
     return {
         // Playback state & refs
