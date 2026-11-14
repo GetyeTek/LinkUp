@@ -17,6 +17,10 @@ const MironStudioStage = ({
     completedLessonIds = new Set(),
     isOutlineOpen = false,
     setIsOutlineOpen,
+    isSidebarOpen = true,
+    setIsSidebarOpen,
+    desktopSidebarTab = 'outline',
+    setDesktopSidebarTab,
     onSelectSectionItem,
     onStepSection,
     onReturnToToc,
@@ -67,6 +71,10 @@ const MironStudioStage = ({
     } = lectureEngine;
 
     const railRef = React.useRef(null);
+    const desktopNotesRef = React.useRef(null);
+    const prevBulletCountRef = React.useRef(0);
+    const userPinnedOutlineRef = React.useRef(false);
+
     React.useEffect(() => {
         if (!railRef.current) return;
         const activeEl = railRef.current.querySelector('.ml-section-pill.active');
@@ -74,6 +82,22 @@ const MironStudioStage = ({
             activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
     }, [activeSectionIndex]);
+
+    React.useEffect(() => {
+        const count = activeBullets?.length || 0;
+        if (count === 0) {
+            userPinnedOutlineRef.current = false;
+        } else if (prevBulletCountRef.current === 0 && count > 0 && !userPinnedOutlineRef.current) {
+            setDesktopSidebarTab?.('notes');
+        }
+        prevBulletCountRef.current = count;
+        if (desktopNotesRef.current && count > 0) {
+            desktopNotesRef.current.scrollTo({
+                top: desktopNotesRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    }, [activeBullets?.length, setDesktopSidebarTab]);
 
     const effectiveSections = chapterSections.length > 0
         ? chapterSections
@@ -125,7 +149,8 @@ const MironStudioStage = ({
                     </button>
                 </div>
             ) : (
-                <div className={`ml-studio-content-layout ${viewMode}`}>
+                <div className={`ml-studio-content-layout ${viewMode} ${isSidebarOpen ? 'has-desktop-sidebar' : 'sidebar-collapsed'}`}>
+                    <div className="ml-player-column">
                     {/* VIEW 1: CINEMA STAGE (Tap to Toggle Chrome) */}
                     {viewMode === 'cinema' && (
                         <div 
@@ -442,7 +467,7 @@ const MironStudioStage = ({
                                     type="button"
                                     className={`ml-cc-btn ${ccEnabled ? 'active' : ''}`}
                                     onClick={() => setCcEnabled(prev => !prev)}
-                                    title="Toggle Live Captions"
+                                    title="Toggle Live Captions (C)"
                                 >
                                     CC
                                 </button>
@@ -459,16 +484,16 @@ const MironStudioStage = ({
                                     <i className="fas fa-backward-step"></i>
                                 </button>
 
-                                <button className="ml-skip-btn" onClick={() => handleSkip(-10)} title="Rewind 10s">
+                                <button className="ml-skip-btn" onClick={() => handleSkip(-10)} title="Rewind 10s (←)">
                                     <i className="fas fa-rotate-left"></i>
                                     <span className="ml-skip-label">10</span>
                                 </button>
 
-                                <button className="ml-main-play-btn" onClick={handleTogglePlay}>
+                                <button className="ml-main-play-btn" onClick={handleTogglePlay} title="Play / Pause (Space)">
                                     <i className={`fas fa-${isPlaying ? 'pause' : 'play'}`}></i>
                                 </button>
 
-                                <button className="ml-skip-btn" onClick={() => handleSkip(10)} title="Forward 10s">
+                                <button className="ml-skip-btn" onClick={() => handleSkip(10)} title="Forward 10s (→)">
                                     <i className="fas fa-rotate-right"></i>
                                     <span className="ml-skip-label">10</span>
                                 </button>
@@ -491,6 +516,143 @@ const MironStudioStage = ({
                             </div>
                         </div>
                     </div>
+                    </div>
+
+                    {/* DESKTOP STUDIO SIDEBAR (>= 1024px): LIVE TAKEAWAYS & OUTLINE */}
+                    {isSidebarOpen && (
+                        <aside className="ml-desktop-sidebar" onClick={(e) => e.stopPropagation()}>
+                            <div className="ml-sidebar-header">
+                                <div className="ml-sidebar-tabs">
+                                    <button
+                                        type="button"
+                                        className={`ml-sidebar-tab ${desktopSidebarTab === 'notes' ? 'active' : ''}`}
+                                        onClick={() => {
+                                            userPinnedOutlineRef.current = false;
+                                            setDesktopSidebarTab?.('notes');
+                                        }}
+                                    >
+                                        <i className="fas fa-bolt"></i>
+                                        <span>Takeaways</span>
+                                        {(activeBullets?.length || 0) > 0 && (
+                                            <span className="ml-sidebar-tab-badge">{activeBullets.length}</span>
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`ml-sidebar-tab ${desktopSidebarTab === 'outline' ? 'active' : ''}`}
+                                        onClick={() => {
+                                            userPinnedOutlineRef.current = true;
+                                            setDesktopSidebarTab?.('outline');
+                                        }}
+                                    >
+                                        <i className="fas fa-list-ul"></i>
+                                        <span>Outline</span>
+                                        <span className="ml-sidebar-tab-count">{effectiveSections.length}</span>
+                                    </button>
+                                </div>
+                                {setIsSidebarOpen && (
+                                    <button
+                                        type="button"
+                                        className="ml-sidebar-collapse-btn"
+                                        onClick={() => setIsSidebarOpen(false)}
+                                        title="Collapse Panel for Fullscreen Cinema"
+                                    >
+                                        <i className="fas fa-angles-right"></i>
+                                    </button>
+                                )}
+                            </div>
+
+                            {desktopSidebarTab === 'notes' ? (
+                                <div className="ml-sidebar-body" ref={desktopNotesRef}>
+                                    <div className="ml-sidebar-now-card">
+                                        <div className="ml-sidebar-now-top">
+                                            <span className="ml-sidebar-now-eyebrow">
+                                                <i className="fas fa-wave-square"></i> NOW EXPLAINING
+                                            </span>
+                                            {activeNodeCue?.target && (
+                                                <span className="ml-sidebar-focus-chip">
+                                                    {activeNodeCue.target.replace(/[-_]/g, ' ')}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="ml-sidebar-now-title">
+                                            {effectiveSections[activeSectionIndex]?.sectionTag ? `${effectiveSections[activeSectionIndex].sectionTag} • ` : ''}
+                                            {effectiveSections[activeSectionIndex]?.title || selectedSection?.title}
+                                        </div>
+                                    </div>
+
+                                    {(activeBullets?.length || 0) > 0 ? (
+                                        <div className="ml-sidebar-bullets-list">
+                                            {activeBullets.map((bullet, bIdx) => {
+                                                const { glyph, content } = parseBulletItem(bullet);
+                                                return (
+                                                    <div key={bIdx} className="ml-sidebar-bullet-card" style={{ animationDelay: `${bIdx * 0.04}s` }}>
+                                                        <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
+                                                            {glyph}
+                                                        </span>
+                                                        <span className="ml-studio-bullet-text">{content}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="ml-sidebar-empty">
+                                            <div className="ml-sidebar-empty-icon">
+                                                <i className="fas fa-bolt"></i>
+                                            </div>
+                                            <h4>Live Key Takeaways</h4>
+                                            <p>Core concepts, definitions, and exam-ready points will stream in here as Miron teaches.</p>
+                                            <button
+                                                type="button"
+                                                className="ml-sidebar-empty-btn"
+                                                onClick={() => {
+                                                    userPinnedOutlineRef.current = true;
+                                                    setDesktopSidebarTab?.('outline');
+                                                }}
+                                            >
+                                                <i className="fas fa-list-ul"></i> Browse Chapter Outline
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="ml-sidebar-body">
+                                    <div className="ml-sidebar-outline-head">
+                                        <span className="ml-outline-eyebrow">CHAPTER SYLLABUS</span>
+                                        <h4 className="ml-sidebar-outline-title">{activeChapterTitle || selectedBook?.title}</h4>
+                                    </div>
+                                    <div className="ml-sidebar-outline-list">
+                                        {effectiveSections.map((sec, idx) => {
+                                            const isActive = idx === activeSectionIndex;
+                                            const isDone = idx < activeSectionIndex || (sec.lessonId && completedLessonIds.has(sec.lessonId));
+                                            return (
+                                                <button
+                                                    key={sec.key || idx}
+                                                    type="button"
+                                                    className={`ml-outline-item ${isActive ? 'active' : ''}`}
+                                                    onClick={() => {
+                                                        if (sec.manifestRef) handleJumpToSection(sec.manifestRef);
+                                                        else if (onSelectSectionItem) onSelectSectionItem(sec);
+                                                    }}
+                                                >
+                                                    <div className="ml-outline-item-left">
+                                                        <span className={`ml-outline-status-dot ${isActive ? 'is-playing' : isDone ? 'is-done' : ''}`}>
+                                                            {isActive ? <i className="fas fa-volume-high"></i> : isDone ? <i className="fas fa-check"></i> : (idx + 1)}
+                                                        </span>
+                                                        <div className="ml-outline-item-text">
+                                                            {sec.sectionTag && <span className="ml-outline-sec-tag">{sec.sectionTag}</span>}
+                                                            <span className="ml-outline-sec-name">{sec.title}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="ml-outline-duration">{formatTime(sec.duration)}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </aside>
+                    )}
 
                     {/* SLIDE-UP CHAPTER OUTLINE SHEET */}
                     {isOutlineOpen && (
