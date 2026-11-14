@@ -17,15 +17,36 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [books, setBooks] = useState([]);
     const [selectedBook, setSelectedBook] = useState(null);
     const [selectedSection, setSelectedSection] = useState(null);
-    const [expandedChapters, setExpandedChapters] = useState(new Set([0]));
-    
+
+    // Script-Driven Chapter Catalog & Playlist State
+    const [readyLessonRows, setReadyLessonRows] = useState([]);
+    const [chapterLessons, setChapterLessons] = useState([]);
+    const [activeLessonIndex, setActiveLessonIndex] = useState(0);
+    const [activeChapterTitle, setActiveChapterTitle] = useState('');
+    const [isOutlineOpen, setIsOutlineOpen] = useState(false);
+
+    // Progress & Resume Memory (localStorage)
+    const PROGRESS_STORAGE_KEY = 'miron_lecture_progress_v1';
+    const [resumeProgress, setResumeProgress] = useState(() => {
+        try {
+            const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    });
+    const [completedLessonIds, setCompletedLessonIds] = useState(() => {
+        try {
+            const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            return new Set(Array.isArray(parsed?.completedLessonIds) ? parsed.completedLessonIds : []);
+        } catch (e) { return new Set(); }
+    });
+
     // Audio Lesson, Visual Asset & Pre-Fetched Textbook Blocks Cache
     const [audioLesson, setAudioLesson] = useState(null);
     const [visualAssets, setVisualAssets] = useState({});
     const [cachedPageBlocks, setCachedPageBlocks] = useState({});
     const [sectionPages, setSectionPages] = useState([]);
     const [isLoadingLesson, setIsLoadingLesson] = useState(false);
-    const [availableLessonSections, setAvailableLessonSections] = useState(new Set());
 
     // Studio Player State
     const [viewMode, setViewMode] = useState('cinema'); // 'cinema' | 'anchor'
@@ -38,26 +59,113 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const cinemaContainerRef = useRef(null);
     const notesDeckRef = useRef(null);
 
-    const handleAdvanceToNextSection = () => {
-        if (!selectedBook?.toc || !selectedSection) return;
-        const allSections = [];
-        (selectedBook.toc || []).forEach(ch => {
-            if (Array.isArray(ch.children) && ch.children.length > 0) {
-                ch.children.forEach(sub => allSections.push({ ...sub, parentTitle: ch.title }));
+    const compareSectionTags = (tagA, tagB) => {
+        const aParts = String(tagA || '999').split('.').map(n => parseInt(n, 10) || 0);
+        const bParts = String(tagB || '999').split('.').map(n => parseInt(n, 10) || 0);
+        const len = Math.max(aParts.length, bParts.length);
+        for (let i = 0; i < len; i++) {
+            const diff = (aParts[i] ?? -1) - (bParts[i] ?? -1);
+            if (diff !== 0) return diff;
+        }
+        return 0;
+    };
+
+    const extractTagFromRow = (row) => {
+        const manifestFirst = Array.isArray(row?.sections_manifest) && row.sections_manifest[0]?.section_tag;
+        if (manifestFirst) return String(manifestFirst).trim();
+        const m = String(row?.section_title || '').match(/^([0-9]+(?:\.[0-9]+)*)/);
+        return m ? m[1] : '';
+    };
+
+    // Flatten chapterLessons (and multi-section manifests) into a unified script-defined sections list
+    const chapterSections = React.useMemo(() => {
+        const list = [];
+        chapterLessons.forEach((lesson, lIdx) => {
+            let manifest = lesson.sections_manifest;
+            if (typeof manifest === 'string') {
+                try { manifest = JSON.parse(manifest); } catch (e) { manifest = []; }
+            }
+            if (Array.isArray(manifest) && manifest.length > 0) {
+                manifest.forEach((sec, sIdx) => {
+                    list.push({
+                        key: `${lesson.id}::${sIdx}`,
+                        lessonId: lesson.id,
+                        lessonIndex: lIdx,
+                        sectionTag: sec.section_tag || extractTagFromRow(lesson),
+                        title: sec.title || lesson.section_title,
+                        startTimeInLesson: Number(sec.start_time || 0),
+                        endTimeInLesson: Number(sec.end_time || lesson.duration_seconds || 0),
+                        duration: Number(sec.duration || lesson.duration_seconds || 0),
+                        pageNumber: lesson.page_number || 1
+                    });
+                });
             } else {
-                allSections.push({ ...ch, parentTitle: ch.title });
+                list.push({
+                    key: `${lesson.id}::0`,
+                    lessonId: lesson.id,
+                    lessonIndex: lIdx,
+                    sectionTag: extractTagFromRow(lesson),
+                    title: lesson.section_title || 'Core Lecture',
+                    startTimeInLesson: 0,
+                    endTimeInLesson: Number(lesson.duration_seconds || 0),
+                    duration: Number(lesson.duration_seconds || 0),
+                    pageNumber: lesson.page_number || 1
+                });
             }
         });
+        return list;
+    }, [chapterLessons]);
 
-        const currentIdx = allSections.findIndex(s => 
-            (s.title && s.title.toLowerCase() === selectedSection.title?.toLowerCase()) ||
-            (s.section_tag && selectedSection.title?.startsWith(s.section_tag))
-        );
+    const activateLessonAtIndex = (lessonsArr, targetIdx, seekOffset = 0, explicitTitle = null) => {
+        const target = lessonsArr[targetIdx];
+        if (!target) return;
 
-        if (currentIdx !== -1 && currentIdx < allSections.length - 1) {
-            const nextSec = allSections[currentIdx + 1];
-            console.log(`⏩ [MironLecture] Auto-advancing to next section: "${nextSec.title}"`);
-            handleSelectSection(nextSec, nextSec.parentTitle);
+        if (Array.isArray(target.cue_timeline)) {
+            target.cue_timeline.sort((a, b) => (a.time || 0) - (b.time || 0));
+        }
+
+        const secTitle = explicitTitle || target.section_title || 'Lecture Track';
+        setActiveLessonIndex(targetIdx);
+        setSelectedSection({ title: secTitle, page: target.page_number || 1 });
+        lectureEngine.pendingSeekTimeRef.current = seekOffset;
+        setAudioLesson(target);
+        lectureEngine.setDuration(target.duration_seconds || 0);
+        lectureEngine.setCurrentTime(seekOffset);
+        if (cachedPageBlocks[target.page_number]) {
+            setSectionPages(cachedPageBlocks[target.page_number]);
+        }
+
+        if (target.audio_url && lectureEngine.audioRef.current && lectureEngine.audioRef.current.src === proxyUrl(target.audio_url)) {
+            try {
+                lectureEngine.audioRef.current.currentTime = seekOffset;
+                lectureEngine.audioRef.current.play()
+                    .then(() => lectureEngine.setIsPlaying(true))
+                    .catch(() => lectureEngine.setIsPlaying(false));
+            } catch (e) {}
+        }
+    };
+
+    const handleAdvanceToNextLesson = () => {
+        if (audioLesson?.id) {
+            setCompletedLessonIds(prev => {
+                const next = new Set(prev);
+                next.add(audioLesson.id);
+                try {
+                    const existing = JSON.parse(localStorage.getItem(PROGRESS_STORAGE_KEY) || '{}');
+                    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({
+                        ...existing,
+                        completedLessonIds: Array.from(next)
+                    }));
+                } catch (e) {}
+                return next;
+            });
+        }
+
+        if (activeLessonIndex + 1 < chapterLessons.length) {
+            const nextIdx = activeLessonIndex + 1;
+            const nextLesson = chapterLessons[nextIdx];
+            console.log(`⏩ [MironLecture] Auto-advancing to next script section: "${nextLesson.section_title}"`);
+            activateLessonAtIndex(chapterLessons, nextIdx, 0);
         }
     };
 
@@ -74,10 +182,47 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         setViewMode,
         setPinnedBlockIndex,
         stage,
-        onLessonEnded: handleAdvanceToNextSection
+        onLessonEnded: handleAdvanceToNextLesson
     });
 
-    // 1. Hydrate Published Curriculum Books & Lesson Availability
+    // Determine currently active section item across unified chapterSections
+    const activeSectionIndex = React.useMemo(() => {
+        if (chapterSections.length === 0 || !audioLesson) return 0;
+        const curT = lectureEngine.currentTime || 0;
+        const foundIdx = chapterSections.findIndex(s =>
+            s.lessonId === audioLesson.id &&
+            curT >= Math.max(0, s.startTimeInLesson - 0.5) &&
+            (curT <= s.endTimeInLesson || s.endTimeInLesson === 0)
+        );
+        if (foundIdx !== -1) return foundIdx;
+        const fallbackIdx = chapterSections.findIndex(s => s.lessonId === audioLesson.id);
+        return fallbackIdx !== -1 ? fallbackIdx : 0;
+    }, [chapterSections, audioLesson, lectureEngine.currentTime]);
+
+    // Persist active playback progress periodically
+    useEffect(() => {
+        if (stage !== 'studio' || !selectedBook || !audioLesson || String(audioLesson.id).startsWith('sim-')) return;
+        const curSec = chapterSections[activeSectionIndex];
+        const snapshot = {
+            bookId: selectedBook.id,
+            bookTitle: selectedBook.title,
+            courseCode: selectedBook.course_code,
+            chapterTitle: activeChapterTitle || audioLesson.chapter_title,
+            lessonId: audioLesson.id,
+            sectionTitle: curSec?.title || audioLesson.section_title,
+            sectionTag: curSec?.sectionTag || '',
+            currentTime: Math.floor(lectureEngine.currentTime || 0),
+            duration: Math.floor(lectureEngine.duration || audioLesson.duration_seconds || 0),
+            updatedAt: Date.now(),
+            completedLessonIds: Array.from(completedLessonIds)
+        };
+        setResumeProgress(snapshot);
+        try {
+            localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(snapshot));
+        } catch (e) {}
+    }, [stage, selectedBook?.id, audioLesson?.id, Math.floor((lectureEngine.currentTime || 0) / 5)]);
+
+    // 1. Hydrate Published Curriculum Books & Script-Defined Chapter Metadata
     useEffect(() => {
         try {
             const raw = localStorage.getItem('linkup_books_catalog');
@@ -98,25 +243,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 if (data) setBooks(data);
             });
 
-        // Scan available ready audio lessons (including multi-section chapter tracks)
         supabase
             .from('book_audio_lessons')
-            .select('id, book_id, section_title, sections_manifest')
+            .select('id, book_id, course_code, chapter_title, section_title, page_number, duration_seconds, sections_manifest, created_at')
             .eq('status', 'ready')
+            .order('page_number', { ascending: true })
+            .order('created_at', { ascending: true })
             .then(({ data }) => {
-                if (data) {
-                    const keys = new Set();
-                    data.forEach(d => {
-                        keys.add(`${d.book_id}::${d.section_title}`);
-                        if (Array.isArray(d.sections_manifest)) {
-                            d.sections_manifest.forEach(s => {
-                                if (s.title) keys.add(`${d.book_id}::${s.title}`);
-                                if (s.section_tag) keys.add(`${d.book_id}::${s.section_tag}`);
-                            });
-                        }
-                    });
-                    setAvailableLessonSections(keys);
-                }
+                if (Array.isArray(data)) setReadyLessonRows(data);
             });
     }, []);
 
@@ -138,194 +272,248 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         };
     }, [selectedBook]);
 
-    // Navigation & Lesson Loader Handlers
+    // Build Script-Driven Chapters List for a Book
+    const getChaptersForBook = (book) => {
+        if (!book) return [];
+        const bookRows = readyLessonRows.filter(r => r.book_id === book.id);
+        const chapterMap = new Map();
+
+        bookRows.forEach(row => {
+            const chKey = (row.chapter_title || 'Core Chapter').trim();
+            if (!chapterMap.has(chKey)) {
+                chapterMap.set(chKey, {
+                    chapterTitle: chKey,
+                    isReady: true,
+                    rows: [],
+                    sections: [],
+                    totalDuration: 0,
+                    minPage: row.page_number || 9999
+                });
+            }
+            const group = chapterMap.get(chKey);
+            group.rows.push(row);
+            group.totalDuration += Number(row.duration_seconds || 0);
+            if (row.page_number && row.page_number < group.minPage) group.minPage = row.page_number;
+
+            let manifest = row.sections_manifest;
+            if (typeof manifest === 'string') {
+                try { manifest = JSON.parse(manifest); } catch (e) { manifest = []; }
+            }
+            if (Array.isArray(manifest) && manifest.length > 0) {
+                manifest.forEach(s => group.sections.push({
+                    lessonId: row.id,
+                    sectionTag: s.section_tag || extractTagFromRow(row),
+                    title: s.title || row.section_title,
+                    duration: Number(s.duration || row.duration_seconds || 0)
+                }));
+            } else {
+                group.sections.push({
+                    lessonId: row.id,
+                    sectionTag: extractTagFromRow(row),
+                    title: row.section_title,
+                    duration: Number(row.duration_seconds || 0)
+                });
+            }
+        });
+
+        const readyChapters = Array.from(chapterMap.values()).map(ch => {
+            ch.sections.sort((a, b) => compareSectionTags(a.sectionTag, b.sectionTag));
+            return ch;
+        }).sort((a, b) => a.minPage - b.minPage);
+
+        // Append upcoming TOC chapters that don't have ready audio yet (dimmed "In Production")
+        const readyTitlesLower = new Set(readyChapters.map(c => c.chapterTitle.toLowerCase()));
+        (book.toc || []).forEach(node => {
+            const title = (node.title || '').trim();
+            if (!title) return;
+            const alreadyCovered = Array.from(readyTitlesLower).some(rt =>
+                rt === title.toLowerCase() || title.toLowerCase().includes(rt) || rt.includes(title.toLowerCase())
+            );
+            if (!alreadyCovered) {
+                readyChapters.push({
+                    chapterTitle: title,
+                    isReady: false,
+                    rows: [],
+                    sections: [],
+                    totalDuration: 0,
+                    minPage: node.page || 9999
+                });
+            }
+        });
+
+        return readyChapters;
+    };
+
+    // Navigation & Chapter Loader Handlers
     const handleSelectCourse = (book) => {
         setSelectedBook(book);
         setStage('toc_select');
-        setExpandedChapters(new Set([0]));
     };
 
-    const toggleChapterExpand = (chIndex) => {
-        setExpandedChapters(prev => {
-            const next = new Set(prev);
-            if (next.has(chIndex)) next.delete(chIndex);
-            else next.add(chIndex);
-            return next;
-        });
-    };
+    const handleSelectChapter = async (chapterGroup, resumeTarget = null, explicitBook = null) => {
+        const targetBook = explicitBook || selectedBook;
+        if (!targetBook || !chapterGroup?.isReady) return;
 
-    const handleSelectSection = async (sectionNode, parentChapterTitle) => {
-        if (!selectedBook) return;
+        setSelectedBook(targetBook);
         setIsLoadingLesson(true);
-        setSelectedSection({ ...sectionNode, parentTitle: parentChapterTitle });
+        setIsOutlineOpen(false);
+        setActiveChapterTitle(chapterGroup.chapterTitle);
+        setStage('studio');
+        setViewMode('cinema');
 
         try {
-            // 1. Fetch matching Audio Lesson (Direct Title or via Sections Manifest)
-            let lesson = null;
-            const { data: directMatch } = await supabase
+            // 1. Fetch ALL ready lessons for this chapter ordered naturally by script tag & page
+            const { data: rows } = await supabase
                 .from('book_audio_lessons')
                 .select('*')
-                .eq('book_id', selectedBook.id)
-                .eq('section_title', sectionNode.title)
+                .eq('book_id', targetBook.id)
+                .eq('chapter_title', chapterGroup.chapterTitle)
                 .eq('status', 'ready')
-                .maybeSingle();
+                .order('page_number', { ascending: true })
+                .order('created_at', { ascending: true });
 
-            if (directMatch) {
-                lesson = directMatch;
-            } else {
-                // Check if this section sits inside a master chapter audio lesson
-                const { data: bookLessons } = await supabase
-                    .from('book_audio_lessons')
-                    .select('*')
-                    .eq('book_id', selectedBook.id)
-                    .eq('status', 'ready');
+            const sortedLessons = (Array.isArray(rows) ? [...rows] : []).sort((a, b) => {
+                const tagDiff = compareSectionTags(extractTagFromRow(a), extractTagFromRow(b));
+                if (tagDiff !== 0) return tagDiff;
+                return (a.page_number || 0) - (b.page_number || 0);
+            });
 
-                if (Array.isArray(bookLessons)) {
-                    lesson = bookLessons.find(bl => {
-                        if (!Array.isArray(bl.sections_manifest)) return false;
-                        return bl.sections_manifest.some(s => 
-                            (s.title && s.title.toLowerCase() === sectionNode.title.toLowerCase()) ||
-                            (s.title && sectionNode.title.toLowerCase().includes(s.title.toLowerCase())) ||
-                            (s.section_tag && sectionNode.title.startsWith(s.section_tag))
-                        );
-                    }) || null;
-                }
+            if (sortedLessons.length === 0) {
+                setChapterLessons([]);
+                setAudioLesson(null);
+                lectureEngine.setIsPlaying(false);
+                return;
             }
 
-            // 2. Fetch Visual Assets with Dual Space/Underscore Normalization
-            const codeWithSpace = (selectedBook.course_code || '').trim();
+            // 2. Fetch Visual Assets once for the entire course
+            const codeWithSpace = (targetBook.course_code || '').trim();
             const codeWithUnderscore = codeWithSpace.replace(/\s+/g, '_');
-
-            console.group(`🎨 [Miron Visual Assets Cache] Fetching for "${codeWithSpace}" / "${codeWithUnderscore}"`);
-
-            const { data: assets, error: assetErr } = await supabase
+            const { data: assets } = await supabase
                 .from('course_visual_assets')
                 .select('*')
                 .or(`course_code.eq."${codeWithSpace}",course_code.eq."${codeWithUnderscore}"`);
 
-            if (assetErr) {
-                console.error('❌ Failed to fetch from course_visual_assets:', assetErr);
-            } else if (!assets || assets.length === 0) {
-                console.warn(`⚠️ 0 assets found in course_visual_assets for course_code: ["${codeWithSpace}", "${codeWithUnderscore}"]. Verify that XML diagrams or images are inserted in Supabase!`);
-            } else {
-                console.log(`📦 Loaded ${assets.length} visual asset(s):`, assets);
-            }
-
             const assetMap = {};
             if (Array.isArray(assets)) {
                 const domParser = (typeof window !== 'undefined' && window.DOMParser) ? new DOMParser() : null;
-
                 assets.forEach(a => {
                     assetMap[a.id] = a;
-                    console.log(`   👉 Registered Asset: [${a.asset_type}] ID: "${a.id}" (Section: ${a.section_tag || 'N/A'})`);
-
-                    // Hardware GPU Texture Pre-warm for raster illustrations
                     if (a.asset_type === 'image' && a.image_url) {
                         const prewarmImg = new Image();
                         prewarmImg.src = proxyUrl(a.image_url);
-                        if (typeof prewarmImg.decode === 'function') {
-                            prewarmImg.decode().catch(() => {});
-                        }
+                        if (typeof prewarmImg.decode === 'function') prewarmImg.decode().catch(() => {});
                     }
-
-                    // Headless DOM Parser Pre-warming for SVG diagrams
                     if (a.asset_type === 'diagram_svg' && a.content_payload && domParser) {
-                        try {
-                            domParser.parseFromString(a.content_payload, 'image/svg+xml');
-                        } catch (e) {}
+                        try { domParser.parseFromString(a.content_payload, 'image/svg+xml'); } catch (e) {}
                     }
                 });
             }
-            console.groupEnd();
             setVisualAssets(assetMap);
 
-            // 3. Pre-Flight Batch Cache for Referenced Pages (0ms instant lookup during playback)
-            const offset = selectedBook.page_offset || 0;
-            const logicalStart = sectionNode.page || 1;
-            const physicalStart = Math.max(1, logicalStart + offset);
-
-            const pagesToFetchSet = new Set([physicalStart]);
+            // 3. Batch-Cache ALL referenced textbook pages across the entire chapter once
+            const offset = targetBook.page_offset || 0;
+            const pagesToFetchSet = new Set();
             const isTextbookCue = (t) => ['page_block', 'show_page', 'page', 'highlight', 'block', 'anchor_block'].includes(t);
-            if (lesson?.cue_timeline && Array.isArray(lesson.cue_timeline)) {
-                lesson.cue_timeline.forEach(cue => {
-                    if (isTextbookCue(cue.type)) {
-                        const rawTarget = String(cue.target || '').trim();
-                        const parts = rawTarget.split(':');
-                        if (parts.length >= 1) {
-                            const pNum = parseInt(parts[0], 10);
+
+            sortedLessons.forEach(l => {
+                pagesToFetchSet.add(Math.max(1, (l.page_number || 1) + offset));
+                if (Array.isArray(l.cue_timeline)) {
+                    l.cue_timeline.forEach(cue => {
+                        if (isTextbookCue(cue.type)) {
+                            const pNum = parseInt(String(cue.target || '').trim().split(':')[0], 10);
                             if (!isNaN(pNum)) pagesToFetchSet.add(pNum);
                         }
-                    }
-                });
-            }
-
-            const { data: batchPages, error: pagesErr } = await supabase.rpc('get_book_page_blocks', {
-                p_book_id: selectedBook.id,
-                p_course_code: selectedBook.course_code,
-                p_page_numbers: Array.from(pagesToFetchSet)
+                    });
+                }
             });
 
-            console.group(`📚 [MironLive:BatchPages] Loaded via RPC for Book "${selectedBook.title}"`);
-            console.log('Requested Page Numbers:', Array.from(pagesToFetchSet));
-            console.log('RPC Error:', pagesErr);
-            console.log('Returned Rows:', batchPages?.length || 0);
+            const { data: batchPages } = await supabase.rpc('get_book_page_blocks', {
+                p_book_id: targetBook.id,
+                p_course_code: targetBook.course_code,
+                p_page_numbers: Array.from(pagesToFetchSet)
+            });
 
             const blocksMap = {};
             if (Array.isArray(batchPages)) {
                 batchPages.forEach(p => {
-                    const safeBlocks = ensureBlockArray(p.content_json);
-                    blocksMap[p.page_number] = safeBlocks;
-                    console.log(`  📄 Page ${p.page_number}: Parsed ${safeBlocks.length} block(s)`);
-                    if (p.page_number === physicalStart) {
-                        setSectionPages(safeBlocks);
-                    }
+                    blocksMap[p.page_number] = ensureBlockArray(p.content_json);
                 });
             }
-            console.groupEnd();
             setCachedPageBlocks(blocksMap);
+            setChapterLessons(sortedLessons);
 
-            if (lesson && lesson.audio_url) {
-                // Resolve section offset within master track
-                let jumpStartTime = 0;
-                if (Array.isArray(lesson.sections_manifest)) {
-                    const matchedManifest = lesson.sections_manifest.find(s => 
-                        (s.title && s.title.toLowerCase() === sectionNode.title.toLowerCase()) ||
-                        (s.title && sectionNode.title.toLowerCase().includes(s.title.toLowerCase())) ||
-                        (s.section_tag && sectionNode.title.startsWith(s.section_tag))
-                    );
-                    if (matchedManifest && matchedManifest.start_time !== undefined) {
-                        jumpStartTime = matchedManifest.start_time;
-                    }
+            // 4. Determine starting lesson & timestamp (supports Resume!)
+            let startIdx = 0;
+            let startTime = 0;
+            if (resumeTarget?.lessonId) {
+                const rIdx = sortedLessons.findIndex(l => l.id === resumeTarget.lessonId);
+                if (rIdx !== -1) {
+                    startIdx = rIdx;
+                    startTime = Math.max(0, Math.min((sortedLessons[rIdx].duration_seconds || 0) - 2, resumeTarget.currentTime || 0));
                 }
+            }
 
-                if (lesson?.cue_timeline && Array.isArray(lesson.cue_timeline)) {
-                    lesson.cue_timeline.sort((a, b) => (a.time || 0) - (b.time || 0));
-                }
-                lectureEngine.pendingSeekTimeRef.current = jumpStartTime;
-                setAudioLesson(lesson);
-                lectureEngine.setDuration(lesson.duration_seconds || 0);
-                lectureEngine.setCurrentTime(jumpStartTime);
-                setStage('studio');
-                setViewMode('cinema');
+            const firstLesson = sortedLessons[startIdx];
+            if (Array.isArray(firstLesson.cue_timeline)) {
+                firstLesson.cue_timeline.sort((a, b) => (a.time || 0) - (b.time || 0));
+            }
+            setActiveLessonIndex(startIdx);
+            setSelectedSection({ title: firstLesson.section_title, page: firstLesson.page_number || 1 });
+            setSectionPages(blocksMap[firstLesson.page_number] || []);
+            lectureEngine.pendingSeekTimeRef.current = startTime;
+            setAudioLesson(firstLesson);
+            lectureEngine.setDuration(firstLesson.duration_seconds || 0);
+            lectureEngine.setCurrentTime(startTime);
 
-                if (lectureEngine.audioRef.current && lectureEngine.audioRef.current.src === proxyUrl(lesson.audio_url)) {
-                    try {
-                        lectureEngine.audioRef.current.currentTime = jumpStartTime;
-                        lectureEngine.audioRef.current.play().catch((err) => {
-                            console.warn('⚠️ [Audio Autoplay Blocked]: Tap Play to begin', err.message);
-                            lectureEngine.setIsPlaying(false);
-                        });
-                    } catch (e) {}
-                }
-            } else {
-                setAudioLesson(null);
-                setStage('studio');
-                lectureEngine.setIsPlaying(false);
+            if (firstLesson.audio_url && lectureEngine.audioRef.current && lectureEngine.audioRef.current.src === proxyUrl(firstLesson.audio_url)) {
+                try {
+                    lectureEngine.audioRef.current.currentTime = startTime;
+                    lectureEngine.audioRef.current.play()
+                        .then(() => lectureEngine.setIsPlaying(true))
+                        .catch(() => lectureEngine.setIsPlaying(false));
+                } catch (e) {}
             }
         } catch (err) {
-            console.error('Failed to load lesson studio:', err);
+            console.error('Failed to load chapter studio:', err);
         } finally {
             setIsLoadingLesson(false);
+        }
+    };
+
+    const handleResumeLastSession = () => {
+        if (!resumeProgress?.bookId) return;
+        const targetBook = books.find(b => b.id === resumeProgress.bookId);
+        if (!targetBook) return;
+        const chapters = getChaptersForBook(targetBook);
+        const targetChapter = chapters.find(c => c.isReady && c.chapterTitle === resumeProgress.chapterTitle) || chapters.find(c => c.isReady);
+        if (targetChapter) {
+            handleSelectChapter(targetChapter, resumeProgress, targetBook);
+        }
+    };
+
+    const handleSelectSectionItem = (sectionItem) => {
+        if (!sectionItem) return;
+        setIsOutlineOpen(false);
+        if (audioLesson && sectionItem.lessonId === audioLesson.id) {
+            const targetTime = sectionItem.startTimeInLesson || 0;
+            if (lectureEngine.audioRef.current && audioLesson.audio_url) {
+                lectureEngine.audioRef.current.currentTime = targetTime;
+                if (lectureEngine.audioRef.current.paused) {
+                    lectureEngine.audioRef.current.play().then(() => lectureEngine.setIsPlaying(true)).catch(() => {});
+                }
+            }
+            lectureEngine.setCurrentTime(targetTime);
+            setSelectedSection(prev => ({ ...prev, title: sectionItem.title }));
+        } else {
+            activateLessonAtIndex(chapterLessons, sectionItem.lessonIndex, sectionItem.startTimeInLesson || 0, sectionItem.title);
+        }
+    };
+
+    const handleStepSection = (delta) => {
+        if (chapterSections.length === 0) return;
+        const nextIdx = activeSectionIndex + delta;
+        if (nextIdx >= 0 && nextIdx < chapterSections.length) {
+            handleSelectSectionItem(chapterSections[nextIdx]);
         }
     };
 
@@ -478,6 +666,9 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
             lectureEngine.audioRef.current.src = '';
         }
 
+        setChapterLessons([simLesson]);
+        setActiveLessonIndex(0);
+        setActiveChapterTitle('Simulation Studio');
         setAudioLesson(simLesson);
         lectureEngine.setDuration(totalDuration);
         lectureEngine.setCurrentTime(0);
@@ -565,10 +756,19 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
 
                     <div className="ml-status">
                         {stage === 'studio' ? (
-                            <div className="ml-studio-title-pill">
+                            <button
+                                type="button"
+                                className="ml-studio-title-pill is-interactive"
+                                onClick={(e) => { e.stopPropagation(); setIsOutlineOpen(prev => !prev); lectureEngine.resetInactivityTimer(); }}
+                                title="Open Chapter Sections"
+                            >
                                 <span className="ml-studio-course-tag">{selectedBook?.course_code || 'COURSE'}</span>
-                                <span className="ml-studio-section-name">{selectedSection?.title}</span>
-                            </div>
+                                <span className="ml-studio-section-name">
+                                    {chapterSections[activeSectionIndex]?.sectionTag ? `${chapterSections[activeSectionIndex].sectionTag} • ` : ''}
+                                    {chapterSections[activeSectionIndex]?.title || selectedSection?.title}
+                                </span>
+                                <i className="fas fa-chevron-down ml-title-caret"></i>
+                            </button>
                         ) : (
                             <span>
                                 {stage === 'course_select' 
@@ -580,6 +780,28 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 </div>
 
                 <div className="ml-header-right">
+                    {stage === 'studio' && audioLesson && (
+                        <div className="ml-mode-switch-pill" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                className={`ml-mode-btn ${viewMode === 'cinema' ? 'active' : ''}`}
+                                onClick={() => setViewMode('cinema')}
+                                title="Cinema Stage"
+                            >
+                                <i className="fas fa-clapperboard"></i>
+                                <span className="ml-mode-label">Stage</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`ml-mode-btn ${viewMode === 'anchor' ? 'active' : ''}`}
+                                onClick={() => setViewMode('anchor')}
+                                title="Textbook Block View"
+                            >
+                                <i className="fas fa-book-open"></i>
+                                <span className="ml-mode-label">Book</span>
+                            </button>
+                        </div>
+                    )}
                     <button 
                         className="ml-debug-sim-btn" 
                         onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}
@@ -612,18 +834,20 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                     <i className="fas fa-compress-alt"></i>
                 </button>
 
-                {/* STAGES 0 & 1: CATALOG & TOC ACCORDION */}
+                {/* STAGES 0 & 1: COURSE GRID & SCRIPT-DRIVEN CHAPTERS HUB */}
                 {stage !== 'studio' && (
                     <MironCatalogView
                         stage={stage}
                         books={books}
                         selectedBook={selectedBook}
-                        expandedChapters={expandedChapters}
-                        availableLessonSections={availableLessonSections}
+                        chaptersForBook={getChaptersForBook(selectedBook)}
+                        readyLessonRows={readyLessonRows}
+                        completedLessonIds={completedLessonIds}
+                        resumeProgress={resumeProgress}
                         t={t}
                         onSelectCourse={handleSelectCourse}
-                        onToggleChapterExpand={toggleChapterExpand}
-                        onSelectSection={handleSelectSection}
+                        onSelectChapter={handleSelectChapter}
+                        onResumeLastSession={handleResumeLastSession}
                     />
                 )}
 
@@ -634,6 +858,14 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         audioLesson={audioLesson}
                         selectedBook={selectedBook}
                         selectedSection={selectedSection}
+                        activeChapterTitle={activeChapterTitle}
+                        chapterSections={chapterSections}
+                        activeSectionIndex={activeSectionIndex}
+                        completedLessonIds={completedLessonIds}
+                        isOutlineOpen={isOutlineOpen}
+                        setIsOutlineOpen={setIsOutlineOpen}
+                        onSelectSectionItem={handleSelectSectionItem}
+                        onStepSection={handleStepSection}
                         onReturnToToc={() => setStage('toc_select')}
                         viewMode={viewMode}
                         pinnedBlockIndex={pinnedBlockIndex}
