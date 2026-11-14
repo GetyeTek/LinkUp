@@ -32,6 +32,73 @@ function cleanScriptForTTS(rawScript) {
     return rawScript.replace(cueRegex, '').replace(/\s+/g, ' ').trim();
 }
 
+function auditRawScriptSyntax(rawScript) {
+    const issues = [];
+    const openCueRe = /\[\[(?:cue|call):/g;
+    let openMatch;
+    while ((openMatch = openCueRe.exec(rawScript)) !== null) {
+        const rest = rawScript.slice(openMatch.index + openMatch[0].length);
+        const closeIdx = rest.indexOf(']]');
+        const nextOpenIdx = rest.search(/\[\[(?:cue|call):/);
+        if (closeIdx === -1 || (nextOpenIdx !== -1 && nextOpenIdx < closeIdx)) {
+            issues.push({
+                severity: 'flagged',
+                code: 'UNCLOSED_CUE_TAG',
+                message: `Malformed or unclosed cue tag near index ${openMatch.index}: "${rawScript.slice(openMatch.index, openMatch.index + 60)}..."`
+            });
+        }
+    }
+
+    const cueRegex = /\[\[(?:cue|call):([a-zA-Z0-9_\-]+)(?::([\s\S]*?))?\]\]/g;
+    let match;
+    while ((match = cueRegex.exec(rawScript)) !== null) {
+        const cueType = match[1].trim();
+        const rawTarget = (match[2] || '').trim();
+
+        if (['show_diagram', 'show_image', 'zoom', 'focus', 'spotlight', 'highlight', 'show_page', 'page_block'].includes(cueType) && !rawTarget) {
+            issues.push({
+                severity: 'flagged',
+                code: 'EMPTY_CUE_TARGET',
+                message: `Cue [[cue:${cueType}]] has an empty target.`
+            });
+        }
+
+        if (cueType === 'card' || cueType === 'intro' || cueType === 'summary') {
+            let jsonStr = rawTarget;
+            const prefixMatch = rawTarget.match(/^(intro|summary):([\s\S]*)$/i);
+            if (prefixMatch) jsonStr = prefixMatch[2].trim();
+            try {
+                const parsed = JSON.parse(jsonStr);
+                if (!parsed || typeof parsed !== 'object') throw new Error('Not an object');
+            } catch (e) {
+                issues.push({
+                    severity: 'flagged',
+                    code: 'INVALID_CARD_JSON',
+                    message: `Invalid JSON inside [[cue:${cueType}]] payload: ${e.message}`
+                });
+            }
+        }
+
+        if (cueType === 'quiz' || cueType === 'interactive_quiz') {
+            let jsonStr = rawTarget;
+            const prefixMatch = rawTarget.match(/^(mc|tf):([\s\S]*)$/i);
+            if (prefixMatch) jsonStr = prefixMatch[2].trim();
+            try {
+                const parsed = JSON.parse(jsonStr);
+                if (!parsed || typeof parsed !== 'object') throw new Error('Not an object');
+            } catch (e) {
+                issues.push({
+                    severity: 'flagged',
+                    code: 'INVALID_QUIZ_JSON',
+                    message: `Invalid JSON inside [[cue:${cueType}]] payload: ${e.message}`
+                });
+            }
+        }
+    }
+
+    return issues;
+}
+
 async function getLeasedGeminiKey() {
     const { data, error } = await supabase.rpc('lease_gemini_api_key');
     if (error || !data || data.length === 0) {
@@ -130,12 +197,35 @@ async function processSynthesis(lesson) {
             .update({ status: 'processing', updated_at: new Date().toISOString() })
             .eq('id', lesson.id);
 
-        const keyObj = await getLeasedGeminiKey();
-        console.log(`🔑 Leased API Key ID: #${keyObj.id}`);
+        const scriptIssues = auditRawScriptSyntax(lesson.script_raw);
+        const synthesisNotes = [...scriptIssues];
 
-        console.log(`🔊 Calling Gemini 3.8 Flash TTS ("Puck")...`);
-        const { base64Audio, mimeType } = await generateSpeechTTS(cleanText, keyObj);
+        let ttsResult = null;
+        let lastTtsErr = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            const keyObj = await getLeasedGeminiKey();
+            console.log(`🔑 Leased API Key ID: #${keyObj.id} (Attempt ${attempt}/3)`);
+            try {
+                console.log(`🔊 Calling Gemini 3.8 Flash TTS ("Puck")...`);
+                ttsResult = await generateSpeechTTS(cleanText, keyObj);
+                break;
+            } catch (err) {
+                lastTtsErr = err;
+                const isRateLimit = err.message.includes('(429)');
+                synthesisNotes.push({
+                    severity: 'warning',
+                    code: isRateLimit ? 'TTS_KEY_RATE_LIMITED' : 'TTS_ATTEMPT_RETRY',
+                    message: `Attempt ${attempt} with Key #${keyObj.id} failed: ${err.message}`
+                });
+                if (attempt < 3) {
+                    console.warn(`⚠️ TTS attempt ${attempt} failed (${err.message}). Rotating key...`);
+                    await sleep(1000);
+                }
+            }
+        }
+        if (!ttsResult) throw lastTtsErr;
 
+        const { base64Audio, mimeType } = ttsResult;
         fs.writeFileSync(rawAudioFile, Buffer.from(base64Audio, 'base64'));
 
         console.log(`🎛️ Transcoding via FFmpeg to 32kbps mono MP3...`);
@@ -147,7 +237,37 @@ async function processSynthesis(lesson) {
 
         const mp3Buffer = fs.readFileSync(finalMp3File);
         const trueDuration = getAudioDurationSeconds(finalMp3File);
-        console.log(`✅ MP3 Created: ${(mp3Buffer.length / 1024).toFixed(1)} KB | Verified Duration: ${trueDuration}s`);
+        const charsPerSec = trueDuration > 0 ? Number((cleanText.length / trueDuration).toFixed(2)) : 0;
+        console.log(`✅ MP3 Created: ${(mp3Buffer.length / 1024).toFixed(1)} KB | Verified Duration: ${trueDuration}s | Rate: ${charsPerSec} chars/s`);
+
+        if (trueDuration < 3 || mp3Buffer.length < 5000) {
+            synthesisNotes.push({
+                severity: 'flagged',
+                code: 'EMPTY_OR_CORRUPT_AUDIO',
+                message: `Audio unusually short/small: ${trueDuration}s, ${mp3Buffer.length} bytes.`
+            });
+        } else if (cleanText.length > 100 && (charsPerSec > 32 || charsPerSec < 4)) {
+            synthesisNotes.push({
+                severity: 'flagged',
+                code: 'SPEECH_RATE_ANOMALY',
+                message: `Unusual TTS speech rate (${charsPerSec} chars/s for ${cleanText.length} chars over ${trueDuration}s) — check for truncation or looping.`
+            });
+        }
+
+        const hasFlagged = synthesisNotes.some(n => n.severity === 'flagged');
+        const hasWarning = synthesisNotes.some(n => n.severity === 'warning');
+        const synthesisSanity = {
+            overall_status: hasFlagged ? 'flagged' : (hasWarning ? 'warning' : 'clean'),
+            checked_at: new Date().toISOString(),
+            synthesis: {
+                char_count: cleanText.length,
+                actual_duration_sec: trueDuration,
+                chars_per_sec: charsPerSec,
+                mp3_bytes: mp3Buffer.length,
+                duration_anomaly: synthesisNotes.some(n => n.code === 'SPEECH_RATE_ANOMALY' || n.code === 'EMPTY_OR_CORRUPT_AUDIO'),
+                notes: synthesisNotes
+            }
+        };
 
         console.log(`☁️ Uploading to storage bucket: book-audio-lectures/${storagePath}`);
         const { error: uploadError } = await supabase.storage
@@ -159,16 +279,29 @@ async function processSynthesis(lesson) {
         const { data } = supabase.storage.from('book-audio-lectures').getPublicUrl(storagePath);
         const publicUrl = data?.publicUrl;
 
-        const { error: dbError } = await supabase
+        const updatePayload = {
+            audio_url: publicUrl,
+            duration_seconds: trueDuration,
+            status: 'audio_ready',
+            error_message: null,
+            sanity_check: synthesisSanity,
+            updated_at: new Date().toISOString()
+        };
+
+        let { error: dbError } = await supabase
             .from('book_audio_lessons')
-            .update({
-                audio_url: publicUrl,
-                duration_seconds: trueDuration,
-                status: 'audio_ready',
-                error_message: null,
-                updated_at: new Date().toISOString()
-            })
+            .update(updatePayload)
             .eq('id', lesson.id);
+
+        if (dbError && dbError.message && dbError.message.includes('sanity_check')) {
+            console.warn('⚠️ Column "sanity_check" not found in DB yet; saving without sanity_check.');
+            delete updatePayload.sanity_check;
+            const retryRes = await supabase
+                .from('book_audio_lessons')
+                .update(updatePayload)
+                .eq('id', lesson.id);
+            dbError = retryRes.error;
+        }
 
         if (dbError) throw new Error(`DB update failed: ${dbError.message}`);
 
@@ -191,14 +324,27 @@ async function processSynthesis(lesson) {
         }
     } catch (err) {
         console.error(`❌ Synthesis failed for #${lesson.id}:`, err.message);
-        await supabase
+        const failPayload = {
+            status: 'failed',
+            error_message: `[TTS Failure] ${err.message}`,
+            sanity_check: {
+                overall_status: 'flagged',
+                checked_at: new Date().toISOString(),
+                synthesis: {
+                    error: err.message,
+                    notes: [{ severity: 'flagged', code: 'TTS_FAILED', message: err.message }]
+                }
+            },
+            updated_at: new Date().toISOString()
+        };
+        const { error: failErr } = await supabase
             .from('book_audio_lessons')
-            .update({
-                status: 'failed',
-                error_message: `[TTS Failure] ${err.message}`,
-                updated_at: new Date().toISOString()
-            })
+            .update(failPayload)
             .eq('id', lesson.id);
+        if (failErr && failErr.message && failErr.message.includes('sanity_check')) {
+            delete failPayload.sanity_check;
+            await supabase.from('book_audio_lessons').update(failPayload).eq('id', lesson.id);
+        }
         throw err;
     } finally {
         if (fs.existsSync(rawAudioFile)) fs.unlinkSync(rawAudioFile);
