@@ -127,7 +127,7 @@ async function generateSpeechTTS(text, apiKeyObj) {
             speechConfig: {
                 voiceConfig: {
                     prebuiltVoiceConfig: {
-                        voiceName: "Puck"
+                        voiceName: "Aoede"
                     }
                 }
             }
@@ -206,7 +206,7 @@ async function processSynthesis(lesson) {
             const keyObj = await getLeasedGeminiKey();
             console.log(`🔑 Leased API Key ID: #${keyObj.id} (Attempt ${attempt}/3)`);
             try {
-                console.log(`🔊 Calling Gemini 3.8 Flash TTS ("Puck")...`);
+                console.log(`🔊 Calling Gemini 3.8 Flash TTS ("Aoede")...`);
                 ttsResult = await generateSpeechTTS(cleanText, keyObj);
                 break;
             } catch (err) {
