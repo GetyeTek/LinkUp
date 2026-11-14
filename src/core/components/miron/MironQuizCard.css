@@ -458,3 +458,26 @@
         font-size: 0.78rem;
     }
 }
+
+@media (min-width: 1024px) {
+    .ml-quiz-card-wrapper {
+        max-width: 760px;
+        margin: auto;
+        padding: 20px 24px 28px;
+    }
+    .ml-quiz-card {
+        padding: 26px 30px;
+        border-radius: 22px;
+        gap: 16px;
+    }
+    .ml-quiz-prompt {
+        font-size: 1.18rem;
+    }
+    .ml-quiz-option-btn {
+        min-height: 56px;
+        padding: 14px 18px;
+    }
+    .ml-option-text {
+        font-size: 0.94rem;
+    }
+}
