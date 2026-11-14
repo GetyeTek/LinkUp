@@ -786,14 +786,12 @@ svg.vis-mobile,
    SCENARIO 1: FULLSCREEN A4 PAGE (Core SDK Engine Override)
    ======================================================== */
 .ml-cinema-stage[data-has-book="true"],
-.ml-cinema-stage:has(.ml-live-book-stage),
-.ml-cinema-stage:has(.ml-stage-excerpt-pane) {
+.ml-cinema-stage:has(.ml-live-book-stage) {
     padding-top: 0 !important;
 }
 
 .ml-cinema-stage[data-has-book="true"] .ml-cinema-visual-frame,
-.ml-cinema-stage:has(.ml-live-book-stage) .ml-cinema-visual-frame,
-.ml-cinema-stage:has(.ml-stage-excerpt-pane) .ml-cinema-visual-frame {
+.ml-cinema-stage:has(.ml-live-book-stage) .ml-cinema-visual-frame {
     padding-top: 0 !important;
     padding-left: 0;
     padding-right: 0;
@@ -1474,6 +1472,13 @@ mark.miron-active-sentence,
     .ml-resume-banner { padding: 12px 14px; }
     .ml-resume-play-pill span { display: none; }
     .ml-resume-play-pill { padding: 9px 11px; }
+    .ml-cinema-visual-frame.is-dual-stage .ml-stage-excerpt-pane {
+        max-height: 24vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        align-items: flex-start;
+        border-radius: 12px;
+    }
 }
 
 /* ==============================================================================
