@@ -46,6 +46,68 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.ml-card-head-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ml-card-voice-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #64748b;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+}
+
+.ml-card-voice-pill.is-speaking {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+}
+
+.ml-card-eq {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 10px;
+}
+
+.ml-card-eq-bar {
+    width: 2px;
+    height: 3px;
+    border-radius: 1px;
+    background: currentColor;
+    transition: height 0.2s ease;
+}
+
+.ml-card-voice-pill.is-speaking .ml-card-eq-bar {
+    animation: eqBounce 0.7s infinite ease-in-out;
+}
+.ml-card-voice-pill.is-speaking .ml-card-eq-bar.b1 { animation-delay: 0.05s; }
+.ml-card-voice-pill.is-speaking .ml-card-eq-bar.b2 { animation-delay: 0.22s; }
+.ml-card-voice-pill.is-speaking .ml-card-eq-bar.b3 { animation-delay: 0.12s; }
+.ml-card-voice-pill.is-speaking .ml-card-eq-bar.b4 { animation-delay: 0.32s; }
+
+@keyframes roadmapBorderPulse {
+    0%, 100% { border-left-color: rgba(56, 189, 248, 0.22); }
+    50% { border-left-color: rgba(56, 189, 248, 0.65); }
+}
+
+.ml-card-roadmap-list.is-speaking {
+    animation: roadmapBorderPulse 2.8s ease-in-out infinite;
 }
 
 .ml-card-mode-pill {
@@ -207,9 +269,22 @@
 .theme-light .ml-summary-text {
     color: #0f172a;
 }
+.theme-light .ml-card-voice-pill {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+.theme-light .ml-card-voice-pill.is-speaking {
+    background: rgba(2, 132, 199, 0.1);
+    border-color: rgba(2, 132, 199, 0.35);
+    color: #0284c7;
+}
 
 /* --- MOBILE RESPONSIVE TWEAKS --- */
 @media (max-width: 768px) {
+    .ml-card-voice-label {
+        display: none;
+    }
     .ml-stage-card-wrapper {
         padding: 0.25rem 0.25rem calc(84px + env(safe-area-inset-bottom, 16px)) 0.25rem;
         align-self: flex-start;
