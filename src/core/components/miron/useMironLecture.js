@@ -201,8 +201,10 @@ export const useMironLecture = ({
                     latestDiagram = null;
                     latestImage = null;
                     latestNode = null;
+                    latestBlock = null;
                 } else if (cue.type === 'show_diagram') {
                     latestCard = null;
+                    latestBlock = null; // Diagram transition dismisses active textbook page/block
                     if (cue.target && cue.target.includes(':') && !visualAssets[cue.target]) {
                         const [assetKey, nodeKey] = cue.target.split(':');
                         latestDiagram = { ...cue, target: assetKey };
@@ -217,10 +219,12 @@ export const useMironLecture = ({
                     }
                     latestImage = null; // New diagram resets active image to restore diagram hero
                 } else if (cue.type === 'show_image') {
-                    latestImage = cue; // Preserves latestDiagram for dual-stage composition!
+                    latestImage = cue; // Preserves latestDiagram or latestBlock for 2-pane dual-stage composition
                     latestCard = null;
                 } else if (cue.type === 'clear_image' || cue.type === 'image:clear' || cue.type === 'reset_image') {
                     latestImage = null;
+                } else if (cue.type === 'clear_page' || cue.type === 'clear_block' || cue.type === 'page:clear' || cue.type === 'block:clear') {
+                    latestBlock = null;
                 } else if (cue.type === 'zoom' || cue.type === 'focus' || cue.type === 'spotlight') {
                     latestNode = cue;
                     if (cue.target === 'overview' || cue.target === 'reset') {
@@ -410,9 +414,10 @@ export const useMironLecture = ({
     }, [activeBlockCue, cachedPageBlocks, sectionPages, selectedSection]);
 
     const hasActiveNode = Boolean(activeNodeCue?.target && activeNodeCue.target !== 'overview' && activeNodeCue.target !== 'reset');
+    const canShowExcerptWithVisual = Boolean(activeBlockData && !(activeDiagramAsset && activeImageAsset));
     const isDualStage = Boolean(
         (activeDiagramAsset && activeImageAsset && hasActiveNode) ||
-        (activeBlockData && (activeImageAsset || activeDiagramAsset))
+        (canShowExcerptWithVisual && (activeImageAsset || activeDiagramAsset))
     );
     const latestBullet = activeBullets.length > 0 ? activeBullets[activeBullets.length - 1] : null;
 
