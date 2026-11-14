@@ -162,6 +162,7 @@ const MironStudioStage = ({
                         <div 
                             className="ml-cinema-stage" 
                             ref={cinemaContainerRef}
+                            data-is-playing={isPlaying ? "true" : "false"}
                             data-has-notes={(activeBullets?.length || 0) > 0 ? "true" : "false"}
                             data-has-image={Boolean(activeImageAsset) ? "true" : "false"}
                             data-dual-stage={isDualStage ? "true" : "false"}
@@ -187,7 +188,7 @@ const MironStudioStage = ({
 
                                 {/* PRESENTATION BOOKEND (Intro Roadmap & Summary Recap) */}
                                 {!activeQuizData && activeCardData && (
-                                    <MironStageCard cardData={activeCardData} />
+                                    <MironStageCard cardData={activeCardData} isPlaying={isPlaying} />
                                 )}
 
                                 {/* FULL A4 PAGE: Initial full-size textbook view before breakdown cue */}
