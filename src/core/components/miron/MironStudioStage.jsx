@@ -166,7 +166,7 @@ const MironStudioStage = ({
                             data-has-notes={(activeBullets?.length || 0) > 0 ? "true" : "false"}
                             data-has-image={Boolean(activeImageAsset) ? "true" : "false"}
                             data-dual-stage={isDualStage ? "true" : "false"}
-                            data-has-book={Boolean(activeBlockData) ? "true" : "false"}
+                            data-has-book={Boolean(activeBlockData && !isDualStage && !(activeDiagramAsset && activeImageAsset)) ? "true" : "false"}
                             onClick={() => {
                                 if (stage === 'studio') {
                                     setIsChromeVisible(prev => {
@@ -206,8 +206,8 @@ const MironStudioStage = ({
                                     />
                                 )}
 
-                                {/* TIGHT EXCERPT CARD: Locked 794px virtual canvas clone (Zero re-wrap, zero void) */}
-                                {activeBlockData && isDualStage && !activeQuizData && !activeCardData && (
+                                {/* TIGHT EXCERPT CARD: Locked 794px virtual canvas clone (Hard-capped at 2 panes max) */}
+                                {activeBlockData && isDualStage && !(activeDiagramAsset && activeImageAsset) && !activeQuizData && !activeCardData && (
                                     <div className="ml-stage-excerpt-pane">
                                         <div 
                                             className="ml-tight-scale-wrapper"
