@@ -81,6 +81,8 @@ export const useMironLecture = ({
     const [fitScale, setFitScale] = useState(0.47);
     const [isChromeVisible, setIsChromeVisible] = useState(true);
     const [completedQuizTimes, setCompletedQuizTimes] = useState(new Set());
+    const [ccEnabled, setCcEnabled] = useState(true);
+    const [isNotesCollapsed, setIsNotesCollapsed] = useState(false);
 
     const audioRef = useRef(null);
     const progressBarRef = useRef(null);
@@ -767,10 +769,14 @@ export const useMironLecture = ({
         }
 
         if (activeIdx === -1) {
-            for (let i = 0; i !== words.length; i++) {
-                if (words[i].start > currentTime) {
-                    activeIdx = Math.max(0, i - 1);
-                    break;
+            if (currentTime >= words[words.length - 1].end) {
+                activeIdx = words.length - 1;
+            } else {
+                for (let i = 0; i !== words.length; i++) {
+                    if (words[i].start > currentTime) {
+                        activeIdx = Math.max(0, i - 1);
+                        break;
+                    }
                 }
             }
         }
@@ -786,6 +792,18 @@ export const useMironLecture = ({
             sentenceSnippet: snippet
         };
     }, [audioLesson, currentTime]);
+
+    // Quiz Checkpoint Markers for Precision Scrubber
+    const quizMarkers = useMemo(() => {
+        if (!Array.isArray(audioLesson?.cue_timeline) || duration <= 0) return [];
+        return audioLesson.cue_timeline
+            .filter(c => c.type === 'quiz' || c.type === 'interactive_quiz')
+            .map(c => ({
+                time: c.time,
+                pct: Math.max(1, Math.min(99, (c.time / duration) * 100)),
+                completed: completedQuizTimes.has(c.time)
+            }));
+    }, [audioLesson, duration, completedQuizTimes]);
 
     // Transport Handlers
     const handleTogglePlay = () => {
@@ -1001,10 +1019,15 @@ export const useMironLecture = ({
         manifest,
         activeSection,
 
-        // Subtitles
+        // Subtitles & Stage UI Toggles
         karaokeData,
+        ccEnabled,
+        setCcEnabled,
+        isNotesCollapsed,
+        setIsNotesCollapsed,
+        quizMarkers,
 
-        // Handlers
+        // Handlers</find>
         handleTogglePlay,
         handleSeek,
         handleSkip,
