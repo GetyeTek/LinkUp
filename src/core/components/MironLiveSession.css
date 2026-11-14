@@ -717,10 +717,40 @@ svg.vis-mobile,
     backface-visibility: hidden;
 }
 
+@keyframes kenBurnsDrift {
+    0% { transform: scale(1) translate3d(0, 0, 0); }
+    50% { transform: scale(1.06) translate3d(-0.8%, -0.6%, 0); }
+    100% { transform: scale(1) translate3d(0, 0, 0); }
+}
+
+/* SVG Spotlight Dimming & Active Node Glow */
+.vis-card .vis-node {
+    transition: opacity 0.38s ease, filter 0.38s ease;
+}
+.vis-card[data-active-node] .vis-node:not(.is-focused) {
+    opacity: 0.28;
+    filter: saturate(0.7);
+}
+.vis-card[data-active-node] .vis-node.is-focused {
+    opacity: 1;
+    filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.38));
+}
+.theme-light .vis-card[data-active-node] .vis-node.is-focused {
+    filter: drop-shadow(0 0 8px rgba(2, 132, 199, 0.3));
+}
+
 .ml-stage-image-pane .ml-visual-card-image {
     animation: none;
 }
-.ml-visual-card-image img { width: 100%; height: auto; max-height: 52vh; object-fit: contain; display: block; margin: 0 auto; }
+.ml-visual-card-image img {
+    width: 100%; height: auto; max-height: 52vh; object-fit: contain; display: block; margin: 0 auto;
+    will-change: transform;
+    animation: kenBurnsDrift 28s ease-in-out infinite;
+    animation-play-state: paused;
+}
+.ml-cinema-stage[data-is-playing="true"] .ml-visual-card-image img {
+    animation-play-state: running;
+}
 .ml-image-caption-pill {
     position: absolute; top: 10px; left: 12px; background: rgba(15, 23, 42, 0.88);
     backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15);
