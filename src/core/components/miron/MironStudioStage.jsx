@@ -74,6 +74,13 @@ const MironStudioStage = ({
     const desktopNotesRef = React.useRef(null);
     const prevBulletCountRef = React.useRef(0);
     const userPinnedOutlineRef = React.useRef(false);
+    const [isMobileNotesOpen, setIsMobileNotesOpen] = React.useState(false);
+
+    React.useEffect(() => {
+        if ((activeBullets?.length || 0) === 0 && isMobileNotesOpen) {
+            setIsMobileNotesOpen(false);
+        }
+    }, [activeBullets?.length, isMobileNotesOpen]);
 
     React.useEffect(() => {
         if (!railRef.current) return;
@@ -313,46 +320,53 @@ const MironStudioStage = ({
                                 </div>
                             )}
 
-                            {/* Studio Split-Screen Notes Deck (Collapsible on Mobile) */}
-                            {(activeBullets?.length || 0) > 0 && !activeQuizData && !activeCardData && (
-                                <div 
-                                    className={`ml-studio-notes-deck ${isNotesCollapsed ? 'is-collapsed' : ''}`}
-                                    ref={notesDeckRef}
-                                    onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
-                                >
+                            {/* Mobile Slim Live Takeaway Pill (< 1024px Only; Desktop uses Right Sidebar) */}
+                            {(activeBullets?.length || 0) > 0 && !activeQuizData && !activeCardData && (() => {
+                                const latestRaw = activeBullets[activeBullets.length - 1];
+                                const { glyph, content } = parseBulletItem(latestRaw);
+                                return (
                                     <div
-                                        className="ml-studio-notes-header is-toggleable"
-                                        onClick={() => setIsNotesCollapsed(prev => !prev)}
+                                        className={`ml-mobile-note-bar ${isNotesCollapsed ? 'is-minimized' : ''}`}
+                                        ref={notesDeckRef}
+                                        onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
                                     >
-                                        <span className="ml-studio-notes-badge">
-                                            <i className="fas fa-bolt"></i> CORE TAKEAWAYS ({activeBullets.length})
-                                        </span>
-                                        <div className="ml-notes-header-right">
-                                            {activeNodeCue?.target && (
-                                                <span className="ml-studio-topic-tag">
-                                                    {activeNodeCue.target.replace(/[-_]/g, ' ')}
-                                                </span>
-                                            )}
-                                            <i className={`fas fa-chevron-${isNotesCollapsed ? 'up' : 'down'} ml-notes-collapse-icon`}></i>
-                                        </div>
+                                        {isNotesCollapsed ? (
+                                            <button
+                                                type="button"
+                                                className="ml-mobile-note-chip"
+                                                onClick={() => setIsNotesCollapsed(false)}
+                                                title="Show Live Takeaway"
+                                            >
+                                                <i className="fas fa-bolt"></i>
+                                                <span>{activeBullets.length}</span>
+                                            </button>
+                                        ) : (
+                                            <div className="ml-mobile-note-pill" onClick={() => setIsMobileNotesOpen(true)}>
+                                                <div className="ml-mobile-note-content" key={activeBullets.length}>
+                                                    <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
+                                                        {glyph}
+                                                    </span>
+                                                    <span className="ml-mobile-note-text">{content}</span>
+                                                </div>
+                                                <div className="ml-mobile-note-actions">
+                                                    <span className="ml-mobile-note-count" title="View All Takeaways">
+                                                        <i className="fas fa-bolt"></i> {activeBullets.length}
+                                                        <i className="fas fa-chevron-up"></i>
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        className="ml-mobile-note-min-btn"
+                                                        onClick={(e) => { e.stopPropagation(); setIsNotesCollapsed(true); }}
+                                                        title="Minimize Takeaway Pill"
+                                                    >
+                                                        <i className="fas fa-minus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    {!isNotesCollapsed && (
-                                        <div className="ml-studio-bullets-stream">
-                                            {activeBullets.map((bullet, bIdx) => {
-                                                const { glyph, content } = parseBulletItem(bullet);
-                                                return (
-                                                    <div key={bIdx} className="ml-studio-bullet-row" style={{ animationDelay: `${bIdx * 0.05}s` }}>
-                                                        <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
-                                                            {glyph}
-                                                        </span>
-                                                        <span className="ml-studio-bullet-text">{content}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
                     )}
 
@@ -697,12 +711,49 @@ const MironStudioStage = ({
                                                 <span className="ml-outline-duration">{formatTime(sec.duration)}</span>
                                             </button>
                                         );
-                                    })}
+                                                                        })}
                                 </div>
                             </div>
                         </div>
                     )}
 
+                    {/* MOBILE SLIDE-UP TAKEAWAYS SHEET */}
+                    {isMobileNotesOpen && (activeBullets?.length || 0) > 0 && (
+                        <div className="ml-outline-backdrop" onClick={() => setIsMobileNotesOpen(false)}>
+                            <div className="ml-outline-sheet" onClick={(e) => e.stopPropagation()}>
+                                <div className="ml-outline-header">
+                                    <div>
+                                        <span className="ml-outline-eyebrow">
+                                            <i className="fas fa-bolt"></i> CORE TAKEAWAYS ({activeBullets.length})
+                                        </span>
+                                        <h3 className="ml-outline-title">
+                                            {effectiveSections[activeSectionIndex]?.title || selectedSection?.title || 'Key Points'}
+                                        </h3>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="ml-outline-close"
+                                        onClick={() => setIsMobileNotesOpen(false)}
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div className="ml-outline-list">
+                                    {activeBullets.map((bullet, bIdx) => {
+                                        const { glyph, content } = parseBulletItem(bullet);
+                                        return (
+                                            <div key={bIdx} className="ml-mobile-takeaway-card">
+                                                <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
+                                                    {glyph}
+                                                </span>
+                                                <span className="ml-studio-bullet-text">{content}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
