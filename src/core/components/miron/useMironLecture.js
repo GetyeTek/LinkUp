@@ -603,10 +603,19 @@ export const useMironLecture = ({
                 activeSvg.setAttribute('data-default-view', activeSvg.getAttribute('viewBox') || '0 0 780 340');
             }
 
+            const isMobile = window.innerWidth <= 768;
+            const defaultViewStr = activeSvg.getAttribute('data-default-view') || (isMobile ? '0 0 360 520' : '0 0 780 340');
+
+            if (!isMobile) {
+                // Desktop: Preserve full relationship map while CSS spotlights & lifts the active node
+                animateViewBox(activeSvg, defaultViewStr);
+                return;
+            }
+
             const targetEl = activeSvg.querySelector(`[data-node="${targetNode}"]`);
             if (targetEl) {
                 try {
-                    const cacheKey = `${activeCue?.target || 'vis'}::${targetNode}`;
+                    const cacheKey = `${activeCue?.target || 'vis'}::${targetNode}::m`;
                     let b = bboxCacheRef.current.get(cacheKey);
                     if (!b) {
                         const rawBox = targetEl.getBBox();
@@ -618,56 +627,18 @@ export const useMironLecture = ({
                         }
                     }
 
-                    const isMobile = window.innerWidth <= 768;
-
-                    if (isMobile && b && b.width > 0 && b.height > 0) {
+                    if (b && b.width > 0 && b.height > 0) {
                         // Mobile Portrait: Razor-sharp node isolation (Zero neighbor peeking, perfectly centered)
-                        const padX = 14;
-                        const padY = 14;
-                        const calcBox = `${(b.x - padX).toFixed(2)} ${(b.y - padY).toFixed(2)} ${(b.width + padX * 2).toFixed(2)} ${(b.height + padY * 2).toFixed(2)}`;
-                        animateViewBox(activeSvg, calcBox);
-                    } else if (isDualStage && activeImageAsset && b && b.width > 0 && b.height > 0) {
-                        // Desktop Dual-Stage with Specimen: Tight HUD isolation
-                        const padX = 6;
-                        const padY = 6;
+                        const padX = 10;
+                        const padY = 10;
                         const calcBox = `${(b.x - padX).toFixed(2)} ${(b.y - padY).toFixed(2)} ${(b.width + padX * 2).toFixed(2)} ${(b.height + padY * 2).toFixed(2)}`;
                         animateViewBox(activeSvg, calcBox);
                     } else {
                         const boxStr = targetEl.getAttribute('data-focus-box');
-                        if (boxStr) {
-                            animateViewBox(activeSvg, boxStr);
-                        } else {
-                            const defaultViewStr = activeSvg.getAttribute('data-default-view') || '0 0 360 520';
-                            const [defX, defY, defW, defH] = defaultViewStr.trim().split(/\s+/).map(Number);
-
-                            if (defW && defH && b && b.width > 0 && b.height > 0) {
-                                const baseCX = defX + defW / 2;
-                                const baseCY = defY + defH / 2;
-                                const targetCX = b.x + b.width / 2;
-                                const targetCY = b.y + b.height / 2;
-
-                                const camCX = baseCX + (targetCX - baseCX) * 0.85;
-                                const camCY = baseCY + (targetCY - baseCY) * 0.85;
-
-                                const zoomRatio = 0.65;
-                                const targetW = defW * zoomRatio;
-                                const targetH = defH * zoomRatio;
-
-                                let camX = camCX - targetW / 2;
-                                let camY = camCY - targetH / 2;
-                                camX = Math.max(defX, Math.min(defX + defW - targetW, camX));
-                                camY = Math.max(defY, Math.min(defY + defH - targetH, camY));
-
-                                const calcBox = `${camX.toFixed(2)} ${camY.toFixed(2)} ${targetW.toFixed(2)} ${targetH.toFixed(2)}`;
-                                animateViewBox(activeSvg, calcBox);
-                            } else {
-                                animateViewBox(activeSvg, defaultViewStr);
-                            }
-                        }
+                        animateViewBox(activeSvg, boxStr || defaultViewStr);
                     }
                 } catch (e) {
-                    const defaultViewStr = activeSvg.getAttribute('data-default-view');
-                    if (defaultViewStr) animateViewBox(activeSvg, defaultViewStr);
+                    animateViewBox(activeSvg, defaultViewStr);
                 }
             }
         }
