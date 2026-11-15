@@ -628,9 +628,9 @@ export const useMironLecture = ({
                     }
 
                     if (b && b.width > 0 && b.height > 0) {
-                        // Mobile Portrait: Razor-sharp node isolation (Zero neighbor peeking, perfectly centered)
-                        const padX = 10;
-                        const padY = 10;
+                        // Mobile Portrait: Tight node isolation maximizing card size inside available frame
+                        const padX = 6;
+                        const padY = 6;
                         const calcBox = `${(b.x - padX).toFixed(2)} ${(b.y - padY).toFixed(2)} ${(b.width + padX * 2).toFixed(2)} ${(b.height + padY * 2).toFixed(2)}`;
                         animateViewBox(activeSvg, calcBox);
                     } else {
