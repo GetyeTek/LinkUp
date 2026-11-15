@@ -768,11 +768,56 @@ export const useMironLecture = ({
         }
     }, [activeCue, currentTime, visualAssets]);
 
-    // Active Karaoke Subtitle Window
-    const karaokeData = useMemo(() => {
+    // Pre-Chunk Word Timestamps into Stationary 1-Line Phrases (Zero Per-Word Jitter)
+    const karaokeTimeline = useMemo(() => {
         const words = audioLesson?.word_timestamps;
         if (!Array.isArray(words) || words.length === 0) {
-            return { activeWord: '', sentenceSnippet: [] };
+            return { chunks: [], wordToChunk: [] };
+        }
+
+        const MAX_CHARS = 36;
+        const MAX_WORDS = 6;
+        const chunks = [];
+        const wordToChunk = new Array(words.length);
+
+        let curChunk = [];
+        let curChars = 0;
+
+        for (let i = 0; i < words.length; i++) {
+            const wObj = words[i];
+            const wStr = String(wObj.word || '').trim();
+            const addLen = (curChunk.length > 0 ? 1 : 0) + wStr.length;
+
+            if (curChunk.length > 0 && (curChunk.length >= MAX_WORDS || (curChars + addLen) > MAX_CHARS)) {
+                chunks.push(curChunk);
+                curChunk = [];
+                curChars = 0;
+            }
+
+            const chunkIdx = chunks.length;
+            wordToChunk[i] = chunkIdx;
+            curChunk.push({ ...wObj, globalIdx: i });
+            curChars += (curChunk.length > 1 ? 1 : 0) + wStr.length;
+
+            if (/[.!?።]$/.test(wStr)) {
+                chunks.push(curChunk);
+                curChunk = [];
+                curChars = 0;
+            }
+        }
+
+        if (curChunk.length > 0) {
+            chunks.push(curChunk);
+        }
+
+        return { chunks, wordToChunk };
+    }, [audioLesson?.word_timestamps]);
+
+    // Active Stationary Karaoke Chunk
+    const karaokeData = useMemo(() => {
+        const words = audioLesson?.word_timestamps;
+        if (!Array.isArray(words) || words.length === 0 || karaokeTimeline.chunks.length === 0) {
+            return { activeWord: '', activeWordIdx: -1, chunkIdx: -1, sentenceSnippet: [] };
         }
 
         let activeIdx = -1;
@@ -797,16 +842,15 @@ export const useMironLecture = ({
         }
 
         const safeIdx = activeIdx === -1 ? 0 : activeIdx;
-        const windowStart = Math.max(0, safeIdx - 5);
-        const windowEnd = Math.min(words.length, safeIdx + 7);
-        const snippet = words.slice(windowStart, windowEnd);
+        const chunkIdx = karaokeTimeline.wordToChunk[safeIdx] ?? 0;
 
         return {
             activeWord: words[safeIdx]?.word || '',
             activeWordIdx: safeIdx,
-            sentenceSnippet: snippet
+            chunkIdx,
+            sentenceSnippet: karaokeTimeline.chunks[chunkIdx] || []
         };
-    }, [audioLesson, currentTime]);
+    }, [audioLesson?.word_timestamps, karaokeTimeline, currentTime]);
 
     // Quiz Checkpoint Markers for Precision Scrubber
     const quizMarkers = useMemo(() => {
