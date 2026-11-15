@@ -74,13 +74,20 @@ const MironStudioStage = ({
     const desktopNotesRef = React.useRef(null);
     const prevBulletCountRef = React.useRef(0);
     const userPinnedOutlineRef = React.useRef(false);
-    const [isMobileNotesOpen, setIsMobileNotesOpen] = React.useState(false);
+    const [isMobileNotesExpanded, setIsMobileNotesExpanded] = React.useState(false);
+    const mobileExpandedListRef = React.useRef(null);
 
     React.useEffect(() => {
-        if ((activeBullets?.length || 0) === 0 && isMobileNotesOpen) {
-            setIsMobileNotesOpen(false);
+        if ((activeBullets?.length || 0) === 0 && isMobileNotesExpanded) {
+            setIsMobileNotesExpanded(false);
         }
-    }, [activeBullets?.length, isMobileNotesOpen]);
+        if (isMobileNotesExpanded && mobileExpandedListRef.current) {
+            mobileExpandedListRef.current.scrollTo({
+                top: mobileExpandedListRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    }, [activeBullets?.length, isMobileNotesExpanded]);
 
     React.useEffect(() => {
         if (!railRef.current) return;
@@ -169,6 +176,7 @@ const MironStudioStage = ({
                         <div 
                             className="ml-cinema-stage" 
                             ref={cinemaContainerRef}
+                            data-chrome-visible={isChromeVisible ? "true" : "false"}
                             data-is-playing={isPlaying ? "true" : "false"}
                             data-has-notes={(activeBullets?.length || 0) > 0 ? "true" : "false"}
                             data-has-image={Boolean(activeImageAsset) ? "true" : "false"}
@@ -300,18 +308,16 @@ const MironStudioStage = ({
                                 </div>
                             )}
 
-                            {/* Floating Live Karaoke Subtitles Pill */}
+                            {/* Stationary 1-Line Live Karaoke Subtitles Pill */}
                             {showKaraoke && (
                                 <div
                                     className={`ml-karaoke-float ${!isChromeVisible ? 'is-docked-low' : ''} ${(activeBullets?.length || 0) > 0 && !isNotesCollapsed ? 'above-notes' : ''}`}
                                 >
                                     <div className="ml-karaoke-stream">
-                                        {karaokeData.sentenceSnippet.map((wObj, wIdx) => {
-                                            const isActiveWord = wObj.word === karaokeData.activeWord &&
-                                                currentTime >= wObj.start - 0.05 &&
-                                                currentTime <= wObj.end + 0.15;
+                                        {karaokeData.sentenceSnippet.map((wObj) => {
+                                            const isActiveWord = wObj.globalIdx === karaokeData.activeWordIdx;
                                             return (
-                                                <span key={wIdx} className={`ml-karaoke-word ${isActiveWord ? 'active' : ''}`}>
+                                                <span key={wObj.globalIdx} className={`ml-karaoke-word ${isActiveWord ? 'active' : ''}`}>
                                                     {wObj.word}{' '}
                                                 </span>
                                             );
@@ -320,7 +326,7 @@ const MironStudioStage = ({
                                 </div>
                             )}
 
-                            {/* Mobile Slim Live Takeaway Pill (< 1024px Only; Desktop uses Right Sidebar) */}
+                            {/* Mobile In-Place Live Takeaway Card (< 1024px Only; Desktop uses Right Sidebar) */}
                             {(activeBullets?.length || 0) > 0 && !activeQuizData && !activeCardData && (() => {
                                 const latestRaw = activeBullets[activeBullets.length - 1];
                                 const { glyph, content } = parseBulletItem(latestRaw);
@@ -340,8 +346,45 @@ const MironStudioStage = ({
                                                 <i className="fas fa-bolt"></i>
                                                 <span>{activeBullets.length}</span>
                                             </button>
+                                        ) : isMobileNotesExpanded ? (
+                                            <div className="ml-mobile-note-pill is-expanded">
+                                                <div
+                                                    className="ml-mobile-note-expanded-head"
+                                                    onClick={() => setIsMobileNotesExpanded(false)}
+                                                >
+                                                    <span className="ml-studio-notes-badge">
+                                                        <i className="fas fa-bolt"></i> CORE TAKEAWAYS ({activeBullets.length})
+                                                    </span>
+                                                    <div className="ml-mobile-note-actions">
+                                                        <span className="ml-mobile-note-count" title="Collapse Takeaways">
+                                                            <i className="fas fa-chevron-down"></i>
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            className="ml-mobile-note-min-btn"
+                                                            onClick={(e) => { e.stopPropagation(); setIsMobileNotesExpanded(false); setIsNotesCollapsed(true); }}
+                                                            title="Minimize Takeaway Pill"
+                                                        >
+                                                            <i className="fas fa-minus"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="ml-mobile-note-expanded-list" ref={mobileExpandedListRef}>
+                                                    {activeBullets.map((bullet, bIdx) => {
+                                                        const item = parseBulletItem(bullet);
+                                                        return (
+                                                            <div key={bIdx} className="ml-mobile-note-expanded-row">
+                                                                <span className={`ml-studio-bullet-glyph ${/^\d/.test(item.glyph) ? 'is-number' : ''}`}>
+                                                                    {item.glyph}
+                                                                </span>
+                                                                <span className="ml-mobile-note-text">{item.content}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
                                         ) : (
-                                            <div className="ml-mobile-note-pill" onClick={() => setIsMobileNotesOpen(true)}>
+                                            <div className="ml-mobile-note-pill" onClick={() => setIsMobileNotesExpanded(true)}>
                                                 <div className="ml-mobile-note-content" key={activeBullets.length}>
                                                     <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
                                                         {glyph}
@@ -349,7 +392,7 @@ const MironStudioStage = ({
                                                     <span className="ml-mobile-note-text">{content}</span>
                                                 </div>
                                                 <div className="ml-mobile-note-actions">
-                                                    <span className="ml-mobile-note-count" title="View All Takeaways">
+                                                    <span className="ml-mobile-note-count" title="Expand All Takeaways">
                                                         <i className="fas fa-bolt"></i> {activeBullets.length}
                                                         <i className="fas fa-chevron-up"></i>
                                                     </span>
@@ -717,43 +760,6 @@ const MironStudioStage = ({
                         </div>
                     )}
 
-                    {/* MOBILE SLIDE-UP TAKEAWAYS SHEET */}
-                    {isMobileNotesOpen && (activeBullets?.length || 0) > 0 && (
-                        <div className="ml-outline-backdrop" onClick={() => setIsMobileNotesOpen(false)}>
-                            <div className="ml-outline-sheet" onClick={(e) => e.stopPropagation()}>
-                                <div className="ml-outline-header">
-                                    <div>
-                                        <span className="ml-outline-eyebrow">
-                                            <i className="fas fa-bolt"></i> CORE TAKEAWAYS ({activeBullets.length})
-                                        </span>
-                                        <h3 className="ml-outline-title">
-                                            {effectiveSections[activeSectionIndex]?.title || selectedSection?.title || 'Key Points'}
-                                        </h3>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="ml-outline-close"
-                                        onClick={() => setIsMobileNotesOpen(false)}
-                                    >
-                                        <i className="fas fa-times"></i>
-                                    </button>
-                                </div>
-                                <div className="ml-outline-list">
-                                    {activeBullets.map((bullet, bIdx) => {
-                                        const { glyph, content } = parseBulletItem(bullet);
-                                        return (
-                                            <div key={bIdx} className="ml-mobile-takeaway-card">
-                                                <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
-                                                    {glyph}
-                                                </span>
-                                                <span className="ml-studio-bullet-text">{content}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
         </div>
