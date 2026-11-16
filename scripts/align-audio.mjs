@@ -49,7 +49,7 @@ function parseScriptCues(rawScript) {
             continue;
         }
 
-        if (cueType === 'section' || cueType === 'section_start') {
+        if (cueType === 'section' || cueType === 'section_start' || cueType === 'sub_section' || cueType === 'subsection') {
             const parts = rawTarget.split(':');
             const sectionTag = parts[0]?.trim() || '';
             const sectionTitle = (parts.slice(1).join(':') || sectionTag).trim();
