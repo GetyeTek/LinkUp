@@ -60,6 +60,69 @@ export const parseBulletItem = (rawText) => {
     return { glyph: '—', content: trimmed };
 };
 
+const normalizeQuoteText = (str) => {
+    if (!str) return '';
+    return String(str)
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u2013\u2014]/g, '-')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+};
+
+const buildFlexiblePhraseRegex = (phrase) => {
+    const tokens = normalizeQuoteText(phrase).split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return null;
+    const escaped = tokens.map(tok =>
+        tok
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\    return { glyph: '—', content: trimmed };
+};
+
+export const useMironLecture = ({')
+            .replace(/"/g, '["\u201C\u201D]')
+            .replace(/'/g, "['\u2018\u2019]")
+            .replace(/-/g, '[-\u2013\u2014]')
+    );
+    return new RegExp(escaped.join('(?:<[^>]+>|\\s)+'), 'i');
+};
+
+const resolveVisualAsset = (target, visualAssets) => {
+    if (!target || !visualAssets) return null;
+    if (visualAssets[target]) return visualAssets[target];
+    const trimmed = String(target).trim();
+    if (visualAssets[trimmed]) return visualAssets[trimmed];
+    if (!/\.png$/i.test(trimmed) && visualAssets[`${trimmed}.png`]) {
+        return visualAssets[`${trimmed}.png`];
+    }
+    const noExt = trimmed.replace(/\.(png|jpg|jpeg|webp|svg)$/i, '');
+    if (visualAssets[noExt]) return visualAssets[noExt];
+    const lower = trimmed.toLowerCase();
+    const lowerNoExt = noExt.toLowerCase();
+    for (const [k, v] of Object.entries(visualAssets)) {
+        const kl = k.toLowerCase();
+        if (kl === lower || kl === `${lower}.png` || kl.replace(/\.(png|jpg|jpeg|webp|svg)$/i, '') === lowerNoExt) {
+            return v;
+        }
+    }
+    return null;
+};
+
+const findSvgNodeElement = (svg, targetNode) => {
+    if (!svg || !targetNode) return null;
+    const exact = svg.querySelector(`[data-node="${targetNode}"]`);
+    if (exact) return exact;
+    const lower = String(targetNode).trim().toLowerCase();
+    const candidates = svg.querySelectorAll('[data-node]');
+    for (const el of candidates) {
+        const attr = (el.getAttribute('data-node') || '').trim().toLowerCase();
+        if (attr === lower || attr === `node-${lower}` || `node-${attr}` === lower) {
+            return el;
+        }
+    }
+    return null;
+};
+
 export const useMironLecture = ({
     audioLesson,
     visualAssets,
@@ -191,6 +254,7 @@ export const useMironLecture = ({
         let latestQuiz = null;
         let latestCard = null;
         let currentBullets = [];
+        let stageFocus = 'none'; // 'none' | 'diagram' | 'book' | 'image' | 'card'
 
         for (const cue of timeline) {
             if (cue.time <= currentTime) {
@@ -202,14 +266,16 @@ export const useMironLecture = ({
                     latestImage = null;
                     latestNode = null;
                     latestBlock = null;
+                    stageFocus = 'card';
                 } else if (cue.type === 'show_diagram') {
                     latestCard = null;
-                    latestBlock = null; // Diagram transition dismisses active textbook page/block
-                    if (cue.target && cue.target.includes(':') && !visualAssets[cue.target]) {
+                    latestBlock = null;
+                    stageFocus = 'diagram';
+                    if (cue.target && cue.target.includes(':') && !resolveVisualAsset(cue.target, visualAssets)) {
                         const [assetKey, nodeKey] = cue.target.split(':');
                         latestDiagram = { ...cue, target: assetKey };
                         latestNode = { ...cue, type: 'zoom', target: nodeKey };
-                    } else if (cue.target && cue.target.includes('#') && !visualAssets[cue.target]) {
+                    } else if (cue.target && cue.target.includes('#') && !resolveVisualAsset(cue.target, visualAssets)) {
                         const [assetKey, nodeKey] = cue.target.split('#');
                         latestDiagram = { ...cue, target: assetKey };
                         latestNode = { ...cue, type: 'zoom', target: nodeKey };
@@ -217,30 +283,58 @@ export const useMironLecture = ({
                         latestDiagram = cue;
                         latestNode = null;
                     }
-                    latestImage = null; // New diagram resets active image to restore diagram hero
+                    latestImage = null;
+                } else if (cue.type === 'clear_diagram' || cue.type === 'diagram:clear' || cue.type === 'hide_diagram') {
+                    latestDiagram = null;
+                    latestNode = null;
+                    if (stageFocus === 'diagram') stageFocus = latestImage ? 'image' : 'none';
                 } else if (cue.type === 'show_image') {
-                    latestImage = cue; // Preserves latestDiagram or latestBlock for 2-pane dual-stage composition
+                    latestImage = cue;
                     latestCard = null;
+                    if (stageFocus !== 'book') {
+                        stageFocus = latestDiagram ? 'diagram' : 'image';
+                    }
                 } else if (cue.type === 'clear_image' || cue.type === 'image:clear' || cue.type === 'reset_image') {
                     latestImage = null;
-                } else if (cue.type === 'clear_page' || cue.type === 'clear_block' || cue.type === 'page:clear' || cue.type === 'block:clear') {
+                } else if (cue.type === 'clear_page' || cue.type === 'clear_block' || cue.type === 'page:clear' || cue.type === 'block:clear' || cue.type === 'unpin') {
                     latestBlock = null;
+                    if (stageFocus === 'book') stageFocus = latestDiagram ? 'diagram' : (latestImage ? 'image' : 'none');
+                } else if (cue.type === 'overview' || cue.type === 'zoom_reset') {
+                    latestNode = { ...cue, type: 'zoom', target: 'overview' };
+                    latestImage = null;
+                    latestCard = null;
+                    if (latestDiagram) stageFocus = 'diagram';
                 } else if (cue.type === 'zoom' || cue.type === 'focus' || cue.type === 'spotlight') {
                     latestNode = cue;
-                    if (cue.target === 'overview' || cue.target === 'reset') {
+                    latestCard = null;
+                    if (cue.target === 'overview' || cue.target === 'reset' || cue.target === 'none') {
                         latestImage = null;
                     }
-                } else if (cue.type === 'bullet') {
+                    if (latestDiagram) stageFocus = 'diagram';
+                } else if (cue.type === 'bullet' || cue.type === 'note' || cue.type === 'takeaway') {
                     const text = cue.target || '';
                     if (text && !currentBullets.includes(text)) {
                         currentBullets.push(text);
                     }
-                } else if (cue.type === 'clear_notes' || cue.type === 'notes:clear') {
+                } else if (cue.type === 'clear_notes' || cue.type === 'notes:clear' || cue.type === 'clear_bullets') {
                     currentBullets = [];
-                } else if (cue.type === 'section') {
-                    currentBullets = []; // Clean section break
+                } else if (cue.type === 'section' || cue.type === 'sub_section' || cue.type === 'subsection') {
+                    currentBullets = [];
                     latestImage = null;
-                                } else if (['page_block', 'show_page', 'page', 'highlight', 'block', 'anchor_block'].includes(cue.type)) {
+                    latestBlock = null;
+                    latestDiagram = null;
+                    latestNode = null;
+                    latestCard = null;
+                    stageFocus = 'none';
+                } else if (cue.type === 'clear_all' || cue.type === 'reset_stage') {
+                    currentBullets = [];
+                    latestImage = null;
+                    latestBlock = null;
+                    latestDiagram = null;
+                    latestNode = null;
+                    latestCard = null;
+                    stageFocus = 'none';
+                } else if (['page_block', 'show_page', 'page', 'highlight', 'block', 'anchor_block'].includes(cue.type)) {
                     const rawTarget = String(cue.target || '').trim();
                     const parts = rawTarget.split(':');
                     let pageNum = null;
@@ -269,6 +363,10 @@ export const useMironLecture = ({
                         blockIdx = parseInt(rawTarget.match(/^B(\d+)/i)[1], 10);
                     }
 
+                    // Clear diagram-owned specimen photo when flipping from diagram to textbook page
+                    if (stageFocus === 'diagram') {
+                        latestImage = null;
+                    }
                     latestBlock = {
                         page: pageNum,
                         blockIndex: isNaN(blockIdx) ? 0 : blockIdx,
@@ -277,19 +375,22 @@ export const useMironLecture = ({
                         rawTarget: rawTarget,
                         time: cue.time
                     };
-                    latestDiagram = null;
-                    latestImage = null;
                     latestCard = null;
+                    stageFocus = 'book';
                 }
             } else {
                 break;
             }
         }
+
+        const effectiveDiagramCue = (stageFocus === 'diagram' || (stageFocus === 'image' && latestDiagram)) ? latestDiagram : null;
+        const effectiveBlockCue = (stageFocus === 'book') ? latestBlock : null;
+
         return { 
-            activeDiagramCue: latestDiagram, 
+            activeDiagramCue: effectiveDiagramCue, 
             activeImageCue: latestImage, 
-            activeNodeCue: latestNode, 
-            activeBlockCue: latestBlock, 
+            activeNodeCue: effectiveDiagramCue ? latestNode : null, 
+            activeBlockCue: effectiveBlockCue, 
             activeBullets: currentBullets || [],
             activeQuizCue: latestQuiz,
             activeCardCue: latestCard
@@ -298,13 +399,15 @@ export const useMironLecture = ({
 
     const activeCue = activeImageCue || activeDiagramCue;
 
-    // Resolve Active Visual Items & Page Block from Cache
-    const activeDiagramAsset = activeDiagramCue ? visualAssets[activeDiagramCue.target] : null;
-    const activeImageAsset = activeImageCue ? (visualAssets[activeImageCue.target] || {
-        asset_type: 'image',
-        image_url: activeImageCue.target,
-        title: activeImageCue.target
-    }) : null;
+    // Resolve Active Visual Items & Page Block from Cache (Forgiving Filename/Case Lookup)
+    const activeDiagramAsset = activeDiagramCue ? resolveVisualAsset(activeDiagramCue.target, visualAssets) : null;
+    const activeImageAsset = activeImageCue ? (resolveVisualAsset(activeImageCue.target, visualAssets) || (
+        /^https?:\/\//i.test(activeImageCue.target || '') ? {
+            asset_type: 'image',
+            image_url: activeImageCue.target,
+            title: activeImageCue.target
+        } : null
+    )) : null;
 
     // Resolve Active Page Block data (Full Page Canvas with Sentence Highlighting)
     const activeBlockData = useMemo(() => {
@@ -316,16 +419,21 @@ export const useMironLecture = ({
         let effectiveBlockIdx = activeBlockCue.blockIndex;
         const phrase = activeBlockCue.sentencePhrase;
 
-        // Auto-locate block if a phrase is provided and not present in initial blockIndex
+        // Auto-locate block if a phrase is provided (supports smart quotes, whitespace & HTML tags)
         if (phrase) {
-            const lowerPhrase = phrase.toLowerCase();
+            const normPhrase = normalizeQuoteText(phrase).toLowerCase();
+            const flexRe = buildFlexiblePhraseRegex(phrase);
+            const blockMatchesPhrase = (blk) => {
+                const rawText = typeof blk?.body === 'string'
+                    ? blk.body
+                    : (Array.isArray(blk?.items) ? blk.items.map(it => typeof it === 'string' ? it : (it?.text || '')).join(' ') : '');
+                const normText = normalizeQuoteText(rawText).toLowerCase();
+                const strippedText = normalizeQuoteText(rawText.replace(/<[^>]+>/g, ' ')).toLowerCase();
+                return normText.includes(normPhrase) || strippedText.includes(normPhrase) || (flexRe ? flexRe.test(rawText) : false);
+            };
             const curBlock = pageBlocks[effectiveBlockIdx];
-            const curText = typeof curBlock?.body === 'string' ? curBlock.body : JSON.stringify(curBlock || '');
-            if (!curText.toLowerCase().includes(lowerPhrase)) {
-                const found = pageBlocks.findIndex(b => {
-                    const text = typeof b?.body === 'string' ? b.body : (Array.isArray(b?.items) ? b.items.join(' ') : '');
-                    return text.toLowerCase().includes(lowerPhrase);
-                });
+            if (!blockMatchesPhrase(curBlock)) {
+                const found = pageBlocks.findIndex(blockMatchesPhrase);
                 if (found !== -1) effectiveBlockIdx = found;
             }
         }
@@ -333,16 +441,20 @@ export const useMironLecture = ({
         const processedBlocks = pageBlocks.map((b, idx) => {
             if (idx !== effectiveBlockIdx) return b;
 
-            // 1. Highlight by Exact Quote / Phrase Match
+            // 1. Highlight by Exact or Quote/Whitespace-Normalized Match
             if (phrase) {
                 const cloned = JSON.parse(JSON.stringify(b));
                 const lowerPhrase = phrase.toLowerCase();
+                const normPhrase = normalizeQuoteText(phrase).toLowerCase();
+                const flexRe = buildFlexiblePhraseRegex(phrase);
+
                 if (typeof cloned.body === 'string' && cloned.body.trim()) {
                     const sentences = cloned.body.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g);
                     if (sentences) {
                         let matched = false;
                         for (let i = 0; i < sentences.length; i++) {
-                            if (sentences[i].toLowerCase().includes(lowerPhrase)) {
+                            const sNorm = normalizeQuoteText(sentences[i].replace(/<[^>]+>/g, ' ')).toLowerCase();
+                            if (sentences[i].toLowerCase().includes(lowerPhrase) || sNorm.includes(normPhrase) || (flexRe && flexRe.test(sentences[i]))) {
                                 const s = sentences[i];
                                 sentences[i] = `<mark class="miron-active-sentence">${s.trim()}</mark>${s.endsWith(' ') ? ' ' : ''}`;
                                 matched = true;
@@ -360,10 +472,18 @@ export const useMironLecture = ({
                         cloned.body = cloned.body.slice(0, foundIdx) + `<mark class="miron-active-sentence">${actualPhrase}</mark>` + cloned.body.slice(foundIdx + phrase.length);
                         return cloned;
                     }
+                    if (flexRe) {
+                        const flexMatch = cloned.body.match(flexRe);
+                        if (flexMatch) {
+                            cloned.body = cloned.body.replace(flexRe, `<mark class="miron-active-sentence">${flexMatch[0]}</mark>`);
+                            return cloned;
+                        }
+                    }
                 } else if (Array.isArray(cloned.items)) {
                     for (let i = 0; i < cloned.items.length; i++) {
                         const itemText = typeof cloned.items[i] === 'string' ? cloned.items[i] : (cloned.items[i]?.text || '');
-                        if (itemText.toLowerCase().includes(lowerPhrase)) {
+                        const itemNorm = normalizeQuoteText(itemText.replace(/<[^>]+>/g, ' ')).toLowerCase();
+                        if (itemText.toLowerCase().includes(lowerPhrase) || itemNorm.includes(normPhrase) || (flexRe && flexRe.test(itemText))) {
                             const highlighted = `<mark class="miron-active-sentence">${itemText}</mark>`;
                             if (typeof cloned.items[i] === 'string') {
                                 cloned.items[i] = highlighted;
@@ -416,7 +536,7 @@ export const useMironLecture = ({
     const hasActiveNode = Boolean(activeNodeCue?.target && activeNodeCue.target !== 'overview' && activeNodeCue.target !== 'reset');
     const canShowExcerptWithVisual = Boolean(activeBlockData && !(activeDiagramAsset && activeImageAsset));
     const isDualStage = Boolean(
-        (activeDiagramAsset && activeImageAsset && hasActiveNode) ||
+        (activeDiagramAsset && activeImageAsset) ||
         (canShowExcerptWithVisual && (activeImageAsset || activeDiagramAsset))
     );
     const latestBullet = activeBullets.length > 0 ? activeBullets[activeBullets.length - 1] : null;
@@ -612,7 +732,7 @@ export const useMironLecture = ({
                 return;
             }
 
-            const targetEl = activeSvg.querySelector(`[data-node="${targetNode}"]`);
+            const targetEl = findSvgNodeElement(activeSvg, targetNode);
             if (targetEl) {
                 try {
                     const cacheKey = `${activeCue?.target || 'vis'}::${targetNode}::m`;
@@ -837,6 +957,7 @@ export const useMironLecture = ({
 
     // Transport Handlers
     const handleTogglePlay = () => {
+        if (activeQuizData) return;
         if (!audioLesson?.audio_url) {
             lastSimTickRef.current = performance.now();
             setIsPlaying(prev => !prev);
