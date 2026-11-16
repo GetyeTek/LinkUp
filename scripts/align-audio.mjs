@@ -53,9 +53,11 @@ function parseScriptCues(rawScript) {
             const parts = rawTarget.split(':');
             const sectionTag = parts[0]?.trim() || '';
             const sectionTitle = (parts.slice(1).join(':') || sectionTag).trim();
+            const isSubSection = cueType === 'sub_section' || cueType === 'subsection';
 
             sectionCues.push({
                 type: 'section',
+                isSubSection,
                 tag: sectionTag,
                 title: sectionTitle,
                 wordIndexBefore,
@@ -815,7 +817,11 @@ function auditCueOrchestration(timeline) {
         const c = timeline[i];
 
         if (c.type === 'show_diagram') hasDiagram = true;
-        if (c.type === 'zoom' || c.type === 'focus' || c.type === 'spotlight') {
+        if (['clear_diagram', 'diagram:clear', 'hide_diagram', 'sub_section', 'section', 'clear_all', 'reset_stage', 'card', 'intro', 'summary'].includes(c.type)) {
+            hasDiagram = false;
+            lastZoomTime = null;
+        }
+        if (c.type === 'zoom' || c.type === 'focus' || c.type === 'spotlight' || c.type === 'overview' || c.type === 'zoom_reset') {
             if (!hasDiagram) {
                 issues.push({
                     severity: 'flagged',
@@ -943,6 +949,10 @@ async function auditDatabaseReferences(lesson, timeline) {
 
                 let activeDiagramId = null;
                 for (const c of timeline) {
+                    if (['clear_diagram', 'diagram:clear', 'hide_diagram', 'sub_section', 'section', 'clear_all', 'reset_stage', 'card', 'intro', 'summary'].includes(c.type)) {
+                        activeDiagramId = null;
+                        continue;
+                    }
                     if (c.type === 'show_diagram') {
                         let assetId = (c.target || '').trim();
                         let inlineNode = null;
@@ -1076,16 +1086,27 @@ async function auditDatabaseReferences(lesson, timeline) {
                     }
                 }
 
+                const normalizeQ = (s) => String(s || '')
+                    .replace(/[\u201C\u201D]/g, '"')
+                    .replace(/[\u2018\u2019]/g, "'")
+                    .replace(/[\u2013\u2014]/g, '-')
+                    .replace(/\u00A0/g, ' ')
+                    .replace(/<[^>]+>/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .toLowerCase();
+
                 for (const hc of highlightChecks) {
                     const blocks = pageBlocksMap[hc.page];
                     if (!blocks || blocks.length === 0) continue;
                     const lowerPhrase = hc.phrase.toLowerCase();
+                    const normPhrase = normalizeQ(hc.phrase);
                     const found = blocks.some(b => {
                         const text = typeof b?.body === 'string'
                             ? b.body
                             : (Array.isArray(b?.items) ? b.items.map(it => typeof it === 'string' ? it : (it?.text || '')).join(' ') : '');
-                        return text.toLowerCase().includes(lowerPhrase);
-                    });
+                        return text.toLowerCase().includes(lowerPhrase) || normalizeQ(text).includes(normPhrase);
+                    });</find>
                     if (!found) {
                         highlightMismatches.push(hc);
                         issues.push({
@@ -1218,6 +1239,22 @@ async function processAlignment(lesson) {
             finalDuration,
             lesson
         );
+
+        // Inject bundled sub_section markers into cue_timeline so stage/notes reset cleanly during playback & seeking
+        const subSectionEvents = sectionCues
+            .map((sc, idx) => ({ sc, sec: sectionsManifest[idx] }))
+            .filter(item => item.sc.isSubSection && item.sec)
+            .map(item => ({
+                time: item.sec.start_time,
+                type: 'sub_section',
+                target: item.sec.section_tag || item.sec.title
+            }));
+
+        if (subSectionEvents.length > 0) {
+            visualTimeline.push(...subSectionEvents);
+            visualTimeline.sort((a, b) => a.time - b.time);
+        }
+
         console.log(`🎯 Aligned Events: ${visualTimeline.length} | Sections in Manifest: ${sectionsManifest.length}`);
 
         const orchestrationIssues = auditCueOrchestration(visualTimeline);
