@@ -1455,7 +1455,7 @@
       } catch (e) {}
     }
 
-    // 2. Scan section cues
+    // 2. Scan standalone track cues (section) and nested scrubber markers (sub_section)
     const sectionRegex = /\[\[(?:cue|call):section:([a-zA-Z0-9_\.\-]+)?(?::([^\]]+))?\]\]/g;
     const detectedSections = [];
     let sMatch;
@@ -1466,43 +1466,54 @@
       });
     }
 
+    const subSectionMatches = raw.match(/\[\[(?:cue|call):sub_?section:[^\]]+\]\]/gi) || [];
+    const totalSectionsCount = detectedSections.length + subSectionMatches.length;
+
     // 3. Scan first page reference
     const pageMatch = raw.match(/\[\[(?:cue|call):(show_page|page|highlight|page_block):(\d+)/i);
     const inferredStartPage = pageMatch ? parseInt(pageMatch[2], 10) : null;
 
-    // 4. Update UI non-destructively
+    // 4. Sync UI metadata cleanly across Part 1 / Part 2 / new chapter pastes
     if (parsedMeta) {
-      if (parsedMeta.course_code && !document.getElementById('script-course-code').value) {
-        document.getElementById('script-course-code').value = parsedMeta.course_code;
-        handleGlobalCourseChange(parsedMeta.course_code);
+      if (parsedMeta.course_code) {
+        const prevCourse = document.getElementById('script-course-code').value.trim();
+        if (prevCourse !== parsedMeta.course_code.trim()) {
+          document.getElementById('script-course-code').value = parsedMeta.course_code;
+          handleGlobalCourseChange(parsedMeta.course_code);
+          document.getElementById('script-book-id').value = parsedMeta.book_id || '';
+        }
       }
-      if (parsedMeta.book_id && !document.getElementById('script-book-id').value) {
+      if (parsedMeta.book_id) {
         document.getElementById('script-book-id').value = parsedMeta.book_id;
       }
-      if (parsedMeta.chapter_title && !document.getElementById('script-chapter-title').value) {
+      if (parsedMeta.chapter_title) {
         document.getElementById('script-chapter-title').value = parsedMeta.chapter_title;
       }
-      if (parsedMeta.section_title && !document.getElementById('script-section-title').value) {
+      if (parsedMeta.section_title && detectedSections.length <= 1) {
         document.getElementById('script-section-title').value = parsedMeta.section_title;
       }
-      if ((parsedMeta.start_page || parsedMeta.page_number) && !document.getElementById('script-page-num').value) {
+      if (parsedMeta.start_page || parsedMeta.page_number) {
         document.getElementById('script-page-num').value = parsedMeta.start_page || parsedMeta.page_number;
       }
-    } else {
-      if (inferredStartPage && (!document.getElementById('script-page-num').value || document.getElementById('script-page-num').value === '1')) {
-        document.getElementById('script-page-num').value = inferredStartPage;
-      }
-      if (detectedSections.length === 1 && !document.getElementById('script-section-title').value) {
-        document.getElementById('script-section-title').value = detectedSections[0].title;
-      }
+    } else if (inferredStartPage && (!document.getElementById('script-page-num').value || document.getElementById('script-page-num').value === '1')) {
+      document.getElementById('script-page-num').value = inferredStartPage;
     }
 
+    if (detectedSections.length === 1) {
+      document.getElementById('script-section-title').value = detectedSections[0].title;
+    } else if (detectedSections.length > 1) {
+      document.getElementById('script-section-title').value = `Batch (${detectedSections.length} TTS tracks)`;
+    }
+
+    const subLabel = subSectionMatches.length > 0 ? ` (${totalSectionsCount} scrubber sections)` : '';
     if (detectedSections.length > 1) {
-      statusEl.textContent = `✔ Multi-Section: ${detectedSections.length} sections found`;
-      queueModeEl.textContent = `Mode: Modular Batch (${detectedSections.length} independent lessons)`;
+      statusEl.textContent = `✔ Multi-Track: ${detectedSections.length} TTS tracks${subLabel}`;
+      queueModeEl.textContent = `Mode: Modular Batch (${detectedSections.length} independent MP3 tracks)`;
     } else if (detectedSections.length === 1) {
-      statusEl.textContent = `✔ Single Section: ${detectedSections[0].title.slice(0, 30)}...`;
-      queueModeEl.textContent = `Mode: Single Section Lesson`;
+      statusEl.textContent = `✔ Single Track${subLabel}: ${detectedSections[0].title.slice(0, 30)}...`;
+      queueModeEl.textContent = subSectionMatches.length > 0
+        ? `Mode: Bundled Track (1 MP3 • ${totalSectionsCount} scrubber markers)`
+        : `Mode: Single Section Lesson`;
     } else {
       statusEl.textContent = parsedMeta ? `✔ Metadata Parsed` : '';
       queueModeEl.textContent = `Mode: Standard Queue`;
@@ -1610,7 +1621,7 @@
         }
       } else {
         // Single section queue
-        const secTitle = defaultSectionTitle || (sectionIndices[0]?.title) || 'Core Lecture';
+        const secTitle = (sectionIndices[0]?.title) || defaultSectionTitle || 'Core Lecture';
         lessonsToQueue.push({
           book_id: bookId,
           course_code: courseCode,
