@@ -17,11 +17,12 @@ const MironQuizCard = ({ quizData, onComplete }) => {
     const currentAnswer = userAnswers[currentQ.id || currentIndex];
     const isAnswered = currentAnswer !== undefined;
 
-    const handleSelectOption = (opt) => {
+    const handleSelectOption = (opt, oIdx) => {
         if (isAnswered) return; // Prevent re-answering once locked
+        const optId = opt.id ?? String(oIdx);
         setUserAnswers(prev => ({
             ...prev,
-            [currentQ.id || currentIndex]: opt.id
+            [currentQ.id || currentIndex]: optId
         }));
     };
 
@@ -42,7 +43,8 @@ const MironQuizCard = ({ quizData, onComplete }) => {
     };
 
     const isLastQuestion = currentIndex === questions.length - 1;
-    const selectedOpt = currentQ.options?.find(o => o.id === currentAnswer);
+    const selectedOpt = currentQ.options?.find((o, idx) => (o.id ?? String(idx)) === currentAnswer);
+    const selectedIsCorrect = selectedOpt?.correct === true || String(selectedOpt?.correct).toLowerCase() === 'true';
     const activeDescription = selectedOpt?.description || selectedOpt?.explanation || currentQ.explanation;
 
     return (
@@ -81,8 +83,9 @@ const MironQuizCard = ({ quizData, onComplete }) => {
                 {/* Options List (Stacked for MC, Split Grid for TF) */}
                 <div className={`ml-quiz-options-container ${isTF ? 'tf-grid' : 'mc-stack'}`}>
                     {(currentQ.options || []).map((opt, oIdx) => {
-                        const isSelected = currentAnswer === opt.id;
-                        const isCorrect = Boolean(opt.correct);
+                        const optId = opt.id ?? String(oIdx);
+                        const isSelected = currentAnswer === optId;
+                        const isCorrect = opt.correct === true || String(opt.correct).toLowerCase() === 'true';
                         
                         let stateClass = '';
                         if (isAnswered) {
@@ -94,11 +97,11 @@ const MironQuizCard = ({ quizData, onComplete }) => {
 
                         return (
                             <button
-                                key={opt.id || oIdx}
+                                key={optId}
                                 className={`ml-quiz-option-btn ${stateClass}`}
-                                onClick={() => handleSelectOption(opt)}
+                                onClick={() => handleSelectOption(opt, oIdx)}
                                 disabled={isAnswered}
-                            >
+                            ></find>
                                 <div className="ml-option-left">
                                     <span className="ml-option-letter">
                                         {isTF 
@@ -120,10 +123,10 @@ const MironQuizCard = ({ quizData, onComplete }) => {
 
                 {/* Instant Feedback Description Box */}
                 {isAnswered && activeDescription && (
-                    <div className={`ml-quiz-feedback-box ${selectedOpt?.correct ? 'is-correct' : 'is-wrong'}`}>
+                    <div className={`ml-quiz-feedback-box ${selectedIsCorrect ? 'is-correct' : 'is-wrong'}`}>
                         <div className="ml-feedback-header">
-                            <i className={`fas fa-${selectedOpt?.correct ? 'circle-check' : 'circle-exclamation'}`}></i>
-                            <span>{selectedOpt?.correct ? 'Spot On!' : 'Not Quite!'}</span>
+                            <i className={`fas fa-${selectedIsCorrect ? 'circle-check' : 'circle-exclamation'}`}></i>
+                            <span>{selectedIsCorrect ? 'Spot On!' : 'Not Quite!'}</span>
                         </div>
                         <p className="ml-feedback-body">{activeDescription}</p>
                     </div>
