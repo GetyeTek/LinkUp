@@ -89,6 +89,21 @@ const MironStudioStage = ({
         }
     }, [activeBullets?.length, isMobileNotesExpanded]);
 
+    // Auto-scroll Full Textbook Page smoothly to keep the active highlighted sentence centered
+    React.useEffect(() => {
+        if (!activeBlockData || viewMode !== 'cinema' || activeQuizData || activeCardData) return;
+        const timer = setTimeout(() => {
+            const stageEl = cinemaContainerRef?.current;
+            if (!stageEl) return;
+            const target = stageEl.querySelector('.ml-live-book-stage .miron-active-sentence')
+                || stageEl.querySelector('.ml-live-book-stage .bpc-block-target.is-focused');
+            if (target && typeof target.scrollIntoView === 'function') {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 80);
+        return () => clearTimeout(timer);
+    }, [activeBlockData?.page, activeBlockData?.blockIndex, lectureEngine.activeBlockCue?.time, viewMode, activeQuizData, activeCardData, cinemaContainerRef]);
+
     React.useEffect(() => {
         if (!railRef.current) return;
         const activeEl = railRef.current.querySelector('.ml-section-pill.active');
@@ -193,9 +208,10 @@ const MironStudioStage = ({
                             }}
                         >
                             <div className={`ml-cinema-visual-frame ${isTripleStage ? 'is-triple-stage' : ''} ${isDualStage ? 'is-dual-stage' : ''} ${!isDualStage && activeImageAsset ? 'is-single-image' : ''}`}>
-                                {/* INTERACTIVE CHECKPOINT QUIZ (Takes center stage during checkpoint gate) */}
+                                {/* INTERACTIVE CHECKPOINT QUIZ (Keyed per cue time so multi-quiz tracks mount fresh) */}
                                 {activeQuizData && (
                                     <MironQuizCard
+                                        key={activeQuizCue?.time ?? 'quiz'}
                                         quizData={activeQuizData}
                                         onComplete={() => resumeFromQuiz(activeQuizCue?.time)}
                                     />
@@ -264,7 +280,11 @@ const MironStudioStage = ({
                                             />
                                         ) : (
                                             <div className="ml-visual-card-image">
-                                                <img src={proxyUrl(activeDiagramAsset.image_url)} alt={activeDiagramAsset.title || 'Illustration'} />
+                                                <img
+                                                    src={proxyUrl(activeDiagramAsset.image_url)}
+                                                    alt={activeDiagramAsset.title || 'Illustration'}
+                                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                                />
                                                 <div className="ml-image-caption-pill">
                                                     <span>{activeDiagramAsset.title || 'Scene Concept'}</span>
                                                 </div>
@@ -277,7 +297,11 @@ const MironStudioStage = ({
                                 {activeImageAsset && !activeQuizData && !activeCardData && (
                                     <div className="ml-stage-image-pane">
                                         <div className="ml-visual-card-image">
-                                            <img src={proxyUrl(activeImageAsset.image_url)} alt={activeImageAsset.title || 'Supporting Specimen'} />
+                                            <img
+                                                src={proxyUrl(activeImageAsset.image_url)}
+                                                alt={activeImageAsset.title || 'Supporting Specimen'}
+                                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                            />
                                             <div className="ml-image-caption-pill">
                                                 <span>{activeImageAsset.title || 'Scene Concept'}</span>
                                             </div>
