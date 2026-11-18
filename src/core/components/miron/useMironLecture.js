@@ -76,10 +76,7 @@ const buildFlexiblePhraseRegex = (phrase) => {
     if (tokens.length === 0) return null;
     const escaped = tokens.map(tok =>
         tok
-            .replace(/[.*+?^${}()|[\]\\]/g, '\\    return { glyph: '—', content: trimmed };
-};
-
-export const useMironLecture = ({')
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
             .replace(/"/g, '["\u201C\u201D]')
             .replace(/'/g, "['\u2018\u2019]")
             .replace(/-/g, '[-\u2013\u2014]')
@@ -1212,7 +1209,7 @@ export const useMironLecture = ({
         setIsNotesCollapsed,
         quizMarkers,
 
-        // Handlers</find>
+        // Handlers
         handleTogglePlay,
         handleSeek,
         handleSkip,
