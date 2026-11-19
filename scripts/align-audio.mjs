@@ -642,7 +642,7 @@ function reconcileDualPassTranscripts(pass1Tokens, pass2Tokens, scriptWords, har
     };
 }
 
-const FLASH_RACE_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
+const FLASH_RACE_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash'];
 
 function parseTimestampToSeconds(ts) {
     if (typeof ts === 'number' && !isNaN(ts)) return Math.max(0, ts);
@@ -810,9 +810,9 @@ async function callFlashTranscriptRace(mp3Base64, hardwareDuration, issuesLog) {
             issuesLog.push({
                 severity: 'warning',
                 code: 'FLASH_RACE_ROUND_FAILED',
-                message: `Pass 1 Flash Race Round ${round} failed across all 3 models: ${errDetails}`
+                message: `Pass 1 Flash Race Round ${round} failed across all ${FLASH_RACE_MODELS.length} models: ${errDetails}`
             });
-            console.warn(`⚠️ [Pass 1 Flash Race Round ${round}] All 3 racers failed: ${errDetails}`);
+            console.warn(`⚠️ [Pass 1 Flash Race Round ${round}] All ${FLASH_RACE_MODELS.length} racers failed: ${errDetails}`);
             if (round < maxRaceRounds) {
                 await sleep(4000);
             }
@@ -968,7 +968,7 @@ async function transcribeDualPassSurgical(mp3Base64, scriptWords, hardwareDurati
     let pass1FallbackUsed = false;
     let pass1Provider = 'script_raw (fallback)';
     try {
-        console.log(`🔍 [Pass 1/3] Racing Gemini Flash 3.8/3.7/3.6 (Thinking: MEDIUM) for verbatim bilingual phrases...`);
+        console.log(`🔍 [Pass 1/3] Racing Gemini Flash 3.8/3.7/3.6/3.5 (Thinking: MEDIUM) for verbatim bilingual phrases...`);
         const raceWinner = await callFlashTranscriptRace(mp3Base64, hardwareDuration, issues);
         pass1Tokens = raceWinner.tokens;
         pass1Provider = `${raceWinner.model} (Key #${raceWinner.keyId})`;
