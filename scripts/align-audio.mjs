@@ -416,8 +416,8 @@ function reconcileDualPassTranscripts(pass1Words, pass2Tokens, scriptWords, hard
 async function callGeminiTranscribe(mp3Base64, apiKeyObj, withTimestamps, maxSpotRetries = 3) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${apiKeyObj.api_key}`;
     const audioTranscriptionConfig = withTimestamps
-        ? { mode: "VERBATIM", wordTimestamp: true }
-        : { mode: "VERBATIM" };
+        ? { mode: "VERBATIM", wordTimestamp: true, languageCodes: ["am", "en"] }
+        : { mode: "VERBATIM", languageCodes: ["am", "en"] };
 
     const payload = {
         contents: [{
@@ -889,7 +889,7 @@ function auditCueOrchestration(timeline) {
             const m = c.target.match(/^(mc|tf):([\s\S]*)$/i);
             if (m) jsonStr = m[2].trim();
             try {
-                JSON.parse(jsonStr);
+                JSON.parse(jsonStr.replace(/[\r\n\t]+/g, ' '));
             } catch (e) {
                 issues.push({
                     severity: 'flagged',
