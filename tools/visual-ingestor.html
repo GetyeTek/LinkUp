@@ -1446,13 +1446,16 @@
     const statusEl = document.getElementById('script-parse-status');
     const queueModeEl = document.getElementById('queue-mode-indicator');
 
-    // 1. Extract [[cue:meta:{...}]]
+    // 1. Extract [[cue:meta:{...}]] with multiline newline tolerance
     const metaMatch = raw.match(/\[\[(?:cue|call):meta:([\s\S]*?)\]\]/i);
     let parsedMeta = null;
     if (metaMatch) {
       try {
-        parsedMeta = JSON.parse(metaMatch[1].trim());
-      } catch (e) {}
+        const sanitizedJson = metaMatch[1].replace(/[\r\n]+/g, ' ').trim();
+        parsedMeta = JSON.parse(sanitizedJson);
+      } catch (e) {
+        if (statusEl) statusEl.textContent = `⚠️ Meta JSON syntax error: ${e.message}`;
+      }
     }
 
     // 2. Scan standalone track cues (section) and nested scrubber markers (sub_section)
@@ -1473,7 +1476,16 @@
     const pageMatch = raw.match(/\[\[(?:cue|call):(show_page|page|highlight|page_block):(\d+)/i);
     const inferredStartPage = pageMatch ? parseInt(pageMatch[2], 10) : null;
 
-    // 4. Sync UI metadata cleanly across Part 1 / Part 2 / new chapter pastes
+    // 4. Resolve chapter title from meta or fallback cues
+    let detectedChapterTitle = parsedMeta?.chapter_title?.replace(/\s+/g, ' ').trim() || '';
+    if (!detectedChapterTitle) {
+      const chapterCueMatch = raw.match(/\[\[(?:cue|call):chapter:([^\]]+)\]\]/i);
+      if (chapterCueMatch) {
+        detectedChapterTitle = chapterCueMatch[1].replace(/\s+/g, ' ').trim();
+      }
+    }
+
+    // 5. Sync UI metadata cleanly
     if (parsedMeta) {
       if (parsedMeta.course_code) {
         const prevCourse = document.getElementById('script-course-code').value.trim();
@@ -1486,16 +1498,18 @@
       if (parsedMeta.book_id) {
         document.getElementById('script-book-id').value = parsedMeta.book_id;
       }
-      if (parsedMeta.chapter_title) {
-        document.getElementById('script-chapter-title').value = parsedMeta.chapter_title;
-      }
       if (parsedMeta.section_title && detectedSections.length <= 1) {
         document.getElementById('script-section-title').value = parsedMeta.section_title;
       }
-      if (parsedMeta.start_page || parsedMeta.page_number) {
-        document.getElementById('script-page-num').value = parsedMeta.start_page || parsedMeta.page_number;
-      }
-    } else if (inferredStartPage && (!document.getElementById('script-page-num').value || document.getElementById('script-page-num').value === '1')) {
+    }
+
+    if (detectedChapterTitle) {
+      document.getElementById('script-chapter-title').value = detectedChapterTitle;
+    }
+
+    if (parsedMeta && (parsedMeta.start_page || parsedMeta.page_number)) {
+      document.getElementById('script-page-num').value = parsedMeta.start_page || parsedMeta.page_number;
+    } else if (inferredStartPage) {
       document.getElementById('script-page-num').value = inferredStartPage;
     }
 
@@ -1519,7 +1533,7 @@
       queueModeEl.textContent = `Mode: Standard Queue`;
     }
 
-    // Auto-resolve Book ID if still empty
+    // Auto-resolve Book UUID only if empty (never touches chapter title)
     if (!document.getElementById('script-book-id').value.trim()) {
       autoResolveBookId();
     }
@@ -1533,7 +1547,7 @@
     try {
       const codeWithSpace = courseCode.replace(/_/g, ' ');
       const codeWithUnderscore = courseCode.replace(/\s+/g, '_');
-      const endpoint = `${creds.supaUrl}/rest/v1/books?or=(course_code.eq."${encodeURIComponent(codeWithSpace)}",course_code.eq."${encodeURIComponent(codeWithUnderscore)}")&select=id,title,toc,page_offset&limit=1`;
+      const endpoint = `${creds.supaUrl}/rest/v1/books?or=(course_code.eq."${encodeURIComponent(codeWithSpace)}",course_code.eq."${encodeURIComponent(codeWithUnderscore)}")&select=id,title&limit=1`;
 
       const res = await fetch(endpoint, {
         headers: {
@@ -1546,9 +1560,6 @@
       if (Array.isArray(data) && data.length > 0) {
         const book = data[0];
         document.getElementById('script-book-id').value = book.id;
-        if (!document.getElementById('script-chapter-title').value.trim() && book.toc && book.toc[0]?.title) {
-          document.getElementById('script-chapter-title').value = book.toc[0].title;
-        }
         appendLog('Book Resolved', `${book.title} (${book.id.slice(0, 8)}...)`, 'success');
       }
     } catch (e) {}
@@ -1579,6 +1590,9 @@
     btn.disabled = true;
 
     try {
+      const metaMatch = scriptRaw.match(/\[\[(?:cue|call):meta:([\s\S]*?)\]\]/i);
+      const cleanMetaHeader = metaMatch ? `${metaMatch[0].replace(/[\r\n]+/g, ' ').trim()}\n\n` : '';
+
       // 1. Detect if script contains multiple sections
       const sectionIndices = [];
       const sectionRegex = /\[\[(?:cue|call):section:([a-zA-Z0-9_\.\-]+)?(?::([^\]]+))?\]\]/g;
@@ -1596,15 +1610,15 @@
       const lessonsToQueue = [];
 
       if (sectionIndices.length > 1) {
-        // Multi-section split: generate individual modular lessons
         logSummary.textContent = `Splitting script into ${sectionIndices.length} modular section lessons...`;
 
         for (let i = 0; i < sectionIndices.length; i++) {
           const current = sectionIndices[i];
           const next = sectionIndices[i + 1];
-          const sectionScript = scriptRaw.slice(current.index, next ? next.index : scriptRaw.length).trim();
+          const rawSlice = scriptRaw.slice(current.index, next ? next.index : scriptRaw.length).trim();
+          const sectionScript = cleanMetaHeader ? `${cleanMetaHeader}${rawSlice}` : rawSlice;
 
-          const pageMatch = sectionScript.match(/\[\[(?:cue|call):(show_page|page|highlight|page_block):(\d+)/i);
+          const pageMatch = rawSlice.match(/\[\[(?:cue|call):(show_page|page|highlight|page_block):(\d+)/i);
           const pageNum = pageMatch ? parseInt(pageMatch[2], 10) : defaultPageNum;
 
           lessonsToQueue.push({
@@ -1620,7 +1634,6 @@
           });
         }
       } else {
-        // Single section queue
         const secTitle = (sectionIndices[0]?.title) || defaultSectionTitle || 'Core Lecture';
         lessonsToQueue.push({
           book_id: bookId,
@@ -1667,7 +1680,6 @@
       btn.disabled = false;
     }
   }
-
   // ========================================================
   // TAB 3: VISUAL GALLERY & 60FPS CINEMA ENGINE
   // ========================================================
