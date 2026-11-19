@@ -413,7 +413,7 @@ function reconcileDualPassTranscripts(pass1Words, pass2Tokens, scriptWords, hard
     return { finalWords, restoredCount, blockedChunks, issues };
 }
 
-async function callGeminiTranscribe(mp3Base64, apiKeyObj, withTimestamps) {
+async function callGeminiTranscribe(mp3Base64, apiKeyObj, withTimestamps, maxSpotRetries = 3) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${apiKeyObj.api_key}`;
     const audioTranscriptionConfig = withTimestamps
         ? { mode: "VERBATIM", wordTimestamp: true }
@@ -431,61 +431,99 @@ async function callGeminiTranscribe(mp3Base64, apiKeyObj, withTimestamps) {
         generationConfig: { audioTranscriptionConfig }
     };
 
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+    const passTag = withTimestamps ? 'Pass2-TS' : 'Pass1-Text';
+    let lastErr = null;
 
-    if (!res.ok) {
-        const errText = await res.text();
-        if (res.status === 429) {
-            await cooldownKey(apiKeyObj.id, 300);
+    for (let spotAttempt = 1; spotAttempt <= maxSpotRetries; spotAttempt++) {
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const errText = await res.text();
+
+                // 429: Key quota rate limit -> trigger 300s cooldown and immediately throw to rotate key
+                if (res.status === 429) {
+                    await cooldownKey(apiKeyObj.id, 300);
+                    const rateLimitErr = new Error(`Gemini Transcribe (${passTag}) HTTP 429: ${errText}`);
+                    rateLimitErr.rawOutput = errText;
+                    rateLimitErr.status = 429;
+                    throw rateLimitErr;
+                }
+
+                // 503 / 502 / 504 / 500: Temporary server/model capacity spikes -> retry on the spot with backoff
+                if ([500, 502, 503, 504].includes(res.status)) {
+                    const is503 = res.status === 503;
+                    if (spotAttempt < maxSpotRetries) {
+                        const delaySec = spotAttempt * 4;
+                        console.warn(`⏳ [${passTag}] Model ${res.status} (${is503 ? 'High Demand Spike' : 'Server Error'}). On-the-spot retry ${spotAttempt}/${maxSpotRetries} in ${delaySec}s...`);
+                        await sleep(delaySec * 1000);
+                        continue;
+                    }
+                }
+
+                const httpErr = new Error(`Gemini Transcribe (${passTag}) HTTP ${res.status}: ${errText}`);
+                httpErr.rawOutput = errText;
+                httpErr.status = res.status;
+                throw httpErr;
+            }
+
+            const json = await res.json();
+            const parts = json.candidates?.[0]?.content?.parts || [];
+
+            if (!withTimestamps) {
+                let fullText = '';
+                for (const p of parts) {
+                    if (p.text) fullText += p.text + ' ';
+                    if (p.audioTranscription?.text) fullText += p.audioTranscription.text + ' ';
+                }
+                fullText = fullText.trim();
+                if (!fullText) {
+                    const emptyErr = new Error(`Gemini Transcribe Pass 1 returned empty text.`);
+                    emptyErr.rawOutput = JSON.stringify(json);
+                    throw emptyErr;
+                }
+                return { fullText, rawJson: json };
+            }
+
+            const rawWords = [];
+            for (const p of parts) {
+                if (Array.isArray(p.audioTranscription?.words)) {
+                    rawWords.push(...p.audioTranscription.words);
+                }
+            }
+
+            const words = rawWords.map(w => ({
+                word: w.word || '',
+                start: Number(parseFloat(w.startOffset || '0').toFixed(2)),
+                end: Number(parseFloat(w.endOffset || '0').toFixed(2))
+            }));
+
+            if (words.length === 0) {
+                const noWordsErr = new Error(`Gemini Transcribe Pass 2 returned empty words array.`);
+                noWordsErr.rawOutput = JSON.stringify(json);
+                throw noWordsErr;
+            }
+
+            return { words, rawJson: json };
+        } catch (networkOrHttpErr) {
+            lastErr = networkOrHttpErr;
+            if (networkOrHttpErr.status === 429) throw networkOrHttpErr;
+
+            // Handle momentary socket resets/timeouts during fetch
+            if (spotAttempt < maxSpotRetries && !networkOrHttpErr.status) {
+                const delaySec = spotAttempt * 4;
+                console.warn(`🌐 [${passTag}] Network glitch (${networkOrHttpErr.message}). On-the-spot retry ${spotAttempt}/${maxSpotRetries} in ${delaySec}s...`);
+                await sleep(delaySec * 1000);
+                continue;
+            }
+            throw networkOrHttpErr;
         }
-        const httpErr = new Error(`Gemini Transcribe (${withTimestamps ? 'Pass2-TS' : 'Pass1-Text'}) HTTP ${res.status}: ${errText}`);
-        httpErr.rawOutput = errText;
-        httpErr.status = res.status;
-        throw httpErr;
     }
-
-    const json = await res.json();
-    const parts = json.candidates?.[0]?.content?.parts || [];
-
-    if (!withTimestamps) {
-        let fullText = '';
-        for (const p of parts) {
-            if (p.text) fullText += p.text + ' ';
-            if (p.audioTranscription?.text) fullText += p.audioTranscription.text + ' ';
-        }
-        fullText = fullText.trim();
-        if (!fullText) {
-            const emptyErr = new Error(`Gemini Transcribe Pass 1 returned empty text.`);
-            emptyErr.rawOutput = JSON.stringify(json);
-            throw emptyErr;
-        }
-        return { fullText, rawJson: json };
-    }
-
-    const rawWords = [];
-    for (const p of parts) {
-        if (Array.isArray(p.audioTranscription?.words)) {
-            rawWords.push(...p.audioTranscription.words);
-        }
-    }
-
-    const words = rawWords.map(w => ({
-        word: w.word || '',
-        start: Number(parseFloat(w.startOffset || '0').toFixed(2)),
-        end: Number(parseFloat(w.endOffset || '0').toFixed(2))
-    }));
-
-    if (words.length === 0) {
-        const noWordsErr = new Error(`Gemini Transcribe Pass 2 returned empty words array.`);
-        noWordsErr.rawOutput = JSON.stringify(json);
-        throw noWordsErr;
-    }
-
-    return { words, rawJson: json };
+    throw lastErr;
 }
 
 async function runWithKeyRetry(label, taskFn, issuesLog, maxAttempts = 3) {
@@ -497,14 +535,17 @@ async function runWithKeyRetry(label, taskFn, issuesLog, maxAttempts = 3) {
             return await taskFn(keyObj);
         } catch (err) {
             lastErr = err;
+            const errCode = err.status === 429 ? 'TRANSCRIBE_KEY_RATE_LIMITED'
+                : (err.status === 503 ? 'TRANSCRIBE_MODEL_HIGH_DEMAND_503' : 'TRANSCRIBE_RETRY');
             issuesLog.push({
                 severity: 'warning',
-                code: err.status === 429 ? 'TRANSCRIBE_KEY_RATE_LIMITED' : 'TRANSCRIBE_RETRY',
+                code: errCode,
                 message: `[${label}] Attempt ${attempt} with Key #${keyObj.id} failed: ${err.message}`
             });
             if (attempt < maxAttempts) {
-                console.warn(`⚠️ [${label}] Attempt ${attempt} failed, rotating key...`);
-                await sleep(1000);
+                const rotateDelay = err.status === 503 ? 4000 : 1500;
+                console.warn(`⚠️ [${label}] Attempt ${attempt} failed (${err.message}), rotating key in ${rotateDelay / 1000}s...`);
+                await sleep(rotateDelay);
             }
         }
     }
