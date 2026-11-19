@@ -38,6 +38,33 @@ export const ensureBlockArray = (raw) => {
     }
     return [];
 };
+export const safeJsonParse = (str) => {
+    if (!str) return null;
+    if (typeof str === 'object') return str;
+    if (typeof str !== 'string') return null;
+    try {
+        return JSON.parse(str);
+    } catch (e1) {
+        try {
+            const sanitized = str
+                .replace(/[\r\n\t]+/g, ' ')
+                .replace(/[\x00-\x1F\x7F]/g, ' ')
+                .trim();
+            return JSON.parse(sanitized);
+        } catch (e2) {
+            try {
+                const cleanedCommas = str
+                    .replace(/[\r\n\t]+/g, ' ')
+                    .replace(/,\s*([\]}])/g, '$1')
+                    .trim();
+                return JSON.parse(cleanedCommas);
+            } catch (e3) {
+                console.warn('[Miron:safeJsonParse] Failed to parse JSON even after sanitization:', e3.message, str.slice(0, 100));
+                return null;
+            }
+        }
+    }
+};
 
 export const parseBulletItem = (rawText) => {
     if (!rawText) return { glyph: '—', content: '' };
@@ -538,7 +565,7 @@ export const useMironLecture = ({
     );
     const latestBullet = activeBullets.length > 0 ? activeBullets[activeBullets.length - 1] : null;
 
-    // Parse Bookend Presentation Card Payload (Strictly Intro & Summary)
+    // Parse Bookend Presentation Card Payload (Strictly Intro & Summary) with bulletproof multi-line handling
     const activeCardData = useMemo(() => {
         if (!activeCardCue) return null;
         const raw = activeCardCue.target;
@@ -548,14 +575,12 @@ export const useMironLecture = ({
         if (raw && typeof raw === 'object') {
             parsed = raw;
         } else if (typeof raw === 'string') {
-            try {
-                parsed = JSON.parse(raw);
-            } catch (e) {
-                const match = raw.match(/^([a-zA-Z0-9_\-]+):([\s\S]*)$/);
-                if (match) {
-                    defaultMode = match[1];
-                    try { parsed = JSON.parse(match[2]); } catch (err) {}
-                }
+            const match = raw.match(/^([a-zA-Z0-9_\-]+):([\s\S]*)$/);
+            if (match) {
+                defaultMode = match[1];
+                parsed = safeJsonParse(match[2]);
+            } else {
+                parsed = safeJsonParse(raw);
             }
         }
 
@@ -571,43 +596,55 @@ export const useMironLecture = ({
         return null;
     }, [activeCardCue]);
 
-    // Parse Quiz Payload (Supports JSON string, prefix "mc:{...}", or object)
+    // Parse Quiz Payload (Supports JSON string, prefix "mc:{...}", or object) with multi-line fault tolerance
     const activeQuizData = useMemo(() => {
-        if (!activeQuizCue || completedQuizTimes.has(activeQuizCue.time)) return null;
+        if (!activeQuizCue) return null;
+        const isCompleted = completedQuizTimes.has(activeQuizCue.time) ||
+            completedQuizTimes.has(Number(activeQuizCue.time)) ||
+            completedQuizTimes.has(Number(Number(activeQuizCue.time).toFixed(2)));
+        if (isCompleted) return null;
+
         const raw = activeQuizCue.target;
         if (!raw) return null;
         if (typeof raw === 'object') return raw;
         if (typeof raw === 'string') {
             const match = raw.match(/^(mc|tf):([\s\S]*)$/i);
             if (match) {
-                try {
-                    const parsed = JSON.parse(match[2]);
-                    if (parsed && typeof parsed === 'object') {
-                        return { type: match[1].toLowerCase(), ...parsed };
-                    }
-                } catch (err) {}
+                const parsed = safeJsonParse(match[2]);
+                if (parsed && typeof parsed === 'object') {
+                    return { type: match[1].toLowerCase(), ...parsed };
+                }
             }
-            try {
-                return JSON.parse(raw);
-            } catch (e) {}
+            return safeJsonParse(raw);
         }
         return null;
     }, [activeQuizCue, completedQuizTimes]);
 
     // Auto-Pause Checkpoint Gate: pauses audio when an uncompleted quiz cue is reached
     useEffect(() => {
-        if (activeQuizCue && activeQuizData && !completedQuizTimes.has(activeQuizCue.time) && isPlaying) {
-            if (audioRef.current && !audioRef.current.paused) {
-                audioRef.current.pause();
+        if (activeQuizCue && activeQuizData && isPlaying) {
+            const isCompleted = completedQuizTimes.has(activeQuizCue.time) ||
+                completedQuizTimes.has(Number(activeQuizCue.time)) ||
+                completedQuizTimes.has(Number(Number(activeQuizCue.time).toFixed(2)));
+            if (!isCompleted) {
+                if (audioRef.current && !audioRef.current.paused) {
+                    audioRef.current.pause();
+                }
+                setIsPlaying(false);
+                console.log(`🛑 [Miron Quiz Checkpoint] Auto-paused at ${activeQuizCue.time}s for interactive quiz`);
             }
-            setIsPlaying(false);
-            console.log(`🛑 [Miron Quiz Checkpoint] Auto-paused at ${activeQuizCue.time}s for interactive quiz`);
         }
     }, [activeQuizCue, activeQuizData, completedQuizTimes, isPlaying]);
 
     const resumeFromQuiz = (quizTime) => {
         if (quizTime !== undefined) {
-            setCompletedQuizTimes(prev => new Set(prev).add(quizTime));
+            setCompletedQuizTimes(prev => {
+                const next = new Set(prev);
+                next.add(quizTime);
+                next.add(Number(quizTime));
+                next.add(Number(Number(quizTime).toFixed(2)));
+                return next;
+            });
         }
         if (audioRef.current && audioLesson?.audio_url) {
             audioRef.current.play()
