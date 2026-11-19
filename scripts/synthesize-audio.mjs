@@ -28,8 +28,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function cleanScriptForTTS(rawScript) {
+    const quizCueRegex = /\[\[(?:cue|call):(?:quiz|interactive_quiz)(?::[\s\S]*?)?\]\]/gi;
     const cueRegex = /\[\[(?:cue|call):[a-zA-Z0-9_\-]+(?::[\s\S]*?)?\]\]/g;
-    return rawScript.replace(cueRegex, '').replace(/\s+/g, ' ').trim();
+    return rawScript
+        .replace(quizCueRegex, ' <long pause> ')
+        .replace(cueRegex, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 function auditRawScriptSyntax(rawScript) {
