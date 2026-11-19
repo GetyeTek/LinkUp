@@ -192,7 +192,7 @@
     /* NAVIGATION TABS */
     .tabs-nav {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -901,8 +901,8 @@
         font-size: 18px;
       }
       .tabs-nav {
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
       }
       .tab-btn {
         padding: 9px 8px;
@@ -958,8 +958,18 @@
   </header>
 
   <!-- UNIFIED PIPELINE CONFIG BAR -->
-  <div class="card">
-    <div class="grid-4">
+  <div class="card" style="padding: 12px 18px; gap: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleConfigPanel()">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 14px;">⚙️</span>
+        <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Pipeline Credentials & Endpoints</span>
+        <span id="config-status-badge" style="font-size: 10px; font-weight: 700; color: var(--green); background: var(--green-dim); border: 1px solid var(--green); padding: 1px 7px; border-radius: 99px;">Ready</span>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-config" style="padding: 4px 10px; min-height: 28px; font-size: 11px;">
+        <span id="config-toggle-icon">▼</span> <span id="config-toggle-text">Configure</span>
+      </button>
+    </div>
+    <div id="config-inputs-grid" class="grid-4" style="display: none; padding-top: 8px; border-top: 1px solid var(--border);">
       <div>
         <label>Course Code</label>
         <input type="text" id="global-course-code" value="" placeholder="e.g. PSYC 1011" oninput="handleGlobalCourseChange(this.value)">
@@ -979,33 +989,73 @@
     </div>
   </div>
 
-  <!-- NAVIGATION TABS (4 TABS) -->
+  <!-- NAVIGATION TABS (3 TABS) -->
   <nav class="tabs-nav">
     <button class="tab-btn active" id="tab-btn-visuals" onclick="switchMainTab('visuals')">
-      🎨 1. Visuals XML
+      🎨 1. Visuals Studio
     </button>
     <button class="tab-btn" id="tab-btn-script" onclick="switchMainTab('script')">
       🎙️ 2. Audio Queue
     </button>
-    <button class="tab-btn" id="tab-btn-preview" onclick="switchMainTab('preview')">
-      👁️ 3. Cinema Stage
-    </button>
     <button class="tab-btn" id="tab-btn-flux" onclick="switchMainTab('flux')">
-      📸 4. Flux AI Studio
+      📸 3. Flux AI Studio
     </button>
   </nav>
 
-  <!-- TAB 1: XML VISUALS INGESTION -->
+  <!-- TAB 1: VISUALS STUDIO (XML INGESTION & CINEMA STAGE) -->
   <div class="card" id="tab-panel-visuals">
-    <div>
-      <label>Course Visuals XML (<infographic> / <course_visuals>)</label>
-      <textarea id="xml-input" placeholder="Paste <course_visuals> XML content here..."></textarea>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div class="segmented-control">
+        <button class="segment-btn active" id="subtab-btn-vis-xml" onclick="switchVisualsSubTab('xml')">
+          🚀 Ingest XML
+        </button>
+        <button class="segment-btn" id="subtab-btn-vis-cinema" onclick="switchVisualsSubTab('cinema')">
+          👁️ Cinema Stage
+        </button>
+      </div>
+      <div id="vis-xml-actions" style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary btn-sm" onclick="switchVisualsSubTab('cinema'); renderPreviewFromInput();">
+          👁️ Preview Rendered Stage
+        </button>
+      </div>
     </div>
-    <button class="btn" id="btn-ingest-xml" onclick="handleIngestXml()">
-      🚀 Parse & Ingest Visuals to Supabase
-    </button>
-  </div>
 
+    <!-- SUBVIEW A: XML INGESTION -->
+    <div id="vis-subview-xml" style="display: flex; flex-direction: column; gap: 14px;">
+      <div>
+        <label>Course Visuals XML (<infographic> / <course_visuals>)</label>
+        <textarea id="xml-input" placeholder="Paste <course_visuals> XML content here..."></textarea>
+      </div>
+      <button class="btn" id="btn-ingest-xml" onclick="handleIngestXml()">
+        🚀 Parse & Ingest Visuals to Supabase
+      </button>
+    </div>
+
+    <!-- SUBVIEW B: CINEMA STAGE -->
+    <div id="vis-subview-cinema" style="display: none; flex-direction: column; gap: 14px;">
+      <div class="preview-toolbar">
+        <div class="preview-actions-left">
+          <button class="btn btn-sm" onclick="renderPreviewFromInput()">
+            🔄 Render from XML
+          </button>
+          <div class="view-mode-pill">
+            <button class="mode-pill-btn active" id="btn-topo-desktop" onclick="setPreviewTopology('desktop')">
+              💻 Desktop
+            </button>
+            <button class="mode-pill-btn" id="btn-topo-mobile" onclick="setPreviewTopology('mobile')">
+              📱 Mobile
+            </button>
+          </div>
+        </div>
+        <span class="preview-count-tag" id="preview-count">0 diagrams loaded</span>
+      </div>
+      <div class="preview-gallery-grid" id="preview-gallery-container">
+        <p style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0;">
+          Paste your <course_visuals> XML in the XML Ingest subtab, then click <strong>Render from XML</strong> to view all rendered graphics.
+        </p>
+      </div>
+    </div>
+  </div>
   <!-- TAB 2: MASTER SCRIPT QUEUE -->
   <div class="card" id="tab-panel-script" style="display: none;">
     <div class="grid-3">
@@ -1053,30 +1103,7 @@
     </div>
   </div>
 
-  <!-- TAB 3: VISUAL GALLERY & PREVIEW -->
-  <div class="card" id="tab-panel-preview" style="display: none;">
-    <div class="preview-toolbar">
-      <div class="preview-actions-left">
-        <button class="btn btn-sm" onclick="renderPreviewFromInput()">
-          🔄 Render from XML
-        </button>
-        <div class="view-mode-pill">
-          <button class="mode-pill-btn active" id="btn-topo-desktop" onclick="setPreviewTopology('desktop')">
-            💻 Desktop
-          </button>
-          <button class="mode-pill-btn" id="btn-topo-mobile" onclick="setPreviewTopology('mobile')">
-            📱 Mobile
-          </button>
-        </div>
-      </div>
-      <span class="preview-count-tag" id="preview-count">0 diagrams loaded</span>
-    </div>
-    <div class="preview-gallery-grid" id="preview-gallery-container">
-      <p style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0;">
-        Paste your <course_visuals> XML in Tab 1, then click <strong>Render from XML</strong> to view all rendered graphics.
-      </p>
-    </div>
-  </div>
+
 
   <!-- TAB 4: FLUX AI IMAGE STUDIO -->
   <div class="card" id="tab-panel-flux" style="display: none;">
@@ -1234,6 +1261,17 @@
       document.getElementById('global-course-code').value = savedCourse;
       handleGlobalCourseChange(savedCourse);
     }
+
+    const badge = document.getElementById('config-status-badge');
+    if (!savedUrl || !savedKey) {
+      if (badge) {
+        badge.textContent = 'Setup Needed';
+        badge.style.color = 'var(--amber)';
+        badge.style.borderColor = 'var(--amber)';
+        badge.style.background = 'rgba(245, 158, 11, 0.12)';
+      }
+      toggleConfigPanel();
+    }
   });
 
   function saveCredentials() {
@@ -1282,19 +1320,53 @@
     container.scrollTop = container.scrollHeight;
   }
 
-  // --- TAB SWITCHING ---
+  // --- TAB SWITCHING & COLLAPSIBLE CONFIG ---
+  function toggleConfigPanel() {
+    const grid = document.getElementById('config-inputs-grid');
+    const icon = document.getElementById('config-toggle-icon');
+    const text = document.getElementById('config-toggle-text');
+    if (!grid) return;
+    const isClosed = grid.style.display === 'none';
+    grid.style.display = isClosed ? 'grid' : 'none';
+    if (icon) icon.textContent = isClosed ? '▲' : '▼';
+    if (text) text.textContent = isClosed ? 'Collapse' : 'Configure';
+  }
+
   function switchMainTab(mode) {
-    ['visuals', 'script', 'preview', 'flux'].forEach(m => {
-      document.getElementById(`tab-btn-${m}`).className = `tab-btn ${mode === m ? 'active' : ''}`;
-      document.getElementById(`tab-panel-${m}`).style.display = mode === m ? 'flex' : 'none';
+    if (mode === 'preview') {
+      switchMainTab('visuals');
+      switchVisualsSubTab('cinema');
+      return;
+    }
+
+    ['visuals', 'script', 'flux'].forEach(m => {
+      const btn = document.getElementById(`tab-btn-${m}`);
+      const panel = document.getElementById(`tab-panel-${m}`);
+      if (btn) btn.className = `tab-btn ${mode === m ? 'active' : ''}`;
+      if (panel) panel.style.display = mode === m ? 'flex' : 'none';
     });
 
-    if (mode === 'preview' && cachedParsedVisuals.length === 0) {
-      renderPreviewFromInput();
+    if (mode === 'visuals') {
+      const isCinemaActive = document.getElementById('subtab-btn-vis-cinema')?.classList.contains('active');
+      if (isCinemaActive && cachedParsedVisuals.length === 0) {
+        renderPreviewFromInput();
+      }
     }
     if (mode === 'flux') {
-      const isBrowserActive = document.getElementById('subtab-btn-browser').classList.contains('active');
+      const isBrowserActive = document.getElementById('subtab-btn-browser')?.classList.contains('active');
       if (isBrowserActive) fetchSupabaseGallery();
+    }
+  }
+
+  function switchVisualsSubTab(subTab) {
+    document.getElementById('subtab-btn-vis-xml').className = `segment-btn ${subTab === 'xml' ? 'active' : ''}`;
+    document.getElementById('subtab-btn-vis-cinema').className = `segment-btn ${subTab === 'cinema' ? 'active' : ''}`;
+
+    document.getElementById('vis-subview-xml').style.display = subTab === 'xml' ? 'flex' : 'none';
+    document.getElementById('vis-subview-cinema').style.display = subTab === 'cinema' ? 'flex' : 'none';
+
+    if (subTab === 'cinema') {
+      renderPreviewFromInput();
     }
   }
 
