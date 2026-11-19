@@ -139,11 +139,26 @@ async function generateSpeechTTS(text, apiKeyObj) {
         }
     };
 
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+    const ttsTimeoutMs = 240000;
+    const ctrl = new AbortController();
+    const timerId = setTimeout(() => ctrl.abort(new Error(`Gemini TTS timeout after ${ttsTimeoutMs / 1000}s`)), ttsTimeoutMs);
+
+    let res;
+    try {
+        res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: ctrl.signal
+        });
+    } catch (err) {
+        if (ctrl.signal.aborted) {
+            throw new Error(`Gemini TTS timeout after ${ttsTimeoutMs / 1000}s`);
+        }
+        throw err;
+    } finally {
+        clearTimeout(timerId);
+    }
 
     if (!res.ok) {
         const errText = await res.text();
