@@ -1106,7 +1106,7 @@ async function auditDatabaseReferences(lesson, timeline) {
                             ? b.body
                             : (Array.isArray(b?.items) ? b.items.map(it => typeof it === 'string' ? it : (it?.text || '')).join(' ') : '');
                         return text.toLowerCase().includes(lowerPhrase) || normalizeQ(text).includes(normPhrase);
-                    });</find>
+                    });
                     if (!found) {
                         highlightMismatches.push(hc);
                         issues.push({
