@@ -156,10 +156,28 @@ function levenshteinDistance(s1, s2) {
     return prev[n];
 }
 
+const AMHARIC_NUM_WORDS = {
+    '1': 'አንድ', '2': 'ሁለት', '3': 'ሶስት', '4': 'አራት', '5': 'አምስት',
+    '6': 'ስድስት', '7': 'ሰባት', '8': 'ስምንት', '9': 'ዘጠኝ', '10': 'አስር',
+    '11': 'አስራአንድ', '12': 'አስራሁለት', '13': 'አስራሶስት'
+};
+
+function isGarbledPass2Token(word) {
+    if (!word) return false;
+    // Detect non-Ethiopic/non-Latin foreign scripts (e.g. Hangul "퀴즈")
+    if (/[^\u1200-\u137F\u0020-\u024F\u2000-\u206F0-9]/.test(word)) return true;
+    // Detect single-token mixed Ethiopic+Latin syllable typos (e.g. "ደግmo"), preserving valid prefixes/suffixes like "በpsychology"
+    const cleanW = cleanPunct(word);
+    const ethCount = (cleanW.match(/[\u1200-\u137F]/g) || []).length;
+    const latCount = (cleanW.match(/[a-zA-Z]/g) || []).length;
+    return ethCount >= 2 && latCount > 0 && latCount <= 2;
+}
+
 function computeWordSimilarity(norm1, norm2) {
     if (!norm1 && !norm2) return 1.0;
     if (!norm1 || !norm2) return 0.0;
     if (norm1 === norm2) return 1.0;
+    if (AMHARIC_NUM_WORDS[norm1] === norm2 || AMHARIC_NUM_WORDS[norm2] === norm1) return 1.0;
     const maxLen = Math.max(norm1.length, norm2.length);
     if (maxLen === 0) return 1.0;
     const dist = levenshteinDistance(norm1, norm2);
@@ -282,9 +300,29 @@ function reconcileDualPassTranscripts(pass1Tokens, pass2Tokens, scriptWords, har
     const alignmentHints = [];
     const transliteratedLog = [];
     const restoredChunksLog = [];
+    const pendingRescues = [];
     const blockedChunks = [];
     const issues = [];
     let restoredCount = 0;
+
+    const insertWordsIntoSpan = (wordsArr, winStart, winEnd) => {
+        const span = Math.max(0, winEnd - winStart);
+        const totalC = wordsArr.reduce((acc, w) => acc + Math.max(2, cleanPunct(w).length), 0);
+        if (span <= 0.02 || totalC === 0) return 0;
+        let cursor = winStart;
+        let inserted = 0;
+        for (const w of wordsArr) {
+            const weight = Math.max(2, cleanPunct(w).length) / totalC;
+            const dur = span * weight;
+            const wStart = Number(Math.min(winEnd, cursor).toFixed(2));
+            const wEnd = Number(Math.min(winEnd, cursor + dur).toFixed(2));
+            finalWords.push({ word: w, start: wStart, end: Math.max(wStart, wEnd) });
+            alignmentHints.push([]);
+            cursor += dur;
+            inserted++;
+        }
+        return inserted;
+    };
 
     let k = 0;
     while (k < alignedPairs.length) {
@@ -293,28 +331,30 @@ function reconcileDualPassTranscripts(pass1Tokens, pass2Tokens, scriptWords, har
         if (item.type === 'match') {
             const tok = pass2Tokens[item.bIdx];
             const p1Tok = pass1Tokens[item.aIdx];
+            const useCleanP1 = isGarbledPass2Token(tok.word) && p1Tok?.word && !isGarbledPass2Token(p1Tok.word);
             finalWords.push({
-                word: tok.word,
+                word: useCleanP1 ? p1Tok.word : tok.word,
                 start: Number(tok.start.toFixed(2)),
                 end: Number(tok.end.toFixed(2))
             });
             alignmentHints.push(p1Tok?.word && p1Tok.word !== tok.word ? [p1Tok.word] : []);
             k++;
         } else if (item.type === 'mismatch') {
-            // Preserve Pass 2's transliteration/word as-is; keep Flash's English word in log & alignmentHints
+            // Preserve Pass 2's valid Ethiopic transliteration as-is; swap only if Pass 2 leaked foreign/garbled script
             const tok = pass2Tokens[item.bIdx];
             const p1Tok = pass1Tokens[item.aIdx];
             const start = Number(tok.start.toFixed(2));
             const end = Number(tok.end.toFixed(2));
+            const useCleanP1 = isGarbledPass2Token(tok.word) && p1Tok?.word && !isGarbledPass2Token(p1Tok.word);
 
             finalWords.push({
-                word: tok.word,
+                word: useCleanP1 ? p1Tok.word : tok.word,
                 start,
                 end
             });
             alignmentHints.push(p1Tok?.word ? [p1Tok.word] : []);
 
-            if (p1Tok?.word && /[a-zA-Z]/.test(p1Tok.word)) {
+            if (p1Tok?.word && /[a-zA-Z]/.test(p1Tok.word) && !useCleanP1) {
                 transliteratedLog.push({
                     pass2_word: tok.word,
                     flash_english: p1Tok.word,
@@ -364,7 +404,6 @@ function reconcileDualPassTranscripts(pass1Tokens, pass2Tokens, scriptWords, har
             const minFeasibleSec = Math.max(missingChunk.length * MIN_SEC_PER_WORD, totalChars / MAX_FEASIBLE_CHARS_PER_SEC);
             const inScript = containsNormalizedPhrase(normalizedScriptWords, missingChunk);
 
-            // Extract Flash's suggested neighborhood window as a soft environment hint
             const flashStarts = missingTokens.map(t => t.flashStart).filter(v => typeof v === 'number');
             const flashEnds = missingTokens.map(t => t.flashEnd).filter(v => typeof v === 'number');
             const flashMinStart = flashStarts.length > 0 ? Math.min(...flashStarts) : null;
@@ -374,65 +413,38 @@ function reconcileDualPassTranscripts(pass1Tokens, pass2Tokens, scriptWords, har
                 const tailEnd = hardwareDuration > prevEnd ? hardwareDuration : prevEnd;
                 const availTail = Math.max(0, tailEnd - prevEnd);
                 if (availTail < minFeasibleSec) {
-                    if (hasAdjacentPass2Unmatched) {
-                        if (alignmentHints.length > 0) {
-                            alignmentHints[alignmentHints.length - 1].push(...missingChunk);
-                        }
-                        if (missingChunk.some(w => /[a-zA-Z]/.test(w))) {
-                            transliteratedLog.push({
-                                pass2_word: lastGood?.word || '(adjacent)',
-                                flash_english: missingChunk.join(' '),
-                                start: prevEnd,
-                                end: tailEnd,
-                                covered_adjacent: true
-                            });
-                        }
+                    if (hasAdjacentPass2Unmatched && missingChunk.length <= 4 && totalChars <= 30) {
+                        if (alignmentHints.length > 0) alignmentHints[alignmentHints.length - 1].push(...missingChunk);
                         continue;
                     }
-                    if (missingChunk.length >= 3 || totalChars > 15) {
-                        const reason = inScript ? 'INFEASIBLE_TAIL_GAP_BLOCKED' : 'PASS1_TAIL_HALLUCINATION_BLOCKED';
-                        blockedChunks.push({
-                            reason,
-                            words: missingChunk.join(' '),
-                            word_count: missingChunk.length,
-                            char_count: totalChars,
-                            gap_sec: Number(availTail.toFixed(3)),
-                            min_feasible_sec: Number(minFeasibleSec.toFixed(3)),
-                            prev_anchor: prevAnchorLabel,
-                            next_anchor: `[Audio End] (${tailEnd.toFixed(2)}s)`,
-                            in_script_raw: inScript
-                        });
+                    if (missingChunk.length <= 2 && totalChars <= 15) {
                         issues.push({
-                            severity: 'flagged',
-                            code: reason,
-                            message: `Blocked tail insertion of ${missingChunk.length} words (${totalChars} chars) into ${availTail.toFixed(2)}s tail gap.`
+                            severity: 'warning',
+                            code: 'SINGLE_WORD_SEAM_SKIPPED',
+                            message: `Skipped ${missingChunk.length} word(s) ("${missingChunk.join(' ')}") at ${availTail.toFixed(2)}s tail seam.`
+                        });
+                    } else {
+                        pendingRescues.push({
+                            missingChunk, totalChars, minFeasibleSec, inScript,
+                            approxTime: prevEnd, flashMinStart, flashMaxEnd,
+                            prevAnchorLabel, nextAnchorLabel: `[Audio End] (${tailEnd.toFixed(2)}s)`
                         });
                     }
                     continue;
                 }
 
                 const span = Math.min(availTail, Math.max(missingChunk.length * 0.45, totalChars / 12.0));
-                if (span <= 0.02) continue;
-
-                let cursor = prevEnd;
-                const insertedStart = Number(cursor.toFixed(2));
-                for (const w of missingChunk) {
-                    const weight = Math.max(2, cleanPunct(w).length) / totalChars;
-                    const dur = span * weight;
-                    const wStart = Number(cursor.toFixed(2));
-                    const wEnd = Number(Math.min(tailEnd, cursor + dur).toFixed(2));
-                    finalWords.push({ word: w, start: wStart, end: Math.max(wStart, wEnd) });
-                    alignmentHints.push([]);
-                    cursor += dur;
-                    restoredCount++;
+                const inserted = insertWordsIntoSpan(missingChunk, prevEnd, prevEnd + span);
+                if (inserted > 0) {
+                    restoredCount += inserted;
+                    restoredChunksLog.push({
+                        words: missingChunk.join(' '),
+                        word_count: missingChunk.length,
+                        start: Number(prevEnd.toFixed(2)),
+                        end: Number((prevEnd + span).toFixed(2)),
+                        gap_sec: Number(availTail.toFixed(2))
+                    });
                 }
-                restoredChunksLog.push({
-                    words: missingChunk.join(' '),
-                    word_count: missingChunk.length,
-                    start: insertedStart,
-                    end: Number(Math.min(tailEnd, cursor).toFixed(2)),
-                    gap_sec: Number(availTail.toFixed(2))
-                });
                 continue;
             }
 
@@ -441,8 +453,8 @@ function reconcileDualPassTranscripts(pass1Tokens, pass2Tokens, scriptWords, har
             const realGap = nextStart - prevEnd;
 
             if (realGap < minFeasibleSec) {
-                // Pass 2 already has adjacent transliterated/unmatched tokens here -> do not duplicate or flag false error
-                if (hasAdjacentPass2Unmatched) {
+                // Only treat small <=4 word splits as covered by an adjacent Pass 2 transliteration
+                if (hasAdjacentPass2Unmatched && missingChunk.length <= 4 && totalChars <= 30) {
                     if (alignmentHints.length > 0 && prevPair && (prevPair.type === 'b_only' || prevPair.type === 'mismatch')) {
                         alignmentHints[alignmentHints.length - 1].push(...missingChunk);
                     }
@@ -458,37 +470,33 @@ function reconcileDualPassTranscripts(pass1Tokens, pass2Tokens, scriptWords, har
                     continue;
                 }
 
-                // Tiny 1-2 word Pass 2 continuous-speech seam -> only clamp if real physical gap >= 0.05s
-                if (missingChunk.length <= 2 && totalChars <= 15 && realGap >= 0.05) {
-                    issues.push({
-                        severity: 'warning',
-                        code: 'TIGHT_GAP_CLAMPED',
-                        message: `Clamped ${missingChunk.length} word(s) ("${missingChunk.join(' ')}") into tight ${realGap.toFixed(2)}s gap between ${prevAnchorLabel} and ${nextAnchorLabel}.`
-                    });
+                // Harmless 1-2 word tight seam: clamp if >= 0.05s, or downgrade 0.00s seam to warning
+                if (missingChunk.length <= 2 && totalChars <= 15) {
+                    if (realGap >= 0.05) {
+                        issues.push({
+                            severity: 'warning',
+                            code: 'TIGHT_GAP_CLAMPED',
+                            message: `Clamped ${missingChunk.length} word(s) ("${missingChunk.join(' ')}") into tight ${realGap.toFixed(2)}s gap between ${prevAnchorLabel} and ${nextAnchorLabel}.`
+                        });
+                    } else {
+                        issues.push({
+                            severity: 'warning',
+                            code: 'SINGLE_WORD_SEAM_SKIPPED',
+                            message: `Skipped ${missingChunk.length} word(s) ("${missingChunk.join(' ')}") at ${realGap.toFixed(2)}s seam between ${prevAnchorLabel} and ${nextAnchorLabel}.`
+                        });
+                        continue;
+                    }
                 } else {
-                    const reason = inScript ? 'INFEASIBLE_GAP_BLOCKED' : 'PASS1_HALLUCINATION_BLOCKED';
-                    blockedChunks.push({
-                        reason,
-                        words: missingChunk.join(' '),
-                        word_count: missingChunk.length,
-                        char_count: totalChars,
-                        gap_sec: Number(realGap.toFixed(3)),
-                        min_feasible_sec: Number(minFeasibleSec.toFixed(3)),
-                        prev_anchor: prevAnchorLabel,
-                        next_anchor: nextAnchorLabel,
-                        in_script_raw: inScript
-                    });
-                    issues.push({
-                        severity: 'flagged',
-                        code: reason,
-                        message: `Refused to force-insert ${missingChunk.length} words (${totalChars} chars, needs >=${minFeasibleSec.toFixed(2)}s) into ${realGap.toFixed(2)}s gap between ${prevAnchorLabel} and ${nextAnchorLabel}.`
+                    // Defer multi-word blocked chunks to nearby dead-zone rescue pass
+                    pendingRescues.push({
+                        missingChunk, totalChars, minFeasibleSec, inScript,
+                        approxTime: prevEnd, flashMinStart, flashMaxEnd,
+                        prevAnchorLabel, nextAnchorLabel
                     });
                     continue;
                 }
             }
 
-            // Genuine empty gap in Pass 2! Use Pass 2 anchors [prevEnd, nextStart] as ground truth,
-            // consulting Flash's suggested [flashMinStart, flashMaxEnd] only if the gap is oversized.
             let winStart = prevEnd;
             let winEnd = nextStart;
             const isOversizedGap = realGap > Math.max(6.0, totalChars * 0.45);
@@ -498,43 +506,140 @@ function reconcileDualPassTranscripts(pass1Tokens, pass2Tokens, scriptWords, har
                 if ((clampedEnd - clampedStart) >= minFeasibleSec) {
                     winStart = clampedStart;
                     winEnd = clampedEnd;
-                } else {
-                    issues.push({
-                        severity: 'warning',
-                        code: 'SPARSE_GAP_WARNING',
-                        message: `Long ${realGap.toFixed(2)}s gap for ${missingChunk.length} words ("${missingChunk.join(' ')}") between ${prevAnchorLabel} and ${nextAnchorLabel}.`
-                    });
                 }
             }
 
-            const winSpan = Math.max(0, winEnd - winStart);
-            let cursor = winStart;
-            for (const w of missingChunk) {
-                const weight = Math.max(2, cleanPunct(w).length) / totalChars;
-                const dur = winSpan * weight;
-                const wStart = Number(Math.min(winEnd, cursor).toFixed(2));
-                const wEnd = Number(Math.min(winEnd, cursor + dur).toFixed(2));
-                finalWords.push({
-                    word: w,
-                    start: wStart,
-                    end: Math.max(wStart, wEnd)
+            const inserted = insertWordsIntoSpan(missingChunk, winStart, winEnd);
+            if (inserted > 0) {
+                restoredCount += inserted;
+                restoredChunksLog.push({
+                    words: missingChunk.join(' '),
+                    word_count: missingChunk.length,
+                    start: Number(winStart.toFixed(2)),
+                    end: Number(winEnd.toFixed(2)),
+                    gap_sec: Number(realGap.toFixed(2))
                 });
-                alignmentHints.push([]);
-                cursor += dur;
-                restoredCount++;
+            }
+        }
+    }
+
+    // Post-Stitch Dead-Zone Rescue Pass: catches chunks misaligned onto a 0s seam next to a real empty gap
+    if (pendingRescues.length > 0 && finalWords.length > 0) {
+        // 1. Trim abnormally stretched single Pass 2 words (> 2.5s) near a pending rescue that mask a real gap
+        for (const cand of pendingRescues) {
+            for (const wObj of finalWords) {
+                const dur = wObj.end - wObj.start;
+                if (dur > 2.5 && Math.abs(wObj.end - cand.approxTime) <= 3.0) {
+                    const maxNatural = Math.min(1.5, Math.max(0.45, cleanPunct(wObj.word).length * 0.14));
+                    wObj.end = Number((wObj.start + maxNatural).toFixed(2));
+                }
+            }
+        }
+
+        const consumedGapKeys = new Set();
+        for (const cand of pendingRescues) {
+            const ordered = [...finalWords].sort((a, b) => a.start - b.start);
+            const searchMin = Math.max(0, (cand.flashMinStart !== null ? Math.min(cand.approxTime, cand.flashMinStart) : cand.approxTime) - 8.0);
+            const searchMax = (cand.flashMaxEnd !== null ? Math.max(cand.approxTime, cand.flashMaxEnd) : cand.approxTime) + 12.0;
+
+            const candidateGaps = [];
+            for (let g = 0; g < ordered.length - 1; g++) {
+                const gs = ordered[g].end;
+                const ge = ordered[g + 1].start;
+                const gd = ge - gs;
+                const key = `${gs.toFixed(2)}-${ge.toFixed(2)}`;
+                if (gd >= 1.2 && ge >= searchMin && gs <= searchMax && !consumedGapKeys.has(key)) {
+                    candidateGaps.push({ gs, ge, gd, key, dist: Math.abs(gs - cand.approxTime) });
+                }
+            }
+            if (hardwareDuration > ordered[ordered.length - 1].end) {
+                const gs = ordered[ordered.length - 1].end;
+                const ge = hardwareDuration;
+                const gd = ge - gs;
+                const key = `${gs.toFixed(2)}-${ge.toFixed(2)}`;
+                if (gd >= 1.2 && ge >= searchMin && gs <= searchMax && !consumedGapKeys.has(key)) {
+                    candidateGaps.push({ gs, ge, gd, key, dist: Math.abs(gs - cand.approxTime) });
+                }
             }
 
-            restoredChunksLog.push({
-                words: missingChunk.join(' '),
-                word_count: missingChunk.length,
-                start: Number(winStart.toFixed(2)),
-                end: Number(winEnd.toFixed(2)),
-                gap_sec: Number(realGap.toFixed(2))
+            candidateGaps.sort((a, b) => a.dist - b.dist);
+            const minRequired = cand.minFeasibleSec * 0.65;
+            const singleGap = candidateGaps.find(g => g.gd >= minRequired);
+
+            if (singleGap) {
+                consumedGapKeys.add(singleGap.key);
+                const inserted = insertWordsIntoSpan(cand.missingChunk, singleGap.gs, singleGap.ge);
+                restoredCount += inserted;
+                restoredChunksLog.push({
+                    words: cand.missingChunk.join(' '),
+                    word_count: cand.missingChunk.length,
+                    start: Number(singleGap.gs.toFixed(2)),
+                    end: Number(singleGap.ge.toFixed(2)),
+                    gap_sec: Number(singleGap.gd.toFixed(2)),
+                    rescued_nearby_gap: true
+                });
+                continue;
+            }
+
+            // Check if 2 adjacent gaps separated by minor noise tokens combine to >= minRequired
+            if (candidateGaps.length >= 2) {
+                const pair = candidateGaps.slice(0, 2).sort((a, b) => a.gs - b.gs);
+                const combinedDur = pair[0].gd + pair[1].gd;
+                if (combinedDur >= minRequired && (pair[1].gs - pair[0].ge) <= 3.5) {
+                    consumedGapKeys.add(pair[0].key);
+                    consumedGapKeys.add(pair[1].key);
+                    const splitIdx = Math.max(1, Math.min(cand.missingChunk.length - 1, Math.round(cand.missingChunk.length * (pair[0].gd / combinedDur))));
+                    const firstPart = cand.missingChunk.slice(0, splitIdx);
+                    const secondPart = cand.missingChunk.slice(splitIdx);
+                    restoredCount += insertWordsIntoSpan(firstPart, pair[0].gs, pair[0].ge);
+                    restoredCount += insertWordsIntoSpan(secondPart, pair[1].gs, pair[1].ge);
+                    restoredChunksLog.push({
+                        words: cand.missingChunk.join(' '),
+                        word_count: cand.missingChunk.length,
+                        start: Number(pair[0].gs.toFixed(2)),
+                        end: Number(pair[1].ge.toFixed(2)),
+                        gap_sec: Number(combinedDur.toFixed(2)),
+                        rescued_split_gaps: true
+                    });
+                    continue;
+                }
+            }
+
+            const reason = cand.inScript ? 'INFEASIBLE_GAP_BLOCKED' : 'PASS1_HALLUCINATION_BLOCKED';
+            blockedChunks.push({
+                reason,
+                words: cand.missingChunk.join(' '),
+                word_count: cand.missingChunk.length,
+                char_count: cand.totalChars,
+                gap_sec: 0,
+                min_feasible_sec: Number(cand.minFeasibleSec.toFixed(3)),
+                prev_anchor: cand.prevAnchorLabel,
+                next_anchor: cand.nextAnchorLabel,
+                in_script_raw: cand.inScript
+            });
+            issues.push({
+                severity: 'flagged',
+                code: reason,
+                message: `Refused to force-insert ${cand.missingChunk.length} words (${cand.totalChars} chars, needs >=${cand.minFeasibleSec.toFixed(2)}s) near ${cand.prevAnchorLabel} and ${cand.nextAnchorLabel}.`
             });
         }
     }
 
-    return { finalWords, alignmentHints, restoredCount, transliteratedLog, restoredChunksLog, blockedChunks, issues };
+    // Keep finalWords and alignmentHints strictly chronological after any nearby-gap rescues
+    const pairedOrder = finalWords.map((w, idx) => ({ w, hint: alignmentHints[idx] || [] }));
+    pairedOrder.sort((a, b) => a.w.start - b.w.start);
+    const sortedFinalWords = pairedOrder.map(p => p.w);
+    const sortedHints = pairedOrder.map(p => p.hint);
+
+    return {
+        finalWords: sortedFinalWords,
+        alignmentHints: sortedHints,
+        restoredCount,
+        transliteratedLog,
+        restoredChunksLog,
+        blockedChunks,
+        issues
+    };
 }
 
 const FLASH_RACE_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
