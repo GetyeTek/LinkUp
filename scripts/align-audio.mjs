@@ -740,11 +740,11 @@ async function callFlashTranscriptRace(mp3Base64, hardwareDuration, issuesLog) {
     };
 
     const maxAttemptsPerModel = 3;
-    const racerTimeoutMs = 90000;
+    const racerTimeoutMs = Math.max(150000, Math.min(270000, Math.round((hardwareDuration || 600) * 350)));
     const initialKeys = await leaseDistinctGeminiKeys(FLASH_RACE_MODELS.length);
     const raceController = new AbortController();
 
-    console.log(`🏁 [Pass 1 Flash Race] Launching ${FLASH_RACE_MODELS.length} independent lanes (${FLASH_RACE_MODELS.join(' vs ')}) with up to ${maxAttemptsPerModel} immediate retries each...`);
+    console.log(`🏁 [Pass 1 Flash Race] Launching ${FLASH_RACE_MODELS.length} independent lanes (${FLASH_RACE_MODELS.join(' vs ')}) with up to ${maxAttemptsPerModel} immediate retries each (timeout: ${Math.round(racerTimeoutMs / 1000)}s)...`);
 
     const laneTasks = FLASH_RACE_MODELS.map(async (model, idx) => {
         let lastLaneErr = null;
