@@ -739,87 +739,124 @@ async function callFlashTranscriptRace(mp3Base64, hardwareDuration, issuesLog) {
         }
     };
 
-    const maxRaceRounds = 2;
-    let lastAggregateErr = null;
+    const maxAttemptsPerModel = 3;
+    const racerTimeoutMs = 90000;
+    const initialKeys = await leaseDistinctGeminiKeys(FLASH_RACE_MODELS.length);
+    const raceController = new AbortController();
 
-    for (let round = 1; round <= maxRaceRounds; round++) {
-        const keys = await leaseDistinctGeminiKeys(FLASH_RACE_MODELS.length);
-        const controllers = FLASH_RACE_MODELS.map(() => new AbortController());
-        console.log(`🏁 [Pass 1 Flash Race Round ${round}/${maxRaceRounds}] Racing ${FLASH_RACE_MODELS.join(' vs ')} across ${keys.length} distinct key(s)...`);
+    console.log(`🏁 [Pass 1 Flash Race] Launching ${FLASH_RACE_MODELS.length} independent lanes (${FLASH_RACE_MODELS.join(' vs ')}) with up to ${maxAttemptsPerModel} immediate retries each...`);
 
-        const racers = FLASH_RACE_MODELS.map(async (model, idx) => {
-            const keyObj = keys[idx % keys.length];
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${keyObj.api_key}`;
+    const laneTasks = FLASH_RACE_MODELS.map(async (model, idx) => {
+        let lastLaneErr = null;
 
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                signal: controllers[idx].signal
-            });
+        for (let attempt = 1; attempt <= maxAttemptsPerModel; attempt++) {
+            if (raceController.signal.aborted) {
+                throw new Error(`[${model}] Race already settled.`);
+            }
 
-            if (!res.ok) {
-                const errText = await res.text();
-                if (res.status === 429) {
-                    await cooldownKey(keyObj.id, 300);
+            let keyObj = initialKeys[idx % initialKeys.length];
+            if (attempt > 1) {
+                try {
+                    keyObj = await getLeasedGeminiKey();
+                } catch (leaseErr) {
+                    keyObj = initialKeys[idx % initialKeys.length];
                 }
-                throw new Error(`[${model} | Key #${keyObj.id}] HTTP ${res.status}: ${errText.slice(0, 240)}`);
             }
 
-            const json = await res.json();
-            const parts = json.candidates?.[0]?.content?.parts || [];
-            const rawText = parts
-                .filter(p => !p.thought && typeof p.text === 'string')
-                .map(p => p.text)
-                .join('\n')
-                .trim();
+            const attemptCtrl = new AbortController();
+            const onRaceAbort = () => attemptCtrl.abort(new Error('Race winner found'));
+            raceController.signal.addEventListener('abort', onRaceAbort, { once: true });
+            const timerId = setTimeout(() => attemptCtrl.abort(new Error(`Timeout after ${racerTimeoutMs / 1000}s`)), racerTimeoutMs);
 
-            if (!rawText) {
-                throw new Error(`[${model} | Key #${keyObj.id}] Returned empty content.`);
-            }
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${keyObj.api_key}`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: attemptCtrl.signal
+                });
 
-            const cleanedJson = rawText
-                .replace(/^```(?:json)?\s*/i, '')
-                .replace(/\s*```$/i, '')
-                .trim();
+                if (!res.ok) {
+                    const errText = await res.text();
+                    if (res.status === 429) {
+                        await cooldownKey(keyObj.id, 300);
+                    }
+                    throw new Error(`[${model} | Key #${keyObj.id} | Try ${attempt}/${maxAttemptsPerModel}] HTTP ${res.status}: ${errText.slice(0, 200)}`);
+                }
 
-            const chunks = JSON.parse(cleanedJson);
-            if (!Array.isArray(chunks) || chunks.length === 0) {
-                throw new Error(`[${model} | Key #${keyObj.id}] Parsed JSON was not a non-empty array.`);
-            }
+                const json = await res.json();
+                const candidate = json.candidates?.[0];
+                const parts = candidate?.content?.parts || [];
+                const rawText = parts
+                    .filter(p => !p.thought && typeof p.text === 'string')
+                    .map(p => p.text)
+                    .join('\n')
+                    .trim();
 
-            const tokens = expandFlashChunksToWordTokens(chunks, hardwareDuration);
-            if (tokens.length === 0) {
-                throw new Error(`[${model} | Key #${keyObj.id}] Chunks contained 0 valid words.`);
-            }
+                if (!rawText) {
+                    const finishReason = candidate?.finishReason || json.promptFeedback?.blockReason || 'unknown';
+                    throw new Error(`[${model} | Key #${keyObj.id} | Try ${attempt}/${maxAttemptsPerModel}] Empty content (finishReason=${finishReason}).`);
+                }
 
-            return { model, keyId: keyObj.id, chunks, tokens };
-        });
+                const cleanedJson = rawText
+                    .replace(/^```(?:json)?\s*/i, '')
+                    .replace(/\s*```$/i, '')
+                    .trim();
 
-        try {
-            const winner = await Promise.any(racers);
-            controllers.forEach(c => { try { c.abort(); } catch (e) {} });
-            console.log(`🏆 [Pass 1 Flash Winner] ${winner.model} (Key #${winner.keyId}) finished first with ${winner.chunks.length} phrase chunks (${winner.tokens.length} words).`);
-            return winner;
-        } catch (aggErr) {
-            controllers.forEach(c => { try { c.abort(); } catch (e) {} });
-            lastAggregateErr = aggErr;
-            const errDetails = Array.isArray(aggErr.errors)
-                ? aggErr.errors.map(e => e.message).join(' || ')
-                : aggErr.message;
-            issuesLog.push({
-                severity: 'warning',
-                code: 'FLASH_RACE_ROUND_FAILED',
-                message: `Pass 1 Flash Race Round ${round} failed across all ${FLASH_RACE_MODELS.length} models: ${errDetails}`
-            });
-            console.warn(`⚠️ [Pass 1 Flash Race Round ${round}] All ${FLASH_RACE_MODELS.length} racers failed: ${errDetails}`);
-            if (round < maxRaceRounds) {
-                await sleep(4000);
+                const chunks = JSON.parse(cleanedJson);
+                if (!Array.isArray(chunks) || chunks.length === 0) {
+                    throw new Error(`[${model} | Key #${keyObj.id} | Try ${attempt}/${maxAttemptsPerModel}] Parsed JSON was not a non-empty array.`);
+                }
+
+                const tokens = expandFlashChunksToWordTokens(chunks, hardwareDuration);
+                if (tokens.length === 0) {
+                    throw new Error(`[${model} | Key #${keyObj.id} | Try ${attempt}/${maxAttemptsPerModel}] Chunks contained 0 valid words.`);
+                }
+
+                return { model, keyId: keyObj.id, attempt, chunks, tokens };
+            } catch (err) {
+                if (raceController.signal.aborted) {
+                    throw err;
+                }
+                const isTimeout = attemptCtrl.signal.aborted && !raceController.signal.aborted;
+                const msg = isTimeout
+                    ? `[${model} | Key #${keyObj.id} | Try ${attempt}/${maxAttemptsPerModel}] Timeout after ${racerTimeoutMs / 1000}s`
+                    : (err?.message || String(err));
+                lastLaneErr = new Error(msg);
+                console.warn(`⚡ [Pass 1 Lane Retry] ${msg}`);
+
+                if (attempt < maxAttemptsPerModel && !raceController.signal.aborted) {
+                    const jitter = msg.includes('503') ? (400 + Math.floor(Math.random() * 600)) : 150;
+                    await sleep(jitter);
+                }
+            } finally {
+                clearTimeout(timerId);
+                raceController.signal.removeEventListener('abort', onRaceAbort);
             }
         }
-    }
 
-    throw new Error(`All Flash Pass 1 race rounds failed: ${lastAggregateErr?.message || 'Unknown error'}`);
+        throw lastLaneErr || new Error(`[${model}] Exhausted all ${maxAttemptsPerModel} attempts.`);
+    });
+
+    try {
+        const winner = await Promise.any(laneTasks);
+        raceController.abort();
+        console.log(`🏆 [Pass 1 Flash Winner] ${winner.model} (Key #${winner.keyId}, Try #${winner.attempt}) finished first with ${winner.chunks.length} phrase chunks (${winner.tokens.length} words).`);
+        return winner;
+    } catch (aggErr) {
+        raceController.abort();
+        const errDetails = Array.isArray(aggErr.errors)
+            ? aggErr.errors.map(e => e.message).join(' || ')
+            : aggErr.message;
+        issuesLog.push({
+            severity: 'warning',
+            code: 'FLASH_RACE_FAILED',
+            message: `Pass 1 Flash Race failed across all ${FLASH_RACE_MODELS.length} independent lanes (${maxAttemptsPerModel} attempts each): ${errDetails}`
+        });
+        console.warn(`⚠️ [Pass 1 Flash Race] All ${FLASH_RACE_MODELS.length} lanes exhausted: ${errDetails}`);
+        throw new Error(`All Flash Pass 1 lanes failed: ${errDetails}`);
+    }
 }
 async function callGeminiTranscribe(mp3Base64, apiKeyObj, withTimestamps, maxSpotRetries = 3) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${apiKeyObj.api_key}`;
@@ -841,13 +878,18 @@ async function callGeminiTranscribe(mp3Base64, apiKeyObj, withTimestamps, maxSpo
 
     const passTag = withTimestamps ? 'Pass2-TS' : 'Pass1-Text';
     let lastErr = null;
+    const transcribeTimeoutMs = 180000;
 
     for (let spotAttempt = 1; spotAttempt <= maxSpotRetries; spotAttempt++) {
+        const ctrl = new AbortController();
+        const timerId = setTimeout(() => ctrl.abort(new Error(`Timeout after ${transcribeTimeoutMs / 1000}s`)), transcribeTimeoutMs);
+
         try {
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: ctrl.signal
             });
 
             if (!res.ok) {
@@ -918,17 +960,22 @@ async function callGeminiTranscribe(mp3Base64, apiKeyObj, withTimestamps, maxSpo
 
             return { words, rawJson: json };
         } catch (networkOrHttpErr) {
-            lastErr = networkOrHttpErr;
-            if (networkOrHttpErr.status === 429) throw networkOrHttpErr;
+            const normalizedErr = (ctrl.signal.aborted && !networkOrHttpErr.status)
+                ? new Error(`Gemini Transcribe (${passTag}) Timeout after ${transcribeTimeoutMs / 1000}s`)
+                : networkOrHttpErr;
+            lastErr = normalizedErr;
+            if (normalizedErr.status === 429) throw normalizedErr;
 
             // Handle momentary socket resets/timeouts during fetch
-            if (spotAttempt < maxSpotRetries && !networkOrHttpErr.status) {
+            if (spotAttempt < maxSpotRetries && !normalizedErr.status) {
                 const delaySec = spotAttempt * 4;
-                console.warn(`🌐 [${passTag}] Network glitch (${networkOrHttpErr.message}). On-the-spot retry ${spotAttempt}/${maxSpotRetries} in ${delaySec}s...`);
+                console.warn(`🌐 [${passTag}] Network/timeout glitch (${normalizedErr.message}). On-the-spot retry ${spotAttempt}/${maxSpotRetries} in ${delaySec}s...`);
                 await sleep(delaySec * 1000);
                 continue;
             }
-            throw networkOrHttpErr;
+            throw normalizedErr;
+        } finally {
+            clearTimeout(timerId);
         }
     }
     throw lastErr;
