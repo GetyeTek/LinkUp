@@ -1214,16 +1214,29 @@ function alignVisualCuesWithDP(visualCues, scriptWords, reconciledWords, scriptT
 
         let rawTime = resolved.time;
 
-        // Zero-clipping quiz gate: land cleanly in the natural breath after the preceding spoken word
+        // Zero-clipping quiz gate: give trailing syllables & audio buffers full breathing room inside the pause
         if (isQuiz && cue.wordIndexBefore >= 0) {
-            const prevEnd = resolvePrevWordEndTime(cue.wordIndexBefore, scriptWords, reconciledWords, scriptToReconciled);
-            if (prevEnd !== null) {
-                if (rawTime >= prevEnd) {
-                    const pauseSpan = rawTime - prevEnd;
-                    rawTime = prevEnd + Math.min(0.15, pauseSpan * 0.5);
+            const exactPrevIdx = cue.wordIndexBefore < scriptToReconciled.length
+                ? scriptToReconciled[cue.wordIndexBefore]
+                : null;
+            const exactPrevEnd = exactPrevIdx !== null ? reconciledWords[exactPrevIdx].end : null;
+
+            if (exactPrevEnd !== null) {
+                if (cue.wordIndexAfter >= scriptWords.length) {
+                    rawTime = Math.min(Math.max(0, fallbackDuration - 0.08), exactPrevEnd + 0.45);
+                } else if (rawTime > exactPrevEnd) {
+                    const pauseSpan = rawTime - exactPrevEnd;
+                    if (pauseSpan > 0.25) {
+                        rawTime = Math.min(rawTime - 0.12, exactPrevEnd + Math.max(0.35, pauseSpan * 0.65));
+                    } else {
+                        rawTime = exactPrevEnd + (pauseSpan * 0.75);
+                    }
                 } else {
-                    rawTime = prevEnd;
+                    rawTime = Math.min(fallbackDuration, exactPrevEnd + 0.22);
                 }
+            } else if (cue.wordIndexAfter < scriptWords.length) {
+                // If exact preceding word wasn't matched, anchor just before post-quiz speech starts instead of walking backwards
+                rawTime = Math.max(0, rawTime - 0.15);
             }
         }
 
