@@ -1938,6 +1938,98 @@
   let parsedFluxQueue = [];
   let currentFluxModalUrl = '';
 
+  // --- PERSISTENT PROMPT STORE HELPERS ---
+  function getFluxStore(courseCode) {
+    const key = `miron_flux_prompts_${courseCode || 'GENERAL'}`;
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveFluxStore(courseCode, parsedData) {
+    const key = `miron_flux_prompts_${courseCode || 'GENERAL'}`;
+    let existing = { format: 'array', rootMeta: {}, items: [] };
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) existing = JSON.parse(raw);
+    } catch (e) {}
+
+    const isArray = Array.isArray(parsedData);
+    const newItems = isArray ? parsedData : (parsedData.images || []);
+    const rootMeta = isArray ? {} : { ...parsedData };
+    if (!isArray) delete rootMeta.images;
+
+    const itemMap = new Map();
+    (existing.items || []).forEach(it => { if (it && it.name) itemMap.set(it.name, it); });
+    newItems.forEach(it => { if (it && it.name) itemMap.set(it.name, it); });
+
+    const updatedStore = {
+      format: isArray ? 'array' : 'object',
+      rootMeta: { ...(existing.rootMeta || {}), ...rootMeta },
+      items: Array.from(itemMap.values())
+    };
+
+    localStorage.setItem(key, JSON.stringify(updatedStore));
+    return updatedStore;
+  }
+
+  function updateStoredFluxPrompt(courseCode, filename, newPrompt) {
+    const key = `miron_flux_prompts_${courseCode || 'GENERAL'}`;
+    let store = getFluxStore(courseCode);
+    if (!store) {
+      store = { format: 'object', rootMeta: { course_code: courseCode }, items: [] };
+    }
+    const found = store.items.find(it => it.name === filename);
+    if (found) {
+      if ('description' in found) found.description = newPrompt;
+      if ('prompt' in found) found.prompt = newPrompt;
+      if (!('description' in found) && !('prompt' in found)) {
+        found.description = newPrompt;
+      }
+    } else {
+      store.items.push({ name: filename, description: newPrompt });
+    }
+    localStorage.setItem(key, JSON.stringify(store));
+  }
+
+  function syncStoreToJsonInput(courseCode) {
+    const store = getFluxStore(courseCode);
+    if (!store || !store.items || store.items.length === 0) return;
+    const inputEl = document.getElementById('fluxJsonInput');
+    if (!inputEl) return;
+
+    try {
+      const currentVal = inputEl.value.trim();
+      if (currentVal) {
+        const parsed = JSON.parse(currentVal);
+        const isArr = Array.isArray(parsed);
+        const arr = isArr ? parsed : (parsed.images || []);
+        arr.forEach(it => {
+          const stored = store.items.find(s => s.name === it.name);
+          if (stored) {
+            if ('description' in it) it.description = stored.description || stored.prompt;
+            if ('prompt' in it) it.prompt = stored.prompt || stored.description;
+          }
+        });
+        inputEl.value = JSON.stringify(parsed, null, 2);
+        return;
+      }
+    } catch (e) {}
+
+    if (store.format === 'object') {
+      inputEl.value = JSON.stringify({
+        course_code: courseCode,
+        ...store.rootMeta,
+        images: store.items
+      }, null, 2);
+    } else {
+      inputEl.value = JSON.stringify(store.items, null, 2);
+    }
+  }
+
   function switchFluxSubTab(subTab) {
     document.getElementById('subtab-btn-generator').className = `segment-btn ${subTab === 'generator' ? 'active' : ''}`;
     document.getElementById('subtab-btn-browser').className = `segment-btn ${subTab === 'browser' ? 'active' : ''}`;
@@ -2000,16 +2092,22 @@
     if (!raw) return alert('Paste JSON first!');
     try {
       const parsed = JSON.parse(raw);
+      let courseCode = (document.getElementById('global-course-code').value || 'GENERAL').trim();
+
       if (parsed.course_code) {
-        const cleanCode = parsed.course_code.replace(/\s+/g, '_');
-        document.getElementById('global-course-code').value = cleanCode;
-        handleGlobalCourseChange(cleanCode);
+        courseCode = parsed.course_code.replace(/\s+/g, '_');
+        document.getElementById('global-course-code').value = courseCode;
+        handleGlobalCourseChange(courseCode);
       }
+
       parsedFluxQueue = Array.isArray(parsed) ? parsed : (parsed.images || []);
 
       if (!parsedFluxQueue.length) {
         return alert('Could not find image objects in JSON. Format: [{ name, description }]');
       }
+
+      // Persist the full raw structures and properties verbatim
+      saveFluxStore(courseCode, parsed);
 
       document.getElementById('queueCount').innerText = `Queue: ${parsedFluxQueue.length} items`;
       document.getElementById('btnConcurrent').disabled = false;
@@ -2177,7 +2275,6 @@
 
       emptyNotice.style.display = 'none';
 
-      // Group images with robust unit regex (U01, U1, Unit01, Unit_1)
       cachedGalleryUnits = {};
       data.items.forEach(item => {
         const match = item.filename.match(/^U(?:nit)?[-_]?(\d+)/i);
@@ -2295,11 +2392,9 @@
       grid.appendChild(card);
     });
 
-    // Scroll smoothly to top of folder content
     document.getElementById('storageBreadcrumbBar').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // NAVIGATE BACK TO ROOT FOLDERS
   function closeUnitFolder() {
     renderFolderDirectory();
   }
@@ -2310,17 +2405,25 @@
     }
   }
 
-  // RETRY / REGENERATE SINGLE IMAGE IN BROWSER
+  // RETRY / REGENERATE SINGLE IMAGE IN BROWSER WITH 2-WAY SYNC
   async function retryStorageImage(filename, currentUrl, courseCode) {
     const creds = getCredentials();
     const workerUrl = creds.workerUrl;
     if (!workerUrl) return alert('Cloudflare Worker Endpoint missing in settings.');
 
-    const matchedQueueItem = parsedFluxQueue.find(q => q.name === filename);
-    const defaultPrompt = matchedQueueItem ? (matchedQueueItem.prompt || matchedQueueItem.description) : '';
+    const activeCourse = courseCode || creds.courseCode || 'GENERAL';
+    const store = getFluxStore(activeCourse);
 
+    let matchedItem = parsedFluxQueue.find(q => q.name === filename);
+    if (!matchedItem && store && store.items) {
+      matchedItem = store.items.find(q => q.name === filename);
+    }
+
+    const defaultPrompt = matchedItem ? (matchedItem.prompt || matchedItem.description || '') : '';
     const newPrompt = prompt(`Regenerate image for "${filename}"?\n\nEnter or edit prompt:`, defaultPrompt);
-    if (!newPrompt || !newPrompt.trim()) return;
+    if (newPrompt === null) return;
+    const cleanPrompt = newPrompt.trim();
+    if (!cleanPrompt) return alert('Prompt cannot be empty.');
 
     const safeId = filename.replace(/[^a-zA-Z0-9_-]/g, '_');
     const retryBtn = document.getElementById(`btn-retry-${safeId}`);
@@ -2336,9 +2439,9 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          course_code: courseCode || creds.courseCode,
+          course_code: activeCourse,
           name: filename,
-          prompt: newPrompt.trim()
+          prompt: cleanPrompt
         })
       });
 
@@ -2350,8 +2453,22 @@
         thumbImg.src = freshUrl;
         thumbImg.onclick = () => openImgModal(freshUrl, filename);
       }
-      appendLog('Image Regenerated', `${filename} updated in Supabase`, 'success');
-      alert(`Success! "${filename}" has been regenerated and replaced in Supabase storage.`);
+
+      // Update in-memory queue
+      if (matchedItem) {
+        if ('description' in matchedItem) matchedItem.description = cleanPrompt;
+        if ('prompt' in matchedItem) matchedItem.prompt = cleanPrompt;
+        if (!('description' in matchedItem) && !('prompt' in matchedItem)) {
+          matchedItem.description = cleanPrompt;
+        }
+      }
+
+      // Update persistent store & sync back to generator textarea
+      updateStoredFluxPrompt(activeCourse, filename, cleanPrompt);
+      syncStoreToJsonInput(activeCourse);
+
+      appendLog('Image Regenerated', `${filename} updated & synced in JSON`, 'success');
+      alert(`Success! "${filename}" has been regenerated and your prompt JSON is synced.`);
     } catch (err) {
       alert(`Retry Failed: ${err.message}`);
       appendLog('Retry Failed', `${filename}: ${err.message}`, 'error');
@@ -2363,7 +2480,7 @@
     }
   }
 
-  // DOWNLOAD CHAPTER AS ZIP
+  // DOWNLOAD CHAPTER AS ZIP WITH UNSTRIPPED INJECTED JSON MANIFEST
   async function downloadUnitZip(unitKey, courseCode) {
     if (typeof JSZip === 'undefined') {
       return alert('JSZip library is still loading. Please check your internet connection.');
@@ -2372,6 +2489,7 @@
     const items = cachedGalleryUnits[unitKey];
     if (!items || items.length === 0) return alert('No images found in this chapter.');
 
+    const activeCourse = courseCode || getCredentials().courseCode || 'GENERAL';
     const safeUnitId = unitKey.replace(/\s+/g, '_');
     const rootBtn = document.getElementById(`btn-zip-root-${safeUnitId}`);
     const chapterBtn = document.getElementById('btn-chapter-zip');
@@ -2400,9 +2518,31 @@
         if (targetBtn) targetBtn.innerText = `⏳ (${completed}/${items.length})...`;
       }
 
+      // Inject unstripped chapter JSON manifest
+      const store = getFluxStore(activeCourse);
+      if (store && store.items && store.items.length > 0) {
+        const itemFilenameSet = new Set(items.map(it => it.filename));
+        const matchedUnitPrompts = store.items.filter(p => itemFilenameSet.has(p.name));
+
+        if (matchedUnitPrompts.length > 0) {
+          const jsonFileName = `${activeCourse}_${safeUnitId}_prompts.json`;
+          let jsonExportData;
+          if (store.format === 'array') {
+            jsonExportData = matchedUnitPrompts;
+          } else {
+            jsonExportData = {
+              course_code: activeCourse,
+              ...(store.rootMeta || {}),
+              images: matchedUnitPrompts
+            };
+          }
+          zip.file(jsonFileName, JSON.stringify(jsonExportData, null, 2));
+        }
+      }
+
       if (targetBtn) targetBtn.innerText = '📦 Packing...';
       const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const safeZipName = `${courseCode}_${safeUnitId}_images.zip`;
+      const safeZipName = `${activeCourse}_${safeUnitId}_images.zip`;
 
       const downloadUrl = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
@@ -2413,7 +2553,7 @@
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(downloadUrl), 3000);
 
-      appendLog('ZIP Export Complete', `${safeZipName} downloaded`, 'success');
+      appendLog('ZIP Export Complete', `${safeZipName} downloaded with prompts JSON`, 'success');
     } catch (err) {
       alert(`Error building chapter ZIP: ${err.message}`);
       appendLog('ZIP Error', err.message, 'error');
@@ -2424,7 +2564,6 @@
       }
     }
   }
-
   // LIGHTBOX LOGIC
   function openImgModal(url, title) {
     currentFluxModalUrl = url;
