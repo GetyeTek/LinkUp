@@ -263,7 +263,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider">Sequential Multi-Turn Prompt Chain</h2>
-                    <p class="text-[11px] text-gray-400">Variables supported: {{title}}, {{chapter_num}}, {{course}}</p>
+                    <p class="text-[11px] text-gray-400">Variables supported: {{title}}, {{chapter_num}}, {{course}}, {{part_num}}, {{total_parts}}</p>
                 </div>
                 <button id="btn-add-prompt-step" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sky-400 text-xs font-bold px-3 py-1.5 rounded-lg">
                     + Add Next Turn
@@ -560,7 +560,13 @@
                     stepNum: 1,
                     attachFile: true,
                     scrape: true,
-                    template: 'Review the attached chapter package (source text, prior summary analysis, structured JSON notes, and unit diagrams). Synthesize a master high-yield study guide that reconciles all four assets with complete definitions, clinical/empirical examples, and diagram breakdowns.'
+                    template: 'Examine the attached 4 chapter assets (source text, prior summary analysis, structured JSON notes, and unit diagrams). Present your Phase 1 Chapter Battle Plan strictly adhering to all system instruction guidelines. Begin your response with the ```json:plan block specifying parts_count.'
+                },
+                {
+                    stepNum: 2,
+                    attachFile: false,
+                    scrape: true,
+                    template: 'Battle plan approved! Now deliver Part {{part_num}} of {{total_parts}} at full, unhurried, exhaustive depth according to your plan and all cue/TTS rules. Output ONLY the lecture script.'
                 }
             ],
             enabledProfileIds: ['default'],
@@ -1340,14 +1346,61 @@
             const outputBase = (state.outputDest || (state.baseRoot.replace(/\/+$/, '') + '/Synthesis_Results')).replace(/\/+$/, '');
             const courseOutputDir = outputBase + '/' + courseCode + '_Synthesis';
 
-            // Gather the 4 valid paths
+            const chapterLogs = [];
+            function chLog(msg, color) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString();
+                const line = '[' + timeStr + '] [' + profileName + '] ' + msg;
+                chapterLogs.push(line);
+                log(profileName, msg, color);
+            }
+
+            function extractPlanMetadata(rawText) {
+                if (!rawText) return null;
+                // Strategy 1: Explicit ```json:plan ... ```
+                let m = rawText.match(/```json:plan\s*([\s\S]*?)\s*```/i);
+                if (m) {
+                    try {
+                        const clean = m[1].trim().replace(/,\s*([}\]])/g, '$1');
+                        return JSON.parse(clean);
+                    } catch (_) {}
+                }
+                // Strategy 2: Any ```json block containing parts_count
+                const blocks = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/gi) || [];
+                for (const b of blocks) {
+                    const inner = b.replace(/```(?:json)?/i, '').replace(/```$/, '').trim();
+                    if (inner.includes('parts_count')) {
+                        try {
+                            const clean = inner.replace(/,\s*([}\]])/g, '$1');
+                            return JSON.parse(clean);
+                        } catch (_) {}
+                    }
+                }
+                // Strategy 3: Loose JSON object boundary
+                const rawObj = rawText.match(/\{[\s\S]*?"parts_count"\s*:\s*\d+[\s\S]*?\}/);
+                if (rawObj) {
+                    try {
+                        const clean = rawObj[0].replace(/,\s*([}\]])/g, '$1');
+                        return JSON.parse(clean);
+                    } catch (_) {}
+                }
+                return null;
+            }
+
+            chLog('==============================================================================');
+            chLog('CHAPTER SYNTHESIS START: ' + courseCode + ' Chapter ' + chapter.number + ' ("' + chapter.title + '")');
+            chLog('Worker Assigned : Slot ' + (slotIdx + 1) + ' (Profile: ' + profileName + ' [' + profileId + '])');
+            chLog('Model           : ' + state.model + ' (Thinking: ' + state.thinkingLevel + ')');
+            chLog('Timestamp       : ' + new Date().toISOString());
+
             const validAssets = [];
             if (chapter.assets.rawMd) validAssets.push(chapter.assets.rawMd);
             if (chapter.assets.resultMd) validAssets.push(chapter.assets.resultMd);
             if (chapter.assets.json) validAssets.push(chapter.assets.json);
             if (chapter.assets.zip) validAssets.push(chapter.assets.zip);
 
-            log(profileName, '🚀 [Slot ' + (slotIdx + 1) + '] Claimed ' + courseCode + ' Ch ' + chapter.number + ' (' + validAssets.length + '/4 assets ready)', 'text-cyan-300 font-semibold');
+            chLog('Dossier Assets  : ' + validAssets.length + '/4 verified');
+            validAssets.forEach(a => chLog('  - ' + a));
 
             if (workerUI) {
                 workerUI.task.innerText = courseCode + ' Ch ' + chapter.number + ': ' + chapter.title.slice(0, 16);
@@ -1358,6 +1411,7 @@
             let session = warmWorkerSessions[slotIdx];
             try {
                 if (!session) {
+                    chLog('Spawning clean AI Studio session...');
                     session = await Omni.studio.createSession({ profile: profileId, model: state.model });
                     await session.configure({
                         thinkingLevel: state.thinkingLevel,
@@ -1370,35 +1424,52 @@
                         warmWorkerSessions[slotIdx] = session;
                     }
                 } else {
-                    // Reuse warm session with instant newChat()
+                    chLog('Reusing warm session via newChat()...');
                     if (session.newChat) {
                         await session.newChat();
                     }
                 }
-            } catch(initErr) {
-                log(profileName, '❌ Session init failed: ' + initErr.message, 'text-rose-400');
-                if (session) { try { await session.close(); } catch(_) {} }
+            } catch (initErr) {
+                chLog('❌ Session init failed: ' + initErr.message, 'text-rose-400');
+                if (session) { try { await session.close(); } catch (_) {} }
                 warmWorkerSessions[slotIdx] = null;
                 return false;
             }
 
             let chapterSuccess = true;
+            let plannedPartsCount = null;
+            let totalTurnsToRun = state.promptSteps.length;
+            let currentTurnIdx = 0;
 
-            for (let sIdx = 0; sIdx < state.promptSteps.length; sIdx++) {
+            while (currentTurnIdx < totalTurnsToRun) {
                 if (isAborted) { chapterSuccess = false; break; }
-                const step = state.promptSteps[sIdx];
-                const stepLabel = courseCode + ' Ch ' + chapter.number + ' Turn ' + (sIdx + 1);
+
+                const isPlanTurn = (currentTurnIdx === 0);
+                const stepConfig = (currentTurnIdx < state.promptSteps.length)
+                    ? state.promptSteps[currentTurnIdx]
+                    : state.promptSteps[state.promptSteps.length - 1];
+
+                const partNum = isPlanTurn ? 0 : currentTurnIdx;
+                const stepLabel = isPlanTurn
+                    ? (courseCode + ' Ch ' + chapter.number + ' Battle Plan')
+                    : (courseCode + ' Ch ' + chapter.number + ' Part ' + partNum + ' of ' + (plannedPartsCount || '?'));
 
                 if (workerUI) {
-                    workerUI.prog.innerText = 'Turn ' + (sIdx + 1) + '/' + state.promptSteps.length + (step.attachFile ? ' (Injecting assets...)' : '...');
+                    workerUI.prog.innerText = isPlanTurn
+                        ? 'Turn 1: Generating Plan...'
+                        : ('Part ' + partNum + '/' + (plannedPartsCount || '?') + '...');
                 }
 
-                // Attach all 4 assets on configured turns (Turn 1 by default)
-                const attachments = step.attachFile ? validAssets : [];
-                let payload = step.template
+                const attachments = (stepConfig.attachFile && isPlanTurn) ? validAssets : (stepConfig.attachFile ? validAssets : []);
+                let payload = stepConfig.template
                     .replace(/\{\{title\}\}/gi, chapter.title)
                     .replace(/\{\{chapter_num\}\}/gi, chapter.number)
-                    .replace(/\{\{course\}\}/gi, courseCode);
+                    .replace(/\{\{course\}\}/gi, courseCode)
+                    .replace(/\{\{part_num\}\}/gi, partNum)
+                    .replace(/\{\{total_parts\}\}/gi, plannedPartsCount || '?');
+
+                chLog('--- ' + stepLabel + ' ---');
+                chLog('Dispatching prompt (' + payload.length + ' chars, attachments=' + attachments.length + ')');
 
                 let turnSuccess = false;
                 let retries = 0;
@@ -1409,7 +1480,7 @@
                             prompt: payload,
                             attachments: attachments,
                             label: stepLabel
-                        }, function(prog) {
+                        }, function (prog) {
                             if (!prog) return;
                             const thoughts = prog.thoughts || '';
                             const output = prog.output || '';
@@ -1420,18 +1491,18 @@
                                 workerName: profileName + ' (Slot ' + (slotIdx + 1) + ')',
                                 courseCode: courseCode,
                                 chapterTitle: 'Ch ' + chapter.number + ': ' + chapter.title,
-                                turnLabel: 'Turn ' + (sIdx + 1) + '/' + state.promptSteps.length,
+                                turnLabel: stepLabel,
                                 thoughts: thoughts,
                                 output: output,
                                 charCount: chars,
                                 kbSize: kb,
-                                state: chars > 0 ? 'Streaming (' + kb + ' KB)' : (thoughts ? 'Thinking...' : 'Starting...')
+                                state: chars > 0 ? ('Streaming (' + kb + ' KB)') : (thoughts ? 'Thinking...' : 'Starting...')
                             };
 
                             if (workerUI) {
-                                workerUI.prog.innerText = chars > 0 
-                                    ? '⚡ ' + chars.toLocaleString() + ' chars (' + kb + ' KB)'
-                                    : (thoughts ? '🧠 Thinking: ' + thoughts.slice(-30) : 'Waiting for tokens...');
+                                workerUI.prog.innerText = chars > 0
+                                    ? ('⚡ ' + chars.toLocaleString() + ' chars (' + kb + ' KB)')
+                                    : (thoughts ? ('🧠 Thinking: ' + thoughts.slice(-30)) : 'Waiting for tokens...');
                             }
 
                             if (activeModalWorkerId === slotIdx) {
@@ -1445,50 +1516,90 @@
 
                         const outputBytes = result.output.length;
                         const gotKb = (outputBytes / 1024).toFixed(1);
-                        const minKb = parseInt(state.minOutputKb, 10) || 0;
+                        const minKb = isPlanTurn ? 2 : (parseInt(state.minOutputKb, 10) || 0);
 
-                        // Gatekeeper check
                         if (minKb > 0 && outputBytes < (minKb * 1024)) {
                             const sizeErrMsg = 'Undersized output rejected: ' + gotKb + ' KB (Below required ' + minKb + ' KB threshold)';
-                            log(profileName, '❌ GATEKEEPER REJECTION: ' + sizeErrMsg, 'text-rose-400 font-bold');
+                            chLog('❌ GATEKEEPER REJECTION: ' + sizeErrMsg, 'text-rose-400 font-bold');
                             throw new Error(sizeErrMsg);
                         }
 
-                        log(profileName, '✅ ' + stepLabel + ' synthesized (' + result.output.length.toLocaleString() + ' chars, ' + gotKb + ' KB)', 'text-emerald-300 font-semibold');
+                        // Parse and Validate Plan on Turn 1
+                        if (isPlanTurn) {
+                            chLog('Auditing Turn 1 Battle Plan for machine-readable JSON contract...');
+                            const planMeta = extractPlanMetadata(result.output);
 
-                        // Save clearly to internal storage
-                        if (step.scrape !== false) {
-                            const saveName = 'Ch_' + chapter.padNum + '_Synthesis_Turn_' + (sIdx + 1) + '.md';
+                            if (!planMeta || !planMeta.parts_count || isNaN(parseInt(planMeta.parts_count, 10)) || parseInt(planMeta.parts_count, 10) < 1) {
+                                const parseErrMsg = 'Quality Control Error: Model response did not contain a valid ```json:plan block with parts_count.';
+                                chLog('❌ QC FAILURE: ' + parseErrMsg, 'text-rose-400 font-bold');
+                                chLog('Raw Plan Head Snippet:\n' + result.output.slice(0, 400));
+                                throw new Error(parseErrMsg);
+                            }
+
+                            plannedPartsCount = parseInt(planMeta.parts_count, 10);
+                            totalTurnsToRun = 1 + plannedPartsCount;
+
+                            chLog('✅ QC Passed! Model scheduled ' + plannedPartsCount + ' script parts. Total turns to run: ' + totalTurnsToRun, 'text-cyan-300 font-bold');
+                            chLog('Plan Summary: ' + (planMeta.summary || 'No summary text provided'));
+
+                            if (state.promptSteps.length > totalTurnsToRun) {
+                                chLog('Notice: Configured UI steps (' + state.promptSteps.length + ') exceed planned parts (' + totalTurnsToRun + '). Excess configured steps will be safely dropped.', 'text-amber-300');
+                            } else if (state.promptSteps.length < totalTurnsToRun) {
+                                chLog('Notice: Configured UI steps (' + state.promptSteps.length + ') are fewer than planned parts (' + totalTurnsToRun + '). Reusing last prompt step for subsequent parts.', 'text-sky-300');
+                            }
+                        }
+
+                        chLog('✅ ' + stepLabel + ' verified (' + outputBytes.toLocaleString() + ' chars, ' + gotKb + ' KB)', 'text-emerald-300 font-semibold');
+
+                        // Save Turn Output
+                        if (stepConfig.scrape !== false) {
+                            const saveName = isPlanTurn
+                                ? ('Ch_' + chapter.padNum + '_Turn_1_Plan.md')
+                                : ('Ch_' + chapter.padNum + '_Turn_' + (currentTurnIdx + 1) + '_Part_' + partNum + '.md');
                             const savePath = courseOutputDir + '/' + saveName;
                             await Omni.fs.write(savePath, result.output);
-                            const kbNum = parseFloat((result.output.length / 1024).toFixed(1));
+                            const kbNum = parseFloat((outputBytes / 1024).toFixed(1));
                             totalKbAccumulator += kbNum;
                             document.getElementById('stat-kb-saved').innerText = totalKbAccumulator.toFixed(1) + ' KB Saved';
-                            log(profileName, '💾 Saved to: ' + courseCode + '_Synthesis/' + saveName + ' (' + kbNum + ' KB)', 'text-yellow-300');
+                            chLog('💾 Saved -> ' + saveName + ' (' + kbNum + ' KB)', 'text-yellow-300');
                         }
 
                         turnSuccess = true;
-                    } catch(turnErr) {
+                    } catch (turnErr) {
                         retries++;
-                        log(profileName, '⚠️ Error on ' + stepLabel + ': ' + turnErr.message, 'text-rose-400');
+                        chLog('⚠️ Turn attempt ' + retries + ' failed: ' + turnErr.message, 'text-rose-400');
                         await new Promise(r => setTimeout(r, 2000));
                     }
                 }
 
                 if (!turnSuccess) {
                     chapterSuccess = false;
+                    chLog('🛑 Fatal error on ' + stepLabel + '. Halting chapter execution.', 'text-rose-500 font-bold');
                     break;
                 }
+
+                currentTurnIdx++;
             }
 
-            // Cloud Save sync window
-            await new Promise(r => setTimeout(r, 3500));
+            // Write Dedicated Chapter QC Audit Log into the Same Folder
+            try {
+                chLog('==============================================================================');
+                chLog('CHAPTER RESULT: ' + (chapterSuccess ? 'SUCCESS (100% Complete)' : 'FAILED / INCOMPLETE'));
+                chLog('Total Turns Executed: ' + currentTurnIdx + ' / ' + totalTurnsToRun);
+                chLog('End Timestamp: ' + new Date().toISOString());
+
+                const logFilename = 'Ch_' + chapter.padNum + (chapterSuccess ? '_Synthesis_Audit.log' : '_Synthesis_FAILURE.log');
+                const logFilePath = courseOutputDir + '/' + logFilename;
+                await Omni.fs.write(logFilePath, chapterLogs.join('\n'));
+                chLog('📁 Co-located audit log saved -> ' + logFilename, 'text-emerald-400');
+            } catch (_) {}
+
+            await new Promise(r => setTimeout(r, 2500));
 
             if (!state.preserveSession && session) {
-                try { await session.close(); } catch(_) {}
+                try { await session.close(); } catch (_) {}
                 warmWorkerSessions[slotIdx] = null;
             }
-
             return chapterSuccess;
         }
 
