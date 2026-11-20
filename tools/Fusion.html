@@ -454,6 +454,9 @@
 
             window.Omni = {
                 studio: {
+                profiles: {
+                    list: function() { return rpcCall('profilesList', []); }
+                },
                     createSession: function(opts) {
                         opts = opts || {};
                         var profile = opts.profile || opts.profileId || 'default';
@@ -781,25 +784,68 @@
         document.getElementById('input-sys-title').oninput = function() { state.sysTitle = this.value; saveState(); };
         document.getElementById('input-sys-prompt').oninput = function() { state.sysPrompt = this.value; saveState(); };
 
-        // 5. Profile Fleet Management
+        // 5. Profile Fleet Management & Live Health Quarantine
         let deviceProfiles = [{ id: 'default', name: 'Default' }];
-        async function loadDeviceProfiles() {
-            const container = document.getElementById('profiles-container');
-            container.innerHTML = '';
+        let profileHealthMap = {};
+        const sessionQuarantinedProfiles = new Set();
 
+        async function refreshProfileHealth() {
             try {
-                const raw = await Omni.fs.read('config/profiles.json');
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        deviceProfiles = parsed.map(p => ({ id: p.id, name: p.name || p.id }));
+                if (window.Omni && Omni.profiles && Omni.profiles.list) {
+                    const list = await Omni.profiles.list();
+                    if (Array.isArray(list) && list.length > 0) {
+                        const nextMap = {};
+                        deviceProfiles = list.map(p => {
+                            nextMap[p.id] = p;
+                            return { id: p.id, name: p.name || p.id };
+                        });
+                        profileHealthMap = nextMap;
+                        renderProfileCards();
+                        return true;
                     }
                 }
             } catch(_) {}
+            return false;
+        }
+
+        function isProfileHealthy(profileId) {
+            if (sessionQuarantinedProfiles.has(profileId)) return false;
+            const h = profileHealthMap[profileId];
+            if (!h) return true;
+            if (h.needsVerification) return false;
+            if (h.isQuotaExhausted) return false;
+            return true;
+        }
+
+        function quarantineProfile(profileId, reasonType, detailMsg) {
+            sessionQuarantinedProfiles.add(profileId);
+            if (!profileHealthMap[profileId]) profileHealthMap[profileId] = { id: profileId };
+            if (reasonType === 'VERIFY') {
+                profileHealthMap[profileId].needsVerification = true;
+                profileHealthMap[profileId].verificationReason = detailMsg || 'Verification required';
+            } else {
+                profileHealthMap[profileId].isQuotaExhausted = true;
+            }
+            renderProfileCards();
+        }
+
+        function renderProfileCards() {
+            const container = document.getElementById('profiles-container');
+            if (!container) return;
+            container.innerHTML = '';
 
             deviceProfiles.forEach(function(p) {
+                const h = profileHealthMap[p.id] || {};
+                const isVerifyLocked = !!h.needsVerification;
+                const isQuota = !!h.isQuotaExhausted || sessionQuarantinedProfiles.has(p.id);
+                const todayCount = h.promptsSentToday || 0;
+
                 const wrapper = document.createElement('label');
-                wrapper.className = 'flex items-center gap-2 bg-[#0D1117] border border-gray-800 hover:border-gray-700 p-2.5 rounded-lg cursor-pointer text-xs';
+                wrapper.className = 'flex items-center justify-between gap-2 bg-[#0D1117] border p-2.5 rounded-lg cursor-pointer text-xs ' +
+                    (isVerifyLocked ? 'border-amber-600/70 opacity-75' : (isQuota ? 'border-rose-700/70 opacity-75' : 'border-gray-800 hover:border-gray-700'));
+
+                const left = document.createElement('div');
+                left.className = 'flex items-center gap-2 overflow-hidden';
 
                 const cb = document.createElement('input');
                 cb.type = 'checkbox';
@@ -815,10 +861,38 @@
                 span.className = 'font-semibold text-gray-200 truncate';
                 span.textContent = p.name;
 
-                wrapper.appendChild(cb);
-                wrapper.appendChild(span);
+                left.appendChild(cb);
+                left.appendChild(span);
+
+                const badge = document.createElement('span');
+                badge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ' +
+                    (isVerifyLocked ? 'bg-amber-950 text-amber-300 border border-amber-700' :
+                     isQuota ? 'bg-rose-950 text-rose-300 border border-rose-700' :
+                     'bg-emerald-950 text-emerald-300 border border-emerald-800');
+                badge.textContent = isVerifyLocked ? ('🔒 Verify • ' + todayCount) :
+                                    isQuota ? ('🔴 Quota • ' + todayCount) :
+                                    ('🟢 ' + todayCount + 'p');
+
+                wrapper.appendChild(left);
+                wrapper.appendChild(badge);
                 container.appendChild(wrapper);
             });
+        }
+
+        async function loadDeviceProfiles() {
+            const loadedFromRpc = await refreshProfileHealth();
+            if (!loadedFromRpc) {
+                try {
+                    const raw = await Omni.fs.read('config/profiles.json');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            deviceProfiles = parsed.map(p => ({ id: p.id, name: p.name || p.id }));
+                        }
+                    }
+                } catch(_) {}
+                renderProfileCards();
+            }
         }
 
         function getEnabledProfiles() {
@@ -829,11 +903,29 @@
             return checked.length > 0 ? checked : deviceProfiles;
         }
 
-        function getNextRotatedProfile() {
-            const pool = getEnabledProfiles();
-            const prof = pool[profileRotationIdx % pool.length];
-            profileRotationIdx++;
-            return prof;
+        function getHealthyEnabledProfiles() {
+            return getEnabledProfiles().filter(p => isProfileHealthy(p.id));
+        }
+
+        function acquireNextFreeHealthyProfile(leasedSet, preferredProfileId) {
+            const healthy = getHealthyEnabledProfiles();
+            if (healthy.length === 0) return null;
+            if (preferredProfileId && !leasedSet.has(preferredProfileId)) {
+                const pref = healthy.find(p => p.id === preferredProfileId);
+                if (pref) {
+                    leasedSet.add(pref.id);
+                    return pref;
+                }
+            }
+            for (let offset = 0; offset < healthy.length; offset++) {
+                const candidate = healthy[(profileRotationIdx + offset) % healthy.length];
+                if (!leasedSet.has(candidate.id)) {
+                    profileRotationIdx = (profileRotationIdx + offset + 1) % healthy.length;
+                    leasedSet.add(candidate.id);
+                    return candidate;
+                }
+            }
+            return null;
         }
 
         // 6. Course Queue Manager
@@ -1421,21 +1513,34 @@
                 workerUI.prog.innerText = 'Initializing session...';
             }
 
+            function detectLockType(errMsg) {
+                const low = String(errMsg || '').toLowerCase();
+                if (low.includes('verify-account') || low.includes('must be verified') ||
+                    low.includes('unusual activity') || low.includes('verification required')) {
+                    return 'VERIFY';
+                }
+                if (low.includes('quota exhausted') || low.includes('resource exhausted') ||
+                    low.includes('resource_exhausted') || low.includes('rate limit') || low.includes('429')) {
+                    return 'QUOTA';
+                }
+                return null;
+            }
+
             const resolvedSysTitle = (state.sysTitle || '').trim() || ('Synthesis Factory: ' + courseCode);
-            let session = warmWorkerSessions[slotIdx];
+            let session = warmWorkerSessions[profileId] || null;
             try {
                 if (!session) {
-                    chLog('Spawning clean AI Studio session (temporary=' + state.tempChat + ')...');
+                    chLog('Spawning clean AI Studio session for ' + profileName + ' (temporary=' + state.tempChat + ')...');
                     session = await Omni.studio.createSession({
                         profile: profileId,
                         model: state.model,
                         temporaryChat: state.tempChat
                     });
                     if (state.preserveSession) {
-                        warmWorkerSessions[slotIdx] = session;
+                        warmWorkerSessions[profileId] = session;
                     }
                 } else {
-                    chLog('Reusing warm session via newChat()...');
+                    chLog('Reusing warm session on ' + profileName + ' via newChat()...');
                     if (session.newChat) {
                         await session.newChat();
                     }
@@ -1449,8 +1554,13 @@
                 });
             } catch (initErr) {
                 chLog('❌ Session init failed: ' + initErr.message, 'text-rose-400');
+                const lockType = detectLockType(initErr.message);
+                if (lockType) {
+                    quarantineProfile(profileId, lockType, initErr.message);
+                    chLog((lockType === 'VERIFY' ? '🔒 [HALTED]' : '🔴 [QUOTA]') + ' Profile ' + profileName + ' quarantined until resolved.', 'text-amber-400 font-bold');
+                }
                 if (session) { try { await session.close(); } catch (_) {} }
-                warmWorkerSessions[slotIdx] = null;
+                warmWorkerSessions[profileId] = null;
                 return false;
             }
 
@@ -1584,6 +1694,15 @@
 
                         turnSuccess = true;
                     } catch (turnErr) {
+                        const lockType = detectLockType(turnErr.message);
+                        if (lockType) {
+                            quarantineProfile(profileId, lockType, turnErr.message);
+                            chLog((lockType === 'VERIFY' ? '🔒 [VERIFICATION LOCK]' : '🔴 [QUOTA EXHAUSTED]') + ' Halting future missions on ' + profileName + ': ' + turnErr.message, 'text-rose-400 font-bold');
+                            if (session) { try { await session.close(); } catch (_) {} }
+                            warmWorkerSessions[profileId] = null;
+                            retries = 99;
+                            break;
+                        }
                         retries++;
                         chLog('⚠️ Turn attempt ' + retries + ' failed: ' + turnErr.message, 'text-rose-400');
                         await new Promise(r => setTimeout(r, 2000));
@@ -1614,9 +1733,9 @@
 
             await new Promise(r => setTimeout(r, 2500));
 
-            if (!state.preserveSession && session) {
+            if ((!state.preserveSession || !isProfileHealthy(profileId)) && session) {
                 try { await session.close(); } catch (_) {}
-                warmWorkerSessions[slotIdx] = null;
+                warmWorkerSessions[profileId] = null;
             }
             return chapterSuccess;
         }
@@ -1688,13 +1807,40 @@
 
             document.getElementById('stat-active-workers').innerText = concurrencySlots + ' Active';
 
-            // Work-stealing concurrency runner across the 5 slots
+            // Work-stealing concurrency runner with health-guarded per-profile warm sessions
             async function workerSlotLoop(slotIdx) {
+                let assignedProfileId = null;
                 while (queue.length > 0 && !isAborted) {
+                    await refreshProfileHealth();
+                    if (assignedProfileId && !isProfileHealthy(assignedProfileId)) {
+                        const deadSess = warmWorkerSessions[assignedProfileId];
+                        if (deadSess) {
+                            try { await deadSess.close(); } catch (_) {}
+                            warmWorkerSessions[assignedProfileId] = null;
+                        }
+                        assignedProfileId = null;
+                    }
+                    const workerProfile = acquireNextFreeHealthyProfile(leasedProfileIds, assignedProfileId);
+                    if (!workerProfile) {
+                        if (getHealthyEnabledProfiles().length === 0) {
+                            log(null, '🛑 All remaining profiles hit quota or verification lock! Stopping queue cleanly.', 'text-rose-400 font-bold');
+                            Omni.toast('🛑 All profiles locked/exhausted!');
+                        }
+                        break;
+                    }
+                    assignedProfileId = workerProfile.id;
                     const ch = queue.shift();
-                    const workerProfile = getNextRotatedProfile();
 
-                    const success = await executeSingleChapter(courseCode, ch, workerProfile, slotIdx, slotUIs[slotIdx], warmWorkerSessions);
+                    let success = false;
+                    try {
+                        success = await executeSingleChapter(courseCode, ch, workerProfile, slotIdx, slotUIs[slotIdx], warmWorkerSessions);
+                    } finally {
+                        leasedProfileIds.delete(workerProfile.id);
+                    }
+
+                    if (!isProfileHealthy(workerProfile.id)) {
+                        assignedProfileId = null;
+                    }
 
                     if (success) {
                         completedCount++;
@@ -1711,12 +1857,18 @@
                         document.getElementById('bar-chapter-prog').style.width = pct + '%';
                         log(workerProfile.name, '🏁 Completed ' + courseCode + ' Ch ' + ch.number + ' and auto-crossed off.', 'text-emerald-400');
                     } else if (!isAborted) {
-                        ch.failures = (ch.failures || 0) + 1;
-                        if (ch.failures <= 2) {
-                            log(workerProfile.name, '❌ Failed Ch ' + ch.number + ' (Attempt ' + ch.failures + '/2). Re-queueing...', 'text-amber-400');
-                            queue.push(ch);
+                        const failedByLock = !isProfileHealthy(workerProfile.id);
+                        if (failedByLock) {
+                            log(workerProfile.name, '↪️ Re-queueing Ch ' + ch.number + ' onto another healthy profile (not counted as chapter failure).', 'text-amber-300');
+                            queue.unshift(ch);
                         } else {
-                            log(workerProfile.name, '🛑 Ch ' + ch.number + ' failed 2 times. Dropping to prevent deadlock.', 'text-rose-500');
+                            ch.failures = (ch.failures || 0) + 1;
+                            if (ch.failures <= 2) {
+                                log(workerProfile.name, '❌ Failed Ch ' + ch.number + ' (Attempt ' + ch.failures + '/2). Re-queueing...', 'text-amber-400');
+                                queue.push(ch);
+                            } else {
+                                log(workerProfile.name, '🛑 Ch ' + ch.number + ' failed 2 times. Dropping to prevent deadlock.', 'text-rose-500');
+                            }
                         }
                     }
                 }
@@ -1752,6 +1904,8 @@
 
             isFactoryRunning = true;
             isAborted = false;
+            sessionQuarantinedProfiles.clear();
+            await refreshProfileHealth();
             switchDeck('mission');
 
             btnMasterLaunch.classList.add('hidden');
