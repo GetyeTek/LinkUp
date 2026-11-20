@@ -252,9 +252,16 @@
             </div>
 
             <div>
-                <label class="text-xs text-gray-400">System Instruction</label>
-                <textarea id="input-sys-prompt" rows="2" class="w-full bg-[#0D1117] border border-gray-700 rounded-lg p-2.5 text-xs text-gray-200 outline-none focus:border-sky-500"
-                          placeholder="You are an expert academic curriculum synthesizer. Ground all explanations deeply on the attached source text, structured JSON, prior analysis, and image diagrams."></textarea>
+                <label class="text-xs text-gray-400 flex items-center justify-between">
+                    <span>System Preset Title</span>
+                    <span class="text-[10px] text-sky-400">Picks saved preset or upserts with text below</span>
+                </label>
+                <input id="input-sys-title" type="text"
+                       class="w-full bg-[#0D1117] border border-gray-700 rounded-lg p-2 text-xs text-sky-300 font-semibold outline-none focus:border-sky-500 mb-2"
+                       placeholder="e.g. LinkUp Miron Studio (leave blank to auto-name per course)" />
+                <label class="text-xs text-gray-400">System Instruction Text <span class="text-[10px] text-gray-500">(optional if preset title already saved in AI Studio)</span></label>
+                <textarea id="input-sys-prompt" rows="2" class="w-full bg-[#0D1117] border border-gray-700 rounded-lg p-2.5 text-xs text-gray-200 outline-none focus:border-sky-500 mt-0.5"
+                          placeholder="Paste your System Instruction here to upsert it, or leave empty to select the saved Preset Title above."></textarea>
             </div>
         </div>
 
@@ -451,7 +458,10 @@
                         opts = opts || {};
                         var profile = opts.profile || opts.profileId || 'default';
                         var model = opts.model || '';
-                        return rpcCall('studioCreateSession', [profile, model]).then(function(res) {
+                        var bootPromise = (opts.temporaryChat !== undefined && window.__OmniStudioLabBridge && window.__OmniStudioLabBridge.studioCreateSessionWithOpts)
+                            ? rpcCall('studioCreateSessionWithOpts', [JSON.stringify(opts)])
+                            : rpcCall('studioCreateSession', [profile, model]);
+                        return bootPromise.then(function(res) {
                             var sId = res.sessionId;
                             return {
                                 id: sId,
@@ -531,8 +541,9 @@
             preserveSession: true,
             minOutputKb: 30,
             model: 'Gemini 3.8 Flash',
-            thinkingLevel: 'High',
+            thinkingLevel: 'Default',
             tempChat: false,
+            sysTitle: '',
             sysPrompt: 'You are an expert academic curriculum synthesizer. Ground all explanations deeply on the attached source text, structured JSON, prior analysis, and image diagrams.',
             courses: [
                 { code: 'PSYC_1011', enabled: true, completed: false },
@@ -613,6 +624,7 @@
             document.getElementById('input-model').value = state.model || 'Gemini 3.8 Flash';
             document.getElementById('select-thinking').value = state.thinkingLevel || 'High';
             document.getElementById('select-temp-chat').value = String(state.tempChat === true);
+            document.getElementById('input-sys-title').value = state.sysTitle || '';
             document.getElementById('input-sys-prompt').value = state.sysPrompt || '';
 
             renderCourseQueue();
@@ -766,6 +778,7 @@
         document.getElementById('input-model').onchange = function() { state.model = this.value.trim(); saveState(); };
         document.getElementById('select-thinking').onchange = function() { state.thinkingLevel = this.value; saveState(); };
         document.getElementById('select-temp-chat').onchange = function() { state.tempChat = (this.value === 'true'); saveState(); };
+        document.getElementById('input-sys-title').oninput = function() { state.sysTitle = this.value; saveState(); };
         document.getElementById('input-sys-prompt').oninput = function() { state.sysPrompt = this.value; saveState(); };
 
         // 5. Profile Fleet Management
@@ -1408,17 +1421,15 @@
                 workerUI.prog.innerText = 'Initializing session...';
             }
 
+            const resolvedSysTitle = (state.sysTitle || '').trim() || ('Synthesis Factory: ' + courseCode);
             let session = warmWorkerSessions[slotIdx];
             try {
                 if (!session) {
-                    chLog('Spawning clean AI Studio session...');
-                    session = await Omni.studio.createSession({ profile: profileId, model: state.model });
-                    await session.configure({
-                        thinkingLevel: state.thinkingLevel,
-                        temporaryChat: state.tempChat,
-                        sysTitle: 'Synthesis Factory: ' + courseCode,
-                        sysPrompt: state.sysPrompt,
-                        model: state.model
+                    chLog('Spawning clean AI Studio session (temporary=' + state.tempChat + ')...');
+                    session = await Omni.studio.createSession({
+                        profile: profileId,
+                        model: state.model,
+                        temporaryChat: state.tempChat
                     });
                     if (state.preserveSession) {
                         warmWorkerSessions[slotIdx] = session;
@@ -1429,6 +1440,13 @@
                         await session.newChat();
                     }
                 }
+                await session.configure({
+                    thinkingLevel: state.thinkingLevel,
+                    temporaryChat: state.tempChat,
+                    sysTitle: resolvedSysTitle,
+                    sysPrompt: state.sysPrompt,
+                    model: state.model
+                });
             } catch (initErr) {
                 chLog('❌ Session init failed: ' + initErr.message, 'text-rose-400');
                 if (session) { try { await session.close(); } catch (_) {} }
