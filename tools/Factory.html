@@ -1562,7 +1562,10 @@
 
                         const outputBytes = result.output.length;
                         const gotKb = (outputBytes / 1024).toFixed(1);
-                        const minKb = parseInt(state.minOutputKb, 10) || 0;
+                        const configuredMinKb = parseInt(state.minOutputKb, 10) || 0;
+                        const minKb = (sIdx === 0 && state.promptSteps.length > 1)
+                            ? (configuredMinKb > 0 ? Math.min(2, configuredMinKb) : 0)
+                            : configuredMinKb;
 
                         // Validation Gatekeeper: Reject undersized payloads
                         if (minKb > 0 && outputBytes < (minKb * 1024)) {
