@@ -248,12 +248,19 @@
                     <input type="checkbox" id="check-preserve-session" class="accent-sky-500" />
                     <span class="font-semibold text-sky-400">Preserve Headless Sessions</span>
                 </label>
-                <span class="text-[11px] text-gray-500">Keep WebViews active after chapters complete to avoid losing chats</span>
+                <span class="text-[11px] text-gray-500">Keep WebViews warm via newChat() instead of tearing down</span>
             </div>
 
             <div>
-                <label class="text-xs text-gray-400">System Instruction</label>
-                <textarea id="input-sys-prompt" rows="2" class="w-full bg-[#0D1117] border border-gray-700 rounded-lg p-2.5 text-xs text-gray-200 outline-none focus:border-sky-500"
+                <label class="text-xs text-gray-400 flex items-center justify-between">
+                    <span>System Preset Title</span>
+                    <span class="text-[10px] text-sky-400">Picks saved preset or upserts with text below</span>
+                </label>
+                <input id="input-sys-title" type="text"
+                       class="w-full bg-[#0D1117] border border-gray-700 rounded-lg p-2 text-xs text-sky-300 font-semibold outline-none focus:border-sky-500 mb-2"
+                       placeholder="e.g. LinkUp Miron Studio (leave blank to auto-name per course)" />
+                <label class="text-xs text-gray-400">System Instruction <span class="text-[10px] text-gray-500">(optional if preset title already saved in AI Studio)</span></label>
+                <textarea id="input-sys-prompt" rows="2" class="w-full bg-[#0D1117] border border-gray-700 rounded-lg p-2.5 text-xs text-gray-200 outline-none focus:border-sky-500 mt-0.5"
                           placeholder="You are an expert academic tutor. Deeply examine the attached textbook chapter and ground all answers on its specific contents."></textarea>
             </div>
         </div>
@@ -263,7 +270,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider">Sequential Multi-Turn Prompt Chain</h2>
-                    <p class="text-[11px] text-gray-400">Variables supported: {{title}}, {{chapter_num}}, {{content}}</p>
+                    <p class="text-[11px] text-gray-400">Variables supported: {{title}}, {{chapter_num}}, {{course}}, {{content}}</p>
                 </div>
                 <button id="btn-add-prompt-step" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sky-400 text-xs font-bold px-3 py-1.5 rounded-lg">
                     + Add Next Turn
@@ -430,7 +437,10 @@
                         opts = opts || {};
                         var profile = opts.profile || opts.profileId || 'default';
                         var model = opts.model || '';
-                        return rpcCall('studioCreateSession', [profile, model]).then(function(res) {
+                        var bootPromise = (opts.temporaryChat !== undefined && window.__OmniStudioLabBridge && window.__OmniStudioLabBridge.studioCreateSessionWithOpts)
+                            ? rpcCall('studioCreateSessionWithOpts', [JSON.stringify(opts)])
+                            : rpcCall('studioCreateSession', [profile, model]);
+                        return bootPromise.then(function(res) {
                             var sId = res.sessionId;
                             return {
                                 id: sId,
@@ -440,6 +450,9 @@
                                 },
                                 send: function(turnOpts, onProgress) {
                                     return rpcCall('studioSendSessionTurn', [sId, JSON.stringify(turnOpts || {})], onProgress);
+                                },
+                                newChat: function() {
+                                    return rpcCall('studioNewChatSession', [sId]);
                                 },
                                 close: function() {
                                     return rpcCall('studioCloseSession', [sId]);
@@ -532,6 +545,7 @@
             model: 'Gemini 3.8 Flash',
             thinkingLevel: 'High',
             tempChat: false,
+            sysTitle: '',
             sysPrompt: 'You are an expert academic tutor. Deeply examine the attached textbook chapter and ground all answers on its specific contents.',
             courses: [
                 { code: 'ANTH_1012', enabled: true, completed: false },
@@ -603,6 +617,7 @@
             document.getElementById('input-model').value = state.model || 'Gemini 3.8 Flash';
             document.getElementById('select-thinking').value = state.thinkingLevel || 'High';
             document.getElementById('select-temp-chat').value = String(state.tempChat === true);
+            document.getElementById('input-sys-title').value = state.sysTitle || '';
             document.getElementById('input-sys-prompt').value = state.sysPrompt || '';
 
             renderCourseQueue();
@@ -764,6 +779,7 @@
         document.getElementById('input-model').onchange = function() { state.model = this.value.trim(); saveState(); };
         document.getElementById('select-thinking').onchange = function() { state.thinkingLevel = this.value; saveState(); };
         document.getElementById('select-temp-chat').onchange = function() { state.tempChat = (this.value === 'true'); saveState(); };
+        document.getElementById('input-sys-title').oninput = function() { state.sysTitle = this.value; saveState(); };
         document.getElementById('input-sys-prompt').oninput = function() { state.sysPrompt = this.value; saveState(); };
 
         // 5. Profiles Fleet Loading & Round-Robin Load Balancer
@@ -1042,10 +1058,10 @@
                 state.chapterCrossOffs[courseCode] = {};
             }
 
-            // Auto-cross if output file already found on disk
+            // Auto-cross if markdown output file already found on disk
             chapters.forEach(function(ch) {
                 const chPrefix = 'Ch_' + (ch.number < 10 ? '0' + ch.number : ch.number) + '_';
-                const hasExisting = outputFiles.some(f => f.startsWith(chPrefix));
+                const hasExisting = outputFiles.some(f => f.startsWith(chPrefix) && f.endsWith('.md'));
                 if (hasExisting && state.chapterCrossOffs[courseCode][ch.filename] === undefined) {
                     state.chapterCrossOffs[courseCode][ch.filename] = true;
                 }
@@ -1293,7 +1309,7 @@
         };
 
         document.getElementById('btn-modal-copy').onclick = function() {
-            if (activeModalWorkerId && workerStreams[activeModalWorkerId]) {
+            if (activeModalWorkerId !== null && workerStreams[activeModalWorkerId]) {
                 const text = workerStreams[activeModalWorkerId].output || '';
                 if (text.length > 0) {
                     Omni.copy(text);
@@ -1304,34 +1320,62 @@
 
         // 10. Master Night-Shift Autonomous Runner
         let totalKbAccumulator = 0;
-
-        async function executeSingleChapter(courseCode, chapter, workerProfile, slotIdx, workerUI) {
+        async function executeSingleChapter(courseCode, chapter, workerProfile, slotIdx, workerUI, warmWorkerSessions) {
             const profileId = workerProfile.id;
             const profileName = workerProfile.name;
             const root = state.baseRoot.replace(/\/+$/, '');
             const outputDir = root + '/' + courseCode + '_Results';
+            const warmMap = warmWorkerSessions || {};
+            const chPad = chapter.number < 10 ? '0' + chapter.number : '' + chapter.number;
 
-            log(profileName, '🚀 [Slot ' + (slotIdx + 1) + '] Claimed ' + courseCode + ' Ch ' + chapter.number + ': "' + chapter.title + '"', 'text-cyan-300');
+            const chapterLogs = [];
+            function chLog(msg, color) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString();
+                chapterLogs.push('[' + timeStr + '] [' + profileName + '] ' + msg);
+                log(profileName, msg, color);
+            }
+
+            chLog('==============================================================================');
+            chLog('🚀 [Slot ' + (slotIdx + 1) + '] Claimed ' + courseCode + ' Ch ' + chapter.number + ': "' + chapter.title + '"', 'text-cyan-300');
+            chLog('Model: ' + state.model + ' | Thinking: ' + state.thinkingLevel + ' | TempChat: ' + state.tempChat);
 
             if (workerUI) {
                 workerUI.task.innerText = courseCode + ' Ch ' + chapter.number + ': ' + chapter.title.slice(0, 18);
                 workerUI.badge.innerText = 'Slot ' + (slotIdx + 1) + ' (' + profileName + ')';
-                workerUI.prog.innerText = 'Spawning clean session...';
+                workerUI.prog.innerText = 'Initializing session...';
             }
 
-            let session = null;
+            const resolvedSysTitle = (state.sysTitle || '').trim() || ('Book Factory: ' + courseCode);
+            let session = warmMap[slotIdx];
             try {
-                session = await Omni.studio.createSession({ profile: profileId, model: state.model });
+                if (!session) {
+                    chLog('Spawning clean AI Studio session (temporary=' + state.tempChat + ')...');
+                    session = await Omni.studio.createSession({
+                        profile: profileId,
+                        model: state.model,
+                        temporaryChat: state.tempChat
+                    });
+                    if (state.preserveSession) {
+                        warmMap[slotIdx] = session;
+                    }
+                } else {
+                    chLog('Reusing warm session via newChat()...');
+                    if (session.newChat) {
+                        await session.newChat();
+                    }
+                }
                 await session.configure({
                     thinkingLevel: state.thinkingLevel,
                     temporaryChat: state.tempChat,
-                    sysTitle: 'Book Factory: ' + courseCode,
+                    sysTitle: resolvedSysTitle,
                     sysPrompt: state.sysPrompt,
                     model: state.model
                 });
             } catch(initErr) {
-                log(profileName, '❌ Session spawn failed: ' + initErr.message, 'text-rose-400');
+                chLog('❌ Session spawn/configure failed: ' + initErr.message, 'text-rose-400');
                 if (session) { try { await session.close(); } catch(_) {} }
+                warmMap[slotIdx] = null;
                 return false;
             }
 
@@ -1358,7 +1402,10 @@
                 }
                 payload = payload
                     .replace(/\{\{title\}\}/gi, chapter.title)
-                    .replace(/\{\{chapter_num\}\}/gi, chapter.number);
+                    .replace(/\{\{chapter_num\}\}/gi, chapter.number)
+                    .replace(/\{\{course\}\}/gi, courseCode);
+
+                chLog('--- ' + stepLabel + ' (prompt=' + payload.length + ' chars, attachments=' + attachments.length + ') ---');
 
                 let turnSuccess = false;
                 let retries = 0;
@@ -1410,48 +1457,60 @@
                         // Validation Gatekeeper: Reject undersized payloads
                         if (minKb > 0 && outputBytes < (minKb * 1024)) {
                             const sizeErrMsg = 'Undersized output rejected: ' + gotKb + ' KB (Below minimum required threshold of ' + minKb + ' KB)';
-                            log(profileName, '❌ GATEKEEPER REJECTION: ' + sizeErrMsg, 'text-rose-400 font-bold');
+                            chLog('❌ GATEKEEPER REJECTION: ' + sizeErrMsg, 'text-rose-400 font-bold');
                             throw new Error(sizeErrMsg);
                         }
 
-                        log(profileName, '✅ ' + stepLabel + ' completed & verified (' + result.output.length.toLocaleString() + ' chars, ' + gotKb + ' KB >= ' + minKb + ' KB threshold)', 'text-emerald-300 font-semibold');
+                        chLog('✅ ' + stepLabel + ' completed & verified (' + result.output.length.toLocaleString() + ' chars, ' + gotKb + ' KB >= ' + minKb + ' KB threshold)', 'text-emerald-300 font-semibold');
 
-                        if (step.scrape) {
-                            const saveName = 'Ch_' + (chapter.number < 10 ? '0' + chapter.number : chapter.number) + '_Turn_' + (sIdx + 1) + '.md';
+                        if (step.scrape !== false) {
+                            const saveName = 'Ch_' + chPad + '_Turn_' + (sIdx + 1) + '.md';
                             const savePath = outputDir + '/' + saveName;
                             await Omni.fs.write(savePath, result.output);
                             const kbNum = parseFloat((result.output.length / 1024).toFixed(1));
                             totalKbAccumulator += kbNum;
                             document.getElementById('stat-kb-saved').innerText = totalKbAccumulator.toFixed(1) + ' KB Saved';
-                            log(profileName, '💾 Saved -> ' + saveName + ' (' + kbNum + ' KB)', 'text-yellow-300');
+                            chLog('💾 Saved -> ' + saveName + ' (' + kbNum + ' KB)', 'text-yellow-300');
                         }
 
                         turnSuccess = true;
                     } catch(turnErr) {
                         retries++;
-                        log(profileName, '⚠️ Error on ' + stepLabel + ': ' + turnErr.message, 'text-rose-400');
+                        chLog('⚠️ Error on ' + stepLabel + ' (attempt ' + retries + '): ' + turnErr.message, 'text-rose-400');
                         await new Promise(r => setTimeout(r, 2000));
                     }
                 }
 
                 if (!turnSuccess) {
                     chapterSuccess = false;
+                    chLog('🛑 Fatal error on ' + stepLabel + '. Halting chapter execution.', 'text-rose-500 font-bold');
                     break;
                 }
             }
 
-            // Cloud Save Grace Period before tearing down session
-            log(profileName, '☁️ Allowing 5s cloud auto-save sync window...', 'text-sky-300');
+            // Write Dedicated Chapter Audit Log into the Same Output Folder
+            try {
+                chLog('==============================================================================');
+                chLog('CHAPTER RESULT: ' + (chapterSuccess ? 'SUCCESS (100% Complete)' : 'FAILED / INCOMPLETE'));
+                chLog('End Timestamp: ' + new Date().toISOString());
+
+                const logFilename = 'Ch_' + chPad + (chapterSuccess ? '_Audit.log' : '_FAILURE.log');
+                await Omni.fs.write(outputDir + '/' + logFilename, chapterLogs.join('\n'));
+                chLog('📁 Co-located audit log saved -> ' + logFilename, 'text-emerald-400');
+            } catch(_) {}
+
+            // Cloud Save Grace Period before next chapter or teardown
+            chLog('☁️ Allowing 5s cloud auto-save sync window...', 'text-sky-300');
             await new Promise(r => setTimeout(r, 5000));
 
-            if (session && !state.preserveSession) {
+            if (!state.preserveSession && session) {
                 try { await session.close(); } catch(_) {}
+                warmMap[slotIdx] = null;
             }
-
             return chapterSuccess;
         }
 
-        async function processCourseChapters(courseCode) {
+        async function processCourseChapters(courseCode, warmWorkerSessions) {
             const root = state.baseRoot.replace(/\/+$/, '');
             const outputDir = root + '/' + courseCode + '_Results';
 
@@ -1525,7 +1584,7 @@
                     const ch = queue.shift();
                     const workerProfile = getNextRotatedProfile();
 
-                    const success = await executeSingleChapter(courseCode, ch, workerProfile, slotIdx, slotUIs[slotIdx]);
+                    const success = await executeSingleChapter(courseCode, ch, workerProfile, slotIdx, slotUIs[slotIdx], warmWorkerSessions);
 
                     if (success) {
                         completedCount++;
@@ -1598,6 +1657,8 @@
                 }
             } catch(_) {}
 
+            const warmWorkerSessions = {};
+
             try {
                 for (let cIdx = 0; cIdx < targetCourses.length; cIdx++) {
                     if (isAborted) break;
@@ -1609,7 +1670,7 @@
                     log(null, '══════════════════════════════════════════════════════', 'text-gray-600');
                     log(null, '📦 MOUNTING COURSE (' + (cIdx + 1) + '/' + targetCourses.length + '): ' + course.code, 'text-cyan-400 font-bold');
 
-                    const finished = await processCourseChapters(course.code);
+                    const finished = await processCourseChapters(course.code, warmWorkerSessions);
 
                     if (finished && !isAborted) {
                         course.completed = true;
