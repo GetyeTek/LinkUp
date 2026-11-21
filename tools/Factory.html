@@ -1549,15 +1549,112 @@
             }
         };
 
-                function stitchContinuation(baseText, nextChunk) {
-            if (!baseText) return { text: nextChunk || '', overlapRemoved: 0 };
-            if (!nextChunk) return { text: baseText, overlapRemoved: 0 };
+        const FINISH_REASON_LABELS = {
+            0: 'UNSPECIFIED/STREAM_DROP',
+            1: 'STOP',
+            2: 'MAX_TOKENS',
+            3: 'SAFETY',
+            4: 'RECITATION',
+            5: 'OTHER'
+        };
+
+        function formatFinishReason(code) {
+            const c = (code === undefined || code === null) ? -1 : code;
+            return c + ' (' + (FINISH_REASON_LABELS[c] || 'UNKNOWN') + ')';
+        }
+
+        function formatLogSnippet(str, maxLen) {
+            if (!str) return '""';
+            const clean = String(str).replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+            return JSON.stringify(clean.length > maxLen ? clean.slice(-maxLen) : clean);
+        }
+
+        function formatTurnTelemetry(res) {
+            const t = (res && res.telemetry) ? res.telemetry : {};
+            const fr = (res && res.finishReason !== undefined) ? res.finishReason : (t.finishReason !== undefined ? t.finishReason : -1);
+            const trunc = !!(res && res.truncated);
+            const outLen = (res && res.output) ? res.output.length : 0;
+            const thLen = (res && res.thoughts) ? res.thoughts.length : 0;
+            return 'reason=' + formatFinishReason(fr) +
+                ' | truncated=' + trunc +
+                ' | transport=' + (t.transport || 'unknown') +
+                ' | http=' + (t.httpStatus !== undefined ? t.httpStatus : '?') +
+                ' | status=' + (t.statusCode !== undefined ? t.statusCode : '?') +
+                ' | chunks=' + (t.chunkCount !== undefined ? t.chunkCount : '?') +
+                ' | syntaxComplete=' + (t.syntaxComplete !== undefined ? t.syntaxComplete : '?') +
+                ' | aborted=' + (t.aborted !== undefined ? t.aborted : '?') +
+                ' | dropped=' + (t.streamDropped !== undefined ? t.streamDropped : '?') +
+                ' | wireMs=' + (t.durationMs !== undefined ? t.durationMs : '?') +
+                ' | thoughts=' + thLen.toLocaleString() + 'c' +
+                ' | out=' + outLen.toLocaleString() + 'c' +
+                (t.statusDetails ? (' | details=' + JSON.stringify(t.statusDetails)) : '');
+        }
+
+        function auditStructuralCompleteness(text) {
+            const reasons = [];
+            if (!text || !text.trim()) {
+                return { complete: false, reasons: ['empty output'] };
+            }
+            const trimmed = text.trim();
+
+            // 1. XML course_visuals completeness audit
+            const isXmlCourse = /<course_visuals\b/i.test(trimmed) || /^<\?xml\b/i.test(trimmed);
+            if (isXmlCourse) {
+                if (/<course_visuals\b/i.test(trimmed) && !/<\/course_visuals>/i.test(trimmed)) {
+                    reasons.push('missing </course_visuals>');
+                }
+                const infoOpen = (trimmed.match(/<infographic\b/gi) || []).length;
+                const infoClose = (trimmed.match(/<\/infographic>/gi) || []).length;
+                if (infoOpen !== infoClose) {
+                    reasons.push('unclosed <infographic> (' + infoOpen + ' vs ' + infoClose + ')');
+                }
+                const cdataOpen = (trimmed.match(/<!\[CDATA\[/g) || []).length;
+                const cdataClose = (trimmed.match(/\]\]>/g) || []).length;
+                if (cdataOpen !== cdataClose) {
+                    reasons.push('unclosed <![CDATA[ (' + cdataOpen + ' vs ' + cdataClose + ')');
+                }
+                const svgOpen = (trimmed.match(/<svg\b/gi) || []).length;
+                const svgClose = (trimmed.match(/<\/svg>/gi) || []).length;
+                if (svgOpen !== svgClose) {
+                    reasons.push('unclosed <svg> (' + svgOpen + ' vs ' + svgClose + ')');
+                }
+            }
+
+            // 2. Unclosed markdown code fences
+            const fenceCount = (trimmed.match(/```/g) || []).length;
+            if (fenceCount % 2 === 1) {
+                reasons.push('unclosed markdown code fence (``` count=' + fenceCount + ')');
+            }
+
+            // 3. Mid-tag / mid-attribute cutoff (e.g. fill="var(-- or <rect x="20)
+            const tailWindow = trimmed.slice(-260);
+            if (/<[a-zA-Z!?\/][^>]*$/.test(tailWindow)) {
+                reasons.push('ends inside unclosed XML/HTML tag/attribute');
+            }
+
+            return {
+                complete: reasons.length === 0,
+                reasons: reasons
+            };
+        }
+
+        function stitchContinuation(baseText, nextChunk) {
+            if (!baseText) return { text: nextChunk || '', overlapRemoved: 0, strippedFence: false };
+            if (!nextChunk) return { text: baseText, overlapRemoved: 0, strippedFence: false };
 
             let cleanNext = String(nextChunk);
+            let strippedFence = false;
             const fenceMatches = baseText.match(/```/g);
             const insideOpenFence = fenceMatches && (fenceMatches.length % 2 === 1);
             if (insideOpenFence) {
-                cleanNext = cleanNext.replace(/^\s*```[a-zA-Z0-9_-]*\r?\n/, '');
+                const stripped = cleanNext.replace(/^\s*```[a-zA-Z0-9_-]*\r?\n/, '');
+                if (stripped !== cleanNext) {
+                    cleanNext = stripped;
+                    strippedFence = true;
+                }
+            } else if (/^\s*(?:<\?xml|<course_visuals)/i.test(baseText) && /^\s*```[a-zA-Z0-9_-]*\r?\n/.test(cleanNext)) {
+                cleanNext = cleanNext.replace(/^\s*```[a-zA-Z0-9_-]*\r?\n/, '').replace(/\r?\n```\s*$/, '');
+                strippedFence = true;
             }
 
             let overlapLen = 0;
@@ -1584,7 +1681,8 @@
 
             return {
                 text: baseText + cleanNext.slice(overlapLen),
-                overlapRemoved: overlapLen
+                overlapRemoved: overlapLen,
+                strippedFence: strippedFence
             };
         }
 
@@ -1781,11 +1879,32 @@
                         accumulatedOutput = currentResult.output;
                         accumulatedThoughts = currentResult.thoughts || '';
 
+                        chLog('📊 [TURN_TELEMETRY] ' + stepLabel + ' | ' + formatTurnTelemetry(currentResult), 'text-gray-300');
+                        chLog('   ↳ Head: ' + formatLogSnippet(accumulatedOutput.slice(0, 110), 110) + ' | Tail: ' + formatLogSnippet(accumulatedOutput, 110), 'text-gray-400');
+
+                        let structAudit = (step.scrape !== false)
+                            ? auditStructuralCompleteness(accumulatedOutput)
+                            : { complete: true, reasons: [] };
+
+                        function getContinuationReasons(res, audit) {
+                            const list = [];
+                            const tel = (res && res.telemetry) ? res.telemetry : {};
+                            if (res && res.finishReason === 2) list.push('finishReason=2 (MAX_TOKENS)');
+                            else if (res && res.truncated) list.push('truncated=true (reason=' + formatFinishReason(res.finishReason) + ')');
+                            else if (tel.usedWire && res && res.finishReason === 0) list.push('wire finishReason=0 (stream dropped)');
+                            if (audit && !audit.complete) {
+                                list.push.apply(list, audit.reasons);
+                            }
+                            return list;
+                        }
+
                         let contAttempt = 0;
-                        const MAX_CONT_ATTEMPTS = 3;
-                        while ((currentResult.truncated || currentResult.finishReason === 2) && contAttempt < MAX_CONT_ATTEMPTS && !isAborted) {
+                        const MAX_CONT_ATTEMPTS = 5;
+                        let contReasons = getContinuationReasons(currentResult, structAudit);
+
+                        while (contReasons.length > 0 && contAttempt < MAX_CONT_ATTEMPTS && !isAborted) {
                             contAttempt++;
-                            chLog('✂️ [MAX_TOKENS] ' + stepLabel + ' truncated at ' + accumulatedOutput.length.toLocaleString() + ' chars (finishReason=' + currentResult.finishReason + '). Requesting exact-byte continuation ' + contAttempt + '/' + MAX_CONT_ATTEMPTS + '...', 'text-amber-300 font-semibold');
+                            chLog('✂️ [AUTO-CONTINUE ' + contAttempt + '/' + MAX_CONT_ATTEMPTS + '] ' + stepLabel + ' incomplete at ' + accumulatedOutput.length.toLocaleString() + ' chars. Reasons: [' + contReasons.join('; ') + ']. Requesting exact-byte continuation...', 'text-amber-300 font-semibold');
 
                             if (workerUI) {
                                 workerUI.prog.innerText = '✂️ Continuing (' + contAttempt + '/' + MAX_CONT_ATTEMPTS + ')...';
@@ -1806,19 +1925,33 @@
                             });
 
                             if (!contRes || !contRes.output || contRes.output.trim().length === 0) {
-                                chLog('⚠️ Continuation ' + contAttempt + ' returned empty output; keeping accumulated ' + accumulatedOutput.length.toLocaleString() + ' chars.', 'text-amber-400');
+                                chLog('⚠️ [CONT_EMPTY] Continuation ' + contAttempt + ' returned empty output | ' + formatTurnTelemetry(contRes || {}), 'text-amber-400');
                                 break;
                             }
 
+                            chLog('📊 [CONT_TELEMETRY ' + contAttempt + '/' + MAX_CONT_ATTEMPTS + '] ' + formatTurnTelemetry(contRes), 'text-gray-300');
+                            chLog('   ↳ Chunk Head: ' + formatLogSnippet(contRes.output.slice(0, 110), 110) + ' | Chunk Tail: ' + formatLogSnippet(contRes.output, 110), 'text-gray-400');
+
+                            const prevLen = accumulatedOutput.length;
                             const stitched = stitchContinuation(accumulatedOutput, contRes.output);
-                            const addedChars = stitched.text.length - accumulatedOutput.length;
+                            const addedChars = stitched.text.length - prevLen;
                             accumulatedOutput = stitched.text;
                             if (contRes.thoughts) {
                                 accumulatedThoughts = accumulatedThoughts ? (accumulatedThoughts + '\n\n--- [Cont ' + contAttempt + '] ---\n' + contRes.thoughts) : contRes.thoughts;
                             }
                             currentResult = contRes;
                             publishTurnStream(accumulatedThoughts, accumulatedOutput, ' • Cont ' + contAttempt);
-                            chLog('🔗 Stitched continuation ' + contAttempt + '/' + MAX_CONT_ATTEMPTS + ' (+' + addedChars.toLocaleString() + ' chars, overlap stripped: ' + stitched.overlapRemoved + 'c). Total: ' + accumulatedOutput.length.toLocaleString() + ' chars.', 'text-cyan-300');
+                            chLog('🔗 Stitched continuation ' + contAttempt + '/' + MAX_CONT_ATTEMPTS + ' (' + prevLen.toLocaleString() + ' -> ' + accumulatedOutput.length.toLocaleString() + 'c, +' + addedChars.toLocaleString() + 'c, overlap=' + stitched.overlapRemoved + 'c, strippedFence=' + stitched.strippedFence + ').', 'text-cyan-300');
+
+                            structAudit = (step.scrape !== false)
+                                ? auditStructuralCompleteness(accumulatedOutput)
+                                : { complete: true, reasons: [] };
+
+                            if (addedChars <= 0 && !structAudit.complete) {
+                                chLog('⚠️ Continuation ' + contAttempt + ' added 0 net chars while structure remained incomplete; stopping continuation loop.', 'text-amber-400');
+                                break;
+                            }
+                            contReasons = getContinuationReasons(currentResult, structAudit);
                         }
 
                         const outputBytes = accumulatedOutput.length;
@@ -1828,11 +1961,20 @@
                             ? (configuredMinKb > 0 ? Math.min(2, configuredMinKb) : 0)
                             : configuredMinKb;
 
-                        // Validation Gatekeeper: Reject undersized payloads
+                        // Validation Gatekeeper 1: Reject undersized payloads
                         if (minKb > 0 && outputBytes < (minKb * 1024)) {
                             const sizeErrMsg = 'Undersized output rejected: ' + gotKb + ' KB (Below minimum required threshold of ' + minKb + ' KB)';
                             chLog('❌ GATEKEEPER REJECTION: ' + sizeErrMsg, 'text-rose-400 font-bold');
                             throw new Error(sizeErrMsg);
+                        }
+
+                        // Validation Gatekeeper 2: Reject structurally truncated XML/code payloads
+                        if (!structAudit.complete) {
+                            const partialName = 'Ch_' + chPad + '_Turn_' + (sIdx + 1) + '.partial.md';
+                            try { await Omni.fs.write(outputDir + '/' + partialName, accumulatedOutput); } catch(_) {}
+                            const structErrMsg = 'Incomplete/truncated output rejected (' + gotKb + ' KB): ' + structAudit.reasons.join('; ') + ' [Final tail: ' + formatLogSnippet(accumulatedOutput, 110) + '] (Saved partial dump -> ' + partialName + ')';
+                            chLog('❌ GATEKEEPER REJECTION (STRUCTURAL): ' + structErrMsg, 'text-rose-400 font-bold');
+                            throw new Error(structErrMsg);
                         }
 
                         chLog('✅ ' + stepLabel + ' completed & verified (' + accumulatedOutput.length.toLocaleString() + ' chars, ' + gotKb + ' KB >= ' + minKb + ' KB threshold)', 'text-emerald-300 font-semibold');
