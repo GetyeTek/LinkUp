@@ -543,7 +543,7 @@
             baseRoot: '/storage/emulated/0/Download/Chapters',
             concurrencyLimit: 3,
             multiCourseEnabled: true,
-            preserveSession: false,
+            preserveSession: true,
             minOutputKb: 30,
             model: 'Gemini 3.8 Flash',
             thinkingLevel: 'High',
@@ -1508,11 +1508,26 @@
                 return null;
             }
 
+            function isPermissionError(errMsg) {
+                const low = String(errMsg || '').toLowerCase();
+                return low.includes('permission') ||
+                    low.includes('caller does not have') ||
+                    low.includes('unauthenticated') ||
+                    low.includes('(403)') ||
+                    low.includes('status 7');
+            }
+
             const resolvedSysTitle = (state.sysTitle || '').trim() || ('Book Factory: ' + courseCode);
             let session = warmMap[profileId] || null;
-            try {
+
+            async function ensureFreshSession(forceNew, reasonLabel) {
+                if (forceNew && session) {
+                    try { await session.close(); } catch(_) {}
+                    session = null;
+                    warmMap[profileId] = null;
+                }
                 if (!session) {
-                    chLog('Spawning clean AI Studio session for ' + profileName + ' (temporary=' + state.tempChat + ')...');
+                    chLog((reasonLabel ? (reasonLabel + ': ') : '') + 'Spawning clean AI Studio session for ' + profileName + ' (temporary=' + state.tempChat + ')...');
                     session = await Omni.studio.createSession({
                         profile: profileId,
                         model: state.model,
@@ -1534,6 +1549,11 @@
                     sysPrompt: state.sysPrompt,
                     model: state.model
                 });
+                return session;
+            }
+
+            try {
+                session = await ensureFreshSession(false, '');
             } catch(initErr) {
                 chLog('❌ Session spawn/configure failed: ' + initErr.message, 'text-rose-400');
                 const lockType = detectLockType(initErr.message);
@@ -1696,6 +1716,29 @@
                             chLog((lockType === 'VERIFY' ? '🔒 [VERIFICATION LOCK]' : '🔴 [QUOTA EXHAUSTED]') + ' Halting future missions on ' + profileName + ': ' + turnErr.message, 'text-rose-400 font-bold');
                             if (session) { try { await session.close(); } catch(_) {} }
                             warmMap[profileId] = null;
+                            retries = 99;
+                            break;
+                        }
+                        if (isPermissionError(turnErr.message)) {
+                            chLog('🚫 [PERMISSION_DENIED] ' + turnErr.message + ' — immediately discarding session (0ms wait)!', 'text-amber-300 font-bold');
+                            if (session) { try { await session.close(); } catch(_) {} }
+                            session = null;
+                            warmMap[profileId] = null;
+                            if (sIdx === 0 && retries < 1 && !isAborted) {
+                                retries++;
+                                try {
+                                    await ensureFreshSession(true, '🔄 Fresh replacement');
+                                    continue;
+                                } catch(reinitErr) {
+                                    const reinitLock = detectLockType(reinitErr.message);
+                                    if (reinitLock) {
+                                        quarantineProfile(profileId, reinitLock, reinitErr.message);
+                                    }
+                                    chLog('❌ Replacement session boot failed: ' + reinitErr.message, 'text-rose-400');
+                                    retries = 99;
+                                    break;
+                                }
+                            }
                             retries = 99;
                             break;
                         }
