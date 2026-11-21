@@ -115,36 +115,6 @@
                     Grant
                 </button>
             </div>
-            <!-- Power, Keep-Awake & OLED Night Dimmer Controls -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs">
-                <label class="flex items-center justify-between bg-[#0D1117] border border-gray-800 px-3 py-2 rounded-xl cursor-pointer">
-                    <div>
-                        <div class="font-bold text-gray-200 flex items-center gap-1.5"><span>☀️</span> Keep Screen Awake</div>
-                        <div class="text-[10px] text-gray-500">Prevents sleep so Chromium never freezes JS</div>
-                    </div>
-                    <input type="checkbox" id="check-keep-awake" class="accent-sky-500" checked />
-                </label>
-
-                <div class="flex items-center justify-between bg-[#0D1117] border border-gray-800 px-3 py-2 rounded-xl gap-2">
-                    <label class="flex items-center gap-2 cursor-pointer flex-1">
-                        <input type="checkbox" id="check-night-dimmer" class="accent-indigo-400" />
-                        <div>
-                            <div class="font-bold text-indigo-300 flex items-center gap-1.5"><span>🌙</span> OLED Night Dimmer</div>
-                            <div class="text-[10px] text-gray-500">Drops brightness to 1% + black shield</div>
-                        </div>
-                    </label>
-                    <button id="btn-night-dimmer-now" class="bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-700/70 px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0">
-                        Dim Now
-                    </button>
-                </div>
-            </div>
-
-            <div id="overlay-perm-banner" class="hidden flex items-center justify-between bg-amber-950/50 border border-amber-700/60 px-3 py-2 rounded-xl text-xs gap-2">
-                <span class="text-amber-200">⚠️ Grant "Display over other apps" to keep workers running while using other apps & for system-wide Night Dimmer.</span>
-                <button id="btn-grant-overlay" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-lg font-bold text-[11px] shrink-0">
-                    Grant
-                </button>
-            </div>
         </div>
 
         <!-- Live Worker Fleet Cards -->
@@ -392,15 +362,6 @@
             </div>
         </div>
     </div>
-
-    <!-- In-Page Fallback OLED Night Curtain -->
-    <div id="oled-night-curtain" class="hidden fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 text-center select-none">
-        <div class="text-xs font-bold tracking-widest text-gray-700 uppercase">🌙 Night Shift OLED Curtain</div>
-        <div id="curtain-status-text" class="text-sm text-gray-600 font-mono mt-2 mb-6">Factory running...</div>
-        <button id="btn-wake-curtain" class="px-4 py-2 rounded-xl bg-[#0D1117] border border-gray-800 text-sky-500/80 text-xs font-bold">
-            ☀️ Wake Screen (or Double-Tap)
-        </button>
-    </div>
     <!-- In-Page Fallback OLED Night Curtain -->
     <div id="oled-night-curtain" class="hidden fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 text-center select-none">
         <div class="text-xs font-bold tracking-widest text-gray-700 uppercase">🌙 Night Shift OLED Curtain</div>
@@ -613,32 +574,6 @@
                         }
                     }
                 },
-                screen: {
-                    keepAwake: function(enabled) {
-                        return rpcCall('screenKeepAwake', [!!enabled]);
-                    },
-                    setNightDimmer: function(enabled, statusText) {
-                        return rpcCall('nightDimmerSet', [!!enabled, String(statusText || '')]);
-                    },
-                    updateNightDimmer: function(statusText) {
-                        if (window.__OmniStudioLabBridge && window.__OmniStudioLabBridge.nightDimmerUpdate) {
-                            window.__OmniStudioLabBridge.nightDimmerUpdate(String(statusText || ''));
-                        }
-                    }
-                },
-                overlay: {
-                    canDraw: function() {
-                        if (window.__OmniStudioLabBridge && window.__OmniStudioLabBridge.canDrawOverlays) {
-                            return !!window.__OmniStudioLabBridge.canDrawOverlays();
-                        }
-                        return false;
-                    },
-                    request: function() {
-                        if (window.__OmniStudioLabBridge && window.__OmniStudioLabBridge.requestOverlayPermission) {
-                            window.__OmniStudioLabBridge.requestOverlayPermission();
-                        }
-                    }
-                },
                 toast: function(msg) {
                     if (window.__OmniStudioLabBridge) window.__OmniStudioLabBridge.toast(String(msg));
                 },
@@ -673,8 +608,6 @@
             multiCourseEnabled: true,
             preserveSession: true,
             minOutputKb: 30,
-            keepScreenAwake: true,
-            nightDimmer: false,
             keepScreenAwake: true,
             nightDimmer: false,
             model: 'Gemini 3.8 Flash',
@@ -748,8 +681,6 @@
             document.getElementById('fleet-concurrency-note').innerText = 'Max Concurrency: ' + (state.concurrencyLimit || 3);
             document.getElementById('check-chaining-enabled').checked = state.multiCourseEnabled !== false;
             document.getElementById('check-preserve-session').checked = !!state.preserveSession;
-            document.getElementById('check-keep-awake').checked = state.keepScreenAwake !== false;
-            document.getElementById('check-night-dimmer').checked = !!state.nightDimmer;
             document.getElementById('check-keep-awake').checked = state.keepScreenAwake !== false;
             document.getElementById('check-night-dimmer').checked = !!state.nightDimmer;
             document.getElementById('input-min-output-kb').value = state.minOutputKb !== undefined ? state.minOutputKb : 30;
@@ -915,78 +846,6 @@
         document.getElementById('input-base-root').onchange = function() { state.baseRoot = this.value.trim(); saveState(); updateSelectedCourseView(); };
         document.getElementById('check-chaining-enabled').onchange = function() { state.multiCourseEnabled = this.checked; saveState(); };
         document.getElementById('check-preserve-session').onchange = function() { state.preserveSession = this.checked; saveState(); };
-        const curtainEl = document.getElementById('oled-night-curtain');
-        const curtainStatusEl = document.getElementById('curtain-status-text');
-        let lastCurtainTap = 0;
-
-        function updateInPageCurtainStatus(txt) {
-            if (curtainStatusEl && txt) curtainStatusEl.innerText = txt;
-        }
-
-        async function activateNightDimmer(statusMsg) {
-            updateInPageCurtainStatus(statusMsg || 'Night Shift active...');
-            try {
-                if (window.Omni && Omni.screen) {
-                    const res = await Omni.screen.setNightDimmer(true, statusMsg || 'Night Shift active...');
-                    if (!res || !res.overlayMode) {
-                        curtainEl.classList.remove('hidden');
-                    }
-                    return;
-                }
-            } catch(_) {}
-            curtainEl.classList.remove('hidden');
-        }
-
-        async function deactivateNightDimmer() {
-            curtainEl.classList.add('hidden');
-            try {
-                if (window.Omni && Omni.screen) {
-                    await Omni.screen.setNightDimmer(false, '');
-                }
-            } catch(_) {}
-        }
-
-        function refreshOverlayBanner() {
-            const banner = document.getElementById('overlay-perm-banner');
-            if (!banner) return;
-            const canDraw = (window.Omni && Omni.overlay && Omni.overlay.canDraw) ? Omni.overlay.canDraw() : false;
-            if (canDraw) banner.classList.add('hidden');
-            else banner.classList.remove('hidden');
-        }
-
-        document.getElementById('btn-grant-overlay').onclick = function() {
-            if (window.Omni && Omni.overlay) Omni.overlay.request();
-        };
-
-        document.getElementById('check-keep-awake').onchange = async function() {
-            state.keepScreenAwake = this.checked;
-            saveState();
-            if (isFactoryRunning && window.Omni && Omni.screen) {
-                try { await Omni.screen.keepAwake(state.keepScreenAwake); } catch(_) {}
-            }
-        };
-
-        document.getElementById('check-night-dimmer').onchange = async function() {
-            state.nightDimmer = this.checked;
-            saveState();
-            if (isFactoryRunning) {
-                if (state.nightDimmer) await activateNightDimmer('Night Shift running...');
-                else await deactivateNightDimmer();
-            }
-        };
-
-        document.getElementById('btn-night-dimmer-now').onclick = function() {
-            activateNightDimmer(document.getElementById('label-chapter-prog').innerText || 'Factory active...');
-        };
-
-        document.getElementById('btn-wake-curtain').onclick = deactivateNightDimmer;
-        curtainEl.onclick = function() {
-            const now = Date.now();
-            if (now - lastCurtainTap <= 650) deactivateNightDimmer();
-            else lastCurtainTap = now;
-        };
-        document.addEventListener('visibilitychange', refreshOverlayBanner);
-        window.addEventListener('focus', refreshOverlayBanner);
         const curtainEl = document.getElementById('oled-night-curtain');
         const curtainStatusEl = document.getElementById('curtain-status-text');
         let lastCurtainTap = 0;
@@ -2056,37 +1915,55 @@
             }
             return chapterSuccess;
         }
-
-        async function processCourseChapters(courseCode, warmWorkerSessions) {
+        async function runGlobalCourseQueue(targetCourses, warmWorkerSessions) {
             const root = state.baseRoot.replace(/\/+$/, '');
-            const outputDir = root + '/' + courseCode + '_Results';
+            const globalQueue = [];
+            const courseStats = {};
+            const courseObjByCode = {};
+            const createdManifestDirs = new Set();
 
-            // Ensure output folder exists
-            try { await Omni.fs.write(outputDir + '/.manifest', 'Course: ' + courseCode); } catch(_) {}
+            for (let cIdx = 0; cIdx < targetCourses.length; cIdx++) {
+                if (isAborted) break;
+                const course = targetCourses[cIdx];
+                courseObjByCode[course.code] = course;
 
-            const chapters = scannedCourseChapters[courseCode] || await scanCourseChapters(courseCode);
-            const crossMap = state.chapterCrossOffs[courseCode] || {};
+                const chapters = await scanCourseChapters(course.code);
+                const crossMap = state.chapterCrossOffs[course.code] || {};
+                const uncrossed = chapters.filter(ch => crossMap[ch.filename] !== true);
 
-            // Work-stealing queue of uncrossed chapters only
-            const queue = chapters.filter(ch => crossMap[ch.filename] !== true);
-            const totalToProcess = queue.length;
-            let completedCount = 0;
+                courseStats[course.code] = { total: uncrossed.length, completed: 0, dropped: 0 };
 
-            log(null, '📚 [' + courseCode + '] Starting ' + totalToProcess + ' uncrossed chapters (' + (chapters.length - totalToProcess) + ' skipped)', 'text-sky-400');
+                if (uncrossed.length === 0) {
+                    if (chapters.length > 0 && !course.completed) {
+                        course.completed = true;
+                        saveState();
+                        renderCourseQueue();
+                    }
+                    log(null, '✅ [' + course.code + '] All ' + chapters.length + ' chapters already crossed off.', 'text-emerald-400');
+                } else {
+                    log(null, '📚 [' + course.code + '] Enqueued ' + uncrossed.length + ' chapter(s) (' + (chapters.length - uncrossed.length) + ' skipped)', 'text-sky-400');
+                    uncrossed.forEach(function(ch) {
+                        globalQueue.push({ courseCode: course.code, chapter: ch });
+                    });
+                }
+            }
 
-            document.getElementById('label-course-prog').innerText = 'Course: ' + courseCode;
-            document.getElementById('label-chapter-prog').innerText = '0 of ' + totalToProcess + ' Chapters';
+            const globalTotal = globalQueue.length;
+            let globalCompleted = 0;
+            let coursesFinishedCount = targetCourses.filter(c => c.completed).length;
+
+            document.getElementById('label-course-prog').innerText = 'Global Queue: ' + coursesFinishedCount + '/' + targetCourses.length + ' Courses';
+            document.getElementById('label-chapter-prog').innerText = '0 of ' + globalTotal + ' Chapters';
             document.getElementById('bar-chapter-prog').style.width = '0%';
 
-            if (totalToProcess === 0) {
-                log(null, '✅ All chapters for ' + courseCode + ' already completed/crossed off.', 'text-emerald-400');
-                return true;
+            if (globalTotal === 0) {
+                log(null, '✅ All queued courses and chapters are already complete!', 'text-emerald-400 font-bold');
+                return;
             }
 
             const limit = Math.max(1, state.concurrencyLimit || 3);
-            const concurrencySlots = Math.min(limit, totalToProcess);
+            const concurrencySlots = Math.min(limit, globalTotal);
 
-            // Setup Concurrency Cards UI
             const cardsGrid = document.getElementById('worker-cards-grid');
             cardsGrid.innerHTML = '';
             const slotUIs = [];
@@ -2112,7 +1989,7 @@
 
                 workerStreams[i] = {
                     workerName: 'Slot ' + (i + 1),
-                    courseCode: courseCode,
+                    courseCode: 'Global',
                     chapterTitle: 'Idle',
                     turnLabel: '',
                     thoughts: '',
@@ -2124,12 +2001,12 @@
             }
 
             document.getElementById('stat-active-workers').innerText = concurrencySlots + ' Active';
+            log(null, '⚡ GLOBAL QUEUE ARMED: ' + globalTotal + ' chapter(s) across ' + targetCourses.length + ' course(s) on ' + concurrencySlots + ' non-stop worker(s)!', 'text-cyan-300 font-bold');
 
-            // Work-stealing concurrency runner with health-guarded per-profile warm sessions
             const leasedProfileIds = new Set();
             async function workerSlotLoop(slotIdx) {
                 let assignedProfileId = null;
-                while (queue.length > 0 && !isAborted) {
+                while (globalQueue.length > 0 && !isAborted) {
                     await refreshProfileHealth();
                     if (assignedProfileId && !isProfileHealthy(assignedProfileId)) {
                         const deadSess = warmWorkerSessions[assignedProfileId];
@@ -2139,16 +2016,36 @@
                         }
                         assignedProfileId = null;
                     }
+
                     const workerProfile = acquireNextFreeHealthyProfile(leasedProfileIds, assignedProfileId);
                     if (!workerProfile) {
                         if (getHealthyEnabledProfiles().length === 0) {
                             log(null, '🛑 All remaining profiles hit quota or verification lock! Stopping queue cleanly.', 'text-rose-400 font-bold');
                             Omni.toast('🛑 All profiles locked/exhausted!');
+                            break;
                         }
+                        if (slotUIs[slotIdx]) {
+                            slotUIs[slotIdx].badge.innerText = 'Standby';
+                            slotUIs[slotIdx].prog.innerText = 'Waiting for free profile...';
+                        }
+                        await new Promise(r => setTimeout(r, 900));
+                        continue;
+                    }
+
+                    assignedProfileId = workerProfile.id;
+                    const task = globalQueue.shift();
+                    if (!task) {
+                        leasedProfileIds.delete(workerProfile.id);
                         break;
                     }
-                    assignedProfileId = workerProfile.id;
-                    const ch = queue.shift();
+
+                    const courseCode = task.courseCode;
+                    const ch = task.chapter;
+                    if (!createdManifestDirs.has(courseCode)) {
+                        createdManifestDirs.add(courseCode);
+                        const outputDir = root + '/' + courseCode + '_Results';
+                        try { await Omni.fs.write(outputDir + '/.manifest', 'Course: ' + courseCode); } catch(_) {}
+                    }
 
                     let success = false;
                     try {
@@ -2161,9 +2058,10 @@
                         assignedProfileId = null;
                     }
 
+                    const cStat = courseStats[courseCode];
                     if (success) {
-                        completedCount++;
-                        // Auto-cross completed chapter immediately
+                        globalCompleted++;
+                        cStat.completed++;
                         if (!state.chapterCrossOffs[courseCode]) state.chapterCrossOffs[courseCode] = {};
                         state.chapterCrossOffs[courseCode][ch.filename] = true;
                         saveState();
@@ -2172,25 +2070,38 @@
                             renderChapterMatrix(courseCode);
                         }
 
-                        const pct = Math.round((completedCount / totalToProcess) * 100);
-                        document.getElementById('label-chapter-prog').innerText = completedCount + ' of ' + totalToProcess + ' (' + pct + '%)';
+                        if (cStat.completed + cStat.dropped >= cStat.total && cStat.dropped === 0) {
+                            const cObj = courseObjByCode[courseCode];
+                            if (cObj && !cObj.completed) {
+                                cObj.completed = true;
+                                coursesFinishedCount++;
+                                saveState();
+                                renderCourseQueue();
+                                log(null, '🎉 100% COMPLETE: Course ' + courseCode + ' finished and verified!', 'text-emerald-400 font-bold');
+                            }
+                        }
+
+                        const pct = Math.round((globalCompleted / globalTotal) * 100);
+                        document.getElementById('label-course-prog').innerText = 'Active: ' + courseCode + ' • ' + coursesFinishedCount + '/' + targetCourses.length + ' Courses';
+                        document.getElementById('label-chapter-prog').innerText = globalCompleted + ' of ' + globalTotal + ' (' + pct + '%)';
+                        document.getElementById('bar-chapter-prog').style.width = pct + '%';
                         const dimStatus = courseCode + ' • ' + globalCompleted + '/' + globalTotal + ' Ch (' + pct + '%) • ' + totalKbAccumulator.toFixed(1) + ' KB';
                         updateInPageCurtainStatus(dimStatus);
                         try { if (window.Omni && Omni.screen) Omni.screen.updateNightDimmer(dimStatus); } catch(_) {}
-                        document.getElementById('bar-chapter-prog').style.width = pct + '%';
                         log(workerProfile.name, '🏁 Finished ' + courseCode + ' Ch ' + ch.number + ' and auto-crossed off.', 'text-emerald-400');
                     } else if (!isAborted) {
                         const failedByLock = !isProfileHealthy(workerProfile.id);
                         if (failedByLock) {
-                            log(workerProfile.name, '↪️ Re-queueing Ch ' + ch.number + ' onto another healthy profile (not counted as chapter failure).', 'text-amber-300');
-                            queue.unshift(ch);
+                            log(workerProfile.name, '↪️ Re-queueing ' + courseCode + ' Ch ' + ch.number + ' onto another healthy profile (not counted as chapter failure).', 'text-amber-300');
+                            globalQueue.unshift(task);
                         } else {
                             ch.failures = (ch.failures || 0) + 1;
                             if (ch.failures <= 2) {
-                                log(workerProfile.name, '❌ Failed Ch ' + ch.number + ' (Attempt ' + ch.failures + '/2). Re-queueing for another worker...', 'text-amber-400');
-                                queue.push(ch);
+                                log(workerProfile.name, '❌ Failed ' + courseCode + ' Ch ' + ch.number + ' (Attempt ' + ch.failures + '/2). Re-queueing...', 'text-amber-400');
+                                globalQueue.push(task);
                             } else {
-                                log(workerProfile.name, '🛑 Ch ' + ch.number + ' failed 2 times. Dropping to prevent overnight deadlock!', 'text-rose-500');
+                                cStat.dropped++;
+                                log(workerProfile.name, '🛑 ' + courseCode + ' Ch ' + ch.number + ' failed 2 times. Dropping to prevent deadlock!', 'text-rose-500');
                             }
                         }
                     }
@@ -2208,8 +2119,6 @@
                 runners.push(workerSlotLoop(s));
             }
             await Promise.all(runners);
-
-            return completedCount >= totalToProcess;
         }
 
         async function launchNightShiftFactory() {
@@ -2234,7 +2143,7 @@
             btnMasterLaunch.classList.add('hidden');
             btnEmergencyAbort.classList.remove('hidden');
             setFactoryStatus('Night Shift Running', 'bg-emerald-900 text-emerald-300 border-emerald-700');
-            log(null, '🚀 NIGHT SHIFT FACTORY ARMED! Processing ' + targetCourses.length + ' course(s)...', 'text-sky-300');
+            log(null, '🚀 NIGHT SHIFT FACTORY ARMED! Building global queue for ' + targetCourses.length + ' course(s)...', 'text-sky-300');
 
             try {
                 if (window.Omni && window.Omni.wakeLock) {
@@ -2242,17 +2151,7 @@
                     log(null, '🛡️ Master Pipeline WakeLock engaged. Screen can be turned off safely!', 'text-emerald-400 font-semibold');
                 }
             } catch(_) {}
-            if (state.keepScreenAwake !== false) {
-                try {
-                    if (window.Omni && Omni.screen) {
-                        await Omni.screen.keepAwake(true);
-                        log(null, '☀️ Keep-Screen-Awake engaged (Chromium timer freeze prevented).', 'text-sky-300 font-semibold');
-                    }
-                } catch(_) {}
-            }
-            if (state.nightDimmer) {
-                await activateNightDimmer('Starting Night Shift...');
-            }
+
             if (state.keepScreenAwake !== false) {
                 try {
                     if (window.Omni && Omni.screen) {
@@ -2268,25 +2167,7 @@
             const warmWorkerSessions = {};
 
             try {
-                for (let cIdx = 0; cIdx < targetCourses.length; cIdx++) {
-                    if (isAborted) break;
-                    const course = targetCourses[cIdx];
-                    state.selectedCourseCode = course.code;
-                    saveState();
-                    renderCourseQueue();
-
-                    log(null, '══════════════════════════════════════════════════════', 'text-gray-600');
-                    log(null, '📦 MOUNTING COURSE (' + (cIdx + 1) + '/' + targetCourses.length + '): ' + course.code, 'text-cyan-400 font-bold');
-
-                    const finished = await processCourseChapters(course.code, warmWorkerSessions);
-
-                    if (finished && !isAborted) {
-                        course.completed = true;
-                        saveState();
-                        renderCourseQueue();
-                        log(null, '🎉 100% COMPLETE: Course ' + course.code + ' finished and verified!', 'text-emerald-400 font-bold');
-                    }
-                }
+                await runGlobalCourseQueue(targetCourses, warmWorkerSessions);
 
                 if (isAborted) {
                     setFactoryStatus('Aborted', 'bg-rose-900 text-rose-300 border-rose-700');
@@ -2300,19 +2181,16 @@
             } catch(e) {
                 log(null, '💥 Pipeline Error: ' + e.message, 'text-rose-400');
             } finally {
-                                await deactivateNightDimmer();
-                try {
-                    if (window.Omni && Omni.screen) {
-                        await Omni.screen.keepAwake(false);
-                    }
-                } catch(_) {}
+                for (const s of Object.values(warmWorkerSessions)) {
+                    if (s) { try { await s.close(); } catch(_) {} }
+                }
                 await deactivateNightDimmer();
                 try {
                     if (window.Omni && Omni.screen) {
                         await Omni.screen.keepAwake(false);
                     }
                 } catch(_) {}
-try {
+                try {
                     if (window.Omni && window.Omni.wakeLock) {
                         await Omni.wakeLock.release();
                         log(null, '🛡️ Master Pipeline WakeLock released.', 'text-gray-400');
@@ -2344,7 +2222,6 @@ try {
             await loadState();
             restoreTerminalLogs();
             await loadDeviceProfiles();
-            refreshOverlayBanner();
             refreshOverlayBanner();
         }
         init();
