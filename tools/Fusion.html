@@ -85,6 +85,36 @@
             <button id="btn-master-launch" class="w-full bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-black text-sm py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
                 <span>🚀</span> Launch 5-Worker Synthesis Factory
             </button>
+            <!-- Power, Keep-Awake & OLED Night Dimmer Controls -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs">
+                <label class="flex items-center justify-between bg-[#0D1117] border border-gray-800 px-3 py-2 rounded-xl cursor-pointer">
+                    <div>
+                        <div class="font-bold text-gray-200 flex items-center gap-1.5"><span>☀️</span> Keep Screen Awake</div>
+                        <div class="text-[10px] text-gray-500">Prevents sleep so Chromium never freezes JS</div>
+                    </div>
+                    <input type="checkbox" id="check-keep-awake" class="accent-sky-500" checked />
+                </label>
+
+                <div class="flex items-center justify-between bg-[#0D1117] border border-gray-800 px-3 py-2 rounded-xl gap-2">
+                    <label class="flex items-center gap-2 cursor-pointer flex-1">
+                        <input type="checkbox" id="check-night-dimmer" class="accent-indigo-400" />
+                        <div>
+                            <div class="font-bold text-indigo-300 flex items-center gap-1.5"><span>🌙</span> OLED Night Dimmer</div>
+                            <div class="text-[10px] text-gray-500">Drops brightness to 1% + black shield</div>
+                        </div>
+                    </label>
+                    <button id="btn-night-dimmer-now" class="bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-700/70 px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0">
+                        Dim Now
+                    </button>
+                </div>
+            </div>
+
+            <div id="overlay-perm-banner" class="hidden flex items-center justify-between bg-amber-950/50 border border-amber-700/60 px-3 py-2 rounded-xl text-xs gap-2">
+                <span class="text-amber-200">⚠️ Grant "Display over other apps" to keep workers running while using other apps & for system-wide Night Dimmer.</span>
+                <button id="btn-grant-overlay" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-lg font-bold text-[11px] shrink-0">
+                    Grant
+                </button>
+            </div>
         </div>
 
         <!-- Live Worker Fleet Cards -->
@@ -360,6 +390,14 @@
         </div>
     </div>
 
+    <!-- In-Page Fallback OLED Night Curtain -->
+    <div id="oled-night-curtain" class="hidden fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 text-center select-none">
+        <div class="text-xs font-bold tracking-widest text-gray-700 uppercase">🌙 Night Shift OLED Curtain</div>
+        <div id="curtain-status-text" class="text-sm text-gray-600 font-mono mt-2 mb-6">Synthesis running...</div>
+        <button id="btn-wake-curtain" class="px-4 py-2 rounded-xl bg-[#0D1117] border border-gray-800 text-sky-500/80 text-xs font-bold">
+            ☀️ Wake Screen (or Double-Tap)
+        </button>
+    </div>
     <!-- Live Stream Modal -->
     <div id="modal-worker-stream" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
         <div class="bg-[#161B22] border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
@@ -514,6 +552,28 @@
                     acquire: function(tag) { return rpcCall('wakeLockAcquire', [tag || 'StudioLab']); },
                     release: function() { return rpcCall('wakeLockRelease', []); }
                 },
+                screen: {
+                    keepAwake: function(enabled) { return rpcCall('screenKeepAwake', [!!enabled]); },
+                    setNightDimmer: function(enabled, statusText) { return rpcCall('nightDimmerSet', [!!enabled, String(statusText || '')]); },
+                    updateNightDimmer: function(statusText) {
+                        if (window.__OmniStudioLabBridge && window.__OmniStudioLabBridge.nightDimmerUpdate) {
+                            window.__OmniStudioLabBridge.nightDimmerUpdate(String(statusText || ''));
+                        }
+                    }
+                },
+                overlay: {
+                    canDraw: function() {
+                        if (window.__OmniStudioLabBridge && window.__OmniStudioLabBridge.canDrawOverlays) {
+                            return !!window.__OmniStudioLabBridge.canDrawOverlays();
+                        }
+                        return false;
+                    },
+                    request: function() {
+                        if (window.__OmniStudioLabBridge && window.__OmniStudioLabBridge.requestOverlayPermission) {
+                            window.__OmniStudioLabBridge.requestOverlayPermission();
+                        }
+                    }
+                },
                 toast: function(msg) { if (window.__OmniStudioLabBridge) window.__OmniStudioLabBridge.toast(String(msg)); },
                 vibrate: function(ms) { if (window.__OmniStudioLabBridge) window.__OmniStudioLabBridge.vibrate(Number(ms) || 50); },
                 copy: function(text) { if (window.__OmniStudioLabBridge) window.__OmniStudioLabBridge.copyToClipboard(String(text)); },
@@ -543,6 +603,8 @@
             multiCourseEnabled: true,
             preserveSession: true,
             minOutputKb: 30,
+            keepScreenAwake: true,
+            nightDimmer: false,
             model: 'Gemini 3.8 Flash',
             thinkingLevel: 'Default',
             tempChat: false,
@@ -623,6 +685,8 @@
             document.getElementById('fleet-concurrency-note').innerText = 'Concurrency: ' + (state.concurrencyLimit || 5) + ' Workers';
             document.getElementById('check-chaining-enabled').checked = state.multiCourseEnabled !== false;
             document.getElementById('check-preserve-session').checked = state.preserveSession !== false;
+            document.getElementById('check-keep-awake').checked = state.keepScreenAwake !== false;
+            document.getElementById('check-night-dimmer').checked = !!state.nightDimmer;
             document.getElementById('input-min-output-kb').value = state.minOutputKb !== undefined ? state.minOutputKb : 30;
             document.getElementById('input-model').value = state.model || 'Gemini 3.8 Flash';
             document.getElementById('select-thinking').value = state.thinkingLevel || 'High';
@@ -777,6 +841,78 @@
         document.getElementById('input-output-dest').onchange = function() { state.outputDest = this.value.trim(); saveState(); };
         document.getElementById('check-chaining-enabled').onchange = function() { state.multiCourseEnabled = this.checked; saveState(); };
         document.getElementById('check-preserve-session').onchange = function() { state.preserveSession = this.checked; saveState(); };
+        const curtainEl = document.getElementById('oled-night-curtain');
+        const curtainStatusEl = document.getElementById('curtain-status-text');
+        let lastCurtainTap = 0;
+
+        function updateInPageCurtainStatus(txt) {
+            if (curtainStatusEl && txt) curtainStatusEl.innerText = txt;
+        }
+
+        async function activateNightDimmer(statusMsg) {
+            updateInPageCurtainStatus(statusMsg || 'Synthesis Night Shift active...');
+            try {
+                if (window.Omni && Omni.screen) {
+                    const res = await Omni.screen.setNightDimmer(true, statusMsg || 'Synthesis Night Shift active...');
+                    if (!res || !res.overlayMode) {
+                        curtainEl.classList.remove('hidden');
+                    }
+                    return;
+                }
+            } catch(_) {}
+            curtainEl.classList.remove('hidden');
+        }
+
+        async function deactivateNightDimmer() {
+            curtainEl.classList.add('hidden');
+            try {
+                if (window.Omni && Omni.screen) {
+                    await Omni.screen.setNightDimmer(false, '');
+                }
+            } catch(_) {}
+        }
+
+        function refreshOverlayBanner() {
+            const banner = document.getElementById('overlay-perm-banner');
+            if (!banner) return;
+            const canDraw = (window.Omni && Omni.overlay && Omni.overlay.canDraw) ? Omni.overlay.canDraw() : false;
+            if (canDraw) banner.classList.add('hidden');
+            else banner.classList.remove('hidden');
+        }
+
+        document.getElementById('btn-grant-overlay').onclick = function() {
+            if (window.Omni && Omni.overlay) Omni.overlay.request();
+        };
+
+        document.getElementById('check-keep-awake').onchange = async function() {
+            state.keepScreenAwake = this.checked;
+            saveState();
+            if (isFactoryRunning && window.Omni && Omni.screen) {
+                try { await Omni.screen.keepAwake(state.keepScreenAwake); } catch(_) {}
+            }
+        };
+
+        document.getElementById('check-night-dimmer').onchange = async function() {
+            state.nightDimmer = this.checked;
+            saveState();
+            if (isFactoryRunning) {
+                if (state.nightDimmer) await activateNightDimmer('Synthesis Night Shift running...');
+                else await deactivateNightDimmer();
+            }
+        };
+
+        document.getElementById('btn-night-dimmer-now').onclick = function() {
+            activateNightDimmer(document.getElementById('label-chapter-prog').innerText || 'Synthesis active...');
+        };
+
+        document.getElementById('btn-wake-curtain').onclick = deactivateNightDimmer;
+        curtainEl.onclick = function() {
+            const now = Date.now();
+            if (now - lastCurtainTap <= 650) deactivateNightDimmer();
+            else lastCurtainTap = now;
+        };
+        document.addEventListener('visibilitychange', refreshOverlayBanner);
+        window.addEventListener('focus', refreshOverlayBanner);
         document.getElementById('input-min-output-kb').oninput = function() { state.minOutputKb = parseInt(this.value, 10) || 0; saveState(); };
         document.getElementById('input-model').onchange = function() { state.model = this.value.trim(); saveState(); };
         document.getElementById('select-thinking').onchange = function() { state.thinkingLevel = this.value; saveState(); };
@@ -1919,6 +2055,17 @@
                     log(null, '🛡️ Hardware WakeLock engaged. You can turn off your screen safely!', 'text-emerald-400 font-semibold');
                 }
             } catch(_) {}
+            if (state.keepScreenAwake !== false) {
+                try {
+                    if (window.Omni && Omni.screen) {
+                        await Omni.screen.keepAwake(true);
+                        log(null, '☀️ Keep-Screen-Awake engaged (Chromium timer freeze prevented).', 'text-sky-300 font-semibold');
+                    }
+                } catch(_) {}
+            }
+            if (state.nightDimmer) {
+                await activateNightDimmer('Starting Synthesis Night Shift...');
+            }
 
             const warmWorkerSessions = {};
 
@@ -1960,7 +2107,13 @@
                     if (s) { try { await s.close(); } catch(_) {} }
                 });
 
+                                await deactivateNightDimmer();
                 try {
+                    if (window.Omni && Omni.screen) {
+                        await Omni.screen.keepAwake(false);
+                    }
+                } catch(_) {}
+try {
                     if (window.Omni && window.Omni.wakeLock) {
                         await Omni.wakeLock.release();
                         log(null, '🛡️ Master Pipeline WakeLock released.', 'text-gray-400');
@@ -1992,6 +2145,7 @@
             await loadState();
             restoreTerminalLogs();
             await loadDeviceProfiles();
+            refreshOverlayBanner();
         }
         init();
     </script>
