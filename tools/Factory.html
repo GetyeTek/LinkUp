@@ -1410,7 +1410,64 @@
             }
         };
 
-        // 10. Master Night-Shift Autonomous Runner
+                function stitchContinuation(baseText, nextChunk) {
+            if (!baseText) return { text: nextChunk || '', overlapRemoved: 0 };
+            if (!nextChunk) return { text: baseText, overlapRemoved: 0 };
+
+            let cleanNext = String(nextChunk);
+            const fenceMatches = baseText.match(/```/g);
+            const insideOpenFence = fenceMatches && (fenceMatches.length % 2 === 1);
+            if (insideOpenFence) {
+                cleanNext = cleanNext.replace(/^\s*```[a-zA-Z0-9_-]*\r?\n/, '');
+            }
+
+            let overlapLen = 0;
+            const maxCheck = Math.min(500, baseText.length, cleanNext.length);
+            for (let L = maxCheck; L >= 10; L--) {
+                const tail = baseText.slice(-L);
+                if (tail.trim().length >= 8 && cleanNext.startsWith(tail)) {
+                    overlapLen = L;
+                    break;
+                }
+            }
+
+            if (overlapLen === 0 && cleanNext[0] === '\n') {
+                const afterNl = cleanNext.slice(1);
+                const maxNlCheck = Math.min(500, baseText.length, afterNl.length);
+                for (let L = maxNlCheck; L >= 12; L--) {
+                    const tail = baseText.slice(-L);
+                    if (tail.trim().length >= 10 && afterNl.startsWith(tail)) {
+                        overlapLen = L + 1;
+                        break;
+                    }
+                }
+            }
+
+            return {
+                text: baseText + cleanNext.slice(overlapLen),
+                overlapRemoved: overlapLen
+            };
+        }
+
+        function buildExactContinuationPrompt(accumulatedText) {
+            const tail = accumulatedText.slice(-360);
+            const last24 = JSON.stringify(accumulatedText.slice(-24));
+            const last1 = JSON.stringify(accumulatedText.slice(-1));
+            return '[SYSTEM CONTINUATION DIRECTIVE]\n' +
+                'Your previous response hit the MAX_TOKENS limit and stopped mid-output.\n' +
+                'Your reply will be concatenated character-for-character (`previous + your_reply`) directly onto the end of your previous output.\n\n' +
+                'STRICT RULES:\n' +
+                '1. Resume at the EXACT next character/byte immediately after the final character shown below so the joined code/text has ZERO syntax errors.\n' +
+                '2. Do NOT add any greeting, explanation, apology, or "Continuing from...".\n' +
+                '3. Do NOT repeat ANY characters, tokens, or lines already emitted.\n' +
+                '4. If you were inside an open markdown code fence (```), tag, string literal, or expression, do NOT re-open the fence — pick up mid-token/mid-line and finish cleanly including all closing fences.\n\n' +
+                'Exact final byte emitted: ' + last1 + ' (end tail JSON: ' + last24 + ')\n' +
+                '<<<EXACT_TAIL_START>>>\n' +
+                tail + '\n' +
+                '<<<EXACT_TAIL_END>>>\n\n' +
+                'Output ONLY the raw continuation starting at the exact next character:';
+        }
+// 10. Master Night-Shift Autonomous Runner
         let totalKbAccumulator = 0;
         async function executeSingleChapter(courseCode, chapter, workerProfile, slotIdx, workerUI, warmWorkerSessions) {
             const profileId = workerProfile.id;
@@ -1522,45 +1579,90 @@
 
                 while (!turnSuccess && retries <= 1 && !isAborted) {
                     try {
-                        const result = await session.send({
+                        let accumulatedOutput = '';
+                        let accumulatedThoughts = '';
+
+                        function publishTurnStream(liveThoughts, liveOutput, turnLabelSuffix) {
+                            const chars = liveOutput.length;
+                            const kb = (chars / 1024).toFixed(1);
+                            workerStreams[slotIdx] = {
+                                workerName: profileName + ' (Slot ' + (slotIdx + 1) + ')',
+                                courseCode: courseCode,
+                                chapterTitle: 'Ch ' + chapter.number + ': ' + chapter.title,
+                                turnLabel: 'Turn ' + (sIdx + 1) + '/' + state.promptSteps.length + (turnLabelSuffix || ''),
+                                thoughts: liveThoughts,
+                                output: liveOutput,
+                                charCount: chars,
+                                kbSize: kb,
+                                state: chars > 0 ? 'Streaming (' + kb + ' KB)' : (liveThoughts ? 'Thinking...' : 'Starting...')
+                            };
+                            if (workerUI) {
+                                workerUI.prog.innerText = chars > 0
+                                    ? '⚡ ' + chars.toLocaleString() + ' chars (' + kb + ' KB)'
+                                    : (liveThoughts ? '🧠 Thinking: ' + liveThoughts.slice(-35) : 'Waiting for tokens...');
+                            }
+                            if (activeModalWorkerId === slotIdx) {
+                                updateModalContent(slotIdx);
+                            }
+                        }
+
+                        let currentResult = await session.send({
                             prompt: payload,
                             attachments: attachments,
                             label: stepLabel
                         }, function(prog) {
                             if (!prog) return;
-                            const thoughts = prog.thoughts || '';
-                            const output = prog.output || '';
-                            const chars = output.length;
-                            const kb = (chars / 1024).toFixed(1);
-
-                            workerStreams[slotIdx] = {
-                                workerName: profileName + ' (Slot ' + (slotIdx + 1) + ')',
-                                courseCode: courseCode,
-                                chapterTitle: 'Ch ' + chapter.number + ': ' + chapter.title,
-                                turnLabel: 'Turn ' + (sIdx + 1) + '/' + state.promptSteps.length,
-                                thoughts: thoughts,
-                                output: output,
-                                charCount: chars,
-                                kbSize: kb,
-                                state: chars > 0 ? 'Streaming (' + kb + ' KB)' : (thoughts ? 'Thinking...' : 'Starting...')
-                            };
-
-                            if (workerUI) {
-                                workerUI.prog.innerText = chars > 0 
-                                    ? '⚡ ' + chars.toLocaleString() + ' chars (' + kb + ' KB)'
-                                    : (thoughts ? '🧠 Thinking: ' + thoughts.slice(-35) : 'Waiting for tokens...');
-                            }
-
-                            if (activeModalWorkerId === slotIdx) {
-                                updateModalContent(slotIdx);
-                            }
+                            publishTurnStream(prog.thoughts || '', prog.output || '', '');
                         });
 
-                        if (!result || !result.output || result.output.trim().length === 0) {
+                        if (!currentResult || !currentResult.output || currentResult.output.trim().length === 0) {
                             throw new Error('Empty response received from AI Studio');
                         }
 
-                        const outputBytes = result.output.length;
+                        accumulatedOutput = currentResult.output;
+                        accumulatedThoughts = currentResult.thoughts || '';
+
+                        let contAttempt = 0;
+                        const MAX_CONT_ATTEMPTS = 3;
+                        while ((currentResult.truncated || currentResult.finishReason === 2) && contAttempt < MAX_CONT_ATTEMPTS && !isAborted) {
+                            contAttempt++;
+                            chLog('✂️ [MAX_TOKENS] ' + stepLabel + ' truncated at ' + accumulatedOutput.length.toLocaleString() + ' chars (finishReason=' + currentResult.finishReason + '). Requesting exact-byte continuation ' + contAttempt + '/' + MAX_CONT_ATTEMPTS + '...', 'text-amber-300 font-semibold');
+
+                            if (workerUI) {
+                                workerUI.prog.innerText = '✂️ Continuing (' + contAttempt + '/' + MAX_CONT_ATTEMPTS + ')...';
+                            }
+
+                            const contPrompt = buildExactContinuationPrompt(accumulatedOutput);
+                            const contRes = await session.send({
+                                prompt: contPrompt,
+                                attachments: [],
+                                label: stepLabel + ' (Cont ' + contAttempt + ')'
+                            }, function(prog) {
+                                if (!prog) return;
+                                const preview = stitchContinuation(accumulatedOutput, prog.output || '');
+                                const mergedThoughts = prog.thoughts
+                                    ? (accumulatedThoughts ? accumulatedThoughts + '\n\n--- [Cont ' + contAttempt + '] ---\n' + prog.thoughts : prog.thoughts)
+                                    : accumulatedThoughts;
+                                publishTurnStream(mergedThoughts, preview.text, ' • Cont ' + contAttempt);
+                            });
+
+                            if (!contRes || !contRes.output || contRes.output.trim().length === 0) {
+                                chLog('⚠️ Continuation ' + contAttempt + ' returned empty output; keeping accumulated ' + accumulatedOutput.length.toLocaleString() + ' chars.', 'text-amber-400');
+                                break;
+                            }
+
+                            const stitched = stitchContinuation(accumulatedOutput, contRes.output);
+                            const addedChars = stitched.text.length - accumulatedOutput.length;
+                            accumulatedOutput = stitched.text;
+                            if (contRes.thoughts) {
+                                accumulatedThoughts = accumulatedThoughts ? (accumulatedThoughts + '\n\n--- [Cont ' + contAttempt + '] ---\n' + contRes.thoughts) : contRes.thoughts;
+                            }
+                            currentResult = contRes;
+                            publishTurnStream(accumulatedThoughts, accumulatedOutput, ' • Cont ' + contAttempt);
+                            chLog('🔗 Stitched continuation ' + contAttempt + '/' + MAX_CONT_ATTEMPTS + ' (+' + addedChars.toLocaleString() + ' chars, overlap stripped: ' + stitched.overlapRemoved + 'c). Total: ' + accumulatedOutput.length.toLocaleString() + ' chars.', 'text-cyan-300');
+                        }
+
+                        const outputBytes = accumulatedOutput.length;
                         const gotKb = (outputBytes / 1024).toFixed(1);
                         const configuredMinKb = parseInt(state.minOutputKb, 10) || 0;
                         const minKb = (sIdx === 0 && state.promptSteps.length > 1)
@@ -1574,13 +1676,13 @@
                             throw new Error(sizeErrMsg);
                         }
 
-                        chLog('✅ ' + stepLabel + ' completed & verified (' + result.output.length.toLocaleString() + ' chars, ' + gotKb + ' KB >= ' + minKb + ' KB threshold)', 'text-emerald-300 font-semibold');
+                        chLog('✅ ' + stepLabel + ' completed & verified (' + accumulatedOutput.length.toLocaleString() + ' chars, ' + gotKb + ' KB >= ' + minKb + ' KB threshold)', 'text-emerald-300 font-semibold');
 
                         if (step.scrape !== false) {
                             const saveName = 'Ch_' + chPad + '_Turn_' + (sIdx + 1) + '.md';
                             const savePath = outputDir + '/' + saveName;
-                            await Omni.fs.write(savePath, result.output);
-                            const kbNum = parseFloat((result.output.length / 1024).toFixed(1));
+                            await Omni.fs.write(savePath, accumulatedOutput);
+                            const kbNum = parseFloat((accumulatedOutput.length / 1024).toFixed(1));
                             totalKbAccumulator += kbNum;
                             document.getElementById('stat-kb-saved').innerText = totalKbAccumulator.toFixed(1) + ' KB Saved';
                             chLog('💾 Saved -> ' + saveName + ' (' + kbNum + ' KB)', 'text-yellow-300');
