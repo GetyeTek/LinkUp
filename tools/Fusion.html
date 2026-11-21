@@ -491,6 +491,9 @@
             }
 
             window.Omni = {
+                profiles: {
+                    list: function() { return rpcCall('profilesList', []); }
+                },
                 studio: {
                 profiles: {
                     list: function() { return rpcCall('profilesList', []); }
@@ -920,6 +923,7 @@
         document.getElementById('input-sys-title').oninput = function() { state.sysTitle = this.value; saveState(); };
         document.getElementById('input-sys-prompt').oninput = function() { state.sysPrompt = this.value; saveState(); };
 
+        // 5. Profile Fleet Management & Live Health Quarantine
         // 5. Profile Fleet Management & Live Health Quarantine
         let deviceProfiles = [{ id: 'default', name: 'Default' }];
         let profileHealthMap = {};
@@ -1580,12 +1584,70 @@
 
         // 10. Autonomous 4-Asset Multi-Worker Execution Engine
         let totalKbAccumulator = 0;
+        function stitchContinuation(baseText, nextChunk) {
+            if (!baseText) return { text: nextChunk || '', overlapRemoved: 0 };
+            if (!nextChunk) return { text: baseText, overlapRemoved: 0 };
+
+            let cleanNext = String(nextChunk);
+            const fenceMatches = baseText.match(/```/g);
+            const insideOpenFence = fenceMatches && (fenceMatches.length % 2 === 1);
+            if (insideOpenFence) {
+                cleanNext = cleanNext.replace(/^\s*```[a-zA-Z0-9_-]*\r?\n/, '');
+            }
+
+            let overlapLen = 0;
+            const maxCheck = Math.min(500, baseText.length, cleanNext.length);
+            for (let L = maxCheck; L >= 10; L--) {
+                const tail = baseText.slice(-L);
+                if (tail.trim().length >= 8 && cleanNext.startsWith(tail)) {
+                    overlapLen = L;
+                    break;
+                }
+            }
+
+            if (overlapLen === 0 && cleanNext[0] === '\n') {
+                const afterNl = cleanNext.slice(1);
+                const maxNlCheck = Math.min(500, baseText.length, afterNl.length);
+                for (let L = maxNlCheck; L >= 12; L--) {
+                    const tail = baseText.slice(-L);
+                    if (tail.trim().length >= 10 && afterNl.startsWith(tail)) {
+                        overlapLen = L + 1;
+                        break;
+                    }
+                }
+            }
+
+            return {
+                text: baseText + cleanNext.slice(overlapLen),
+                overlapRemoved: overlapLen
+            };
+        }
+
+        function buildExactContinuationPrompt(accumulatedText) {
+            const tail = accumulatedText.slice(-360);
+            const last24 = JSON.stringify(accumulatedText.slice(-24));
+            const last1 = JSON.stringify(accumulatedText.slice(-1));
+            return '[SYSTEM CONTINUATION DIRECTIVE]\n' +
+                'Your previous response hit the MAX_TOKENS limit and stopped mid-output.\n' +
+                'Your reply will be concatenated character-for-character (`previous + your_reply`) directly onto the end of your previous output.\n\n' +
+                'STRICT RULES:\n' +
+                '1. Resume at the EXACT next character/byte immediately after the final character shown below so the joined code/text has ZERO syntax errors.\n' +
+                '2. Do NOT add any greeting, explanation, apology, or "Continuing from...".\n' +
+                '3. Do NOT repeat ANY characters, tokens, or lines already emitted.\n' +
+                '4. If you were inside an open markdown code fence (```), tag, string literal, or expression, do NOT re-open the fence — pick up mid-token/mid-line and finish cleanly including all closing fences.\n\n' +
+                'Exact final byte emitted: ' + last1 + ' (end tail JSON: ' + last24 + ')\n' +
+                '<<<EXACT_TAIL_START>>>\n' +
+                tail + '\n' +
+                '<<<EXACT_TAIL_END>>>\n\n' +
+                'Output ONLY the raw continuation starting at the exact next character:';
+        }
 
         async function executeSingleChapter(courseCode, chapter, workerProfile, slotIdx, workerUI, warmWorkerSessions) {
             const profileId = workerProfile.id;
             const profileName = workerProfile.name;
             const outputBase = (state.outputDest || (state.baseRoot.replace(/\/+$/, '') + '/Synthesis_Results')).replace(/\/+$/, '');
             const courseOutputDir = outputBase + '/' + courseCode + '_Synthesis';
+            const warmMap = warmWorkerSessions || {};
 
             const chapterLogs = [];
             function chLog(msg, color) {
@@ -1596,9 +1658,30 @@
                 log(profileName, msg, color);
             }
 
+            function detectLockType(errMsg) {
+                const low = String(errMsg || '').toLowerCase();
+                if (low.includes('verify-account') || low.includes('must be verified') ||
+                    low.includes('unusual activity') || low.includes('verification required')) {
+                    return 'VERIFY';
+                }
+                if (low.includes('quota exhausted') || low.includes('resource exhausted') ||
+                    low.includes('resource_exhausted') || low.includes('rate limit') || low.includes('429')) {
+                    return 'QUOTA';
+                }
+                return null;
+            }
+
+            function isPermissionError(errMsg) {
+                const low = String(errMsg || '').toLowerCase();
+                return low.includes('permission') ||
+                    low.includes('caller does not have') ||
+                    low.includes('unauthenticated') ||
+                    low.includes('(403)') ||
+                    low.includes('status 7');
+            }
+
             function extractPlanMetadata(rawText) {
                 if (!rawText) return null;
-                // Strategy 1: Explicit ```json:plan ... ```
                 let m = rawText.match(/```json:plan\s*([\s\S]*?)\s*```/i);
                 if (m) {
                     try {
@@ -1606,7 +1689,6 @@
                         return JSON.parse(clean);
                     } catch (_) {}
                 }
-                // Strategy 2: Any ```json block containing parts_count
                 const blocks = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/gi) || [];
                 for (const b of blocks) {
                     const inner = b.replace(/```(?:json)?/i, '').replace(/```$/, '').trim();
@@ -1617,7 +1699,6 @@
                         } catch (_) {}
                     }
                 }
-                // Strategy 3: Loose JSON object boundary
                 const rawObj = rawText.match(/\{[\s\S]*?"parts_count"\s*:\s*\d+[\s\S]*?\}/);
                 if (rawObj) {
                     try {
@@ -1649,31 +1730,24 @@
                 workerUI.prog.innerText = 'Initializing session...';
             }
 
-            function detectLockType(errMsg) {
-                const low = String(errMsg || '').toLowerCase();
-                if (low.includes('verify-account') || low.includes('must be verified') ||
-                    low.includes('unusual activity') || low.includes('verification required')) {
-                    return 'VERIFY';
-                }
-                if (low.includes('quota exhausted') || low.includes('resource exhausted') ||
-                    low.includes('resource_exhausted') || low.includes('rate limit') || low.includes('429')) {
-                    return 'QUOTA';
-                }
-                return null;
-            }
-
             const resolvedSysTitle = (state.sysTitle || '').trim() || ('Synthesis Factory: ' + courseCode);
-            let session = warmWorkerSessions[profileId] || null;
-            try {
+            let session = warmMap[profileId] || null;
+
+            async function ensureFreshSession(forceNew, reasonLabel) {
+                if (forceNew && session) {
+                    try { await session.close(); } catch (_) {}
+                    session = null;
+                    warmMap[profileId] = null;
+                }
                 if (!session) {
-                    chLog('Spawning clean AI Studio session for ' + profileName + ' (temporary=' + state.tempChat + ')...');
+                    chLog((reasonLabel ? (reasonLabel + ': ') : '') + 'Spawning clean AI Studio session for ' + profileName + ' (temporary=' + state.tempChat + ')...');
                     session = await Omni.studio.createSession({
                         profile: profileId,
                         model: state.model,
                         temporaryChat: state.tempChat
                     });
                     if (state.preserveSession) {
-                        warmWorkerSessions[profileId] = session;
+                        warmMap[profileId] = session;
                     }
                 } else {
                     chLog('Reusing warm session on ' + profileName + ' via newChat()...');
@@ -1688,6 +1762,11 @@
                     sysPrompt: state.sysPrompt,
                     model: state.model
                 });
+                return session;
+            }
+
+            try {
+                session = await ensureFreshSession(false, '');
             } catch (initErr) {
                 chLog('❌ Session init failed: ' + initErr.message, 'text-rose-400');
                 const lockType = detectLockType(initErr.message);
@@ -1696,7 +1775,7 @@
                     chLog((lockType === 'VERIFY' ? '🔒 [HALTED]' : '🔴 [QUOTA]') + ' Profile ' + profileName + ' quarantined until resolved.', 'text-amber-400 font-bold');
                 }
                 if (session) { try { await session.close(); } catch (_) {} }
-                warmWorkerSessions[profileId] = null;
+                warmMap[profileId] = null;
                 return false;
             }
 
@@ -1724,7 +1803,7 @@
                         : ('Part ' + partNum + '/' + (plannedPartsCount || '?') + '...');
                 }
 
-                const attachments = (stepConfig.attachFile && isPlanTurn) ? validAssets : (stepConfig.attachFile ? validAssets : []);
+                const attachments = stepConfig.attachFile ? validAssets : [];
                 let payload = stepConfig.template
                     .replace(/\{\{title\}\}/gi, chapter.title)
                     .replace(/\{\{chapter_num\}\}/gi, chapter.number)
@@ -1740,45 +1819,90 @@
 
                 while (!turnSuccess && retries <= 1 && !isAborted) {
                     try {
-                        const result = await session.send({
+                        let accumulatedOutput = '';
+                        let accumulatedThoughts = '';
+
+                        function publishTurnStream(liveThoughts, liveOutput, turnLabelSuffix) {
+                            const chars = liveOutput.length;
+                            const kb = (chars / 1024).toFixed(1);
+                            workerStreams[slotIdx] = {
+                                workerName: profileName + ' (Slot ' + (slotIdx + 1) + ')',
+                                courseCode: courseCode,
+                                chapterTitle: 'Ch ' + chapter.number + ': ' + chapter.title,
+                                turnLabel: stepLabel + (turnLabelSuffix || ''),
+                                thoughts: liveThoughts,
+                                output: liveOutput,
+                                charCount: chars,
+                                kbSize: kb,
+                                state: chars > 0 ? ('Streaming (' + kb + ' KB)') : (liveThoughts ? 'Thinking...' : 'Starting...')
+                            };
+                            if (workerUI) {
+                                workerUI.prog.innerText = chars > 0
+                                    ? ('⚡ ' + chars.toLocaleString() + ' chars (' + kb + ' KB)')
+                                    : (liveThoughts ? ('🧠 Thinking: ' + liveThoughts.slice(-30)) : 'Waiting for tokens...');
+                            }
+                            if (activeModalWorkerId === slotIdx) {
+                                updateModalContent(slotIdx);
+                            }
+                        }
+
+                        let currentResult = await session.send({
                             prompt: payload,
                             attachments: attachments,
                             label: stepLabel
                         }, function (prog) {
                             if (!prog) return;
-                            const thoughts = prog.thoughts || '';
-                            const output = prog.output || '';
-                            const chars = output.length;
-                            const kb = (chars / 1024).toFixed(1);
-
-                            workerStreams[slotIdx] = {
-                                workerName: profileName + ' (Slot ' + (slotIdx + 1) + ')',
-                                courseCode: courseCode,
-                                chapterTitle: 'Ch ' + chapter.number + ': ' + chapter.title,
-                                turnLabel: stepLabel,
-                                thoughts: thoughts,
-                                output: output,
-                                charCount: chars,
-                                kbSize: kb,
-                                state: chars > 0 ? ('Streaming (' + kb + ' KB)') : (thoughts ? 'Thinking...' : 'Starting...')
-                            };
-
-                            if (workerUI) {
-                                workerUI.prog.innerText = chars > 0
-                                    ? ('⚡ ' + chars.toLocaleString() + ' chars (' + kb + ' KB)')
-                                    : (thoughts ? ('🧠 Thinking: ' + thoughts.slice(-30)) : 'Waiting for tokens...');
-                            }
-
-                            if (activeModalWorkerId === slotIdx) {
-                                updateModalContent(slotIdx);
-                            }
+                            publishTurnStream(prog.thoughts || '', prog.output || '', '');
                         });
 
-                        if (!result || !result.output || result.output.trim().length === 0) {
+                        if (!currentResult || !currentResult.output || currentResult.output.trim().length === 0) {
                             throw new Error('Empty response received from AI Studio');
                         }
 
-                        const outputBytes = result.output.length;
+                        accumulatedOutput = currentResult.output;
+                        accumulatedThoughts = currentResult.thoughts || '';
+
+                        let contAttempt = 0;
+                        const MAX_CONT_ATTEMPTS = 3;
+                        while ((currentResult.truncated || currentResult.finishReason === 2) && contAttempt < MAX_CONT_ATTEMPTS && !isAborted) {
+                            contAttempt++;
+                            chLog('✂️ [MAX_TOKENS] ' + stepLabel + ' truncated at ' + accumulatedOutput.length.toLocaleString() + ' chars (finishReason=' + currentResult.finishReason + '). Requesting exact-byte continuation ' + contAttempt + '/' + MAX_CONT_ATTEMPTS + '...', 'text-amber-300 font-semibold');
+
+                            if (workerUI) {
+                                workerUI.prog.innerText = '✂️ Continuing (' + contAttempt + '/' + MAX_CONT_ATTEMPTS + ')...';
+                            }
+
+                            const contPrompt = buildExactContinuationPrompt(accumulatedOutput);
+                            const contRes = await session.send({
+                                prompt: contPrompt,
+                                attachments: [],
+                                label: stepLabel + ' (Cont ' + contAttempt + ')'
+                            }, function (prog) {
+                                if (!prog) return;
+                                const preview = stitchContinuation(accumulatedOutput, prog.output || '');
+                                const mergedThoughts = prog.thoughts
+                                    ? (accumulatedThoughts ? accumulatedThoughts + '\n\n--- [Cont ' + contAttempt + '] ---\n' + prog.thoughts : prog.thoughts)
+                                    : accumulatedThoughts;
+                                publishTurnStream(mergedThoughts, preview.text, ' • Cont ' + contAttempt);
+                            });
+
+                            if (!contRes || !contRes.output || contRes.output.trim().length === 0) {
+                                chLog('⚠️ Continuation ' + contAttempt + ' returned empty output; keeping accumulated ' + accumulatedOutput.length.toLocaleString() + ' chars.', 'text-amber-400');
+                                break;
+                            }
+
+                            const stitched = stitchContinuation(accumulatedOutput, contRes.output);
+                            const addedChars = stitched.text.length - accumulatedOutput.length;
+                            accumulatedOutput = stitched.text;
+                            if (contRes.thoughts) {
+                                accumulatedThoughts = accumulatedThoughts ? (accumulatedThoughts + '\n\n--- [Cont ' + contAttempt + '] ---\n' + contRes.thoughts) : contRes.thoughts;
+                            }
+                            currentResult = contRes;
+                            publishTurnStream(accumulatedThoughts, accumulatedOutput, ' • Cont ' + contAttempt);
+                            chLog('🔗 Stitched continuation ' + contAttempt + '/' + MAX_CONT_ATTEMPTS + ' (+' + addedChars.toLocaleString() + ' chars, overlap stripped: ' + stitched.overlapRemoved + 'c). Total: ' + accumulatedOutput.length.toLocaleString() + ' chars.', 'text-cyan-300');
+                        }
+
+                        const outputBytes = accumulatedOutput.length;
                         const gotKb = (outputBytes / 1024).toFixed(1);
                         const minKb = isPlanTurn ? 2 : (parseInt(state.minOutputKb, 10) || 0);
 
@@ -1788,15 +1912,14 @@
                             throw new Error(sizeErrMsg);
                         }
 
-                        // Parse and Validate Plan on Turn 1
                         if (isPlanTurn) {
                             chLog('Auditing Turn 1 Battle Plan for machine-readable JSON contract...');
-                            const planMeta = extractPlanMetadata(result.output);
+                            const planMeta = extractPlanMetadata(accumulatedOutput);
 
                             if (!planMeta || !planMeta.parts_count || isNaN(parseInt(planMeta.parts_count, 10)) || parseInt(planMeta.parts_count, 10) < 1) {
                                 const parseErrMsg = 'Quality Control Error: Model response did not contain a valid ```json:plan block with parts_count.';
                                 chLog('❌ QC FAILURE: ' + parseErrMsg, 'text-rose-400 font-bold');
-                                chLog('Raw Plan Head Snippet:\n' + result.output.slice(0, 400));
+                                chLog('Raw Plan Head Snippet:\n' + accumulatedOutput.slice(0, 400));
                                 throw new Error(parseErrMsg);
                             }
 
@@ -1815,13 +1938,12 @@
 
                         chLog('✅ ' + stepLabel + ' verified (' + outputBytes.toLocaleString() + ' chars, ' + gotKb + ' KB)', 'text-emerald-300 font-semibold');
 
-                        // Save Turn Output
                         if (stepConfig.scrape !== false) {
                             const saveName = isPlanTurn
                                 ? ('Ch_' + chapter.padNum + '_Turn_1_Plan.md')
                                 : ('Ch_' + chapter.padNum + '_Turn_' + (currentTurnIdx + 1) + '_Part_' + partNum + '.md');
                             const savePath = courseOutputDir + '/' + saveName;
-                            await Omni.fs.write(savePath, result.output);
+                            await Omni.fs.write(savePath, accumulatedOutput);
                             const kbNum = parseFloat((outputBytes / 1024).toFixed(1));
                             totalKbAccumulator += kbNum;
                             document.getElementById('stat-kb-saved').innerText = totalKbAccumulator.toFixed(1) + ' KB Saved';
@@ -1835,7 +1957,30 @@
                             quarantineProfile(profileId, lockType, turnErr.message);
                             chLog((lockType === 'VERIFY' ? '🔒 [VERIFICATION LOCK]' : '🔴 [QUOTA EXHAUSTED]') + ' Halting future missions on ' + profileName + ': ' + turnErr.message, 'text-rose-400 font-bold');
                             if (session) { try { await session.close(); } catch (_) {} }
-                            warmWorkerSessions[profileId] = null;
+                            warmMap[profileId] = null;
+                            retries = 99;
+                            break;
+                        }
+                        if (isPermissionError(turnErr.message)) {
+                            chLog('🚫 [PERMISSION_DENIED] ' + turnErr.message + ' — immediately discarding session (0ms wait)!', 'text-amber-300 font-bold');
+                            if (session) { try { await session.close(); } catch (_) {} }
+                            session = null;
+                            warmMap[profileId] = null;
+                            if (currentTurnIdx === 0 && retries < 1 && !isAborted) {
+                                retries++;
+                                try {
+                                    await ensureFreshSession(true, '🔄 Fresh replacement');
+                                    continue;
+                                } catch (reinitErr) {
+                                    const reinitLock = detectLockType(reinitErr.message);
+                                    if (reinitLock) {
+                                        quarantineProfile(profileId, reinitLock, reinitErr.message);
+                                    }
+                                    chLog('❌ Replacement session boot failed: ' + reinitErr.message, 'text-rose-400');
+                                    retries = 99;
+                                    break;
+                                }
+                            }
                             retries = 99;
                             break;
                         }
@@ -1854,7 +1999,6 @@
                 currentTurnIdx++;
             }
 
-            // Write Dedicated Chapter QC Audit Log into the Same Folder
             try {
                 chLog('==============================================================================');
                 chLog('CHAPTER RESULT: ' + (chapterSuccess ? 'SUCCESS (100% Complete)' : 'FAILED / INCOMPLETE'));
@@ -1867,44 +2011,64 @@
                 chLog('📁 Co-located audit log saved -> ' + logFilename, 'text-emerald-400');
             } catch (_) {}
 
-            await new Promise(r => setTimeout(r, 2500));
+            await new Promise(r => setTimeout(r, 3000));
 
             if ((!state.preserveSession || !isProfileHealthy(profileId)) && session) {
                 try { await session.close(); } catch (_) {}
-                warmWorkerSessions[profileId] = null;
+                warmMap[profileId] = null;
             }
             return chapterSuccess;
         }
 
-        async function processCourseChapters(courseCode, warmWorkerSessions) {
+        async function runGlobalSynthesisQueue(targetCourses, warmWorkerSessions) {
             const outputBase = (state.outputDest || (state.baseRoot.replace(/\/+$/, '') + '/Synthesis_Results')).replace(/\/+$/, '');
-            const courseOutputDir = outputBase + '/' + courseCode + '_Synthesis';
+            const globalQueue = [];
+            const courseStats = {};
+            const courseObjByCode = {};
+            const createdManifestDirs = new Set();
 
-            // Ensure output directory exists
-            try { await Omni.fs.write(courseOutputDir + '/.manifest', 'Course: ' + courseCode + ' Synthesis'); } catch(_) {}
+            for (let cIdx = 0; cIdx < targetCourses.length; cIdx++) {
+                if (isAborted) break;
+                const course = targetCourses[cIdx];
+                courseObjByCode[course.code] = course;
 
-            const chapters = scannedCourseChapters[courseCode] || await scanCourseChapters(courseCode);
-            const crossMap = state.chapterCrossOffs[courseCode] || {};
+                const chapters = await scanCourseChapters(course.code);
+                const crossMap = state.chapterCrossOffs[course.code] || {};
+                const uncrossed = chapters.filter(ch => crossMap[ch.filename] !== true);
 
-            const queue = chapters.filter(ch => crossMap[ch.filename] !== true);
-            const totalToProcess = queue.length;
-            let completedCount = 0;
+                courseStats[course.code] = { total: uncrossed.length, completed: 0, dropped: 0 };
 
-            log(null, '📚 [' + courseCode + '] Launching synthesis queue (' + totalToProcess + ' chapters uncrossed)', 'text-sky-400 font-bold');
+                if (uncrossed.length === 0) {
+                    if (chapters.length > 0 && !course.completed) {
+                        course.completed = true;
+                        saveState();
+                        renderCourseQueue();
+                    }
+                    log(null, '✅ [' + course.code + '] All ' + chapters.length + ' chapters already synthesized.', 'text-emerald-400');
+                } else {
+                    log(null, '📚 [' + course.code + '] Enqueued ' + uncrossed.length + ' chapter(s) (' + (chapters.length - uncrossed.length) + ' skipped)', 'text-sky-400');
+                    uncrossed.forEach(function(ch) {
+                        globalQueue.push({ courseCode: course.code, chapter: ch });
+                    });
+                }
+            }
 
-            document.getElementById('label-course-prog').innerText = 'Course: ' + courseCode;
-            document.getElementById('label-chapter-prog').innerText = '0 of ' + totalToProcess + ' Chapters';
+            const globalTotal = globalQueue.length;
+            let globalCompleted = 0;
+            let coursesFinishedCount = targetCourses.filter(c => c.completed).length;
+
+            document.getElementById('label-course-prog').innerText = 'Global Queue: ' + coursesFinishedCount + '/' + targetCourses.length + ' Courses';
+            document.getElementById('label-chapter-prog').innerText = '0 of ' + globalTotal + ' Chapters';
             document.getElementById('bar-chapter-prog').style.width = '0%';
 
-            if (totalToProcess === 0) {
-                log(null, '✅ All chapters for ' + courseCode + ' already completed.', 'text-emerald-400');
-                return true;
+            if (globalTotal === 0) {
+                log(null, '✅ All queued courses and chapters are already synthesized!', 'text-emerald-400 font-bold');
+                return;
             }
 
             const limit = Math.max(1, state.concurrencyLimit || 5);
-            const concurrencySlots = Math.min(limit, totalToProcess);
+            const concurrencySlots = Math.min(limit, globalTotal);
 
-            // Setup Concurrency Cards UI
             const cardsGrid = document.getElementById('worker-cards-grid');
             cardsGrid.innerHTML = '';
             const slotUIs = [];
@@ -1930,7 +2094,7 @@
 
                 workerStreams[i] = {
                     workerName: 'Slot ' + (i + 1),
-                    courseCode: courseCode,
+                    courseCode: 'Global',
                     chapterTitle: 'Idle',
                     turnLabel: '',
                     thoughts: '',
@@ -1942,30 +2106,51 @@
             }
 
             document.getElementById('stat-active-workers').innerText = concurrencySlots + ' Active';
+            log(null, '⚡ GLOBAL SYNTHESIS QUEUE ARMED: ' + globalTotal + ' chapter(s) across ' + targetCourses.length + ' course(s) on ' + concurrencySlots + ' non-stop worker(s)!', 'text-cyan-300 font-bold');
 
-            // Work-stealing concurrency runner with health-guarded per-profile warm sessions
+            const leasedProfileIds = new Set();
             async function workerSlotLoop(slotIdx) {
                 let assignedProfileId = null;
-                while (queue.length > 0 && !isAborted) {
+                while (globalQueue.length > 0 && !isAborted) {
                     await refreshProfileHealth();
                     if (assignedProfileId && !isProfileHealthy(assignedProfileId)) {
                         const deadSess = warmWorkerSessions[assignedProfileId];
                         if (deadSess) {
-                            try { await deadSess.close(); } catch (_) {}
+                            try { await deadSess.close(); } catch(_) {}
                             warmWorkerSessions[assignedProfileId] = null;
                         }
                         assignedProfileId = null;
                     }
+
                     const workerProfile = acquireNextFreeHealthyProfile(leasedProfileIds, assignedProfileId);
                     if (!workerProfile) {
                         if (getHealthyEnabledProfiles().length === 0) {
                             log(null, '🛑 All remaining profiles hit quota or verification lock! Stopping queue cleanly.', 'text-rose-400 font-bold');
                             Omni.toast('🛑 All profiles locked/exhausted!');
+                            break;
                         }
+                        if (slotUIs[slotIdx]) {
+                            slotUIs[slotIdx].badge.innerText = 'Standby';
+                            slotUIs[slotIdx].prog.innerText = 'Waiting for free profile...';
+                        }
+                        await new Promise(r => setTimeout(r, 900));
+                        continue;
+                    }
+
+                    assignedProfileId = workerProfile.id;
+                    const task = globalQueue.shift();
+                    if (!task) {
+                        leasedProfileIds.delete(workerProfile.id);
                         break;
                     }
-                    assignedProfileId = workerProfile.id;
-                    const ch = queue.shift();
+
+                    const courseCode = task.courseCode;
+                    const ch = task.chapter;
+                    if (!createdManifestDirs.has(courseCode)) {
+                        createdManifestDirs.add(courseCode);
+                        const courseOutputDir = outputBase + '/' + courseCode + '_Synthesis';
+                        try { await Omni.fs.write(courseOutputDir + '/.manifest', 'Course: ' + courseCode + ' Synthesis'); } catch(_) {}
+                    }
 
                     let success = false;
                     try {
@@ -1978,8 +2163,10 @@
                         assignedProfileId = null;
                     }
 
+                    const cStat = courseStats[courseCode];
                     if (success) {
-                        completedCount++;
+                        globalCompleted++;
+                        cStat.completed++;
                         if (!state.chapterCrossOffs[courseCode]) state.chapterCrossOffs[courseCode] = {};
                         state.chapterCrossOffs[courseCode][ch.filename] = true;
                         saveState();
@@ -1988,22 +2175,35 @@
                             renderChapterMatrix(courseCode);
                         }
 
-                        const pct = Math.round((completedCount / totalToProcess) * 100);
-                        document.getElementById('label-chapter-prog').innerText = completedCount + ' of ' + totalToProcess + ' (' + pct + '%)';
+                        if (cStat.completed + cStat.dropped >= cStat.total && cStat.dropped === 0) {
+                            const cObj = courseObjByCode[courseCode];
+                            if (cObj && !cObj.completed) {
+                                cObj.completed = true;
+                                coursesFinishedCount++;
+                                saveState();
+                                renderCourseQueue();
+                                log(null, '🎉 100% COMPLETE: Course ' + courseCode + ' fully synthesized!', 'text-emerald-400 font-bold');
+                            }
+                        }
+
+                        const pct = Math.round((globalCompleted / globalTotal) * 100);
+                        document.getElementById('label-course-prog').innerText = 'Active: ' + courseCode + ' • ' + coursesFinishedCount + '/' + targetCourses.length + ' Courses';
+                        document.getElementById('label-chapter-prog').innerText = globalCompleted + ' of ' + globalTotal + ' (' + pct + '%)';
                         document.getElementById('bar-chapter-prog').style.width = pct + '%';
                         log(workerProfile.name, '🏁 Completed ' + courseCode + ' Ch ' + ch.number + ' and auto-crossed off.', 'text-emerald-400');
                     } else if (!isAborted) {
                         const failedByLock = !isProfileHealthy(workerProfile.id);
                         if (failedByLock) {
-                            log(workerProfile.name, '↪️ Re-queueing Ch ' + ch.number + ' onto another healthy profile (not counted as chapter failure).', 'text-amber-300');
-                            queue.unshift(ch);
+                            log(workerProfile.name, '↪️ Re-queueing ' + courseCode + ' Ch ' + ch.number + ' onto another healthy profile (not counted as chapter failure).', 'text-amber-300');
+                            globalQueue.unshift(task);
                         } else {
                             ch.failures = (ch.failures || 0) + 1;
                             if (ch.failures <= 2) {
-                                log(workerProfile.name, '❌ Failed Ch ' + ch.number + ' (Attempt ' + ch.failures + '/2). Re-queueing...', 'text-amber-400');
-                                queue.push(ch);
+                                log(workerProfile.name, '❌ Failed ' + courseCode + ' Ch ' + ch.number + ' (Attempt ' + ch.failures + '/2). Re-queueing...', 'text-amber-400');
+                                globalQueue.push(task);
                             } else {
-                                log(workerProfile.name, '🛑 Ch ' + ch.number + ' failed 2 times. Dropping to prevent deadlock.', 'text-rose-500');
+                                cStat.dropped++;
+                                log(workerProfile.name, '🛑 ' + courseCode + ' Ch ' + ch.number + ' failed 2 times. Dropping to prevent deadlock.', 'text-rose-500');
                             }
                         }
                     }
@@ -2021,8 +2221,6 @@
                 runners.push(workerSlotLoop(s));
             }
             await Promise.all(runners);
-
-            return completedCount >= totalToProcess;
         }
 
         async function launchSynthesisFactory() {
@@ -2047,7 +2245,7 @@
             btnMasterLaunch.classList.add('hidden');
             btnEmergencyAbort.classList.remove('hidden');
             setFactoryStatus('Synthesis Fleet Running', 'bg-emerald-900 text-emerald-300 border-emerald-700');
-            log(null, '🚀 4-ASSET SYNTHESIS FLEET LAUNCHED! (' + targetCourses.length + ' course(s) queued)', 'text-sky-300 font-bold');
+            log(null, '🚀 4-ASSET SYNTHESIS FLEET LAUNCHED! Building global queue for ' + targetCourses.length + ' course(s)...', 'text-sky-300 font-bold');
 
             try {
                 if (window.Omni && window.Omni.wakeLock) {
@@ -2055,40 +2253,11 @@
                     log(null, '🛡️ Hardware WakeLock engaged. You can turn off your screen safely!', 'text-emerald-400 font-semibold');
                 }
             } catch(_) {}
-            if (state.keepScreenAwake !== false) {
-                try {
-                    if (window.Omni && Omni.screen) {
-                        await Omni.screen.keepAwake(true);
-                        log(null, '☀️ Keep-Screen-Awake engaged (Chromium timer freeze prevented).', 'text-sky-300 font-semibold');
-                    }
-                } catch(_) {}
-            }
-            if (state.nightDimmer) {
-                await activateNightDimmer('Starting Synthesis Night Shift...');
-            }
 
             const warmWorkerSessions = {};
 
             try {
-                for (let cIdx = 0; cIdx < targetCourses.length; cIdx++) {
-                    if (isAborted) break;
-                    const course = targetCourses[cIdx];
-                    state.selectedCourseCode = course.code;
-                    saveState();
-                    renderCourseQueue();
-
-                    log(null, '══════════════════════════════════════════════════════', 'text-gray-600');
-                    log(null, '📦 SYNTHESIZING COURSE (' + (cIdx + 1) + '/' + targetCourses.length + '): ' + course.code, 'text-cyan-400 font-bold');
-
-                    const finished = await processCourseChapters(course.code, warmWorkerSessions);
-
-                    if (finished && !isAborted) {
-                        course.completed = true;
-                        saveState();
-                        renderCourseQueue();
-                        log(null, '🎉 100% COMPLETE: Course ' + course.code + ' fully synthesized!', 'text-emerald-400 font-bold');
-                    }
-                }
+                await runGlobalSynthesisQueue(targetCourses, warmWorkerSessions);
 
                 if (isAborted) {
                     setFactoryStatus('Aborted', 'bg-rose-900 text-rose-300 border-rose-700');
@@ -2102,18 +2271,11 @@
             } catch(e) {
                 log(null, '💥 Pipeline Error: ' + e.message, 'text-rose-400');
             } finally {
-                // Teardown warm sessions at end of full run
-                Object.values(warmWorkerSessions).forEach(async s => {
+                for (const s of Object.values(warmWorkerSessions)) {
                     if (s) { try { await s.close(); } catch(_) {} }
-                });
+                }
 
-                                await deactivateNightDimmer();
                 try {
-                    if (window.Omni && Omni.screen) {
-                        await Omni.screen.keepAwake(false);
-                    }
-                } catch(_) {}
-try {
                     if (window.Omni && window.Omni.wakeLock) {
                         await Omni.wakeLock.release();
                         log(null, '🛡️ Master Pipeline WakeLock released.', 'text-gray-400');
@@ -2126,7 +2288,6 @@ try {
                 document.getElementById('stat-active-workers').innerText = '0 Active';
             }
         }
-
         btnMasterLaunch.onclick = launchSynthesisFactory;
         btnEmergencyAbort.onclick = function() {
             isAborted = true;
