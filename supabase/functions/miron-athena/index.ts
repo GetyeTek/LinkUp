@@ -9,6 +9,10 @@ const corsHeaders = {
 const GEMINI_MODEL = "gemini-3.6-flash";
 const GEMINI_FLASH_LITE_MODEL = "gemini-flash-lite-latest";
 const GROQ_MODEL = "qwen/qwen3.8-27b";
+const NVIDIA_MODEL = "google/gemma-4-31b-it";
+const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
+const PRIMARY_PROVIDER: "gemini" | "nvidia" = "gemini"; // Switch to "nvidia" to use NVIDIA first
+const ENABLE_NVIDIA_FALLBACK = true; // Auto-fallback to NVIDIA when Gemini fails
 const GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
 const EMBEDDING_DIMENSIONS = 768;
 
@@ -464,7 +468,9 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    const { history, prompt, context, mode, lang, sex, name } = await req.json();
+    const { history, prompt, context, mode, lang, sex, name, provider } = await req.json();
+    const activeProvider: "gemini" | "nvidia" =
+      provider === "nvidia" || provider === "gemini" ? provider : PRIMARY_PROVIDER;
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Prompt text is required." }), { 
@@ -528,8 +534,8 @@ serve(async (req) => {
       activeSystemPrompt += identityDirective;
     }
 
-    // 1. API Key Round-Robin Engine (Groq & Gemini)
-    async function getApiKey(service: 'groq' | 'gemini') {
+    // 1. API Key Round-Robin Engine (Groq, Gemini & NVIDIA)
+    async function getApiKey(service: 'groq' | 'gemini' | 'nvidia') {
       const now = new Date();
       const { data: keys, error } = await supabase
         .from('api_keys')
@@ -1035,7 +1041,140 @@ serve(async (req) => {
       throw new Error("Failed to stream Gemini after multiple attempts.");
     }
 
-    // 5. Execution Engine: Full-Duplex SSE Stream
+        // 4b. Helper: Native SSE Stream Reader for NVIDIA NIM (OpenAI-compatible)
+    async function streamNvidiaTurn(
+      messages: any[],
+      tools: any[] | null,
+      onTextChunk: (text: string) => void
+    ) {
+      let attempts = 0;
+      while (attempts < 3) {
+        const nvidiaStart = performance.now();
+        const keyRecord = await getApiKey('nvidia');
+        const payload: any = {
+          model: NVIDIA_MODEL,
+          messages,
+          temperature: 0.6,
+          max_tokens: 4096,
+          stream: true
+        };
+        if (tools && tools.length > 0) {
+          payload.tools = tools;
+          payload.tool_choice = "auto";
+        }
+
+        const res = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${keyRecord.api_key}`,
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 429) {
+          await flagKeyCooldown(keyRecord.id);
+          attempts++;
+          continue;
+        }
+
+        if ((res.status === 400 || res.status === 422) && tools && tools.length > 0) {
+          const errText = await res.text();
+          if (/tool|function/i.test(errText)) {
+            console.warn(`⚠️ [NVIDIA] Model ${NVIDIA_MODEL} rejected tools, retrying without tools.`);
+            return await streamNvidiaTurn(messages, null, onTextChunk);
+          }
+          throw new Error(`NVIDIA Stream Error: ${res.status} ${errText}`);
+        }
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`NVIDIA Stream Error: ${res.status} ${errText}`);
+        }
+
+        if (!res.body) throw new Error("NVIDIA stream body missing.");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = '';
+        let fullText = '';
+        let reasoningText = '';
+        const toolCallMap = new Map<number, { id: string; name: string; arguments: string }>();
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const jsonStr = trimmed.slice(5).trim();
+            if (!jsonStr || jsonStr === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const delta = parsed.choices?.[0]?.delta;
+              if (!delta) continue;
+
+              const rDelta = delta.reasoning_content || delta.reasoning;
+              if (typeof rDelta === 'string' && rDelta) {
+                reasoningText += rDelta;
+              }
+
+              if (typeof delta.content === 'string' && delta.content) {
+                fullText += delta.content;
+                onTextChunk(delta.content);
+              }
+
+              if (Array.isArray(delta.tool_calls)) {
+                for (const tc of delta.tool_calls) {
+                  const idx = tc.index ?? 0;
+                  if (!toolCallMap.has(idx)) {
+                    toolCallMap.set(idx, {
+                      id: tc.id || `call_${idx}_${Date.now()}`,
+                      name: '',
+                      arguments: ''
+                    });
+                  }
+                  const entry = toolCallMap.get(idx)!;
+                  if (tc.id) entry.id = tc.id;
+                  if (tc.function?.name) entry.name += tc.function.name;
+                  if (tc.function?.arguments) entry.arguments += tc.function.arguments;
+                }
+              }
+            } catch (_) {}
+          }
+        }
+
+        if (reasoningText) extractedThoughts.push(reasoningText);
+
+        const functionCalls = Array.from(toolCallMap.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([_, tc]) => {
+            let parsedArgs: any = {};
+            try {
+              parsedArgs = tc.arguments ? JSON.parse(tc.arguments) : {};
+            } catch (_) {}
+            return {
+              id: tc.id,
+              name: tc.name,
+              args: parsedArgs,
+              rawArguments: tc.arguments
+            };
+          })
+          .filter(fc => fc.name);
+
+        const dur = (performance.now() - nvidiaStart).toFixed(0);
+        console.log(`⚡ [NVIDIA STREAM] (${NVIDIA_MODEL}) took ${dur}ms`);
+        return { fullText, functionCalls };
+      }
+      throw new Error("Failed to stream NVIDIA after multiple round-robin attempts.");
+    }
+// 5. Execution Engine: Full-Duplex SSE Stream
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
@@ -1053,6 +1192,46 @@ serve(async (req) => {
           // --- FAST PATH: MINI MIRON PASSAGE EXPLANATION ---
           if (mode === 'passage_explain') {
             const isAmharic = (lang || 'am') === 'am';
+            if (activeProvider === 'nvidia') {
+              console.log(`⚡ [MINI MIRON FAST-PATH] Routing inquiry to NVIDIA (${NVIDIA_MODEL})`);
+              sendEvent('status', { message: isAmharic ? 'ጽንሰ-ሀሳቡን በማብራራት ላይ...' : 'Analyzing passage...' });
+
+              const nvidiaMessages: any[] = [
+                { role: "system", content: isAmharic ? MINI_MIRON_AMHARIC_PROMPT : MINI_MIRON_SYSTEM_PROMPT }
+              ];
+              if (context) {
+                nvidiaMessages.push({
+                  role: "system",
+                  content: `Textbook Surrounding Context:\n"""\n${context}\n"""`
+                });
+              }
+              (history || []).slice(-6).forEach((m: any) => {
+                nvidiaMessages.push({
+                  role: m.side === 'user' ? 'user' : 'assistant',
+                  content: m.text
+                });
+              });
+              nvidiaMessages.push({ role: "user", content: prompt });
+
+              try {
+                await streamNvidiaTurn(nvidiaMessages, null, (chunkText) => {
+                  finalText += chunkText;
+                  sendEvent('chunk', { delta: chunkText });
+                });
+
+                sendEvent('done', {
+                  snapshots: [],
+                  quizzes: [],
+                  flashcards: [],
+                  ui_command: null,
+                  thoughts: extractedThoughts
+                });
+                controller.close();
+                return;
+              } catch (nvidiaFastErr) {
+                console.warn("[MINI MIRON] NVIDIA failed, falling back to default path:", nvidiaFastErr);
+              }
+            }
 
             if (isAmharic) {
               console.log(`⚡ [MINI MIRON FAST-PATH] Routing Amharic inquiry to Gemini Flash-Lite (${GEMINI_FLASH_LITE_MODEL})`);
@@ -1239,88 +1418,207 @@ serve(async (req) => {
             }
           }
 
-          console.log(`[MIRON STREAM] Initiating real-time turn with primary model: Gemini (${GEMINI_MODEL})`);
+          const runGeminiMainChat = async () => {
+            console.log(`[MIRON STREAM] Initiating real-time turn with Gemini (${GEMINI_MODEL})`);
 
-          let geminiMessages: any[] = [];
-          if (context) {
-            geminiMessages.push({ role: "user", parts: [{ text: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.` }]});
-            geminiMessages.push({ role: "model", parts: [{ text: "Acknowledged. I have the context mapped." }]});
-          }
+            const geminiMessages: any[] = [];
+            if (context) {
+              geminiMessages.push({ role: "user", parts: [{ text: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.` }] });
+              geminiMessages.push({ role: "model", parts: [{ text: "Acknowledged. I have the context mapped." }] });
+            }
 
-          const trimmedHistory = history.slice(-6);
-          trimmedHistory.forEach((msg: any) => {
-            geminiMessages.push({
-              role: msg.side === 'user' ? 'user' : 'model',
-              parts: [{ text: msg.text }]
+            const trimmedHistory = (history || []).slice(-6);
+            trimmedHistory.forEach((msg: any) => {
+              geminiMessages.push({
+                role: msg.side === 'user' ? 'user' : 'model',
+                parts: [{ text: msg.text }]
+              });
             });
-          });
 
-          geminiMessages.push({ role: "user", parts: [{ text: prompt }] });
+            geminiMessages.push({ role: "user", parts: [{ text: prompt }] });
 
-          let geminiLoop = 0;
-          let shouldLoopTools = true;
+            let geminiLoop = 0;
+            let shouldLoopTools = true;
 
-          while (shouldLoopTools && geminiLoop < 3) {
-            console.log(`🔄 [GEMINI STREAM TURN ${geminiLoop}] at +${elapsed()}`);
+            while (shouldLoopTools && geminiLoop < 3) {
+              console.log(`🔄 [GEMINI STREAM TURN ${geminiLoop}] at +${elapsed()}`);
 
-            const turnResult = await streamGeminiTurn(
-              geminiMessages,
-              geminiLoop === 0 ? [toolsDefinition] : null,
-              activeSystemPrompt,
-              (chunkText) => {
-                finalText += chunkText;
-                sendEvent('chunk', { delta: chunkText });
-              }
-            );
-
-            if (turnResult.functionCalls.length > 0) {
-              const toolNames = turnResult.functionCalls.map((fc: any) => fc.name).join(', ');
-              console.log(`🛠️ [TOOLS DETECTED] [${toolNames}] at +${elapsed()}`);
-
-              for (const fc of turnResult.functionCalls) {
-                const { name, args } = fc;
-                if (name === 'read_book_section') {
-                  sendEvent('status', { message: `Reading ${args.section_title || 'textbook section'}...` });
-                } else if (name === 'render_flashcards') {
-                  sendEvent('status', { message: `Preparing interactive study cards for ${args.topic || 'topic'}...` });
-                } else if (name === 'render_quiz') {
-                  sendEvent('status', { message: `Preparing knowledge check...` });
-                } else {
-                  sendEvent('status', { message: `Consulting course materials...` });
+              const turnResult = await streamGeminiTurn(
+                geminiMessages,
+                geminiLoop < 2 ? [toolsDefinition] : null,
+                activeSystemPrompt,
+                (chunkText) => {
+                  finalText += chunkText;
+                  sendEvent('chunk', { delta: chunkText });
                 }
-              }
+              );
 
-              const toolExecutionPromises = turnResult.functionCalls.map(async (fc: any) => {
-                const toolResult = await executeTool(fc.name, fc.args);
-                return { name: fc.name, content: toolResult };
-              });
+              if (turnResult.functionCalls.length > 0) {
+                const toolNames = turnResult.functionCalls.map((fc: any) => fc.name).join(', ');
+                console.log(`🛠️ [TOOLS DETECTED] [${toolNames}] at +${elapsed()}`);
 
-              const toolResponses = await Promise.all(toolExecutionPromises);
-
-              geminiMessages.push({
-                role: "model",
-                parts: turnResult.modelParts
-              });
-              geminiMessages.push({
-                role: "user",
-                parts: toolResponses.map(res => ({
-                  functionResponse: {
-                    name: res.name,
-                    response: { name: res.name, content: res.content }
+                for (const fc of turnResult.functionCalls) {
+                  const { name, args } = fc;
+                  if (name === 'read_book_section') {
+                    sendEvent('status', { message: `Reading ${args.section_title || 'textbook section'}...` });
+                  } else if (name === 'render_flashcards') {
+                    sendEvent('status', { message: `Preparing interactive study cards for ${args.topic || 'topic'}...` });
+                  } else if (name === 'render_quiz') {
+                    sendEvent('status', { message: `Preparing knowledge check...` });
+                  } else {
+                    sendEvent('status', { message: `Consulting course materials...` });
                   }
-                }))
-              });
+                }
 
-              sendEvent('status', { message: 'Synthesizing response...' });
-              geminiLoop++;
-            } else {
-              shouldLoopTools = false;
+                const toolExecutionPromises = turnResult.functionCalls.map(async (fc: any) => {
+                  const toolResult = await executeTool(fc.name, fc.args);
+                  return { name: fc.name, content: toolResult };
+                });
+
+                const toolResponses = await Promise.all(toolExecutionPromises);
+
+                geminiMessages.push({
+                  role: "model",
+                  parts: turnResult.modelParts
+                });
+                geminiMessages.push({
+                  role: "user",
+                  parts: toolResponses.map(res => ({
+                    functionResponse: {
+                      name: res.name,
+                      response: { name: res.name, content: res.content }
+                    }
+                  }))
+                });
+
+                sendEvent('status', { message: 'Synthesizing response...' });
+                geminiLoop++;
+              } else {
+                shouldLoopTools = false;
+              }
+            }
+          };
+
+          const runNvidiaMainChat = async () => {
+            console.log(`[MIRON STREAM] Initiating real-time turn with NVIDIA (${NVIDIA_MODEL})`);
+
+            const nvidiaMessages: any[] = [
+              { role: "system", content: activeSystemPrompt }
+            ];
+            if (context) {
+              nvidiaMessages.push({
+                role: "system",
+                content: `Current Context visible to user:\n"${context}"\n\nAnalyze this context if the user refers to it.`
+              });
+            }
+
+            const trimmedHistory = (history || []).slice(-6);
+            trimmedHistory.forEach((msg: any) => {
+              nvidiaMessages.push({
+                role: msg.side === 'user' ? 'user' : 'assistant',
+                content: msg.text
+              });
+            });
+
+            nvidiaMessages.push({ role: "user", content: prompt });
+
+            let nvidiaLoop = 0;
+            let shouldLoopTools = true;
+
+            while (shouldLoopTools && nvidiaLoop < 3) {
+              console.log(`🔄 [NVIDIA STREAM TURN ${nvidiaLoop}] at +${elapsed()}`);
+
+              const turnResult = await streamNvidiaTurn(
+                nvidiaMessages,
+                nvidiaLoop < 2 ? groqTools : null,
+                (chunkText) => {
+                  finalText += chunkText;
+                  sendEvent('chunk', { delta: chunkText });
+                }
+              );
+
+              if (turnResult.functionCalls.length > 0) {
+                const toolNames = turnResult.functionCalls.map((fc: any) => fc.name).join(', ');
+                console.log(`🛠️ [NVIDIA TOOLS DETECTED] [${toolNames}] at +${elapsed()}`);
+
+                for (const fc of turnResult.functionCalls) {
+                  const { name, args } = fc;
+                  if (name === 'read_book_section') {
+                    sendEvent('status', { message: `Reading ${args.section_title || 'textbook section'}...` });
+                  } else if (name === 'render_flashcards') {
+                    sendEvent('status', { message: `Preparing interactive study cards for ${args.topic || 'topic'}...` });
+                  } else if (name === 'render_quiz') {
+                    sendEvent('status', { message: `Preparing knowledge check...` });
+                  } else {
+                    sendEvent('status', { message: `Consulting course materials...` });
+                  }
+                }
+
+                const toolExecutionPromises = turnResult.functionCalls.map(async (fc: any) => {
+                  const toolResult = await executeTool(fc.name, fc.args);
+                  return { id: fc.id, name: fc.name, content: toolResult };
+                });
+
+                const toolResponses = await Promise.all(toolExecutionPromises);
+
+                nvidiaMessages.push({
+                  role: "assistant",
+                  content: turnResult.fullText || null,
+                  tool_calls: turnResult.functionCalls.map((fc: any) => ({
+                    id: fc.id,
+                    type: "function",
+                    function: {
+                      name: fc.name,
+                      arguments: fc.rawArguments || JSON.stringify(fc.args)
+                    }
+                  }))
+                });
+
+                for (const res of toolResponses) {
+                  nvidiaMessages.push({
+                    role: "tool",
+                    tool_call_id: res.id,
+                    content: JSON.stringify(res.content)
+                  });
+                }
+
+                sendEvent('status', { message: 'Synthesizing response...' });
+                nvidiaLoop++;
+              } else {
+                shouldLoopTools = false;
+              }
+            }
+          };
+
+          if (activeProvider === 'nvidia') {
+            try {
+              await runNvidiaMainChat();
+            } catch (nvidiaPrimaryErr: any) {
+              if (finalText.length === 0) {
+                console.warn(`[MIRON NVIDIA FAILED] ${nvidiaPrimaryErr.message}. Falling back to Gemini.`);
+                sendEvent('status', { message: 'Switching to backup engine...' });
+                await runGeminiMainChat();
+              } else {
+                throw nvidiaPrimaryErr;
+              }
+            }
+          } else {
+            try {
+              await runGeminiMainChat();
+            } catch (geminiPrimaryErr: any) {
+              if (ENABLE_NVIDIA_FALLBACK && finalText.length === 0) {
+                console.warn(`[MIRON GEMINI FAILED] ${geminiPrimaryErr.message}. Falling back to NVIDIA (${NVIDIA_MODEL}).`);
+                sendEvent('status', { message: 'Switching to backup engine...' });
+                await runNvidiaMainChat();
+              } else {
+                throw geminiPrimaryErr;
+              }
             }
           }
 
         } catch (geminiErr: any) {
           hasStreamError = true;
-          console.error(`[MIRON GEMINI FAILED] ${geminiErr.message}. Groq fallback disabled for main chat.`);
+          console.error(`[MIRON GENERATION FAILED] ${geminiErr.message}`);
           // Refund credits immediately if charged
           if (!isPro) {
             try {
