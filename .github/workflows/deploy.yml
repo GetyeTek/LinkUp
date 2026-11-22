@@ -1,3 +1,4 @@
+
 name: Manual Edge Function Deploy (No JWT)
 
 on:
@@ -31,28 +32,37 @@ jobs:
           version: latest
 
       - name: Fetch Secrets from Conduit Relay
+        env:
+          CONDUIT_URL: ${{ github.event.inputs.conduit_url }}
+          DEPLOY_TICKET: ${{ github.event.inputs.deploy_ticket }}
         run: |
-          RESPONSE=$(curl -s -X POST ${{ github.event.inputs.conduit_url }}             -H "Content-Type: application/json"             -d '{"action": "claim_deploy_token", "ticket": "'${{ github.event.inputs.deploy_ticket }}'"}')
-          
+          RESPONSE=$(curl -s -X POST "$CONDUIT_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\": \"claim_deploy_token\", \"ticket\": \"$DEPLOY_TICKET\"}")
+
           # Parse using jq for reliability
           TOKEN=$(echo "$RESPONSE" | jq -r '.token')
           URL=$(echo "$RESPONSE" | jq -r '.url')
-          
-          if [[ "$TOKEN" == *"error"* ]] || [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then 
-            echo "â Error: Failed to claim token from Conduit Relay."
+
+          if [[ "$TOKEN" == *"error"* ]] || [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Error: Failed to claim token from Conduit Relay."
             echo "Raw Response: $RESPONSE"
-            exit 1 
+            exit 1
           fi
-          
+
           echo "::add-mask::$TOKEN"
-          echo "SUPABASE_ACCESS_TOKEN=$TOKEN" >> $GITHUB_ENV
-          echo "SUPABASE_URL=$URL" >> $GITHUB_ENV
-          
-          REF=$(echo $URL | sed -e 's|^[^/]*//||' -e 's|\..*||')
-          echo "PROJECT_ID=$REF" >> $GITHUB_ENV
+          echo "SUPABASE_ACCESS_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          echo "SUPABASE_URL=$URL" >> "$GITHUB_ENV"
+
+          REF=$(echo "$URL" | sed -e 's|^[^/]*//||' -e 's|\..*||')
+          echo "PROJECT_ID=$REF" >> "$GITHUB_ENV"
 
       - name: Deploy Function without JWT
-        run: |
-          supabase functions deploy ${{ github.event.inputs.function_name }} --project-ref ${{ env.PROJECT_ID }} --no-verify-jwt --yes
         env:
+          FUNCTION_NAME: ${{ github.event.inputs.function_name }}
           SUPABASE_ACCESS_TOKEN: ${{ env.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy "$FUNCTION_NAME" \
+            --project-ref "$PROJECT_ID" \
+            --no-verify-jwt \
+            --yes
