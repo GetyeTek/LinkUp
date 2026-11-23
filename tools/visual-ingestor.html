@@ -1149,31 +1149,42 @@
     <!-- FLUX SUBVIEW B: STORAGE EXPLORER -->
     <div id="flux-subview-browser" style="display: none; flex-direction: column; gap: 14px;">
       <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px;">
-        <div style="flex: 1; min-width: 220px;">
-          <label>Course Subfolder in Supabase Storage</label>
-          <input type="text" id="browsePrefix" value="ANTH_1012" placeholder="e.g. ANTH_1012">
+        <div style="display: flex; align-items: flex-end; gap: 10px; flex: 1; min-width: 260px;">
+          <div style="flex: 1;">
+            <label>Jump to Course Folder</label>
+            <input type="text" id="browsePrefix" value="ANTH_1012" placeholder="e.g. ANTH_1012">
+          </div>
+          <button class="btn btn-secondary" onclick="openCourseFolder(document.getElementById('browsePrefix').value.trim())">Open</button>
         </div>
-        <button class="btn btn-secondary" onclick="fetchSupabaseGallery()">Refresh Storage Gallery</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary" onclick="openRootBucket()">📁 View All Courses</button>
+          <button class="btn btn-secondary" onclick="refreshCurrentStorageView()">🔄 Refresh</button>
+        </div>
       </div>
 
       <!-- BREADCRUMB NAVIGATION -->
       <div id="storageBreadcrumbBar" style="display: none;" class="storage-breadcrumb-bar">
         <div class="breadcrumb-trail">
-          <span id="bc-root" onclick="closeUnitFolder()" style="cursor: pointer;">📁 tutor_images</span>
-          <span>/</span>
-          <span id="bc-course" onclick="closeUnitFolder()" style="cursor: pointer;"></span>
-          <span id="bc-sep" style="display: none;">/</span>
+          <span id="bc-root" onclick="openRootBucket()" style="cursor: pointer;">📁 tutor_images</span>
+          <span id="bc-sep-course" style="display: none;">/</span>
+          <span id="bc-course" onclick="openCourseFolder(currentActiveCourse)" style="cursor: pointer; display: none;"></span>
+          <span id="bc-sep-unit" style="display: none;">/</span>
           <span id="bc-unit" class="active" style="display: none;"></span>
         </div>
         <div id="breadcrumb-actions" style="display: flex; align-items: center; gap: 8px;">
           <span id="galleryStatus" style="font-size: 12px; color: var(--text-muted); font-weight: 600;"></span>
-          <button id="btn-back-folders" class="btn-back" style="display: none;" onclick="closeUnitFolder()">
-            ⬅️ Back to Folders
+          <button id="btn-back-folders" class="btn-back" style="display: none;" onclick="handleStorageBack()">
+            ⬅️ Back
           </button>
         </div>
       </div>
 
-      <!-- VIEW 1: CHAPTER FOLDERS GRID (ROOT VIEW) -->
+      <!-- VIEW 0: ROOT BUCKET COURSES GRID -->
+      <div id="storageRootView" style="display: none; flex-direction: column; gap: 14px;">
+        <div class="folder-grid" id="rootCoursesGrid"></div>
+      </div>
+
+      <!-- VIEW 1: CHAPTER FOLDERS GRID -->
       <div id="storageFoldersView" style="display: none; flex-direction: column; gap: 14px;">
         <div class="folder-grid" id="foldersGrid"></div>
       </div>
@@ -1193,7 +1204,7 @@
       </div>
 
       <div id="storageEmptyNotice">
-        <p style="color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align: center;">Click Refresh to load images categorized by chapter.</p>
+        <p style="color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align: center;">Click Refresh or View All Courses to scan storage.</p>
       </div>
     </div>
   </div>
@@ -1354,7 +1365,7 @@
     }
     if (mode === 'flux') {
       const isBrowserActive = document.getElementById('subtab-btn-browser')?.classList.contains('active');
-      if (isBrowserActive) fetchSupabaseGallery();
+      if (isBrowserActive) openRootBucket();
     }
   }
 
@@ -2113,7 +2124,7 @@
     if (sampleBtn) sampleBtn.style.display = subTab === 'generator' ? 'inline-flex' : 'none';
 
     if (subTab === 'browser') {
-      fetchSupabaseGallery();
+      openRootBucket();
     }
   }
 
@@ -2302,80 +2313,238 @@
   }
 
   // ========================================================
-  // FILE MANAGER ENGINE (ROOT DIRECTORY & CHAPTER VIEWS)
+  // FILE MANAGER ENGINE (3-TIER DIRECT STORAGE BROWSER)
   // ========================================================
   let cachedGalleryUnits = {};
   let currentActiveUnit = null;
   let currentActiveCourse = '';
 
-  async function fetchSupabaseGallery() {
-    const creds = getCredentials();
-    const workerUrl = creds.workerUrl;
-    const course = (document.getElementById('browsePrefix').value || creds.courseCode).trim();
-    currentActiveCourse = course;
+  // LEVEL 0: ROOT BUCKET VIEW (tutor_images)
+  async function openRootBucket() {
+    currentActiveUnit = null;
+    currentActiveCourse = '';
 
-    const statusEl = document.getElementById('galleryStatus');
     const breadcrumbBar = document.getElementById('storageBreadcrumbBar');
-    const emptyNotice = document.getElementById('storageEmptyNotice');
+    const bcRoot = document.getElementById('bc-root');
+    const bcSepCourse = document.getElementById('bc-sep-course');
     const bcCourse = document.getElementById('bc-course');
-
-    if (!workerUrl) {
-      alert('Please supply Cloudflare Worker endpoint above.');
-      return;
-    }
+    const bcSepUnit = document.getElementById('bc-sep-unit');
+    const bcUnit = document.getElementById('bc-unit');
+    const backBtn = document.getElementById('btn-back-folders');
+    const statusEl = document.getElementById('galleryStatus');
+    const emptyNotice = document.getElementById('storageEmptyNotice');
 
     breadcrumbBar.style.display = 'flex';
-    bcCourse.textContent = course;
-    statusEl.innerText = 'Scanning storage...';
-    emptyNotice.innerHTML = '<p style="color: var(--text-muted); padding: 20px; text-align: center;">Scanning files...</p>';
-    emptyNotice.style.display = 'block';
+    bcRoot.className = 'active';
+    bcSepCourse.style.display = 'none';
+    bcCourse.style.display = 'none';
+    bcSepUnit.style.display = 'none';
+    bcUnit.style.display = 'none';
+    backBtn.style.display = 'none';
 
+    document.getElementById('storageRootView').style.display = 'none';
     document.getElementById('storageFoldersView').style.display = 'none';
     document.getElementById('storageChapterView').style.display = 'none';
 
-    try {
-      const res = await fetch(`${workerUrl}/api/browse?course=${encodeURIComponent(course)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to list');
+    statusEl.innerText = 'Scanning tutor_images...';
+    emptyNotice.innerHTML = '<p style="color: var(--text-muted); padding: 20px; text-align: center;">Scanning tutor_images for course folders...</p>';
+    emptyNotice.style.display = 'block';
 
-      statusEl.innerText = `${data.count} image(s)`;
+    const creds = getCredentials();
+    const coursesFound = new Set();
 
-      if (data.items.length === 0) {
-        emptyNotice.innerHTML = '<p style="color: var(--text-muted); padding: 20px; text-align: center;">No images found in this folder yet.</p>';
-        return;
+    // 1. Query Supabase Storage REST directly (Zero worker dependency)
+    if (creds.supaUrl && creds.supaKey) {
+      try {
+        const res = await fetch(`${creds.supaUrl}/storage/v1/object/list/tutor_images`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${creds.supaKey}`,
+            'apikey': creds.supaKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ prefix: '', limit: 100, sortBy: { column: 'name', order: 'asc' } })
+        });
+        if (res.ok) {
+          const items = await res.json();
+          if (Array.isArray(items)) {
+            items.forEach(it => {
+              if (it.name && (it.id === null || !it.metadata)) {
+                coursesFound.add(it.name);
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Direct Supabase root scan error:', err);
       }
-
-      emptyNotice.style.display = 'none';
-
-      cachedGalleryUnits = {};
-      data.items.forEach(item => {
-        const match = item.filename.match(/^U(?:nit)?[-_]?(\d+)/i);
-        const unitNum = match ? match[1].padStart(2, '0') : null;
-        const unitKey = unitNum ? `Unit ${unitNum}` : 'Other / Unsorted';
-
-        if (!cachedGalleryUnits[unitKey]) cachedGalleryUnits[unitKey] = [];
-        cachedGalleryUnits[unitKey].push(item);
-      });
-
-      if (currentActiveUnit && cachedGalleryUnits[currentActiveUnit]) {
-        openUnitFolder(currentActiveUnit);
-      } else {
-        renderFolderDirectory();
-      }
-    } catch (e) {
-      statusEl.innerText = 'Error: ' + e.message;
-      emptyNotice.innerHTML = `<div class="log-item error"><span>${e.message}</span></div>`;
-      emptyNotice.style.display = 'block';
     }
+
+    // 2. Add current active/configured courses as available presets
+    if (creds.courseCode && creds.courseCode !== 'MISC' && creds.courseCode !== 'GENERAL') {
+      coursesFound.add(creds.courseCode);
+    }
+    const inputCourse = document.getElementById('browsePrefix')?.value?.trim();
+    if (inputCourse) coursesFound.add(inputCourse);
+
+    const sortedCourses = Array.from(coursesFound).sort();
+
+    if (sortedCourses.length === 0) {
+      statusEl.innerText = '0 courses found';
+      emptyNotice.innerHTML = '<p style="color: var(--text-muted); padding: 20px; text-align: center;">No course folders found in tutor_images bucket. Enter a course name above to view or upload.</p>';
+      return;
+    }
+
+    emptyNotice.style.display = 'none';
+    statusEl.innerText = `${sortedCourses.length} course folder(s)`;
+
+    const grid = document.getElementById('rootCoursesGrid');
+    grid.innerHTML = '';
+    document.getElementById('storageRootView').style.display = 'flex';
+
+    sortedCourses.forEach(cName => {
+      const card = document.createElement('div');
+      card.className = 'folder-card';
+      card.onclick = () => openCourseFolder(cName);
+      card.innerHTML = `
+        <div class="folder-icon-row">
+          <span class="folder-icon">📂</span>
+          <div>
+            <div class="folder-title">${cName}</div>
+            <div class="folder-meta">Course Folder • tutor_images</div>
+          </div>
+        </div>
+        <div class="folder-card-footer" onclick="event.stopPropagation()">
+          <span class="folder-open-hint" onclick="openCourseFolder('${cName}')">Open Course ➔</span>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
   }
 
-  // LEVEL 1: RENDER DIRECTORY FOLDER TILES
+  // LEVEL 1: INSIDE A COURSE FOLDER (ORGANIZED BY UNITS)
+  async function openCourseFolder(courseCode) {
+    const course = (courseCode || document.getElementById('browsePrefix').value || getCredentials().courseCode).trim();
+    if (!course) return alert('Please enter or select a course folder name.');
+
+    currentActiveCourse = course;
+    currentActiveUnit = null;
+    const browseInput = document.getElementById('browsePrefix');
+    if (browseInput) browseInput.value = course;
+
+    const breadcrumbBar = document.getElementById('storageBreadcrumbBar');
+    const bcRoot = document.getElementById('bc-root');
+    const bcSepCourse = document.getElementById('bc-sep-course');
+    const bcCourse = document.getElementById('bc-course');
+    const bcSepUnit = document.getElementById('bc-sep-unit');
+    const bcUnit = document.getElementById('bc-unit');
+    const backBtn = document.getElementById('btn-back-folders');
+    const statusEl = document.getElementById('galleryStatus');
+    const emptyNotice = document.getElementById('storageEmptyNotice');
+
+    breadcrumbBar.style.display = 'flex';
+    bcRoot.className = '';
+    bcSepCourse.style.display = 'inline';
+    bcCourse.textContent = course;
+    bcCourse.className = 'active';
+    bcCourse.style.display = 'inline';
+    bcSepUnit.style.display = 'none';
+    bcUnit.style.display = 'none';
+    backBtn.style.display = 'inline-flex';
+    backBtn.textContent = '⬅️ Back to All Courses';
+
+    document.getElementById('storageRootView').style.display = 'none';
+    document.getElementById('storageFoldersView').style.display = 'none';
+    document.getElementById('storageChapterView').style.display = 'none';
+
+    statusEl.innerText = `Scanning ${course}...`;
+    emptyNotice.innerHTML = `<p style="color: var(--text-muted); padding: 20px; text-align: center;">Loading images for ${course}...</p>`;
+    emptyNotice.style.display = 'block';
+
+    const creds = getCredentials();
+    let rawItems = [];
+
+    // Method A: Direct Supabase Storage list (Fast & reliable)
+    if (creds.supaUrl && creds.supaKey) {
+      try {
+        const res = await fetch(`${creds.supaUrl}/storage/v1/object/list/tutor_images`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${creds.supaKey}`,
+            'apikey': creds.supaKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ prefix: course, limit: 300, sortBy: { column: 'name', order: 'asc' } })
+        });
+        if (res.ok) {
+          const sItems = await res.json();
+          if (Array.isArray(sItems)) {
+            rawItems = sItems
+              .filter(it => it.name && it.id !== null)
+              .map(it => ({
+                filename: it.name,
+                size: it.metadata?.size || 0,
+                url: `${creds.supaUrl}/storage/v1/object/public/tutor_images/${encodeURIComponent(course)}/${encodeURIComponent(it.name)}`
+              }));
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase direct browse fallback:', err);
+      }
+    }
+
+    // Method B: Worker browse fallback
+    if (rawItems.length === 0 && creds.workerUrl) {
+      try {
+        const res = await fetch(`${creds.workerUrl}/api/browse?course=${encodeURIComponent(course)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.items)) rawItems = data.items;
+        }
+      } catch (e) {
+        console.warn('Worker browse error:', e);
+      }
+    }
+
+    statusEl.innerText = `${rawItems.length} image(s)`;
+
+    if (rawItems.length === 0) {
+      emptyNotice.innerHTML = `<p style="color: var(--text-muted); padding: 20px; text-align: center;">No images found in <strong>${course}</strong> yet.</p>`;
+      return;
+    }
+
+    emptyNotice.style.display = 'none';
+
+    cachedGalleryUnits = {};
+    rawItems.forEach(item => {
+      const match = item.filename.match(/^U(?:nit)?[-_]?(\d+)/i);
+      const unitNum = match ? match[1].padStart(2, '0') : null;
+      const unitKey = unitNum ? `Unit ${unitNum}` : 'Other / Unsorted';
+
+      if (!cachedGalleryUnits[unitKey]) cachedGalleryUnits[unitKey] = [];
+      cachedGalleryUnits[unitKey].push(item);
+    });
+
+    renderFolderDirectory();
+  }
+
+  // RENDER UNIT FOLDER TILES INSIDE A COURSE
   function renderFolderDirectory() {
     currentActiveUnit = null;
 
-    document.getElementById('bc-sep').style.display = 'none';
+    document.getElementById('bc-root').className = '';
+    document.getElementById('bc-sep-course').style.display = 'inline';
+    document.getElementById('bc-course').textContent = currentActiveCourse;
+    document.getElementById('bc-course').className = 'active';
+    document.getElementById('bc-course').style.display = 'inline';
+    document.getElementById('bc-sep-unit').style.display = 'none';
     document.getElementById('bc-unit').style.display = 'none';
-    document.getElementById('btn-back-folders').style.display = 'none';
+
+    const backBtn = document.getElementById('btn-back-folders');
+    backBtn.style.display = 'inline-flex';
+    backBtn.textContent = '⬅️ Back to All Courses';
+
+    document.getElementById('storageRootView').style.display = 'none';
     document.getElementById('storageChapterView').style.display = 'none';
 
     const foldersView = document.getElementById('storageFoldersView');
@@ -2417,20 +2586,30 @@
     });
   }
 
-  // LEVEL 2: DRILL DOWN INSIDE A CHAPTER FOLDER
+  // LEVEL 2: DRILL DOWN INSIDE A CHAPTER / UNIT
   function openUnitFolder(unitKey) {
     currentActiveUnit = unitKey;
     const items = cachedGalleryUnits[unitKey] || [];
 
+    document.getElementById('storageRootView').style.display = 'none';
     document.getElementById('storageFoldersView').style.display = 'none';
     document.getElementById('storageChapterView').style.display = 'flex';
 
     // Update Breadcrumb Bar
-    document.getElementById('bc-sep').style.display = 'inline';
+    document.getElementById('bc-root').className = '';
+    document.getElementById('bc-sep-course').style.display = 'inline';
+    document.getElementById('bc-course').textContent = currentActiveCourse;
+    document.getElementById('bc-course').className = '';
+    document.getElementById('bc-course').style.display = 'inline';
+    document.getElementById('bc-sep-unit').style.display = 'inline';
     const bcUnit = document.getElementById('bc-unit');
     bcUnit.textContent = unitKey;
+    bcUnit.className = 'active';
     bcUnit.style.display = 'inline';
-    document.getElementById('btn-back-folders').style.display = 'inline-flex';
+
+    const backBtn = document.getElementById('btn-back-folders');
+    backBtn.style.display = 'inline-flex';
+    backBtn.textContent = '⬅️ Back to Units';
 
     // Header info
     document.getElementById('chapterViewTitle').textContent = `📁 ${unitKey}`;
@@ -2438,7 +2617,7 @@
     const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
     document.getElementById('chapterViewCount').textContent = `${items.length} image(s) • ${totalMb} MB`;
 
-    // Render image grid for just this unit
+    // Render image grid for this unit
     const grid = document.getElementById('chapterImageGrid');
     grid.innerHTML = '';
 
@@ -2467,9 +2646,27 @@
     document.getElementById('storageBreadcrumbBar').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  function closeUnitFolder() {
-    renderFolderDirectory();
+  function handleStorageBack() {
+    if (document.getElementById('storageChapterView').style.display === 'flex') {
+      renderFolderDirectory();
+    } else if (document.getElementById('storageFoldersView').style.display === 'flex') {
+      openRootBucket();
+    }
   }
+
+  function refreshCurrentStorageView() {
+    if (document.getElementById('storageChapterView').style.display === 'flex' && currentActiveUnit) {
+      openCourseFolder(currentActiveCourse).then(() => {
+        if (cachedGalleryUnits[currentActiveUnit]) openUnitFolder(currentActiveUnit);
+      });
+    } else if (document.getElementById('storageFoldersView').style.display === 'flex' && currentActiveCourse) {
+      openCourseFolder(currentActiveCourse);
+    } else {
+      openRootBucket();
+    }
+  }
+
+  const fetchSupabaseGallery = openRootBucket;
 
   function downloadCurrentChapterZip() {
     if (currentActiveUnit) {
