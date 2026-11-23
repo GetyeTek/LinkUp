@@ -1214,7 +1214,7 @@ serve(async (req) => {
           model: NVIDIA_MODEL,
           messages,
           temperature: 0.6,
-          max_tokens: 4096,
+          max_tokens: 8192,
           stream: true,
           // NVIDIA NIM mandate: thinking must be disabled for reliable tool calling
           chat_template_kwargs: { enable_thinking: false }
@@ -1822,7 +1822,8 @@ serve(async (req) => {
 
             let geminiLoop = 0;
             let shouldLoopTools = true;
-            const MAX_GEMINI_LOOPS = 5;
+            let lastGeminiActionWasTool = false;
+            const MAX_GEMINI_LOOPS = 7;
 
             while (shouldLoopTools && geminiLoop < MAX_GEMINI_LOOPS) {
               const isFinalAllowedTurn = (geminiLoop >= MAX_GEMINI_LOOPS - 1);
@@ -1899,13 +1900,34 @@ serve(async (req) => {
                 });
 
                 sendEvent('status', { message: 'Synthesizing response...' });
+                lastGeminiActionWasTool = true;
                 geminiLoop++;
                 if (geminiLoop >= MAX_GEMINI_LOOPS) {
                   console.warn(`🛑 [GEMINI LOOP CAP] Reached max tool loop limit (${MAX_GEMINI_LOOPS} turns).`);
+                  shouldLoopTools = false;
                 }
               } else {
+                lastGeminiActionWasTool = false;
                 shouldLoopTools = false;
               }
+            }
+
+            if (lastGeminiActionWasTool || finalText.trim().length === 0) {
+              console.log(`🎤 [GEMINI GUARANTEED MICROPHONE] Executing final synthesis turn...`);
+              geminiMessages.push({
+                role: "user",
+                parts: [{ text: "All textbook materials are retrieved. Deliver your final comprehensive response to the student immediately without calling any tools." }]
+              });
+
+              await streamGeminiTurn(
+                geminiMessages,
+                null,
+                activeSystemPrompt,
+                (chunkText) => {
+                  finalText += chunkText;
+                  sendEvent('chunk', { delta: chunkText });
+                }
+              );
             }
           };
 
@@ -1934,10 +1956,10 @@ serve(async (req) => {
 
             let nvidiaLoop = 0;
             let shouldLoopTools = true;
-            const MAX_NVIDIA_LOOPS = 5;
+            let lastActionWasTool = false;
+            const MAX_NVIDIA_LOOPS = 7;
 
             while (shouldLoopTools && nvidiaLoop < MAX_NVIDIA_LOOPS) {
-              // Force tools: null on the final turn so the model is guaranteed to synthesize and finish its sentence
               const isFinalAllowedTurn = (nvidiaLoop >= MAX_NVIDIA_LOOPS - 1);
               const activeTools = isFinalAllowedTurn ? null : groqTools;
 
@@ -2012,13 +2034,39 @@ serve(async (req) => {
                 sendEvent('status', { 
                   message: isAmharicChat ? 'ማብራሪያውን በማዘጋጀት ላይ...' : 'Synthesizing response...' 
                 });
+                lastActionWasTool = true;
                 nvidiaLoop++;
                 if (nvidiaLoop >= MAX_NVIDIA_LOOPS) {
-                  console.warn(`🛑 [NVIDIA LOOP CAP] Reached max tool loop limit (${MAX_NVIDIA_LOOPS} turns). Final synthesis turn will now complete.`);
+                  console.warn(`🛑 [NVIDIA LOOP CAP] Reached max tool loop limit (${MAX_NVIDIA_LOOPS} turns).`);
+                  shouldLoopTools = false;
                 }
               } else {
+                lastActionWasTool = false;
                 shouldLoopTools = false;
               }
+            }
+
+            // GUARANTEED MICROPHONE: If all turns ended on tool retrieval or text is completely empty,
+            // execute one mandatory final synthesis turn with tools strictly disabled so the student ALWAYS gets text!
+            if (lastActionWasTool || finalText.trim().length === 0) {
+              console.log(`🎤 [GUARANTEED MICROPHONE] Executing final text synthesis turn after ${nvidiaLoop} tool turns...`);
+              sendEvent('status', {
+                message: isAmharicChat ? 'ማብራሪያውን በማጠናከር ላይ...' : 'Synthesizing chapter summary...'
+              });
+
+              nvidiaMessages.push({
+                role: "system",
+                content: "SYSTEM DIRECTIVE: All requested textbook sections and materials have been retrieved above. Now write your complete, comprehensive study response/summary to the student in natural conversation. Do NOT call or mention any tools."
+              });
+
+              await streamNvidiaTurn(
+                nvidiaMessages,
+                null, // Strictly NO tools
+                (chunkText) => {
+                  finalText += chunkText;
+                  sendEvent('chunk', { delta: chunkText });
+                }
+              );
             }
           };
 
