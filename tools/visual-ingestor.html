@@ -2353,39 +2353,31 @@
     const creds = getCredentials();
     const coursesFound = new Set();
 
-    // 1. Query Supabase Storage REST directly (Zero worker dependency)
+    // 1. Query Supabase Storage REST directly (bucket: public_assets, prefix: tutor_images)
     if (creds.supaUrl && creds.supaKey) {
       try {
-        const res = await fetch(`${creds.supaUrl}/storage/v1/object/list/tutor_images`, {
+        const res = await fetch(`${creds.supaUrl}/storage/v1/object/list/public_assets`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${creds.supaKey}`,
             'apikey': creds.supaKey,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ prefix: '', limit: 100, sortBy: { column: 'name', order: 'asc' } })
+          body: JSON.stringify({ prefix: 'tutor_images', limit: 100, sortBy: { column: 'name', order: 'asc' } })
         });
         if (res.ok) {
-          const items = await res.json();
-          if (Array.isArray(items)) {
-            items.forEach(it => {
-              if (it.name && (it.id === null || !it.metadata)) {
-                coursesFound.add(it.name);
-              }
-            });
-          }
+          const data = await res.json();
+          const items = Array.isArray(data) ? data : (data.objects || []);
+          items.forEach(it => {
+            if (it.name && it.name !== '.emptyFolderPlaceholder') {
+              coursesFound.add(it.name);
+            }
+          });
         }
       } catch (err) {
         console.warn('Direct Supabase root scan error:', err);
       }
     }
-
-    // 2. Add current active/configured courses as available presets
-    if (creds.courseCode && creds.courseCode !== 'MISC' && creds.courseCode !== 'GENERAL') {
-      coursesFound.add(creds.courseCode);
-    }
-    const inputCourse = document.getElementById('browsePrefix')?.value?.trim();
-    if (inputCourse) coursesFound.add(inputCourse);
 
     const sortedCourses = Array.from(coursesFound).sort();
 
@@ -2464,29 +2456,28 @@
     const creds = getCredentials();
     let rawItems = [];
 
-    // Method A: Direct Supabase Storage list (Fast & reliable)
+    // Method A: Direct Supabase Storage list (bucket: public_assets, prefix: tutor_images/course)
     if (creds.supaUrl && creds.supaKey) {
       try {
-        const res = await fetch(`${creds.supaUrl}/storage/v1/object/list/tutor_images`, {
+        const res = await fetch(`${creds.supaUrl}/storage/v1/object/list/public_assets`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${creds.supaKey}`,
             'apikey': creds.supaKey,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ prefix: course, limit: 300, sortBy: { column: 'name', order: 'asc' } })
+          body: JSON.stringify({ prefix: `tutor_images/${course}`, limit: 300, sortBy: { column: 'name', order: 'asc' } })
         });
         if (res.ok) {
-          const sItems = await res.json();
-          if (Array.isArray(sItems)) {
-            rawItems = sItems
-              .filter(it => it.name && it.id !== null)
-              .map(it => ({
-                filename: it.name,
-                size: it.metadata?.size || 0,
-                url: `${creds.supaUrl}/storage/v1/object/public/tutor_images/${encodeURIComponent(course)}/${encodeURIComponent(it.name)}`
-              }));
-          }
+          const data = await res.json();
+          const sItems = Array.isArray(data) ? data : (data.objects || []);
+          rawItems = sItems
+            .filter(it => it.name && it.name !== '.emptyFolderPlaceholder' && !it.name.endsWith('/'))
+            .map(it => ({
+              filename: it.name,
+              size: it.metadata?.size || 0,
+              url: `${creds.supaUrl}/storage/v1/object/public/public_assets/tutor_images/${encodeURIComponent(course)}/${encodeURIComponent(it.name)}`
+            }));
         }
       } catch (err) {
         console.warn('Supabase direct browse fallback:', err);
