@@ -618,13 +618,16 @@ const MironChat = ({
         const tempId = `temp-${Date.now()}`;
         const userMsg = { id: tempId, side: 'user', text: textToSend };
         
-        // Optimistic UI Append with streaming placeholder
+        // Optimistic UI Append with streaming placeholder and instant 0ms status
         const mironTempId = `miron-stream-${Date.now()}`;
+        const initialStatus = lang === 'am' 
+            ? 'ጥያቄህን እያየሁ ነው...' 
+            : 'Miron is thinking...';
         const placeholderMironMsg = {
             id: mironTempId,
             side: 'miron',
             text: '',
-            status: null,
+            status: initialStatus,
             isStreaming: true
         };
 
