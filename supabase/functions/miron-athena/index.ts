@@ -685,7 +685,51 @@ serve(async (req) => {
     let inlineQuizzes: any[] = [];
     let inlineFlashcards: any[] = [];
 
-    // Unified Tool Execution Engine
+        // Universal deep scanner: extracts arrays even if stringified, nested, or under unexpected keys
+    function extractArrayFromPayload(payload: any, candidateKeys: string[] = []): any[] {
+      if (!payload) return [];
+      if (Array.isArray(payload)) return payload;
+
+      if (typeof payload === 'string') {
+        const trimmed = payload.trim();
+        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            return extractArrayFromPayload(parsed, candidateKeys);
+          } catch (_) {}
+        }
+        return [];
+      }
+
+      if (typeof payload === 'object') {
+        // 1. Check known candidate keys
+        for (const k of candidateKeys) {
+          if (payload[k] !== undefined && payload[k] !== null) {
+            const res = extractArrayFromPayload(payload[k], candidateKeys);
+            if (res.length > 0) return res;
+          }
+        }
+        // 2. Fuzzy match any key containing card, quiz, question, deck, item, or list
+        for (const [k, v] of Object.entries(payload)) {
+          if (/card|quiz|question|deck|item|list|data/i.test(k)) {
+            const res = extractArrayFromPayload(v, candidateKeys);
+            if (res.length > 0) return res;
+          }
+        }
+        // 3. Fallback: scan all object values for an array
+        for (const v of Object.values(payload)) {
+          if (Array.isArray(v) && v.length > 0) return v;
+          if (typeof v === 'string' && v.trim().startsWith('[')) {
+            try {
+              const parsed = JSON.parse(v);
+              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            } catch (_) {}
+          }
+        }
+      }
+      return [];
+    }
+// Unified Tool Execution Engine
     async function executeTool(name: string, args: any) {
       const toolStart = performance.now();
       console.log(`🔧 [TOOL START] ${name} at +${elapsed()}`, JSON.stringify(args));
@@ -855,7 +899,7 @@ serve(async (req) => {
           let quizTitle = args.section_title ? `⚡ Quick Quiz • ${args.section_title}` : "⚡ Quick Quiz";
 
           if (args.mode === 'database') {
-            const code = (args.course_code || "").toUpperCase().trim();
+            const code = resolveCourseCodeFromText(args.course_code || args.code || "");
             const { data: book } = await supabase.from('books').select('id, toc, page_offset').eq('course_code', code).single();
             if (book && book.toc) {
               let startPage = 0;
@@ -906,7 +950,7 @@ serve(async (req) => {
                   qList.forEach((q: any) => {
                     const uName = q.sections?.exams?.universities?.name;
                     if (uName) uniNames.add(uName);
-                    delete q.sections; // Strip relational data from final payload
+                    delete q.sections;
                   });
                   
                   const unis = Array.from(uniNames);
@@ -923,7 +967,22 @@ serve(async (req) => {
               }
             }
           } else {
-            qList = args.custom_questions || [];
+            // Forgiving question harvester: handles questions, custom_questions, quiz, items, etc.
+            const rawQs = extractArrayFromPayload(args, ['custom_questions', 'questions', 'quiz', 'items', 'list', 'data']);
+            qList = rawQs.map((q: any, idx: number) => {
+              if (!q || typeof q !== 'object') return null;
+              const qText = q.text || q.question || q.prompt || q.title || '';
+              const rawOpts = extractArrayFromPayload(q, ['options', 'choices', 'answers']);
+              const options = rawOpts.map((opt: any) => typeof opt === 'string' ? opt : (opt?.text || String(opt)));
+              const correct = q.correct_answer || q.answer || q.correct || (options[0] || 'True');
+              return {
+                id: q.id || `q_${idx + 1}`,
+                text: String(qText),
+                question_type: q.question_type || (options.length === 2 ? 'true_false' : 'multiple_choice'),
+                options: options.length > 0 ? options : ['True', 'False'],
+                correct_answer: String(correct)
+              };
+            }).filter((q: any) => q && q.text);
           }
 
           if (qList.length > 0) {
@@ -940,13 +999,26 @@ serve(async (req) => {
           }
         }
         else if (name === "render_flashcards") {
-          const course = (args.course_code || "GENERAL").toUpperCase().trim();
-          const topic = args.topic || "Miron Synthesis";
-          const cards = args.flashcards || [];
+          const course = resolveCourseCodeFromText(args.course_code || args.code || "GENERAL");
+          const topic = args.topic || args.title || "Miron Synthesis";
+          
+          // Forgiving flashcard harvester: scans cards, flashcards, deck, items, list, data (and parses JSON strings)
+          const rawCards = extractArrayFromPayload(args, ['flashcards', 'cards', 'deck', 'items', 'list', 'data']);
+          const validCards = rawCards.map((c: any) => {
+            if (!c || typeof c !== 'object') return null;
+            const front = c.front || c.question || c.q || c.term || c.prompt || c.title || '';
+            const back = c.back || c.answer || c.a || c.definition || c.explanation || c.content || '';
+            if (!front && !back) return null;
+            return {
+              front: String(front),
+              back: String(back),
+              ref: c.ref || c.source || `Miron AI • ${topic}`,
+              is_mistake: Boolean(c.is_mistake || c.mistake)
+            };
+          }).filter(Boolean);
 
-          if (cards.length > 0) {
-            const tags: string[] = [];
-            cards.forEach((card: any) => {
+          if (validCards.length > 0) {
+            validCards.forEach((card: any) => {
               const cardNum = inlineFlashcards.length + 1;
               inlineFlashcards.push({
                 id: cardNum,
@@ -954,15 +1026,15 @@ serve(async (req) => {
                 topic: topic,
                 front: card.front,
                 back: card.back,
-                ref: card.ref || `Miron AI • ${topic}`,
-                is_mistake: card.is_mistake || false
+                ref: card.ref,
+                is_mistake: card.is_mistake
               });
-              tags.push(`[FLASHCARD_${cardNum}]`);
             });
 
             toolResult = {
               status: "success",
-              instruction: `Flashcards registered. Insert [FLASHCARD_1] on its own line exactly where you want the student to interact with the deck. All cards in this set will advance in-place right at that position.`
+              cards_count: validCards.length,
+              instruction: `Flashcards registered (${validCards.length} cards). Insert [FLASHCARD_1] on its own line exactly where you want the student to interact with the deck.`
             };
           } else {
             toolResult = { status: "error", message: "No flashcards provided in payload." };
@@ -1750,13 +1822,17 @@ serve(async (req) => {
 
             let geminiLoop = 0;
             let shouldLoopTools = true;
+            const MAX_GEMINI_LOOPS = 5;
 
-            while (shouldLoopTools && geminiLoop < 3) {
-              console.log(`🔄 [GEMINI STREAM TURN ${geminiLoop}] at +${elapsed()}`);
+            while (shouldLoopTools && geminiLoop < MAX_GEMINI_LOOPS) {
+              const isFinalAllowedTurn = (geminiLoop >= MAX_GEMINI_LOOPS - 1);
+              const activeTools = isFinalAllowedTurn ? null : [toolsDefinition];
+
+              console.log(`🔄 [GEMINI STREAM TURN ${geminiLoop}] toolsAllowed=${!isFinalAllowedTurn} at +${elapsed()}`);
 
               const turnResult = await streamGeminiTurn(
                 geminiMessages,
-                geminiLoop < 2 ? [toolsDefinition] : null,
+                activeTools,
                 activeSystemPrompt,
                 (chunkText) => {
                   finalText += chunkText;
@@ -1824,6 +1900,9 @@ serve(async (req) => {
 
                 sendEvent('status', { message: 'Synthesizing response...' });
                 geminiLoop++;
+                if (geminiLoop >= MAX_GEMINI_LOOPS) {
+                  console.warn(`🛑 [GEMINI LOOP CAP] Reached max tool loop limit (${MAX_GEMINI_LOOPS} turns).`);
+                }
               } else {
                 shouldLoopTools = false;
               }
@@ -1855,13 +1934,18 @@ serve(async (req) => {
 
             let nvidiaLoop = 0;
             let shouldLoopTools = true;
+            const MAX_NVIDIA_LOOPS = 5;
 
-            while (shouldLoopTools && nvidiaLoop < 3) {
-              console.log(`🔄 [NVIDIA STREAM TURN ${nvidiaLoop}] at +${elapsed()}`);
+            while (shouldLoopTools && nvidiaLoop < MAX_NVIDIA_LOOPS) {
+              // Force tools: null on the final turn so the model is guaranteed to synthesize and finish its sentence
+              const isFinalAllowedTurn = (nvidiaLoop >= MAX_NVIDIA_LOOPS - 1);
+              const activeTools = isFinalAllowedTurn ? null : groqTools;
+
+              console.log(`🔄 [NVIDIA STREAM TURN ${nvidiaLoop}] toolsAllowed=${!isFinalAllowedTurn} at +${elapsed()}`);
 
               const turnResult = await streamNvidiaTurn(
                 nvidiaMessages,
-                nvidiaLoop < 2 ? groqTools : null,
+                activeTools,
                 (chunkText) => {
                   finalText += chunkText;
                   sendEvent('chunk', { delta: chunkText });
@@ -1929,8 +2013,8 @@ serve(async (req) => {
                   message: isAmharicChat ? 'ማብራሪያውን በማዘጋጀት ላይ...' : 'Synthesizing response...' 
                 });
                 nvidiaLoop++;
-                if (nvidiaLoop >= 3) {
-                  console.warn(`🛑 [NVIDIA LOOP CAP] Reached max tool loop limit (3 turns)`);
+                if (nvidiaLoop >= MAX_NVIDIA_LOOPS) {
+                  console.warn(`🛑 [NVIDIA LOOP CAP] Reached max tool loop limit (${MAX_NVIDIA_LOOPS} turns). Final synthesis turn will now complete.`);
                 }
               } else {
                 shouldLoopTools = false;
