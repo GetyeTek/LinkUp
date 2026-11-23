@@ -1143,7 +1143,9 @@ serve(async (req) => {
           messages,
           temperature: 0.6,
           max_tokens: 4096,
-          stream: true
+          stream: true,
+          // NVIDIA NIM mandate: thinking must be disabled for reliable tool calling
+          chat_template_kwargs: { enable_thinking: false }
         };
         if (tools && tools.length > 0) {
           payload.tools = tools;
@@ -1205,47 +1207,73 @@ serve(async (req) => {
         let startedContentLog = false;
         const toolCallMap = new Map<number, { id: string; name: string; arguments: string }>();
 
-        // Tripwire Stream Buffer: Sends normal words with 0ms delay, catches & silences tool leaks
-        let tripwireBuffer = '';
+        // 10-Character Airbag: Evaluates first tokens to decide between normal stream vs tool leak
+        let isToolLeaking = false;
+        let airbagDecided = false;
+        let airbagBuffer = '';
+        let streamBuffer = '';
+
         const flushSafeText = (text: string) => {
           if (text) onTextChunk(text);
         };
 
-        const feedTripwire = (incomingDelta: string) => {
-          tripwireBuffer += incomingDelta;
+        const feedAirbag = (incomingDelta: string) => {
+          if (isToolLeaking) return; // Muted completely: this turn is an internal tool call
 
-          while (tripwireBuffer.length > 0) {
-            const triggerIdx = tripwireBuffer.search(/\[|<tool_call>|```(?:tool_code|json)/i);
+          if (!airbagDecided) {
+            airbagBuffer += incomingDelta;
+            if (airbagBuffer.length < 14) return; // Hold opening 14 characters (approx 0.04s)
+
+            airbagDecided = true;
+            const trimmedOpening = airbagBuffer.trim();
+
+            // Detect any tool leak opening: XML tags, bracketed calls, or function prefixes
+            if (/^(?:<function|<tool_call|\[\s*\.\.\.?\s*silent tool call|\[SILENT TOOL CALL|```(?:tool_code|json))/i.test(trimmedOpening)) {
+              isToolLeaking = true;
+              console.log(`🚨 [AIRBAG TRIGGERED] Locked gate on tool leak: ${JSON.stringify(trimmedOpening)}`);
+              return;
+            }
+
+            // Normal conversational opening: flush opening buffer immediately
+            flushSafeText(airbagBuffer);
+            airbagBuffer = '';
+            return;
+          }
+
+          // Airbag decided as normal text: stream live with tripwire for mid-stream leaks
+          streamBuffer += incomingDelta;
+          while (streamBuffer.length > 0) {
+            const triggerIdx = streamBuffer.search(/\[|<function|<tool_call/i);
             if (triggerIdx === -1) {
-              flushSafeText(tripwireBuffer);
-              tripwireBuffer = '';
+              flushSafeText(streamBuffer);
+              streamBuffer = '';
               break;
             } else if (triggerIdx > 0) {
-              flushSafeText(tripwireBuffer.slice(0, triggerIdx));
-              tripwireBuffer = tripwireBuffer.slice(triggerIdx);
+              flushSafeText(streamBuffer.slice(0, triggerIdx));
+              streamBuffer = streamBuffer.slice(triggerIdx);
             }
 
-            // A trigger character is at index 0. Check if bounded or long enough to decide.
-            const endMatch = tripwireBuffer.match(/[\]\n]|<\/tool_call>|```/);
-            if (!endMatch && tripwireBuffer.length < 130) {
-              break; // Wait for next delta to complete bracket lookahead
+            const endMatch = streamBuffer.match(/[\]\n]|<\/function>|<\/tool_call>/i);
+            if (!endMatch && streamBuffer.length < 120) {
+              break; // Wait for bracket or tag to close
             }
 
-            const boundary = endMatch ? endMatch.index! + endMatch[0].length : Math.min(130, tripwireBuffer.length);
-            const candidate = tripwireBuffer.slice(0, boundary);
-
-            const isToolLeak = /silent tool call|calling tool|get_book_toc|read_book_section|render_quiz|render_flashcards|<tool_call>/i.test(candidate);
+            const boundary = endMatch ? endMatch.index! + endMatch[0].length : Math.min(120, streamBuffer.length);
+            const candidate = streamBuffer.slice(0, boundary);
+            const isLeak = /silent tool call|calling tool|<function|<tool_call|get_book_toc|read_book_section/i.test(candidate);
             const isLegitTag = /^\[(QUIZ_\d+|FLASHCARD_\d+|SNAPSHOT_\d+|BOARD_[a-zA-Z0-9_\-]+)\]$/i.test(candidate.trim());
 
-            if (isToolLeak) {
-              console.log(`🛡️ [TRIPWIRE SILENCED LEAK] candidate=${JSON.stringify(candidate)}`);
-              tripwireBuffer = tripwireBuffer.slice(boundary);
+            if (isLeak) {
+              console.log(`🛡️ [MID-STREAM SILENCED LEAK] candidate=${JSON.stringify(candidate)}`);
+              isToolLeaking = true;
+              streamBuffer = '';
+              break;
             } else if (isLegitTag) {
               flushSafeText(candidate);
-              tripwireBuffer = tripwireBuffer.slice(boundary);
+              streamBuffer = streamBuffer.slice(boundary);
             } else {
               flushSafeText(candidate);
-              tripwireBuffer = tripwireBuffer.slice(boundary);
+              streamBuffer = streamBuffer.slice(boundary);
             }
           }
         };
@@ -1301,7 +1329,7 @@ serve(async (req) => {
                   console.log(`💬 [NVIDIA CONTENT START] at ${(performance.now() - nvidiaStart).toFixed(0)}ms`);
                 }
                 fullText += delta.content;
-                feedTripwire(delta.content);
+                feedAirbag(delta.content);
               }
 
               if (Array.isArray(delta.tool_calls)) {
@@ -1331,12 +1359,21 @@ serve(async (req) => {
           }
         }
 
-        // Flush any remaining trailing non-leak buffer
-        if (tripwireBuffer) {
-          if (!/silent tool call|calling tool|get_book_toc|read_book_section/i.test(tripwireBuffer)) {
-            flushSafeText(tripwireBuffer);
+        // Flush any remaining airbag buffer if short non-tool greeting
+        if (!airbagDecided && airbagBuffer) {
+          const trimmed = airbagBuffer.trim();
+          if (!/^(?:<function|<tool_call|\[\s*\.\.\.?\s*silent tool call)/i.test(trimmed)) {
+            flushSafeText(airbagBuffer);
+          } else {
+            isToolLeaking = true;
           }
-          tripwireBuffer = '';
+          airbagBuffer = '';
+        }
+        if (!isToolLeaking && streamBuffer) {
+          if (!/silent tool call|<function|<tool_call/i.test(streamBuffer)) {
+            flushSafeText(streamBuffer);
+          }
+          streamBuffer = '';
         }
 
         if (reasoningText) {
@@ -1365,36 +1402,71 @@ serve(async (req) => {
           })
           .filter(fc => fc.name);
 
-        // Auto-Recovery Engine: If the model leaked tool text instead of emitting tool_calls, synthesize it!
-        if (functionCalls.length === 0 && /\[\s*\.\.\.?\s*silent tool call|\[SILENT TOOL CALL|<tool_call>|get_book_toc\(|read_book_section\(/i.test(fullText)) {
-          console.warn(`🚨 [NVIDIA AUTO-RECOVERY] Synthesizing tool call from leaked text: ${JSON.stringify(fullText.slice(0, 240))}`);
-          
-          let recoveredName = 'get_book_toc';
-          let recoveredArgs: any = {};
+        // Auto-Recovery Engine: Inspect for XML <function=...> or bracket leaks and synthesize tool calls
+        if (functionCalls.length === 0) {
+          // 1. XML Harvester: Parses <function=NAME><parameter=KEY>VALUE</parameter></function>
+          const fnXmlRegex = /<function=([a-zA-Z0-9_\-]+)>([\s\S]*?)<\/function>/gi;
+          let fnXmlMatch;
+          while ((fnXmlMatch = fnXmlRegex.exec(fullText)) !== null) {
+            const toolName = fnXmlMatch[1].trim();
+            const inner = fnXmlMatch[2];
+            const parsedArgs: Record<string, any> = {};
 
-          if (/read_book_section/i.test(fullText)) {
-            recoveredName = 'read_book_section';
-            const secMatch = fullText.match(/section(?:_title)?[:\s=]+['"]?([^'",\)\n\]]+)/i) || fullText.match(/chapter\s*\d+/i);
-            recoveredArgs.section_title = secMatch ? (secMatch[1] || secMatch[0]).trim() : 'Chapter 1';
-            recoveredArgs.course_code = resolveCourseCodeFromText(fullText);
-          } else {
-            recoveredName = 'get_book_toc';
-            recoveredArgs.course_code = resolveCourseCodeFromText(fullText);
+            const paramRegex = /<parameter=([a-zA-Z0-9_\-]+)>([\s\S]*?)<\/parameter>/gi;
+            let pMatch;
+            while ((pMatch = paramRegex.exec(inner)) !== null) {
+              parsedArgs[pMatch[1].trim()] = pMatch[2].trim();
+            }
+
+            if (Object.keys(parsedArgs).length === 0 && inner.trim()) {
+              try { Object.assign(parsedArgs, JSON.parse(inner.trim())); } catch (_) {}
+            }
+
+            if (toolName) {
+              console.log(`🎯 [NVIDIA XML HARVESTER] Extracted native tool: ${toolName} with args:`, JSON.stringify(parsedArgs));
+              functionCalls.push({
+                id: `call_xml_${Date.now()}_${functionCalls.length}`,
+                name: toolName,
+                args: parsedArgs,
+                rawArguments: JSON.stringify(parsedArgs)
+              });
+            }
           }
 
-          functionCalls.push({
-            id: `call_recov_${Date.now()}`,
-            name: recoveredName,
-            args: recoveredArgs,
-            rawArguments: JSON.stringify(recoveredArgs)
-          });
+          // 2. Fallback Harvester: Conversational brackets or function calls
+          if (functionCalls.length === 0 && /(?:\[\s*\.\.\.?\s*silent tool call|\[SILENT TOOL CALL|<tool_call>|get_book_toc\(|read_book_section\()/i.test(fullText)) {
+            console.warn(`🚨 [NVIDIA AUTO-RECOVERY] Synthesizing tool call from leaked conversational text: ${JSON.stringify(fullText.slice(0, 240))}`);
+            
+            let recoveredName = 'get_book_toc';
+            let recoveredArgs: any = {};
 
-          // Sanitize fullText so the leak is not recorded as assistant conversation history
-          fullText = fullText
-            .replace(/\[\s*\.\.\.?\s*silent tool call[^\]]*\]/gi, '')
-            .replace(/\[SILENT TOOL CALL[^\]]*\]/gi, '')
-            .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
-            .trim();
+            if (/read_book_section/i.test(fullText)) {
+              recoveredName = 'read_book_section';
+              const secMatch = fullText.match(/section(?:_title)?[:\s=]+['"]?([^'",\)\n\]]+)/i) || fullText.match(/chapter\s*\d+/i);
+              recoveredArgs.section_title = secMatch ? (secMatch[1] || secMatch[0]).trim() : 'Chapter 1';
+              recoveredArgs.course_code = resolveCourseCodeFromText(fullText);
+            } else {
+              recoveredName = 'get_book_toc';
+              recoveredArgs.course_code = resolveCourseCodeFromText(fullText);
+            }
+
+            functionCalls.push({
+              id: `call_recov_${Date.now()}`,
+              name: recoveredName,
+              args: recoveredArgs,
+              rawArguments: JSON.stringify(recoveredArgs)
+            });
+          }
+
+          // Sanitize fullText completely so zero raw XML or brackets pollute conversation history
+          if (functionCalls.length > 0) {
+            fullText = fullText
+              .replace(/<function=[\s\S]*?<\/function>/gi, '')
+              .replace(/<\/?tool_call>/gi, '')
+              .replace(/\[\s*\.\.\.?\s*silent tool call[^\]]*\]/gi, '')
+              .replace(/\[SILENT TOOL CALL[^\]]*\]/gi, '')
+              .trim();
+          }
         }
 
         const dur = (performance.now() - nvidiaStart).toFixed(0);
