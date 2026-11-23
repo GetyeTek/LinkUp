@@ -62,7 +62,7 @@
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
                         <span>⚡</span> 4-Asset Fusion Pipeline
                     </h2>
-                    <p id="deck-mission-sub" class="text-xs text-gray-400">Gathers Raw MD + Result MD + Images ZIP + JSON per chapter across 5 profiles</p>
+                    <p id="deck-mission-sub" class="text-xs text-gray-400">Gathers Raw MD + Result MD + Prompts JSON + Chapter JSON per chapter across 5 profiles</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <span id="stat-kb-saved" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800">0.0 KB Saved</span>
@@ -371,7 +371,7 @@
                         <label class="text-gray-400 font-semibold">3. Images Subdir</label>
                         <input id="input-sub-images" type="text" value="Images" 
                                class="w-full bg-[#0D1117] border border-gray-700 rounded-lg p-2 font-mono text-gray-200 outline-none focus:border-sky-500 mt-0.5" />
-                        <span class="text-[10px] text-gray-500">Finds ${COURSE}_Unit_XX_images.zip</span>
+                        <span class="text-[10px] text-gray-500">Finds ${COURSE}_Unit_XX_prompts.json</span>
                     </div>
                     <div>
                         <label class="text-gray-400 font-semibold">4. JSON Subdir</label>
@@ -1267,9 +1267,9 @@
                     const resultFilename = resultFiles.find(f => f.match(new RegExp('^Ch_' + padNum + '_Turn_2\\.md$', 'i')) || f.match(new RegExp('^Ch_' + chNum + '_Turn_2\\.md$', 'i')));
                     const resultMdPath = resultFilename ? resultsDir + '/' + resultFilename : null;
 
-                    // 3. Unit Images ZIP
-                    const zipFilename = imageFiles.find(f => f.match(new RegExp('^' + courseCode + '_Unit_' + padNum + '_images\\.zip$', 'i')) || f.match(new RegExp('^' + courseCode + '_Unit_' + chNum + '_images\\.zip$', 'i')));
-                    const zipPath = zipFilename ? imagesDir + '/' + zipFilename : null;
+                    // 3. Unit Prompts JSON
+                    const promptsFilename = imageFiles.find(f => f.match(new RegExp('^' + courseCode + '_Unit_' + padNum + '_prompts\\.json$', 'i')) || f.match(new RegExp('^' + courseCode + '_Unit_' + chNum + '_prompts\\.json$', 'i')));
+                    const promptsPath = promptsFilename ? imagesDir + '/' + promptsFilename : null;
 
                     // 4. Chapter JSON
                     const jsonFilename = jsonFiles.find(f => f.match(new RegExp('^' + padNum + '_.+\\.json$', 'i')) || f.match(new RegExp('^' + chNum + '_.+\\.json$', 'i')));
@@ -1286,10 +1286,10 @@
                         assets: {
                             rawMd: rawMdPath,
                             resultMd: resultMdPath,
-                            zip: zipPath,
+                            promptsJson: promptsPath,
                             json: jsonPath
                         },
-                        allAssetsFound: !!(rawMdPath && resultMdPath && zipPath && jsonPath),
+                        allAssetsFound: !!(rawMdPath && resultMdPath && promptsPath && jsonPath),
                         hasExistingOutput: hasExistingSynthesis
                     });
                 }
@@ -1396,7 +1396,7 @@
 
                 badgesRow.appendChild(makeAssetBadge('Raw', !!ch.assets.rawMd, '📄'));
                 badgesRow.appendChild(makeAssetBadge('Turn 2', !!ch.assets.resultMd, '📝'));
-                badgesRow.appendChild(makeAssetBadge('ZIP', !!ch.assets.zip, '📦'));
+                badgesRow.appendChild(makeAssetBadge('Prompts', !!ch.assets.promptsJson, '🎨'));
                 badgesRow.appendChild(makeAssetBadge('JSON', !!ch.assets.json, '📊'));
 
                 card.appendChild(top);
@@ -1713,7 +1713,7 @@
             if (chapter.assets.rawMd) validAssets.push(chapter.assets.rawMd);
             if (chapter.assets.resultMd) validAssets.push(chapter.assets.resultMd);
             if (chapter.assets.json) validAssets.push(chapter.assets.json);
-            if (chapter.assets.zip) validAssets.push(chapter.assets.zip);
+            if (chapter.assets.promptsJson) validAssets.push(chapter.assets.promptsJson);
 
             chLog('Dossier Assets  : ' + validAssets.length + '/4 verified');
             validAssets.forEach(a => chLog('  - ' + a));
