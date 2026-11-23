@@ -1096,7 +1096,39 @@ serve(async (req) => {
       throw new Error("Failed to stream Gemini after multiple attempts.");
     }
 
-        // 4b. Helper: Native SSE Stream Reader for NVIDIA NIM (OpenAI-compatible)
+            // Course alias mapper for recovering leaked tool arguments
+    const COURSE_ALIAS_MAP: Record<string, string> = {
+      'anthropology': 'ANTH 1012', 'anth': 'ANTH 1012',
+      'biology': 'BIOL 1012', 'biol': 'BIOL 1012', 'bio': 'BIOL 1012',
+      'chemistry': 'CHEM 1012', 'chem': 'CHEM 1012',
+      'economics': 'ECON 1011', 'econ': 'ECON 1011',
+      'emerging technology': 'EMTE 1012', 'emte': 'EMTE 1012',
+      'english': 'FLEN 1011', 'flen': 'FLEN 1011',
+      'geography': 'GEES 1011', 'gees': 'GEES 1011',
+      'global affairs': 'GLTR 1012', 'gltr': 'GLTR 1012',
+      'history': 'HIST 1012', 'hist': 'HIST 1012',
+      'inclusiveness': 'INCL 1012', 'incl': 'INCL 1012',
+      'logic': 'LOCT 1011', 'loct': 'LOCT 1011',
+      'math': 'MATH 1012', 'maths': 'MATH 1012',
+      'civics': 'MCIE 1012', 'mcie': 'MCIE 1012',
+      'entrepreneurship': 'MGMT 1012', 'mgmt': 'MGMT 1012',
+      'physics': 'PHYS 1011', 'phys': 'PHYS 1011',
+      'psychology': 'PSYC 1011', 'psyc': 'PSYC 1011',
+      'fitness': 'SPSC 1011', 'spsc': 'SPSC 1011'
+    };
+
+    function resolveCourseCodeFromText(raw: string): string {
+      if (!raw) return 'PSYC 1011';
+      const upper = raw.toUpperCase().trim();
+      const codeMatch = upper.match(/\b(ANTH 1012|BIOL 1012|CHEM 1012|ECON 1011|EMTE 1012|FLEN 1011|GEES 1011|GLTR 1012|HIST 1012|INCL 1012|LOCT 1011|MATH 1011|MATH 1012|MCIE 1012|MGMT 1012|PHYS 1011|PSYC 1011|SPSC 1011)\b/);
+      if (codeMatch) return codeMatch[1];
+      const clean = raw.toLowerCase().replace(/[^a-z\s]/g, ' ').trim();
+      for (const [key, code] of Object.entries(COURSE_ALIAS_MAP)) {
+        if (clean.includes(key)) return code;
+      }
+      return upper || 'PSYC 1011';
+    }
+    // 4b. Helper: Native SSE Stream Reader for NVIDIA NIM with Tripwire Tool Leak Interceptor
     async function streamNvidiaTurn(
       messages: any[],
       tools: any[] | null,
@@ -1173,6 +1205,51 @@ serve(async (req) => {
         let startedContentLog = false;
         const toolCallMap = new Map<number, { id: string; name: string; arguments: string }>();
 
+        // Tripwire Stream Buffer: Sends normal words with 0ms delay, catches & silences tool leaks
+        let tripwireBuffer = '';
+        const flushSafeText = (text: string) => {
+          if (text) onTextChunk(text);
+        };
+
+        const feedTripwire = (incomingDelta: string) => {
+          tripwireBuffer += incomingDelta;
+
+          while (tripwireBuffer.length > 0) {
+            const triggerIdx = tripwireBuffer.search(/\[|<tool_call>|```(?:tool_code|json)/i);
+            if (triggerIdx === -1) {
+              flushSafeText(tripwireBuffer);
+              tripwireBuffer = '';
+              break;
+            } else if (triggerIdx > 0) {
+              flushSafeText(tripwireBuffer.slice(0, triggerIdx));
+              tripwireBuffer = tripwireBuffer.slice(triggerIdx);
+            }
+
+            // A trigger character is at index 0. Check if bounded or long enough to decide.
+            const endMatch = tripwireBuffer.match(/[\]\n]|<\/tool_call>|```/);
+            if (!endMatch && tripwireBuffer.length < 130) {
+              break; // Wait for next delta to complete bracket lookahead
+            }
+
+            const boundary = endMatch ? endMatch.index! + endMatch[0].length : Math.min(130, tripwireBuffer.length);
+            const candidate = tripwireBuffer.slice(0, boundary);
+
+            const isToolLeak = /silent tool call|calling tool|get_book_toc|read_book_section|render_quiz|render_flashcards|<tool_call>/i.test(candidate);
+            const isLegitTag = /^\[(QUIZ_\d+|FLASHCARD_\d+|SNAPSHOT_\d+|BOARD_[a-zA-Z0-9_\-]+)\]$/i.test(candidate.trim());
+
+            if (isToolLeak) {
+              console.log(`🛡️ [TRIPWIRE SILENCED LEAK] candidate=${JSON.stringify(candidate)}`);
+              tripwireBuffer = tripwireBuffer.slice(boundary);
+            } else if (isLegitTag) {
+              flushSafeText(candidate);
+              tripwireBuffer = tripwireBuffer.slice(boundary);
+            } else {
+              flushSafeText(candidate);
+              tripwireBuffer = tripwireBuffer.slice(boundary);
+            }
+          }
+        };
+
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
@@ -1224,7 +1301,7 @@ serve(async (req) => {
                   console.log(`💬 [NVIDIA CONTENT START] at ${(performance.now() - nvidiaStart).toFixed(0)}ms`);
                 }
                 fullText += delta.content;
-                onTextChunk(delta.content);
+                feedTripwire(delta.content);
               }
 
               if (Array.isArray(delta.tool_calls)) {
@@ -1254,6 +1331,14 @@ serve(async (req) => {
           }
         }
 
+        // Flush any remaining trailing non-leak buffer
+        if (tripwireBuffer) {
+          if (!/silent tool call|calling tool|get_book_toc|read_book_section/i.test(tripwireBuffer)) {
+            flushSafeText(tripwireBuffer);
+          }
+          tripwireBuffer = '';
+        }
+
         if (reasoningText) {
           extractedThoughts.push(reasoningText);
           console.log(`🧠 [NVIDIA REASONING END] chars=${reasoningText.length} preview=${JSON.stringify(reasoningText.slice(0, 140))}`);
@@ -1280,8 +1365,36 @@ serve(async (req) => {
           })
           .filter(fc => fc.name);
 
-        if (functionCalls.length === 0 && /\[SILENT TOOL CALL|<tool_call>|get_book_toc\(|read_book_section\(|render_quiz\(|render_flashcards\(/i.test(fullText)) {
-          console.warn(`🚨 [NVIDIA TEXT-LEAKED TOOL CALL] Model wrote tool call as plain text instead of delta.tool_calls! preview=${JSON.stringify(fullText.slice(0, 240))}`);
+        // Auto-Recovery Engine: If the model leaked tool text instead of emitting tool_calls, synthesize it!
+        if (functionCalls.length === 0 && /\[\s*\.\.\.?\s*silent tool call|\[SILENT TOOL CALL|<tool_call>|get_book_toc\(|read_book_section\(/i.test(fullText)) {
+          console.warn(`🚨 [NVIDIA AUTO-RECOVERY] Synthesizing tool call from leaked text: ${JSON.stringify(fullText.slice(0, 240))}`);
+          
+          let recoveredName = 'get_book_toc';
+          let recoveredArgs: any = {};
+
+          if (/read_book_section/i.test(fullText)) {
+            recoveredName = 'read_book_section';
+            const secMatch = fullText.match(/section(?:_title)?[:\s=]+['"]?([^'",\)\n\]]+)/i) || fullText.match(/chapter\s*\d+/i);
+            recoveredArgs.section_title = secMatch ? (secMatch[1] || secMatch[0]).trim() : 'Chapter 1';
+            recoveredArgs.course_code = resolveCourseCodeFromText(fullText);
+          } else {
+            recoveredName = 'get_book_toc';
+            recoveredArgs.course_code = resolveCourseCodeFromText(fullText);
+          }
+
+          functionCalls.push({
+            id: `call_recov_${Date.now()}`,
+            name: recoveredName,
+            args: recoveredArgs,
+            rawArguments: JSON.stringify(recoveredArgs)
+          });
+
+          // Sanitize fullText so the leak is not recorded as assistant conversation history
+          fullText = fullText
+            .replace(/\[\s*\.\.\.?\s*silent tool call[^\]]*\]/gi, '')
+            .replace(/\[SILENT TOOL CALL[^\]]*\]/gi, '')
+            .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+            .trim();
         }
 
         const dur = (performance.now() - nvidiaStart).toFixed(0);
@@ -1307,6 +1420,10 @@ serve(async (req) => {
             console.warn("[Miron SSE] Controller write error:", e);
           }
         };
+        // Instant Server Pickup Event: Student sees active verification within 150ms
+        sendEvent('status', {
+          message: isAmharicChat ? 'ጥያቄህን እያየሁ ነው...' : 'Miron is reviewing your question...'
+        });
 
         let hasStreamError = false;
 
@@ -1581,14 +1698,34 @@ serve(async (req) => {
 
                 for (const fc of turnResult.functionCalls) {
                   const { name, args } = fc;
-                  if (name === 'read_book_section') {
-                    sendEvent('status', { message: `Reading ${args.section_title || 'textbook section'}...` });
+                  if (name === 'get_book_toc') {
+                    sendEvent('status', {
+                      message: isAmharicChat 
+                        ? `${args.course_code || 'የትምህርቱን'} ማውጫ በማየት ላይ...` 
+                        : `Checking ${args.course_code || 'course'} syllabus...`
+                    });
+                  } else if (name === 'read_book_section') {
+                    sendEvent('status', {
+                      message: isAmharicChat 
+                        ? `ክፍሉን በማንበብ ላይ: ${args.section_title || ''}...` 
+                        : `Reading ${args.section_title || 'textbook section'}...`
+                    });
                   } else if (name === 'render_flashcards') {
-                    sendEvent('status', { message: `Preparing interactive study cards for ${args.topic || 'topic'}...` });
+                    sendEvent('status', {
+                      message: isAmharicChat 
+                        ? `የጥናት ካርዶችን በማዘጋጀት ላይ...` 
+                        : `Preparing interactive study cards for ${args.topic || 'topic'}...`
+                    });
                   } else if (name === 'render_quiz') {
-                    sendEvent('status', { message: `Preparing knowledge check...` });
+                    sendEvent('status', {
+                      message: isAmharicChat 
+                        ? `የፈተና ጥያቄዎችን በማሰናዳት ላይ...` 
+                        : `Preparing knowledge check...`
+                    });
                   } else {
-                    sendEvent('status', { message: `Consulting course materials...` });
+                    sendEvent('status', {
+                      message: isAmharicChat ? `ማስታወሻዎችን በማጣራት ላይ...` : `Consulting course materials...`
+                    });
                   }
                 }
 
@@ -1710,7 +1847,15 @@ serve(async (req) => {
                   });
                 }
 
-                sendEvent('status', { message: 'Synthesizing response...' });
+                // AI System Directive: Remind model to synthesize naturally without tool narration
+                nvidiaMessages.push({
+                  role: "system",
+                  content: "SYSTEM DIRECTIVE: Tool execution complete. Deliver your comprehensive, natural study response to the student immediately. NEVER narrate tool execution or mention backend functions."
+                });
+
+                sendEvent('status', { 
+                  message: isAmharicChat ? 'ማብራሪያውን በማዘጋጀት ላይ...' : 'Synthesizing response...' 
+                });
                 nvidiaLoop++;
                 if (nvidiaLoop >= 3) {
                   console.warn(`🛑 [NVIDIA LOOP CAP] Reached max tool loop limit (3 turns)`);
