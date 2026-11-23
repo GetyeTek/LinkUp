@@ -471,6 +471,9 @@ serve(async (req) => {
     const { history, prompt, context, mode, lang, sex, name, provider } = await req.json();
     const activeProvider: "gemini" | "nvidia" =
       provider === "nvidia" || provider === "gemini" ? provider : PRIMARY_PROVIDER;
+    console.log(
+      `🧭 [REQ CONFIG] user=${userId} mode=${mode || 'chat'} lang=${lang || 'am'} requestedProvider=${provider || 'default'} activeProvider=${activeProvider} primary=${PRIMARY_PROVIDER} fallbackNvidia=${ENABLE_NVIDIA_FALLBACK} nvidiaModel=${NVIDIA_MODEL} geminiModel=${GEMINI_MODEL} historyCount=${Array.isArray(history) ? history.length : 0} contextLen=${context ? String(context).length : 0} promptPreview=${JSON.stringify(prompt.slice(0, 140))}`
+    );
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
       return new Response(JSON.stringify({ error: "BAD_REQUEST", message: "Prompt text is required." }), { 
@@ -544,18 +547,26 @@ serve(async (req) => {
         .eq('is_active', true)
         .order('last_used_at', { ascending: true, nullsFirst: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`🔑 [KEY DB ERROR] service=${service} error=${error.message}`);
+        throw error;
+      }
 
+      const totalActive = (keys || []).length;
       const availableKeys = (keys || []).filter((k: any) => !k.cooldown_until || new Date(k.cooldown_until) < now);
+      console.log(`🔑 [KEY POOL] service=${service} active=${totalActive} available=${availableKeys.length} cooling=${totalActive - availableKeys.length}`);
+
       if (availableKeys.length === 0) throw new Error(`No active ${service} API keys available. All are in cooldown.`);
 
       const selected = availableKeys[0];
+      console.log(`🔑 [KEY PICKED] service=${service} id=${selected.id} name=${JSON.stringify(selected.name || 'unnamed')}`);
       await supabase.from('api_keys').update({ last_used_at: now.toISOString() }).eq('id', selected.id);
       return selected;
     }
 
     async function flagKeyCooldown(keyId: number) {
-      const cooldownTime = new Date(Date.now() + 30000).toISOString(); 
+      const cooldownTime = new Date(Date.now() + 30000).toISOString();
+      console.warn(`⏳ [KEY COOLDOWN] keyId=${keyId} cooldownUntil=${cooldownTime}`);
       await supabase.from('api_keys').update({ cooldown_until: cooldownTime }).eq('id', keyId);
     }
 
@@ -958,9 +969,21 @@ serve(async (req) => {
           }
         }
       } catch (e: any) {
+        console.error(`❌ [TOOL EXCEPTION] ${name}: ${e.message}`);
         toolResult = { status: "error", message: e.message };
       }
 
+      const toolDur = (performance.now() - toolStart).toFixed(0);
+      console.log(
+        `✅ [TOOL END] ${name} took ${toolDur}ms | status=${toolResult?.status} | detail=${JSON.stringify({
+          matched_section: toolResult?.matched_section,
+          course_code: toolResult?.course_code,
+          boards: Array.isArray(toolResult?.boards) ? toolResult.boards.length : undefined,
+          instruction: toolResult?.instruction,
+          message: toolResult?.message,
+          textLen: typeof toolResult?.text === 'string' ? toolResult.text.length : undefined
+        })}`
+      );
       return toolResult;
     }
 
@@ -974,8 +997,12 @@ serve(async (req) => {
     ) {
       let attempts = 0;
       while (attempts < 3) {
+        const gemStart = performance.now();
         const keyRecord = await getApiKey('gemini');
         const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${customModel}:streamGenerateContent?alt=sse&key=${keyRecord.api_key}`;
+        const toolCount = tools && tools.length > 0 ? (tools[0]?.functionDeclarations?.length || tools.length) : 0;
+
+        console.log(`📡 [GEMINI REQ] attempt=${attempts + 1} model=${customModel} msgs=${contents.length} tools=${toolCount} sysLen=${systemInstruction?.length || 0}`);
 
         const payload: any = { contents };
         if (tools && tools.length > 0) payload.tools = tools;
@@ -987,7 +1014,11 @@ serve(async (req) => {
           body: JSON.stringify(payload)
         });
 
+        console.log(`📥 [GEMINI HTTP] status=${res.status} contentType=${res.headers.get('content-type') || 'none'} after ${(performance.now() - gemStart).toFixed(0)}ms`);
+
         if (res.status === 429) {
+          const err429 = await res.text();
+          console.warn(`⚠️ [GEMINI 429] keyId=${keyRecord.id} body=${err429.slice(0, 300)}`);
           await flagKeyCooldown(keyRecord.id);
           attempts++;
           continue;
@@ -995,6 +1026,7 @@ serve(async (req) => {
 
         if (!res.ok) {
           const errText = await res.text();
+          console.error(`❌ [GEMINI ERR] status=${res.status} body=${errText}`);
           throw new Error(`Gemini Stream Error: ${res.status} ${errText}`);
         }
 
@@ -1004,6 +1036,10 @@ serve(async (req) => {
         const decoder = new TextDecoder();
         let sseBuffer = '';
         let fullText = '';
+        let chunkCount = 0;
+        let ttftMs: number | null = null;
+        let finishReason: string | null = null;
+        let usageMeta: any = null;
         const functionCalls: any[] = [];
         const modelParts: any[] = [];
 
@@ -1022,18 +1058,37 @@ serve(async (req) => {
 
             try {
               const parsed = JSON.parse(jsonStr);
-              const parts = parsed.candidates?.[0]?.content?.parts || [];
+              chunkCount++;
+              if (ttftMs === null) {
+                ttftMs = performance.now() - gemStart;
+                console.log(`⚡ [GEMINI TTFT] first chunk in ${ttftMs.toFixed(0)}ms`);
+              }
+              if (parsed.usageMetadata) usageMeta = parsed.usageMetadata;
+              const cand = parsed.candidates?.[0];
+              if (cand?.finishReason) finishReason = cand.finishReason;
+              const parts = cand?.content?.parts || [];
               for (const part of parts) {
                 modelParts.push(part);
                 if (part.functionCall) {
+                  console.log(`🎯 [GEMINI TOOL CALL] name=${part.functionCall.name} args=${JSON.stringify(part.functionCall.args)}`);
                   functionCalls.push(part.functionCall);
                 } else if (part.text) {
                   fullText += part.text;
                   onTextChunk(part.text);
                 }
               }
-            } catch (_) {}
+            } catch (parseErr: any) {
+              console.warn(`⚠️ [GEMINI SSE PARSE] ${parseErr.message} raw=${jsonStr.slice(0, 120)}`);
+            }
           }
+        }
+
+        const totalMs = (performance.now() - gemStart).toFixed(0);
+        console.log(
+          `📊 [GEMINI SUMMARY] model=${customModel} total=${totalMs}ms ttft=${ttftMs ? ttftMs.toFixed(0) + 'ms' : 'none'} chunks=${chunkCount} finish=${finishReason || 'unknown'} textLen=${fullText.length} toolCalls=${functionCalls.length} usage=${JSON.stringify(usageMeta || null)}`
+        );
+        if (fullText) {
+          console.log(`💬 [GEMINI TEXT PREVIEW] ${JSON.stringify(fullText.slice(0, 180))}`);
         }
 
         return { fullText, functionCalls, modelParts };
@@ -1063,6 +1118,10 @@ serve(async (req) => {
           payload.tool_choice = "auto";
         }
 
+        console.log(
+          `📡 [NVIDIA REQ] attempt=${attempts + 1} model=${NVIDIA_MODEL} msgs=${messages.length} roles=${JSON.stringify(messages.map(m => m.role))} tools=${tools ? tools.length : 0} toolChoice=${payload.tool_choice || 'none'}`
+        );
+
         const res = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
           method: 'POST',
           headers: {
@@ -1073,7 +1132,11 @@ serve(async (req) => {
           body: JSON.stringify(payload)
         });
 
+        console.log(`📥 [NVIDIA HTTP] status=${res.status} contentType=${res.headers.get('content-type') || 'none'} after ${(performance.now() - nvidiaStart).toFixed(0)}ms`);
+
         if (res.status === 429) {
+          const err429 = await res.text();
+          console.warn(`⚠️ [NVIDIA 429] keyId=${keyRecord.id} body=${err429.slice(0, 300)}`);
           await flagKeyCooldown(keyRecord.id);
           attempts++;
           continue;
@@ -1081,8 +1144,9 @@ serve(async (req) => {
 
         if ((res.status === 400 || res.status === 422) && tools && tools.length > 0) {
           const errText = await res.text();
+          console.warn(`⚠️ [NVIDIA ${res.status} WITH TOOLS] model=${NVIDIA_MODEL} body=${errText}`);
           if (/tool|function/i.test(errText)) {
-            console.warn(`⚠️ [NVIDIA] Model ${NVIDIA_MODEL} rejected tools, retrying without tools.`);
+            console.warn(`⚠️ [NVIDIA FALLBACK] Retrying ${NVIDIA_MODEL} WITHOUT tools.`);
             return await streamNvidiaTurn(messages, null, onTextChunk);
           }
           throw new Error(`NVIDIA Stream Error: ${res.status} ${errText}`);
@@ -1090,6 +1154,7 @@ serve(async (req) => {
 
         if (!res.ok) {
           const errText = await res.text();
+          console.error(`❌ [NVIDIA ERR] status=${res.status} model=${NVIDIA_MODEL} body=${errText}`);
           throw new Error(`NVIDIA Stream Error: ${res.status} ${errText}`);
         }
 
@@ -1100,6 +1165,12 @@ serve(async (req) => {
         let sseBuffer = '';
         let fullText = '';
         let reasoningText = '';
+        let chunkCount = 0;
+        let ttftMs: number | null = null;
+        let finishReason: string | null = null;
+        let usageMeta: any = null;
+        let startedReasoningLog = false;
+        let startedContentLog = false;
         const toolCallMap = new Map<number, { id: string; name: string; arguments: string }>();
 
         while (true) {
@@ -1113,19 +1184,45 @@ serve(async (req) => {
             const trimmed = line.trim();
             if (!trimmed.startsWith('data:')) continue;
             const jsonStr = trimmed.slice(5).trim();
-            if (!jsonStr || jsonStr === '[DONE]') continue;
+            if (!jsonStr) continue;
+            if (jsonStr === '[DONE]') {
+              console.log(`🏁 [NVIDIA SSE] Received [DONE] after ${chunkCount} chunks`);
+              continue;
+            }
 
             try {
               const parsed = JSON.parse(jsonStr);
-              const delta = parsed.choices?.[0]?.delta;
+              chunkCount++;
+
+              if (ttftMs === null) {
+                ttftMs = performance.now() - nvidiaStart;
+                console.log(`⚡ [NVIDIA TTFT] first SSE chunk in ${ttftMs.toFixed(0)}ms`);
+              }
+
+              if (parsed.error) {
+                console.error(`❌ [NVIDIA STREAM ERROR CHUNK] ${JSON.stringify(parsed.error)}`);
+              }
+              if (parsed.usage) usageMeta = parsed.usage;
+
+              const choice = parsed.choices?.[0];
+              if (choice?.finish_reason) finishReason = choice.finish_reason;
+              const delta = choice?.delta;
               if (!delta) continue;
 
               const rDelta = delta.reasoning_content || delta.reasoning;
               if (typeof rDelta === 'string' && rDelta) {
+                if (!startedReasoningLog) {
+                  startedReasoningLog = true;
+                  console.log(`🧠 [NVIDIA REASONING START] at ${(performance.now() - nvidiaStart).toFixed(0)}ms`);
+                }
                 reasoningText += rDelta;
               }
 
               if (typeof delta.content === 'string' && delta.content) {
+                if (!startedContentLog) {
+                  startedContentLog = true;
+                  console.log(`💬 [NVIDIA CONTENT START] at ${(performance.now() - nvidiaStart).toFixed(0)}ms`);
+                }
                 fullText += delta.content;
                 onTextChunk(delta.content);
               }
@@ -1142,23 +1239,38 @@ serve(async (req) => {
                   }
                   const entry = toolCallMap.get(idx)!;
                   if (tc.id) entry.id = tc.id;
-                  if (tc.function?.name) entry.name += tc.function.name;
+                  if (tc.function?.name) {
+                    if (!entry.name) {
+                      console.log(`🎯 [NVIDIA TOOL DELTA] idx=${idx} id=${entry.id} name=${tc.function.name}`);
+                    }
+                    entry.name += tc.function.name;
+                  }
                   if (tc.function?.arguments) entry.arguments += tc.function.arguments;
                 }
               }
-            } catch (_) {}
+            } catch (parseErr: any) {
+              console.warn(`⚠️ [NVIDIA SSE PARSE] ${parseErr.message} raw=${jsonStr.slice(0, 140)}`);
+            }
           }
         }
 
-        if (reasoningText) extractedThoughts.push(reasoningText);
+        if (reasoningText) {
+          extractedThoughts.push(reasoningText);
+          console.log(`🧠 [NVIDIA REASONING END] chars=${reasoningText.length} preview=${JSON.stringify(reasoningText.slice(0, 140))}`);
+        }
 
         const functionCalls = Array.from(toolCallMap.entries())
           .sort((a, b) => a[0] - b[0])
-          .map(([_, tc]) => {
+          .map(([idx, tc]) => {
             let parsedArgs: any = {};
+            let jsonOk = true;
             try {
               parsedArgs = tc.arguments ? JSON.parse(tc.arguments) : {};
-            } catch (_) {}
+            } catch (argErr: any) {
+              jsonOk = false;
+              console.error(`❌ [NVIDIA TOOL ARGS PARSE FAIL] idx=${idx} name=${tc.name} err=${argErr.message} rawArgs=${JSON.stringify(tc.arguments)}`);
+            }
+            console.log(`📦 [NVIDIA TOOL ASSEMBLED] idx=${idx} id=${tc.id} name=${tc.name} jsonOk=${jsonOk} args=${JSON.stringify(parsedArgs)}`);
             return {
               id: tc.id,
               name: tc.name,
@@ -1168,8 +1280,18 @@ serve(async (req) => {
           })
           .filter(fc => fc.name);
 
+        if (functionCalls.length === 0 && /\[SILENT TOOL CALL|<tool_call>|get_book_toc\(|read_book_section\(|render_quiz\(|render_flashcards\(/i.test(fullText)) {
+          console.warn(`🚨 [NVIDIA TEXT-LEAKED TOOL CALL] Model wrote tool call as plain text instead of delta.tool_calls! preview=${JSON.stringify(fullText.slice(0, 240))}`);
+        }
+
         const dur = (performance.now() - nvidiaStart).toFixed(0);
-        console.log(`⚡ [NVIDIA STREAM] (${NVIDIA_MODEL}) took ${dur}ms`);
+        console.log(
+          `📊 [NVIDIA SUMMARY] model=${NVIDIA_MODEL} total=${dur}ms ttft=${ttftMs ? ttftMs.toFixed(0) + 'ms' : 'none'} chunks=${chunkCount} finish=${finishReason || 'unknown'} textLen=${fullText.length} reasoningLen=${reasoningText.length} toolCalls=${functionCalls.length} usage=${JSON.stringify(usageMeta || null)}`
+        );
+        if (fullText) {
+          console.log(`💬 [NVIDIA TEXT PREVIEW] ${JSON.stringify(fullText.slice(0, 200))}`);
+        }
+
         return { fullText, functionCalls };
       }
       throw new Error("Failed to stream NVIDIA after multiple round-robin attempts.");
@@ -1537,6 +1659,10 @@ serve(async (req) => {
                 }
               );
 
+              console.log(
+                `🧠 [NVIDIA DECISION] turn=${nvidiaLoop} toolCalls=${turnResult.functionCalls.length} textEmitted=${turnResult.fullText.length} decision=${turnResult.functionCalls.length > 0 ? 'EXECUTE_TOOLS_AND_CONTINUE' : 'FINAL_RESPONSE_DONE'}`
+              );
+
               if (turnResult.functionCalls.length > 0) {
                 const toolNames = turnResult.functionCalls.map((fc: any) => fc.name).join(', ');
                 console.log(`🛠️ [NVIDIA TOOLS DETECTED] [${toolNames}] at +${elapsed()}`);
@@ -1575,15 +1701,20 @@ serve(async (req) => {
                 });
 
                 for (const res of toolResponses) {
+                  const serialized = JSON.stringify(res.content);
+                  console.log(`📤 [NVIDIA TOOL RESULT -> MODEL] tool=${res.name} callId=${res.id} status=${res.content?.status} payloadBytes=${serialized.length}`);
                   nvidiaMessages.push({
                     role: "tool",
                     tool_call_id: res.id,
-                    content: JSON.stringify(res.content)
+                    content: serialized
                   });
                 }
 
                 sendEvent('status', { message: 'Synthesizing response...' });
                 nvidiaLoop++;
+                if (nvidiaLoop >= 3) {
+                  console.warn(`🛑 [NVIDIA LOOP CAP] Reached max tool loop limit (3 turns)`);
+                }
               } else {
                 shouldLoopTools = false;
               }
@@ -1654,7 +1785,9 @@ serve(async (req) => {
             if (inlineSnapshots.length === 0) finalText = finalText.replace(/\[SNAPSHOT_\d+\]/g, '').trim();
             if (inlineFlashcards.length === 0) finalText = finalText.replace(/\[FLASHCARD_\d+\]/g, '').trim();
 
-            console.log(`🏁 [MIRON COMPLETED] Total request runtime: ${elapsed()} | Final text: ${finalText.length} chars | Flashcards: ${inlineFlashcards.length}`);
+            console.log(
+              `🏁 [MIRON COMPLETED] runtime=${elapsed()} provider=${activeProvider} textLen=${finalText.length} snapshots=${inlineSnapshots.length} quizzes=${inlineQuizzes.length} flashcards=${inlineFlashcards.length} thoughts=${extractedThoughts.length} uiCommand=${JSON.stringify(uiCommand)} preview=${JSON.stringify(finalText.slice(0, 180))}`
+            );
 
             sendEvent('done', {
               snapshots: inlineSnapshots,
