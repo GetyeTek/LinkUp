@@ -238,11 +238,16 @@
         <div class="bg-[#161B22] border border-gray-800 rounded-xl p-4 space-y-3">
             <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider">AI Studio Model & Thinking Parameters</h2>
 
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
                 <div>
-                    <label class="text-xs text-gray-400">Model</label>
+                    <label class="text-xs text-gray-400">Primary Model</label>
                     <input id="input-model" type="text" value="Gemini 3.8 Flash" 
                            class="w-full bg-[#0D1117] border border-gray-700 rounded-lg p-2 text-xs text-gray-200 outline-none focus:border-sky-500 font-bold" />
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Secondary Model (Fallback)</label>
+                    <input id="input-secondary-model" type="text" value="" placeholder="e.g. Gemini 2.5 Flash"
+                           class="w-full bg-[#0D1117] border border-gray-700 rounded-lg p-2 text-xs text-cyan-300 outline-none focus:border-cyan-500 font-bold" />
                 </div>
                 <div>
                     <label class="text-xs text-gray-400">Thinking Level</label>
@@ -605,6 +610,7 @@
             keepScreenAwake: true,
             nightDimmer: false,
             model: 'Gemini 3.8 Flash',
+            secondaryModel: '',
             thinkingLevel: 'Default',
             tempChat: false,
             sysTitle: '',
@@ -688,6 +694,7 @@
             document.getElementById('check-night-dimmer').checked = !!state.nightDimmer;
             document.getElementById('input-min-output-kb').value = state.minOutputKb !== undefined ? state.minOutputKb : 30;
             document.getElementById('input-model').value = state.model || 'Gemini 3.8 Flash';
+            document.getElementById('input-secondary-model').value = state.secondaryModel || '';
             document.getElementById('select-thinking').value = state.thinkingLevel || 'High';
             document.getElementById('select-temp-chat').value = String(state.tempChat === true);
             document.getElementById('input-sys-title').value = state.sysTitle || '';
@@ -913,6 +920,7 @@
         document.addEventListener('visibilitychange', refreshOverlayBanner);
         window.addEventListener('focus', refreshOverlayBanner);
         document.getElementById('input-model').onchange = function() { state.model = this.value.trim(); saveState(); };
+        document.getElementById('input-secondary-model').onchange = function() { state.secondaryModel = this.value.trim(); saveState(); };
         document.getElementById('select-thinking').onchange = function() { state.thinkingLevel = this.value; saveState(); };
         document.getElementById('select-temp-chat').onchange = function() { state.tempChat = (this.value === 'true'); saveState(); };
         document.getElementById('input-sys-title').oninput = function() { state.sysTitle = this.value; saveState(); };
@@ -922,6 +930,34 @@
         let deviceProfiles = [{ id: 'default', name: 'Default' }];
         let profileHealthMap = {};
         const sessionQuarantinedProfiles = new Set();
+        const profileModelQuotaState = {};
+
+        function getActiveModelForProfile(profileId) {
+            const m = profileModelQuotaState[profileId];
+            const sec = (state.secondaryModel || '').trim();
+            if (m && m.primaryDead && sec && !m.secondaryDead) {
+                return sec;
+            }
+            return (state.model || 'Gemini 3.8 Flash').trim();
+        }
+
+        function markProfileModelQuotaExhausted(profileId, modelUsed) {
+            if (!profileModelQuotaState[profileId]) {
+                profileModelQuotaState[profileId] = { primaryDead: false, secondaryDead: false };
+            }
+            const sec = (state.secondaryModel || '').trim();
+            if (sec && modelUsed === sec) {
+                profileModelQuotaState[profileId].secondaryDead = true;
+            } else {
+                profileModelQuotaState[profileId].primaryDead = true;
+            }
+            const canFallback = !!sec && profileModelQuotaState[profileId].primaryDead && !profileModelQuotaState[profileId].secondaryDead;
+            if (!canFallback) {
+                quarantineProfile(profileId, 'QUOTA', 'Both primary and secondary models hit quota');
+                return false;
+            }
+            return true;
+        }
 
         async function refreshProfileHealth() {
             try {
@@ -944,6 +980,9 @@
 
         function isProfileHealthy(profileId) {
             if (sessionQuarantinedProfiles.has(profileId)) return false;
+            const m = profileModelQuotaState[profileId];
+            const sec = (state.secondaryModel || '').trim();
+            if (m && m.primaryDead && (!sec || m.secondaryDead)) return false;
             const h = profileHealthMap[profileId];
             if (!h) return true;
             if (h.needsVerification) return false;
@@ -1703,10 +1742,12 @@
                 return null;
             }
 
+            let activeModel = getActiveModelForProfile(profileId);
+            const isUsingFallback = (activeModel === (state.secondaryModel || '').trim());
             chLog('==============================================================================');
             chLog('CHAPTER SYNTHESIS START: ' + courseCode + ' Chapter ' + chapter.number + ' ("' + chapter.title + '")');
             chLog('Worker Assigned : Slot ' + (slotIdx + 1) + ' (Profile: ' + profileName + ' [' + profileId + '])');
-            chLog('Model           : ' + state.model + ' (Thinking: ' + state.thinkingLevel + ')');
+            chLog('Model           : ' + activeModel + (isUsingFallback ? ' (Fallback)' : ' (Primary)') + ' (Thinking: ' + state.thinkingLevel + ')');
             chLog('Timestamp       : ' + new Date().toISOString());
 
             const validAssets = [];
@@ -1727,17 +1768,18 @@
             const resolvedSysTitle = (state.sysTitle || '').trim() || ('Synthesis Factory: ' + courseCode);
             let session = warmMap[profileId] || null;
 
-            async function ensureFreshSession(forceNew, reasonLabel) {
+            async function ensureFreshSession(forceNew, reasonLabel, targetModel) {
+                const modelToUse = targetModel || activeModel;
                 if (forceNew && session) {
                     try { await session.close(); } catch (_) {}
                     session = null;
                     warmMap[profileId] = null;
                 }
                 if (!session) {
-                    chLog((reasonLabel ? (reasonLabel + ': ') : '') + 'Spawning clean AI Studio session for ' + profileName + ' (temporary=' + state.tempChat + ')...');
+                    chLog((reasonLabel ? (reasonLabel + ': ') : '') + 'Spawning clean AI Studio session for ' + profileName + ' (model=' + modelToUse + ', temporary=' + state.tempChat + ')...');
                     session = await Omni.studio.createSession({
                         profile: profileId,
-                        model: state.model,
+                        model: modelToUse,
                         temporaryChat: state.tempChat
                     });
                     if (state.preserveSession) {
@@ -1754,23 +1796,42 @@
                     temporaryChat: state.tempChat,
                     sysTitle: resolvedSysTitle,
                     sysPrompt: state.sysPrompt,
-                    model: state.model
+                    model: modelToUse
                 });
                 return session;
             }
 
             try {
-                session = await ensureFreshSession(false, '');
+                session = await ensureFreshSession(false, '', activeModel);
             } catch (initErr) {
                 chLog('❌ Session init failed: ' + initErr.message, 'text-rose-400');
                 const lockType = detectLockType(initErr.message);
-                if (lockType) {
+                if (lockType === 'QUOTA') {
+                    const hasFallback = markProfileModelQuotaExhausted(profileId, activeModel);
+                    if (hasFallback) {
+                        activeModel = getActiveModelForProfile(profileId);
+                        chLog('⚠️ [QUOTA] Failing over to secondary model (' + activeModel + ') on ' + profileName, 'text-amber-300 font-bold');
+                        try {
+                            session = await ensureFreshSession(true, '🔄 Secondary model fallback', activeModel);
+                        } catch (secInitErr) {
+                            markProfileModelQuotaExhausted(profileId, activeModel);
+                            if (session) { try { await session.close(); } catch (_) {} }
+                            warmMap[profileId] = null;
+                            return false;
+                        }
+                    } else {
+                        quarantineProfile(profileId, 'QUOTA', initErr.message);
+                        if (session) { try { await session.close(); } catch (_) {} }
+                        warmMap[profileId] = null;
+                        return false;
+                    }
+                } else if (lockType === 'VERIFY') {
                     quarantineProfile(profileId, lockType, initErr.message);
-                    chLog((lockType === 'VERIFY' ? '🔒 [HALTED]' : '🔴 [QUOTA]') + ' Profile ' + profileName + ' quarantined until resolved.', 'text-amber-400 font-bold');
+                    chLog('🔒 [HALTED] Profile ' + profileName + ' quarantined until resolved.', 'text-amber-400 font-bold');
+                    if (session) { try { await session.close(); } catch (_) {} }
+                    warmMap[profileId] = null;
+                    return false;
                 }
-                if (session) { try { await session.close(); } catch (_) {} }
-                warmMap[profileId] = null;
-                return false;
             }
 
             let chapterSuccess = true;
@@ -1947,9 +2008,35 @@
                         turnSuccess = true;
                     } catch (turnErr) {
                         const lockType = detectLockType(turnErr.message);
-                        if (lockType) {
+                        if (lockType === 'QUOTA') {
+                            const hasFallback = markProfileModelQuotaExhausted(profileId, activeModel);
+                            if (hasFallback) {
+                                const nextModel = getActiveModelForProfile(profileId);
+                                chLog('⚠️ [QUOTA EXHAUSTED] Model ' + activeModel + ' hit quota on ' + profileName + '. Switching on-the-fly to Secondary Model (' + nextModel + ')...', 'text-amber-300 font-bold');
+                                activeModel = nextModel;
+                                if (session) { try { await session.close(); } catch (_) {} }
+                                session = null;
+                                warmMap[profileId] = null;
+                                try {
+                                    await ensureFreshSession(true, '🔄 Spawning secondary model session', activeModel);
+                                    continue;
+                                } catch (rebootErr) {
+                                    chLog('❌ Failed booting secondary model session: ' + rebootErr.message, 'text-rose-400');
+                                    markProfileModelQuotaExhausted(profileId, activeModel);
+                                    retries = 99;
+                                    break;
+                                }
+                            } else {
+                                chLog('🔴 [QUOTA EXHAUSTED] Both primary and secondary models exhausted on ' + profileName + '. Quarantining profile.', 'text-rose-400 font-bold');
+                                if (session) { try { await session.close(); } catch (_) {} }
+                                warmMap[profileId] = null;
+                                retries = 99;
+                                break;
+                            }
+                        }
+                        if (lockType === 'VERIFY') {
                             quarantineProfile(profileId, lockType, turnErr.message);
-                            chLog((lockType === 'VERIFY' ? '🔒 [VERIFICATION LOCK]' : '🔴 [QUOTA EXHAUSTED]') + ' Halting future missions on ' + profileName + ': ' + turnErr.message, 'text-rose-400 font-bold');
+                            chLog('🔒 [VERIFICATION LOCK] Halting future missions on ' + profileName + ': ' + turnErr.message, 'text-rose-400 font-bold');
                             if (session) { try { await session.close(); } catch (_) {} }
                             warmMap[profileId] = null;
                             retries = 99;
@@ -2236,6 +2323,7 @@
             isFactoryRunning = true;
             isAborted = false;
             sessionQuarantinedProfiles.clear();
+            for (const k in profileModelQuotaState) delete profileModelQuotaState[k];
             await refreshProfileHealth();
             switchDeck('mission');
 
