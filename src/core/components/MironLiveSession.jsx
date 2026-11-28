@@ -9,15 +9,19 @@ import MironSimulatorModal from './miron/MironSimulatorModal.jsx';
 import { useMironLecture, proxyUrl, ensureBlockArray } from './miron/useMironLecture.js';
 import './MironLiveSession.css';
 
+let mironMotionBrokenSession = false;
+
 class MironMotionSafeRoot extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { motionFailed: false };
+        this.state = { motionFailed: mironMotionBrokenSession };
     }
     static getDerivedStateFromError() {
+        mironMotionBrokenSession = true;
         return { motionFailed: true };
     }
     componentDidCatch(err) {
+        mironMotionBrokenSession = true;
         console.error('❌ [MironNotePipeline] motion/react runtime error — engaging WAAPI fallback:', err?.message || err, err);
     }
     render() {
