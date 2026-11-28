@@ -1,5 +1,25 @@
 import React from 'react';
 import { BookPageCanvas } from '@linkup-platform/sdk-core';
+import { motion } from 'motion/react';
+
+class MironMotionBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+    componentDidCatch(err) {
+        console.warn('[MironNoteFlight] Motion fallback engaged:', err?.message || err);
+    }
+    render() {
+        if (this.state.hasError) {
+            return this.props.fallback ?? null;
+        }
+        return this.props.children;
+    }
+}
 import { proxyUrl, formatTime, parseBulletItem } from './useMironLecture.js';
 import MironQuizCard from './MironQuizCard.jsx';
 import './MironQuizCard.css';
@@ -21,6 +41,7 @@ const MironStudioStage = ({
     setIsSidebarOpen,
     desktopSidebarTab = 'outline',
     setDesktopSidebarTab,
+    isDesktopViewport = true,
     onSelectSectionItem,
     onStepSection,
     onReturnToToc,
@@ -50,6 +71,10 @@ const MironStudioStage = ({
         activeNodeCue,
         activeBlockData,
         activeBullets,
+        dwellingNote,
+        dockedBullets = [],
+        justLandedNoteKey,
+        dockDwellingNote,
         activeQuizCue,
         activeQuizData,
         resumeFromQuiz,
@@ -78,7 +103,7 @@ const MironStudioStage = ({
     const mobileExpandedListRef = React.useRef(null);
 
     React.useEffect(() => {
-        if ((activeBullets?.length || 0) === 0 && isMobileNotesExpanded) {
+        if ((dockedBullets?.length || 0) === 0 && isMobileNotesExpanded) {
             setIsMobileNotesExpanded(false);
         }
         if (isMobileNotesExpanded && mobileExpandedListRef.current) {
@@ -87,7 +112,7 @@ const MironStudioStage = ({
                 behavior: 'smooth'
             });
         }
-    }, [activeBullets?.length, isMobileNotesExpanded]);
+    }, [dockedBullets?.length, isMobileNotesExpanded]);
 
     // Auto-scroll Full Textbook Page smoothly to keep the active highlighted sentence centered
     React.useEffect(() => {
@@ -120,13 +145,13 @@ const MironStudioStage = ({
             setDesktopSidebarTab?.('notes');
         }
         prevBulletCountRef.current = count;
-        if (desktopNotesRef.current && count > 0) {
+        if (desktopNotesRef.current && dockedBullets.length > 0) {
             desktopNotesRef.current.scrollTo({
                 top: desktopNotesRef.current.scrollHeight,
                 behavior: 'smooth'
             });
         }
-    }, [activeBullets?.length, setDesktopSidebarTab]);
+    }, [activeBullets?.length, dockedBullets.length, setDesktopSidebarTab]);
 
     const effectiveSections = chapterSections.length > 0
         ? chapterSections
@@ -195,6 +220,7 @@ const MironStudioStage = ({
                             data-is-playing={isPlaying ? "true" : "false"}
                             data-has-notes={(activeBullets?.length || 0) > 0 ? "true" : "false"}
                             data-has-image={Boolean(activeImageAsset) ? "true" : "false"}
+                            data-note-dwelling={Boolean(dwellingNote && !activeQuizData && !activeCardData) ? "true" : "false"}
                             data-dual-stage={isDualStage ? "true" : "false"}
                             data-has-book={Boolean(activeBlockData && !isDualStage && !(activeDiagramAsset && activeImageAsset)) ? "true" : "false"}
                             onClick={(e) => {
@@ -325,7 +351,62 @@ const MironStudioStage = ({
                                 )}
                             </div>
 
-                            {/* Subtle Desktop Stage Indicator Chip */}
+                                                        {/* Phase 1: Main-Stage Spotlight Note (Makes room on stage, then physically takes off to dock) */}
+                            {dwellingNote && !activeQuizData && !activeCardData && (() => {
+                                const { glyph, content } = parseBulletItem(dwellingNote.text);
+                                const staticSpotlight = (
+                                    <div className="ml-stage-spotlight-slot">
+                                        <div
+                                            className="ml-stage-spotlight-card"
+                                            onClick={(e) => { e.stopPropagation(); dockDwellingNote?.(); }}
+                                        >
+                                            <div className="ml-spotlight-badge-row">
+                                                <span className="ml-spotlight-eyebrow">
+                                                    <i className="fas fa-bolt"></i> KEY TAKEAWAY
+                                                </span>
+                                                <span className="ml-spotlight-index">#{dwellingNote.index + 1}</span>
+                                            </div>
+                                            <div className="ml-spotlight-body">
+                                                <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>{glyph}</span>
+                                                <span className="ml-spotlight-text">{content}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                                return (
+                                    <MironMotionBoundary fallback={staticSpotlight}>
+                                        <div className="ml-stage-spotlight-slot">
+                                            <motion.div
+                                                key={dwellingNote.key}
+                                                layoutId={`miron-note-${dwellingNote.key}`}
+                                                className="ml-stage-spotlight-card"
+                                                initial={{ opacity: 0, y: 18, scale: 0.94 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                transition={{ type: 'spring', stiffness: 330, damping: 27, mass: 0.9 }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    dockDwellingNote?.();
+                                                }}
+                                                title="Tap to dock note"
+                                            >
+                                                <div className="ml-spotlight-badge-row">
+                                                    <span className="ml-spotlight-eyebrow">
+                                                        <i className="fas fa-bolt"></i> KEY TAKEAWAY
+                                                    </span>
+                                                    <span className="ml-spotlight-index">#{dwellingNote.index + 1}</span>
+                                                </div>
+                                                <div className="ml-spotlight-body">
+                                                    <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
+                                                        {glyph}
+                                                    </span>
+                                                    <span className="ml-spotlight-text">{content}</span>
+                                                </div>
+                                            </motion.div>
+                                        </div>
+                                    </MironMotionBoundary>
+                                );
+                            })()}
+{/* Subtle Desktop Stage Indicator Chip */}
                             {stageModeBadge && (
                                 <div className="ml-stage-mode-chip">
                                     <i className={`fas fa-${stageModeBadge.icon}`}></i>
@@ -352,92 +433,119 @@ const MironStudioStage = ({
                             )}
 
                             {/* Mobile In-Place Live Takeaway Card (< 1024px Only; Desktop uses Right Sidebar) */}
-                            {(activeBullets?.length || 0) > 0 && !activeQuizData && !activeCardData && (() => {
-                                const latestRaw = activeBullets[activeBullets.length - 1];
-                                const { glyph, content } = parseBulletItem(latestRaw);
+                            {!isDesktopViewport && (dockedBullets?.length || 0) > 0 && !activeQuizData && !activeCardData && (() => {
+                                const latestItem = dockedBullets[dockedBullets.length - 1];
+                                const { glyph, content } = parseBulletItem(latestItem.text);
+                                const isSlimTarget = !isNotesCollapsed && !isMobileNotesExpanded && Boolean(justLandedNoteKey);
+                                const isChipTarget = isNotesCollapsed && Boolean(justLandedNoteKey);
+                                const staticMobileFallback = (
+                                    <div className="ml-mobile-note-bar" ref={notesDeckRef} onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}>
+                                        <div className="ml-mobile-note-pill" onClick={() => setIsMobileNotesExpanded(true)}>
+                                            <div className="ml-mobile-note-content">
+                                                <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>{glyph}</span>
+                                                <span className="ml-mobile-note-text">{content}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
                                 return (
-                                    <div
-                                        className={`ml-mobile-note-bar ${isNotesCollapsed ? 'is-minimized' : ''}`}
-                                        ref={notesDeckRef}
-                                        onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
-                                    >
-                                        {isNotesCollapsed ? (
-                                            <button
-                                                type="button"
-                                                className="ml-mobile-note-chip"
-                                                onClick={() => setIsNotesCollapsed(false)}
-                                                title="Show Live Takeaway"
-                                            >
-                                                <i className="fas fa-bolt"></i>
-                                                <span>{activeBullets.length}</span>
-                                            </button>
-                                        ) : isMobileNotesExpanded ? (
-                                            <div className="ml-mobile-note-pill is-expanded">
-                                                <div
-                                                    className="ml-mobile-note-expanded-head"
-                                                    onClick={() => setIsMobileNotesExpanded(false)}
+                                    <MironMotionBoundary fallback={staticMobileFallback}>
+                                        <div
+                                            className={`ml-mobile-note-bar ${isNotesCollapsed ? 'is-minimized' : ''}`}
+                                            ref={notesDeckRef}
+                                            onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
+                                        >
+                                            {isNotesCollapsed ? (
+                                                <motion.button
+                                                    type="button"
+                                                    layoutId={isChipTarget ? `miron-note-${justLandedNoteKey}` : undefined}
+                                                    className={`ml-mobile-note-chip ${justLandedNoteKey ? 'is-just-landed' : ''}`}
+                                                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                                                    onClick={() => setIsNotesCollapsed(false)}
+                                                    title="Show Live Takeaway"
                                                 >
-                                                    <span className="ml-studio-notes-badge">
-                                                        <i className="fas fa-bolt"></i> CORE TAKEAWAYS ({activeBullets.length})
-                                                    </span>
+                                                    <i className="fas fa-bolt"></i>
+                                                    <span>{dockedBullets.length}</span>
+                                                </motion.button>
+                                            ) : isMobileNotesExpanded ? (
+                                                <div className="ml-mobile-note-pill is-expanded">
+                                                    <div
+                                                        className="ml-mobile-note-expanded-head"
+                                                        onClick={() => setIsMobileNotesExpanded(false)}
+                                                    >
+                                                        <span className="ml-studio-notes-badge">
+                                                            <i className="fas fa-bolt"></i> CORE TAKEAWAYS ({dockedBullets.length})
+                                                        </span>
+                                                        <div className="ml-mobile-note-actions">
+                                                            <span className="ml-mobile-note-count" title="Collapse Takeaways">
+                                                                <i className="fas fa-chevron-down"></i>
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                className="ml-mobile-note-min-btn"
+                                                                onClick={(e) => { e.stopPropagation(); setIsMobileNotesExpanded(false); setIsNotesCollapsed(true); }}
+                                                                title="Minimize Takeaway Pill"
+                                                            >
+                                                                <i className="fas fa-minus"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="ml-mobile-note-expanded-list" ref={mobileExpandedListRef}>
+                                                        {dockedBullets.map((bItem) => {
+                                                            const item = parseBulletItem(bItem.text);
+                                                            const isLanded = justLandedNoteKey === bItem.key;
+                                                            return (
+                                                                <motion.div
+                                                                    key={bItem.key}
+                                                                    layout="position"
+                                                                    layoutId={`miron-note-${bItem.key}`}
+                                                                    className={`ml-mobile-note-expanded-row ${isLanded ? 'is-just-landed' : ''}`}
+                                                                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                                                                >
+                                                                    <span className={`ml-studio-bullet-glyph ${/^\d/.test(item.glyph) ? 'is-number' : ''}`}>
+                                                                        {item.glyph}
+                                                                    </span>
+                                                                    <span className="ml-mobile-note-text">{item.content}</span>
+                                                                </motion.div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <motion.div
+                                                    layoutId={isSlimTarget ? `miron-note-${justLandedNoteKey}` : undefined}
+                                                    className={`ml-mobile-note-pill ${justLandedNoteKey ? 'is-just-landed' : ''}`}
+                                                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                                                    onClick={() => setIsMobileNotesExpanded(true)}
+                                                >
+                                                    <div className="ml-mobile-note-content" key={latestItem.key}>
+                                                        <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
+                                                            {glyph}
+                                                        </span>
+                                                        <span className="ml-mobile-note-text">{content}</span>
+                                                    </div>
                                                     <div className="ml-mobile-note-actions">
-                                                        <span className="ml-mobile-note-count" title="Collapse Takeaways">
-                                                            <i className="fas fa-chevron-down"></i>
+                                                        <span className="ml-mobile-note-count" title="Expand All Takeaways">
+                                                            <i className="fas fa-bolt"></i> {dockedBullets.length}
+                                                            <i className="fas fa-chevron-up"></i>
                                                         </span>
                                                         <button
                                                             type="button"
                                                             className="ml-mobile-note-min-btn"
-                                                            onClick={(e) => { e.stopPropagation(); setIsMobileNotesExpanded(false); setIsNotesCollapsed(true); }}
+                                                            onClick={(e) => { e.stopPropagation(); setIsNotesCollapsed(true); }}
                                                             title="Minimize Takeaway Pill"
                                                         >
                                                             <i className="fas fa-minus"></i>
                                                         </button>
                                                     </div>
-                                                </div>
-                                                <div className="ml-mobile-note-expanded-list" ref={mobileExpandedListRef}>
-                                                    {activeBullets.map((bullet, bIdx) => {
-                                                        const item = parseBulletItem(bullet);
-                                                        return (
-                                                            <div key={bIdx} className="ml-mobile-note-expanded-row">
-                                                                <span className={`ml-studio-bullet-glyph ${/^\d/.test(item.glyph) ? 'is-number' : ''}`}>
-                                                                    {item.glyph}
-                                                                </span>
-                                                                <span className="ml-mobile-note-text">{item.content}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="ml-mobile-note-pill" onClick={() => setIsMobileNotesExpanded(true)}>
-                                                <div className="ml-mobile-note-content" key={activeBullets.length}>
-                                                    <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
-                                                        {glyph}
-                                                    </span>
-                                                    <span className="ml-mobile-note-text">{content}</span>
-                                                </div>
-                                                <div className="ml-mobile-note-actions">
-                                                    <span className="ml-mobile-note-count" title="Expand All Takeaways">
-                                                        <i className="fas fa-bolt"></i> {activeBullets.length}
-                                                        <i className="fas fa-chevron-up"></i>
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        className="ml-mobile-note-min-btn"
-                                                        onClick={(e) => { e.stopPropagation(); setIsNotesCollapsed(true); }}
-                                                        title="Minimize Takeaway Pill"
-                                                    >
-                                                        <i className="fas fa-minus"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </div>
+                                    </MironMotionBoundary>
                                 );
                             })()}
                         </div>
                     )}
-
                     {/* VIEW 2: ANCHOR BLOCK SPLIT VIEW */}
                     {viewMode === 'anchor' && (
                         <div className="ml-anchor-split-workspace">
@@ -601,22 +709,29 @@ const MironStudioStage = ({
                     </div>
 
                     {/* DESKTOP STUDIO SIDEBAR (>= 1024px): LIVE TAKEAWAYS & OUTLINE */}
-                    {isSidebarOpen && (
+                    {isDesktopViewport && isSidebarOpen && (
                         <aside className="ml-desktop-sidebar" onClick={(e) => e.stopPropagation()}>
                             <div className="ml-sidebar-header">
                                 <div className="ml-sidebar-tabs">
                                     <button
                                         type="button"
-                                        className={`ml-sidebar-tab ${desktopSidebarTab === 'notes' ? 'active' : ''}`}
+                                        className={`ml-sidebar-tab ${desktopSidebarTab === 'notes' ? 'active' : ''} ${desktopSidebarTab === 'outline' && justLandedNoteKey ? 'is-receiving-note' : ''}`}
                                         onClick={() => {
                                             userPinnedOutlineRef.current = false;
                                             setDesktopSidebarTab?.('notes');
                                         }}
                                     >
+                                        {desktopSidebarTab === 'outline' && justLandedNoteKey && (
+                                            <motion.span
+                                                layoutId={`miron-note-${justLandedNoteKey}`}
+                                                className="ml-flight-landing-anchor"
+                                                transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                                            />
+                                        )}
                                         <i className="fas fa-bolt"></i>
                                         <span>Takeaways</span>
-                                        {(activeBullets?.length || 0) > 0 && (
-                                            <span className="ml-sidebar-tab-badge">{activeBullets.length}</span>
+                                        {dockedBullets.length > 0 && (
+                                            <span className="ml-sidebar-tab-badge">{dockedBullets.length}</span>
                                         )}
                                     </button>
                                     <button
@@ -663,27 +778,54 @@ const MironStudioStage = ({
                                         </div>
                                     </div>
 
-                                    {(activeBullets?.length || 0) > 0 ? (
-                                        <div className="ml-sidebar-bullets-list">
-                                            {activeBullets.map((bullet, bIdx) => {
-                                                const { glyph, content } = parseBulletItem(bullet);
-                                                return (
-                                                    <div key={bIdx} className="ml-sidebar-bullet-card" style={{ animationDelay: `${bIdx * 0.04}s` }}>
-                                                        <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
-                                                            {glyph}
-                                                        </span>
-                                                        <span className="ml-studio-bullet-text">{content}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                    {dockedBullets.length > 0 ? (
+                                        <MironMotionBoundary
+                                            fallback={
+                                                <div className="ml-sidebar-bullets-list">
+                                                    {dockedBullets.map((bItem) => {
+                                                        const { glyph, content } = parseBulletItem(bItem.text);
+                                                        return (
+                                                            <div key={bItem.key} className="ml-sidebar-bullet-card">
+                                                                <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>{glyph}</span>
+                                                                <span className="ml-studio-bullet-text">{content}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            }
+                                        >
+                                            <div className="ml-sidebar-bullets-list">
+                                                {dockedBullets.map((bItem) => {
+                                                    const { glyph, content } = parseBulletItem(bItem.text);
+                                                    const isLanded = justLandedNoteKey === bItem.key;
+                                                    return (
+                                                        <motion.div
+                                                            key={bItem.key}
+                                                            layout="position"
+                                                            layoutId={`miron-note-${bItem.key}`}
+                                                            className={`ml-sidebar-bullet-card ${isLanded ? 'is-just-landed' : ''}`}
+                                                            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                                                        >
+                                                            <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
+                                                                {glyph}
+                                                            </span>
+                                                            <span className="ml-studio-bullet-text">{content}</span>
+                                                        </motion.div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </MironMotionBoundary>
                                     ) : (
                                         <div className="ml-sidebar-empty">
                                             <div className="ml-sidebar-empty-icon">
                                                 <i className="fas fa-bolt"></i>
                                             </div>
-                                            <h4>Live Key Takeaways</h4>
-                                            <p>Core concepts, definitions, and exam-ready points will stream in here as Miron teaches.</p>
+                                            <h4>{dwellingNote ? 'Takeaway On Stage' : 'Live Key Takeaways'}</h4>
+                                            <p>
+                                                {dwellingNote
+                                                    ? 'Watch the main stage — this takeaway will glide over and dock here momentarily.'
+                                                    : 'Core concepts, definitions, and exam-ready points will stream onto the stage and dock here as Miron teaches.'}
+                                            </p>
                                             <button
                                                 type="button"
                                                 className="ml-sidebar-empty-btn"
@@ -735,7 +877,6 @@ const MironStudioStage = ({
                             )}
                         </aside>
                     )}
-
                     {/* SLIDE-UP CHAPTER OUTLINE SHEET */}
                     {isOutlineOpen && (
                         <div className="ml-outline-backdrop" onClick={() => setIsOutlineOpen && setIsOutlineOpen(false)}>
