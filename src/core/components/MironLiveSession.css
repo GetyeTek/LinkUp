@@ -2567,3 +2567,188 @@ mark.miron-active-sentence,
         width: 390px;
     }
 }
+/* ==============================================================================
+   STAGE-TO-DOCK TAKEAWAY SPOTLIGHT & FLIGHT LANDING EFFECTS
+   ============================================================================== */
+.ml-cinema-visual-frame {
+    transition: flex 0.36s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.36s cubic-bezier(0.16, 1, 0.3, 1), padding 0.3s ease;
+}
+
+.ml-stage-spotlight-slot {
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 6px 14px 4px;
+    display: flex;
+    justify-content: center;
+    box-sizing: border-box;
+    z-index: 26;
+}
+
+.ml-cinema-stage[data-has-book="true"] .ml-stage-spotlight-slot,
+.ml-cinema-stage:has(.ml-live-book-stage) .ml-stage-spotlight-slot {
+    position: relative;
+    margin-top: auto;
+    padding-bottom: 8px;
+}
+
+.ml-cinema-stage[data-note-dwelling="true"] .ml-live-book-stage {
+    padding-bottom: 168px;
+}
+
+.ml-stage-spotlight-card {
+    width: 100%;
+    max-width: 680px;
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 34, 0.98) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.5);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: pointer;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.62), 0 0 26px rgba(56, 189, 248, 0.22);
+    box-sizing: border-box;
+    will-change: transform, opacity;
+}
+
+.ml-spotlight-badge-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ml-spotlight-eyebrow {
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    color: #38bdf8;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: uppercase;
+}
+
+.ml-spotlight-index {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.66rem;
+    font-weight: 800;
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.14);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 1px 7px;
+    border-radius: 99px;
+}
+
+.ml-spotlight-body {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.ml-spotlight-text {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.44;
+    color: #f8fafc;
+    flex: 1;
+    word-break: break-word;
+}
+
+/* Smart Room-Making Adjustments while Note Dwells on Stage */
+.ml-cinema-stage[data-note-dwelling="true"] .ml-stage-image-pane .ml-visual-card-image img,
+.ml-cinema-stage[data-note-dwelling="true"] .ml-cinema-visual-frame:not(.is-dual-stage) .ml-visual-card-image img {
+    max-height: 44vh;
+    transition: max-height 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 1024px) {
+    .ml-cinema-stage[data-note-dwelling="true"] .ml-stage-image-pane .ml-visual-card-image img,
+    .ml-cinema-stage[data-note-dwelling="true"] .ml-cinema-visual-frame:not(.is-dual-stage) .ml-visual-card-image img,
+    .ml-cinema-stage[data-note-dwelling="true"] .ml-cinema-visual-frame.is-triple-stage .ml-stage-image-pane {
+        max-height: calc(100vh - 335px);
+    }
+    .ml-cinema-stage[data-note-dwelling="true"] .vis-box svg {
+        max-height: calc(100vh - 335px) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .ml-stage-spotlight-slot {
+        padding: 4px 10px 4px;
+    }
+    .ml-stage-spotlight-card {
+        padding: 10px 12px;
+        border-radius: 14px;
+    }
+    .ml-spotlight-text {
+        font-size: 0.85rem;
+        line-height: 1.38;
+    }
+    .ml-cinema-stage[data-note-dwelling="true"] .ml-stage-image-pane .ml-visual-card-image img {
+        max-height: 31vh;
+    }
+}
+
+/* Shared-Element Flight Landing Anchors & Impact Pulse */
+.ml-sidebar-toggle-btn,
+.ml-sidebar-tab {
+    position: relative;
+}
+
+.ml-flight-landing-anchor {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: rgba(56, 189, 248, 0.25);
+    border: 1px solid rgba(56, 189, 248, 0.65);
+}
+
+.ml-header-notes-count {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.64rem;
+    font-weight: 800;
+    background: #38bdf8;
+    color: #090e18;
+    padding: 1px 6px;
+    border-radius: 99px;
+}
+
+@keyframes noteLandingGlow {
+    0% {
+        border-color: #38bdf8;
+        box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.45), 0 0 22px rgba(56, 189, 248, 0.5);
+    }
+    100% {
+        box-shadow: none;
+    }
+}
+
+.ml-sidebar-bullet-card.is-just-landed,
+.ml-mobile-note-pill.is-just-landed,
+.ml-mobile-note-chip.is-just-landed,
+.ml-mobile-note-expanded-row.is-just-landed,
+.ml-sidebar-tab.is-receiving-note,
+.ml-sidebar-toggle-btn.is-receiving-note {
+    animation: noteLandingGlow 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Light Theme Overrides for Stage Spotlight Note */
+.theme-light .ml-stage-spotlight-card {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+    border-color: rgba(2, 132, 199, 0.48);
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.14), 0 0 20px rgba(2, 132, 199, 0.14);
+}
+.theme-light .ml-spotlight-eyebrow {
+    color: #0284c7;
+}
+.theme-light .ml-spotlight-text {
+    color: #0f172a;
+}
+.theme-light .ml-header-notes-count {
+    background: #0284c7;
+    color: #ffffff;
+}
