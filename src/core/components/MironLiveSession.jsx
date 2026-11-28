@@ -18,7 +18,7 @@ class MironMotionSafeRoot extends React.Component {
         return { motionFailed: true };
     }
     componentDidCatch(err) {
-        console.warn('[MironMotion] MotionConfig/LayoutGroup fallback engaged:', err?.message || err);
+        console.error('❌ [MironNotePipeline] motion/react runtime error — engaging WAAPI fallback:', err?.message || err, err);
     }
     render() {
         return this.props.children(!this.state.motionFailed);
@@ -92,6 +92,15 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const excerptCardRef = useRef(null);
     const cinemaContainerRef = useRef(null);
     const notesDeckRef = useRef(null);
+    const overlayRef = useRef(null);
+
+    useEffect(() => {
+        console.info('🎬 [MironNotePipeline] Library probe:', {
+            motionLoaded: Boolean(motion?.div),
+            hasMotionConfig: Boolean(MotionConfig),
+            hasLayoutGroup: Boolean(LayoutGroup)
+        });
+    }, []);
 
     const compareSectionTags = (tagA, tagB) => {
         const aParts = String(tagA || '999').split('.').map(n => parseInt(n, 10) || 0);
@@ -735,7 +744,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     }
 
     const renderSessionShell = (enableMotion) => (
-        <div className="ml-overlay">
+        <div className="ml-overlay" ref={overlayRef}>
             <div className="ml-ambient"></div>
 
             {/* Hidden Native Audio Element with Diagnostic Probe */}
@@ -847,17 +856,11 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             </div>
                             <button
                                 type="button"
+                                data-note-target={isDesktopViewport && !isSidebarOpen ? 'desktop-header-notes' : undefined}
                                 className={`ml-sidebar-toggle-btn ${isSidebarOpen ? 'active' : ''} ${isDesktopViewport && !isSidebarOpen && lectureEngine.justLandedNoteKey ? 'is-receiving-note' : ''}`}
                                 onClick={(e) => { e.stopPropagation(); setIsSidebarOpen(prev => !prev); }}
                                 title={isSidebarOpen ? 'Collapse Studio Panel' : 'Open Takeaways & Outline Panel'}
                             >
-                                {enableMotion && isDesktopViewport && !isSidebarOpen && lectureEngine.justLandedNoteKey && (
-                                    <motion.span
-                                        layoutId={`miron-note-${lectureEngine.justLandedNoteKey}`}
-                                        className="ml-flight-landing-anchor"
-                                        transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-                                    />
-                                )}
                                 <i className="fas fa-table-columns"></i>
                                 <span className="ml-mode-label">{isSidebarOpen ? 'Panel' : 'Notes'}</span>
                                 {!isSidebarOpen && lectureEngine.dockedBullets.length > 0 && (
@@ -942,6 +945,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         setDesktopSidebarTab={setDesktopSidebarTab}
                         isDesktopViewport={isDesktopViewport}
                         enableMotion={enableMotion}
+                        overlayRef={overlayRef}
                         onSelectSectionItem={handleSelectSectionItem}
                         onStepSection={handleStepSection}
                         onReturnToToc={() => setStage('toc_select')}
