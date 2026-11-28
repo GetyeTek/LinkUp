@@ -175,6 +175,11 @@ export const useMironLecture = ({
     const prevBulletsTrackRef = useRef({ lessonId: null, count: 0, time: 0 });
     const dwellTimerRef = useRef(null);
     const landTimerRef = useRef(null);
+    const [inFlightNote, setInFlightNote] = useState(null);
+    const spotlightCardRef = useRef(null);
+    const dwellingNoteRef = useRef(null);
+    const flightSafetyTimerRef = useRef(null);
+    dwellingNoteRef.current = dwellingNote;
 
     const audioRef = useRef(null);
     const progressBarRef = useRef(null);
@@ -626,26 +631,70 @@ export const useMironLecture = ({
     }, [activeQuizCue, completedQuizTimes]);
 
         const lessonScopeId = audioLesson?.id || 'sim';
-
     const triggerLandingPulse = (noteKey) => {
         if (!noteKey) return;
         setJustLandedNoteKey(noteKey);
         if (landTimerRef.current) clearTimeout(landTimerRef.current);
         landTimerRef.current = setTimeout(() => {
             setJustLandedNoteKey(prev => (prev === noteKey ? null : prev));
-        }, 900);
+        }, 950);
     };
 
-    const dockDwellingNote = () => {
+    const completeInFlightNote = (noteKey) => {
+        if (flightSafetyTimerRef.current) {
+            clearTimeout(flightSafetyTimerRef.current);
+            flightSafetyTimerRef.current = null;
+        }
+        setInFlightNote(prev => {
+            if (!prev || (noteKey && prev.key !== noteKey)) return prev;
+            console.log(`🎯 [MironNotePipeline] Touchdown complete for ${prev.key}`);
+            return null;
+        });
+        if (noteKey) triggerLandingPulse(noteKey);
+    };
+
+    const launchDwellingNote = (reason = 'dwell-complete') => {
         if (dwellTimerRef.current) {
             clearTimeout(dwellTimerRef.current);
             dwellTimerRef.current = null;
         }
-        setDwellingNote(prev => {
-            if (prev?.key) triggerLandingPulse(prev.key);
-            return null;
-        });
+        const currentDwell = dwellingNoteRef.current;
+        if (!currentDwell) return;
+
+        const rect = spotlightCardRef.current?.getBoundingClientRect?.();
+        const hasValidRect = Boolean(rect && rect.width > 0 && rect.height > 0);
+        const fromRect = hasValidRect
+            ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+            : null;
+
+        console.log(
+            `🚀 [MironNotePipeline] Take-off (${reason}) for ${currentDwell.key} | hasFromRect=${hasValidRect}`,
+            fromRect
+        );
+
+        dwellingNoteRef.current = null;
+        setDwellingNote(null);
+
+        if (fromRect) {
+            if (flightSafetyTimerRef.current) clearTimeout(flightSafetyTimerRef.current);
+            setInFlightNote({
+                key: currentDwell.key,
+                text: currentDwell.text,
+                index: currentDwell.index,
+                fromRect,
+                toRect: null
+            });
+            flightSafetyTimerRef.current = setTimeout(() => {
+                console.warn(`⏱️ [MironNotePipeline] Safety timeout finalized flight for ${currentDwell.key}`);
+                completeInFlightNote(currentDwell.key);
+            }, 950);
+        } else {
+            console.warn(`⚠️ [MironNotePipeline] No stage rect for ${currentDwell.key}; snap-docking directly`);
+            triggerLandingPulse(currentDwell.key);
+        }
     };
+
+    const dockDwellingNote = () => launchDwellingNote('manual-tap');
 
     // Stage Spotlight Dwell & Physical Flight Trigger
     useEffect(() => {
@@ -662,42 +711,57 @@ export const useMironLecture = ({
                 clearTimeout(dwellTimerRef.current);
                 dwellTimerRef.current = null;
             }
+            if (!isSameLesson && count > 0) {
+                console.log(`⏭️ [MironNotePipeline] Lesson hydrated mid-track (${count} existing notes) -> snap-docked`);
+            }
+            dwellingNoteRef.current = null;
             setDwellingNote(null);
+            setInFlightNote(null);
             setJustLandedNoteKey(null);
             return;
         }
 
-        // Only trigger stage spotlight on natural forward progression of a single bullet
-        if (deltaCount === 1 && deltaTime < 2.2 && !activeQuizData && !activeCardData) {
+        if (deltaCount === 0) return;
+
+        console.log(
+            `📝 [MironNotePipeline] Bullets updated: ${prev.count} -> ${count} | dt=${deltaTime.toFixed(2)}s | quiz=${Boolean(activeQuizData)} | card=${Boolean(activeCardData)}`
+        );
+
+        if (deltaCount === 1 && !activeQuizData && !activeCardData) {
             const idx = count - 1;
             const text = activeBullets[idx];
             const noteKey = `${lessonScopeId}::n${idx}`;
 
+            if (dwellingNoteRef.current && dwellingNoteRef.current.key !== noteKey) {
+                launchDwellingNote('preempted-by-next-note');
+            }
             if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
-            setDwellingNote(prevDwell => {
-                if (prevDwell?.key && prevDwell.key !== noteKey) {
-                    triggerLandingPulse(prevDwell.key);
-                }
-                return { index: idx, text, key: noteKey };
-            });
+
+            const nextDwell = { index: idx, text, key: noteKey };
+            dwellingNoteRef.current = nextDwell;
+            setDwellingNote(nextDwell);
+            console.log(`✨ [MironNotePipeline] Stage Spotlight ACTIVATED (#${idx + 1}): "${text.slice(0, 48)}" (dwell 2800ms)`);
 
             dwellTimerRef.current = setTimeout(() => {
-                dwellTimerRef.current = null;
-                setDwellingNote(null);
-                triggerLandingPulse(noteKey);
+                launchDwellingNote('dwell-timer-2800ms');
             }, 2800);
-        } else if (deltaCount > 1) {
+        } else {
+            const skipReason = deltaCount > 1
+                ? `multi-jump (${deltaCount} notes)`
+                : (activeQuizData ? 'quiz-active' : 'stage-card-active');
+            console.log(`⏭️ [MironNotePipeline] Skipped stage spotlight (${skipReason}) -> docked directly`);
             if (dwellTimerRef.current) {
                 clearTimeout(dwellTimerRef.current);
                 dwellTimerRef.current = null;
             }
+            dwellingNoteRef.current = null;
             setDwellingNote(null);
         }
     }, [activeBullets, lessonScopeId, currentTime, activeQuizData, activeCardData]);
 
     useEffect(() => {
-        if (activeQuizData || activeCardData) {
-            dockDwellingNote();
+        if ((activeQuizData || activeCardData) && dwellingNoteRef.current) {
+            launchDwellingNote(activeQuizData ? 'quiz-interrupt' : 'card-interrupt');
         }
     }, [activeQuizData, activeCardData]);
 
@@ -705,6 +769,7 @@ export const useMironLecture = ({
         return () => {
             if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
             if (landTimerRef.current) clearTimeout(landTimerRef.current);
+            if (flightSafetyTimerRef.current) clearTimeout(flightSafetyTimerRef.current);
         };
     }, []);
 
@@ -1353,6 +1418,10 @@ export const useMironLecture = ({
         dockedBullets,
         justLandedNoteKey,
         dockDwellingNote,
+        inFlightNote,
+        setInFlightNote,
+        completeInFlightNote,
+        spotlightCardRef,
         activeCue,
         activeDiagramAsset,
         activeImageAsset,
