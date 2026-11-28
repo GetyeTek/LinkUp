@@ -2752,3 +2752,17 @@ mark.miron-active-sentence,
     background: #0284c7;
     color: #ffffff;
 }
+.ml-portal-flight-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.ml-portal-flight-card {
+    position: fixed;
+    margin: 0;
+    transform-origin: top left;
+    will-change: transform, opacity;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.72), 0 0 32px rgba(56, 189, 248, 0.42);
+}
