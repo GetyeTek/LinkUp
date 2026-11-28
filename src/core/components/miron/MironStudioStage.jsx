@@ -27,28 +27,76 @@ import './MironQuizCard.css';
 import MironStageCard from './MironStageCard.jsx';
 import './MironStageCard.css';
 
+const SPOTLIGHT_MOTION_PROPS = {
+    initial: { opacity: 0, y: 20, scale: 0.93 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    transition: { type: 'spring', stiffness: 340, damping: 26, mass: 0.85 }
+};
+
+const FLIGHT_INITIAL = { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1 };
+const FLIGHT_TRANSITION = { duration: 0.54, times: [0, 0.42, 1], ease: [0.22, 1, 0.36, 1] };
+
 const MironPortalFlightCard = ({ flight, enableMotion, isLightTheme, onDone, parseBulletItem }) => {
     const waapiRef = React.useRef(null);
     const doneRef = React.useRef(false);
+    const onDoneRef = React.useRef(onDone);
+    const flightKeyRef = React.useRef(flight?.key);
+    onDoneRef.current = onDone;
+    flightKeyRef.current = flight?.key;
 
-    const finishOnce = React.useCallback(() => {
+    const finishOnce = React.useCallback((source = 'complete') => {
         if (doneRef.current) return;
         doneRef.current = true;
-        onDone?.(flight?.key);
-    }, [flight?.key, onDone]);
+        console.log(`🏁 [MironNotePipeline] Flight finished (${source}) for ${flightKeyRef.current}`);
+        onDoneRef.current?.(flightKeyRef.current);
+    }, []);
 
-    React.useEffect(() => {
-        doneRef.current = false;
-        if (!flight?.fromRect || !flight?.toRect) return;
-
+    const flightSpec = React.useMemo(() => {
+        if (!flight?.fromRect || !flight?.toRect) return null;
         const dx = flight.toRect.left - flight.fromRect.left;
         const dy = flight.toRect.top - flight.fromRect.top;
         const sx = Math.max(0.16, flight.toRect.width / Math.max(1, flight.fromRect.width));
         const sy = Math.max(0.28, flight.toRect.height / Math.max(1, flight.fromRect.height));
+        return {
+            dx,
+            dy,
+            sx,
+            sy,
+            animate: {
+                x: [0, dx * 0.45, dx],
+                y: [0, dy * 0.45 - 16, dy],
+                scaleX: [1, 1.03, sx],
+                scaleY: [1, 1.03, sy],
+                opacity: [1, 1, 0.88]
+            },
+            motionStyle: {
+                left: `${flight.fromRect.left}px`,
+                top: `${flight.fromRect.top}px`,
+                width: `${flight.fromRect.width}px`,
+                height: `${flight.fromRect.height}px`,
+                originX: 0,
+                originY: 0,
+                transformOrigin: 'top left'
+            },
+            waapiStyle: {
+                left: `${flight.fromRect.left}px`,
+                top: `${flight.fromRect.top}px`,
+                width: `${flight.fromRect.width}px`,
+                height: `${flight.fromRect.height}px`,
+                transformOrigin: 'top left'
+            }
+        };
+    }, [flight?.key, flight?.fromRect, flight?.toRect]);
+
+    React.useEffect(() => {
+        doneRef.current = false;
+        if (!flightSpec) return;
+
+        const { dx, dy, sx, sy } = flightSpec;
         const engineLabel = enableMotion ? 'motion/react (portal)' : 'native-waapi (fallback portal)';
 
         console.log(
-            `🛫 [MironNotePipeline] Flying ${flight.key} via ${engineLabel} | delta=(${Math.round(dx)}px, ${Math.round(dy)}px) scale=(${sx.toFixed(2)}, ${sy.toFixed(2)})`
+            `🛫 [MironNotePipeline] Flying ${flightKeyRef.current} via ${engineLabel} | delta=(${Math.round(dx)}px, ${Math.round(dy)}px) scale=(${sx.toFixed(2)}, ${sy.toFixed(2)})`
         );
 
         let anim = null;
@@ -61,24 +109,20 @@ const MironPortalFlightCard = ({ flight, enableMotion, isLightTheme, onDone, par
                 ],
                 { duration: 540, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' }
             );
-            anim.onfinish = finishOnce;
+            anim.onfinish = () => finishOnce('waapi-onfinish');
         }
 
-        const safetyTimer = setTimeout(finishOnce, 640);
+        const safetyTimer = setTimeout(() => finishOnce('portal-safety-680ms'), 680);
         return () => {
             clearTimeout(safetyTimer);
             if (anim) {
                 try { anim.cancel(); } catch (e) {}
             }
         };
-    }, [flight?.key, flight?.fromRect, flight?.toRect, enableMotion, finishOnce]);
+    }, [flight?.key, flightSpec, enableMotion, finishOnce]);
 
-    if (typeof document === 'undefined' || !flight?.fromRect || !flight?.toRect) return null;
+    if (typeof document === 'undefined' || !flightSpec) return null;
 
-    const dx = flight.toRect.left - flight.fromRect.left;
-    const dy = flight.toRect.top - flight.fromRect.top;
-    const sx = Math.max(0.16, flight.toRect.width / Math.max(1, flight.fromRect.width));
-    const sy = Math.max(0.28, flight.toRect.height / Math.max(1, flight.fromRect.height));
     const { glyph, content } = parseBulletItem(flight.text);
 
     const cardBody = (
@@ -96,30 +140,17 @@ const MironPortalFlightCard = ({ flight, enableMotion, isLightTheme, onDone, par
         </>
     );
 
-    const baseStyle = {
-        left: `${flight.fromRect.left}px`,
-        top: `${flight.fromRect.top}px`,
-        width: `${flight.fromRect.width}px`,
-        height: `${flight.fromRect.height}px`
-    };
-
     return createPortal(
         <div className={`ml-portal-flight-layer ${isLightTheme ? 'theme-light' : ''}`}>
             {enableMotion ? (
                 <motion.div
                     key={`fly-${flight.key}`}
                     className="ml-stage-spotlight-card ml-portal-flight-card"
-                    style={baseStyle}
-                    initial={{ x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1 }}
-                    animate={{
-                        x: [0, dx * 0.45, dx],
-                        y: [0, dy * 0.45 - 16, dy],
-                        scaleX: [1, 1.03, sx],
-                        scaleY: [1, 1.03, sy],
-                        opacity: [1, 1, 0.88]
-                    }}
-                    transition={{ duration: 0.54, times: [0, 0.42, 1], ease: [0.22, 1, 0.36, 1] }}
-                    onAnimationComplete={finishOnce}
+                    style={flightSpec.motionStyle}
+                    initial={FLIGHT_INITIAL}
+                    animate={flightSpec.animate}
+                    transition={FLIGHT_TRANSITION}
+                    onAnimationComplete={() => finishOnce('motion-complete')}
                 >
                     {cardBody}
                 </motion.div>
@@ -127,7 +158,7 @@ const MironPortalFlightCard = ({ flight, enableMotion, isLightTheme, onDone, par
                 <div
                     ref={waapiRef}
                     className="ml-stage-spotlight-card ml-portal-flight-card"
-                    style={baseStyle}
+                    style={flightSpec.waapiStyle}
                 >
                     {cardBody}
                 </div>
@@ -272,9 +303,15 @@ const MironStudioStage = ({
             });
         }
     }, [activeBullets?.length, dockedBullets.length, setDesktopSidebarTab]);
+    const setInFlightNoteRef = React.useRef(setInFlightNote);
+    const completeInFlightNoteRef = React.useRef(completeInFlightNote);
+    setInFlightNoteRef.current = setInFlightNote;
+    completeInFlightNoteRef.current = completeInFlightNote;
+
     // Resolve destination bounding rect on the frame after inFlightNote begins
     React.useLayoutEffect(() => {
-        if (!inFlightNote || inFlightNote.toRect) return;
+        if (!inFlightNote?.key || inFlightNote.toRect) return;
+        const targetKey = inFlightNote.key;
 
         if (desktopNotesRef.current) {
             desktopNotesRef.current.scrollTop = desktopNotesRef.current.scrollHeight;
@@ -286,7 +323,7 @@ const MironStudioStage = ({
         const rafId = requestAnimationFrame(() => {
             const rootEl = overlayRef?.current || document;
             const candidateSelectors = [
-                `[data-note-target="card:${inFlightNote.key}"]`,
+                `[data-note-target="card:${targetKey}"]`,
                 !isDesktopViewport ? '[data-note-target="mobile-slim-pill"]' : null,
                 !isDesktopViewport ? '[data-note-target="mobile-chip"]' : null,
                 isDesktopViewport ? '[data-note-target="desktop-outline-tab"]' : null,
@@ -310,17 +347,17 @@ const MironStudioStage = ({
 
             if (chosenRect) {
                 console.log(`📍 [MironNotePipeline] Target resolved: ${chosenSelector}`, chosenRect);
-                setInFlightNote?.(prev =>
-                    prev && prev.key === inFlightNote.key ? { ...prev, toRect: chosenRect } : prev
+                setInFlightNoteRef.current?.(prev =>
+                    prev && prev.key === targetKey ? { ...prev, toRect: chosenRect } : prev
                 );
             } else {
-                console.warn(`⚠️ [MironNotePipeline] No visible landing target found for ${inFlightNote.key} -> snap-docking`);
-                completeInFlightNote?.(inFlightNote.key);
+                console.warn(`⚠️ [MironNotePipeline] No visible landing target found for ${targetKey} -> snap-docking`);
+                completeInFlightNoteRef.current?.(targetKey);
             }
         });
 
         return () => cancelAnimationFrame(rafId);
-    }, [inFlightNote, isDesktopViewport, overlayRef, setInFlightNote, completeInFlightNote]);
+    }, [inFlightNote?.key, Boolean(inFlightNote?.toRect), isDesktopViewport, overlayRef]);
 
     const effectiveSections = chapterSections.length > 0
         ? chapterSections
@@ -548,11 +585,7 @@ const MironStudioStage = ({
                                             <MotionDiv
                                                 ref={spotlightCardRef}
                                                 key={dwellingNote.key}
-                                                {...mProps({
-                                                    initial: { opacity: 0, y: 20, scale: 0.93 },
-                                                    animate: { opacity: 1, y: 0, scale: 1 },
-                                                    transition: { type: 'spring', stiffness: 340, damping: 26, mass: 0.85 }
-                                                })}
+                                                {...mProps(SPOTLIGHT_MOTION_PROPS)}
                                                 className="ml-stage-spotlight-card"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
