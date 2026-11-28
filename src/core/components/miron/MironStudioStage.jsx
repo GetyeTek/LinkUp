@@ -42,6 +42,7 @@ const MironStudioStage = ({
     desktopSidebarTab = 'outline',
     setDesktopSidebarTab,
     isDesktopViewport = true,
+    enableMotion = true,
     onSelectSectionItem,
     onStepSection,
     onReturnToToc,
@@ -101,6 +102,10 @@ const MironStudioStage = ({
     const userPinnedOutlineRef = React.useRef(false);
     const [isMobileNotesExpanded, setIsMobileNotesExpanded] = React.useState(false);
     const mobileExpandedListRef = React.useRef(null);
+    const MotionDiv = enableMotion ? motion.div : 'div';
+    const MotionButton = enableMotion ? motion.button : 'button';
+    const MotionSpan = enableMotion ? motion.span : 'span';
+    const mProps = (props) => (enableMotion ? props : {});
 
     React.useEffect(() => {
         if ((dockedBullets?.length || 0) === 0 && isMobileNotesExpanded) {
@@ -376,13 +381,15 @@ const MironStudioStage = ({
                                 return (
                                     <MironMotionBoundary fallback={staticSpotlight}>
                                         <div className="ml-stage-spotlight-slot">
-                                            <motion.div
+                                            <MotionDiv
                                                 key={dwellingNote.key}
-                                                layoutId={`miron-note-${dwellingNote.key}`}
+                                                {...mProps({
+                                                    layoutId: `miron-note-${dwellingNote.key}`,
+                                                    initial: { opacity: 0, y: 18, scale: 0.94 },
+                                                    animate: { opacity: 1, y: 0, scale: 1 },
+                                                    transition: { type: 'spring', stiffness: 330, damping: 27, mass: 0.9 }
+                                                })}
                                                 className="ml-stage-spotlight-card"
-                                                initial={{ opacity: 0, y: 18, scale: 0.94 }}
-                                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                transition={{ type: 'spring', stiffness: 330, damping: 27, mass: 0.9 }}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     dockDwellingNote?.();
@@ -401,7 +408,7 @@ const MironStudioStage = ({
                                                     </span>
                                                     <span className="ml-spotlight-text">{content}</span>
                                                 </div>
-                                            </motion.div>
+                                            </MotionDiv>
                                         </div>
                                     </MironMotionBoundary>
                                 );
@@ -456,17 +463,19 @@ const MironStudioStage = ({
                                             onClick={(e) => { e.stopPropagation(); resetInactivityTimer(); }}
                                         >
                                             {isNotesCollapsed ? (
-                                                <motion.button
+                                                <MotionButton
                                                     type="button"
-                                                    layoutId={isChipTarget ? `miron-note-${justLandedNoteKey}` : undefined}
+                                                    {...mProps({
+                                                        layoutId: isChipTarget ? `miron-note-${justLandedNoteKey}` : undefined,
+                                                        transition: { type: 'spring', stiffness: 320, damping: 28 }
+                                                    })}
                                                     className={`ml-mobile-note-chip ${justLandedNoteKey ? 'is-just-landed' : ''}`}
-                                                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
                                                     onClick={() => setIsNotesCollapsed(false)}
                                                     title="Show Live Takeaway"
                                                 >
                                                     <i className="fas fa-bolt"></i>
                                                     <span>{dockedBullets.length}</span>
-                                                </motion.button>
+                                                </MotionButton>
                                             ) : isMobileNotesExpanded ? (
                                                 <div className="ml-mobile-note-pill is-expanded">
                                                     <div
@@ -495,27 +504,31 @@ const MironStudioStage = ({
                                                             const item = parseBulletItem(bItem.text);
                                                             const isLanded = justLandedNoteKey === bItem.key;
                                                             return (
-                                                                <motion.div
+                                                                <MotionDiv
                                                                     key={bItem.key}
-                                                                    layout="position"
-                                                                    layoutId={`miron-note-${bItem.key}`}
+                                                                    {...mProps({
+                                                                        layout: 'position',
+                                                                        layoutId: `miron-note-${bItem.key}`,
+                                                                        transition: { type: 'spring', stiffness: 320, damping: 28 }
+                                                                    })}
                                                                     className={`ml-mobile-note-expanded-row ${isLanded ? 'is-just-landed' : ''}`}
-                                                                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
                                                                 >
                                                                     <span className={`ml-studio-bullet-glyph ${/^\d/.test(item.glyph) ? 'is-number' : ''}`}>
                                                                         {item.glyph}
                                                                     </span>
                                                                     <span className="ml-mobile-note-text">{item.content}</span>
-                                                                </motion.div>
+                                                                </MotionDiv>
                                                             );
                                                         })}
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <motion.div
-                                                    layoutId={isSlimTarget ? `miron-note-${justLandedNoteKey}` : undefined}
+                                                <MotionDiv
+                                                    {...mProps({
+                                                        layoutId: isSlimTarget ? `miron-note-${justLandedNoteKey}` : undefined,
+                                                        transition: { type: 'spring', stiffness: 320, damping: 28 }
+                                                    })}
                                                     className={`ml-mobile-note-pill ${justLandedNoteKey ? 'is-just-landed' : ''}`}
-                                                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
                                                     onClick={() => setIsMobileNotesExpanded(true)}
                                                 >
                                                     <div className="ml-mobile-note-content" key={latestItem.key}>
@@ -538,7 +551,7 @@ const MironStudioStage = ({
                                                             <i className="fas fa-minus"></i>
                                                         </button>
                                                     </div>
-                                                </motion.div>
+                                                </MotionDiv>
                                             )}
                                         </div>
                                     </MironMotionBoundary>
@@ -721,11 +734,13 @@ const MironStudioStage = ({
                                             setDesktopSidebarTab?.('notes');
                                         }}
                                     >
-                                        {desktopSidebarTab === 'outline' && justLandedNoteKey && (
-                                            <motion.span
-                                                layoutId={`miron-note-${justLandedNoteKey}`}
+                                        {enableMotion && desktopSidebarTab === 'outline' && justLandedNoteKey && (
+                                            <MotionSpan
+                                                {...mProps({
+                                                    layoutId: `miron-note-${justLandedNoteKey}`,
+                                                    transition: { type: 'spring', stiffness: 320, damping: 28 }
+                                                })}
                                                 className="ml-flight-landing-anchor"
-                                                transition={{ type: 'spring', stiffness: 320, damping: 28 }}
                                             />
                                         )}
                                         <i className="fas fa-bolt"></i>
@@ -799,18 +814,20 @@ const MironStudioStage = ({
                                                     const { glyph, content } = parseBulletItem(bItem.text);
                                                     const isLanded = justLandedNoteKey === bItem.key;
                                                     return (
-                                                        <motion.div
+                                                        <MotionDiv
                                                             key={bItem.key}
-                                                            layout="position"
-                                                            layoutId={`miron-note-${bItem.key}`}
+                                                            {...mProps({
+                                                                layout: 'position',
+                                                                layoutId: `miron-note-${bItem.key}`,
+                                                                transition: { type: 'spring', stiffness: 320, damping: 28 }
+                                                            })}
                                                             className={`ml-sidebar-bullet-card ${isLanded ? 'is-just-landed' : ''}`}
-                                                            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
                                                         >
                                                             <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>
                                                                 {glyph}
                                                             </span>
                                                             <span className="ml-studio-bullet-text">{content}</span>
-                                                        </motion.div>
+                                                        </MotionDiv>
                                                     );
                                                 })}
                                             </div>
