@@ -9,6 +9,21 @@ import MironSimulatorModal from './miron/MironSimulatorModal.jsx';
 import { useMironLecture, proxyUrl, ensureBlockArray } from './miron/useMironLecture.js';
 import './MironLiveSession.css';
 
+class MironMotionSafeRoot extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { motionFailed: false };
+    }
+    static getDerivedStateFromError() {
+        return { motionFailed: true };
+    }
+    componentDidCatch(err) {
+        console.warn('[MironMotion] MotionConfig/LayoutGroup fallback engaged:', err?.message || err);
+    }
+    render() {
+        return this.props.children(!this.state.motionFailed);
+    }
+}
 const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const { t } = usePlatform();
     const renderBookBlock = getComponent('book-block-renderer');
@@ -719,9 +734,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
         );
     }
 
-    return (
-        <MotionConfig reducedMotion="user">
-        <LayoutGroup id="miron-studio-flight">
+    const renderSessionShell = (enableMotion) => (
         <div className="ml-overlay">
             <div className="ml-ambient"></div>
 
@@ -838,7 +851,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                                 onClick={(e) => { e.stopPropagation(); setIsSidebarOpen(prev => !prev); }}
                                 title={isSidebarOpen ? 'Collapse Studio Panel' : 'Open Takeaways & Outline Panel'}
                             >
-                                {isDesktopViewport && !isSidebarOpen && lectureEngine.justLandedNoteKey && (
+                                {enableMotion && isDesktopViewport && !isSidebarOpen && lectureEngine.justLandedNoteKey && (
                                     <motion.span
                                         layoutId={`miron-note-${lectureEngine.justLandedNoteKey}`}
                                         className="ml-flight-landing-anchor"
@@ -928,6 +941,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         desktopSidebarTab={desktopSidebarTab}
                         setDesktopSidebarTab={setDesktopSidebarTab}
                         isDesktopViewport={isDesktopViewport}
+                        enableMotion={enableMotion}
                         onSelectSectionItem={handleSelectSectionItem}
                         onStepSection={handleStepSection}
                         onReturnToToc={() => setStage('toc_select')}
@@ -952,8 +966,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 onStartSimulation={handleStartSimulation}
             />
         </div>
-        </LayoutGroup>
-        </MotionConfig>
+    );
+
+    return (
+        <MironMotionSafeRoot>
+            {(enableMotion) =>
+                enableMotion ? (
+                    <MotionConfig reducedMotion="user">
+                        <LayoutGroup id="miron-studio-flight">
+                            {renderSessionShell(true)}
+                        </LayoutGroup>
+                    </MotionConfig>
+                ) : (
+                    renderSessionShell(false)
+                )
+            }
+        </MironMotionSafeRoot>
     );
 };
 
