@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { MotionConfig, LayoutGroup, motion } from 'motion/react';
 import { usePlatform, supabase, getComponent } from '@linkup-platform/sdk-core';
 import FloatingMironOrb from './FloatingMironOrb.jsx';
 import MironConnectionRing from './MironConnectionRing.jsx';
@@ -55,6 +56,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     const [isDebugOpen, setIsDebugOpen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [desktopSidebarTab, setDesktopSidebarTab] = useState('outline');
+    const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
+        typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+    );
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+        const mq = window.matchMedia('(min-width: 1024px)');
+        const onChange = (e) => setIsDesktopViewport(e.matches);
+        setIsDesktopViewport(mq.matches);
+        if (typeof mq.addEventListener === 'function') {
+            mq.addEventListener('change', onChange);
+            return () => mq.removeEventListener('change', onChange);
+        }
+        mq.addListener(onChange);
+        return () => mq.removeListener(onChange);
+    }, []);
 
     // DOM & Element Refs
     const excerptCardRef = useRef(null);
@@ -703,6 +720,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
     }
 
     return (
+        <MotionConfig reducedMotion="user">
+        <LayoutGroup id="miron-studio-flight">
         <div className="ml-overlay">
             <div className="ml-ambient"></div>
 
@@ -815,12 +834,22 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                             </div>
                             <button
                                 type="button"
-                                className={`ml-sidebar-toggle-btn ${isSidebarOpen ? 'active' : ''}`}
+                                className={`ml-sidebar-toggle-btn ${isSidebarOpen ? 'active' : ''} ${isDesktopViewport && !isSidebarOpen && lectureEngine.justLandedNoteKey ? 'is-receiving-note' : ''}`}
                                 onClick={(e) => { e.stopPropagation(); setIsSidebarOpen(prev => !prev); }}
                                 title={isSidebarOpen ? 'Collapse Studio Panel' : 'Open Takeaways & Outline Panel'}
                             >
+                                {isDesktopViewport && !isSidebarOpen && lectureEngine.justLandedNoteKey && (
+                                    <motion.span
+                                        layoutId={`miron-note-${lectureEngine.justLandedNoteKey}`}
+                                        className="ml-flight-landing-anchor"
+                                        transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                                    />
+                                )}
                                 <i className="fas fa-table-columns"></i>
                                 <span className="ml-mode-label">{isSidebarOpen ? 'Panel' : 'Notes'}</span>
+                                {!isSidebarOpen && lectureEngine.dockedBullets.length > 0 && (
+                                    <span className="ml-header-notes-count">{lectureEngine.dockedBullets.length}</span>
+                                )}
                             </button>
                         </>
                     )}
@@ -898,6 +927,7 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                         setIsSidebarOpen={setIsSidebarOpen}
                         desktopSidebarTab={desktopSidebarTab}
                         setDesktopSidebarTab={setDesktopSidebarTab}
+                        isDesktopViewport={isDesktopViewport}
                         onSelectSectionItem={handleSelectSectionItem}
                         onStepSection={handleStepSection}
                         onReturnToToc={() => setStage('toc_select')}
@@ -922,6 +952,8 @@ const MironLiveSession = ({ onClose, mironAvatarUrl }) => {
                 onStartSimulation={handleStartSimulation}
             />
         </div>
+        </LayoutGroup>
+        </MotionConfig>
     );
 };
 
