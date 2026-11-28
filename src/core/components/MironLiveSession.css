@@ -2665,13 +2665,15 @@ mark.miron-active-sentence,
 }
 
 @media (min-width: 1024px) {
+    .ml-cinema-stage[data-note-dwelling="true"] .ml-cinema-visual-frame.is-dual-stage:not(.is-triple-stage) .ml-stage-diagram-pane,
+    .ml-cinema-stage[data-note-dwelling="true"] .ml-cinema-visual-frame.is-dual-stage:not(.is-triple-stage) .ml-stage-image-pane,
     .ml-cinema-stage[data-note-dwelling="true"] .ml-stage-image-pane .ml-visual-card-image img,
     .ml-cinema-stage[data-note-dwelling="true"] .ml-cinema-visual-frame:not(.is-dual-stage) .ml-visual-card-image img,
     .ml-cinema-stage[data-note-dwelling="true"] .ml-cinema-visual-frame.is-triple-stage .ml-stage-image-pane {
-        max-height: calc(100vh - 335px);
+        max-height: calc(100vh - 340px);
     }
     .ml-cinema-stage[data-note-dwelling="true"] .vis-box svg {
-        max-height: calc(100vh - 335px) !important;
+        max-height: calc(100vh - 340px) !important;
     }
 }
 
