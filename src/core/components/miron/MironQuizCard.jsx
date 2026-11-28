@@ -48,7 +48,7 @@ const MironQuizCard = ({ quizData, onComplete }) => {
     const activeDescription = selectedOpt?.description || selectedOpt?.explanation || currentQ.explanation;
 
     return (
-        <div className="ml-quiz-card-wrapper" onClick={(e) => e.stopPropagation()}>
+        <div className="ml-quiz-card-wrapper">
             <div className="ml-quiz-card">
                 {/* Header Row: Checkpoint Tag + Lamp Hint Button */}
                 <div className="ml-quiz-header">
