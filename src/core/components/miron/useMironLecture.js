@@ -705,63 +705,63 @@ export const useMironLecture = ({
 
     // Camera Director: Synchronizes ViewBox Pan/Zoom & CSS Node Spotlight
     useEffect(() => {
-        if (viewMode !== 'cinema') return;
+        if (viewMode !== 'cinema' && viewMode !== 'anchor') return;
+        if (activeQuizData || activeCardData) return;
         const container = cinemaContainerRef.current;
         if (!container) return;
 
-        const targetNode = activeNodeCue?.target || 'overview';
-        const targetCompositeKey = `${activeDiagramCue?.target || activeCue?.target || 'vis'}::${targetNode}::dual_${isDualStage}`;
+        const cardEl = container.querySelector('.vis-card');
+        if (!cardEl) return;
 
-        // Prevent infinite cancellation loop: only initiate camera pan when target node actually changes
-        if (lastFocusedNodeRef.current === targetCompositeKey) return;
+        const targetNode = activeNodeCue?.target || 'overview';
+        const isCompactDesktop = isDualStage || viewMode === 'anchor';
+        const targetCompositeKey = `${activeDiagramCue?.target || 'vis'}::${targetNode}::${viewMode}::dual_${isDualStage}`;
+
+        // Prevent infinite cancellation loop, but allow re-applying if the SVG DOM remounted (e.g. after quiz/card)
+        const isDomAlreadySynced =
+            targetNode === 'overview' ||
+            targetNode === 'reset' ||
+            cardEl.getAttribute('data-active-node') === targetNode;
+        if (lastFocusedNodeRef.current === targetCompositeKey && isDomAlreadySynced) return;
         lastFocusedNodeRef.current = targetCompositeKey;
 
-        const cardEl = container.querySelector('.vis-card');
+        const isMobile = window.innerWidth <= 768;
+        const activeSvg = isMobile
+            ? (container.querySelector('svg.vis-mobile') || container.querySelector('svg'))
+            : (container.querySelector('svg.vis-desktop') || container.querySelector('svg'));
+
+        if (activeSvg && !activeSvg.getAttribute('data-default-view')) {
+            activeSvg.setAttribute('data-default-view', activeSvg.getAttribute('viewBox') || (isMobile ? '0 0 360 520' : '0 0 780 340'));
+        }
+        const defaultViewStr = activeSvg?.getAttribute('data-default-view') || (isMobile ? '0 0 360 520' : '0 0 780 340');
 
         if (!targetNode || targetNode === 'overview' || targetNode === 'reset') {
-            if (cardEl) {
-                cardEl.removeAttribute('data-active-node');
-                cardEl.querySelectorAll('.vis-node').forEach(n => {
-                    n.classList.remove('is-focused');
-                    n.removeAttribute('data-is-active');
-                });
-            }
-            const activeSvg = window.innerWidth <= 768
-                ? (container.querySelector('svg.vis-mobile') || container.querySelector('svg'))
-                : (container.querySelector('svg.vis-desktop') || container.querySelector('svg'));
+            cardEl.removeAttribute('data-active-node');
+            cardEl.querySelectorAll('.vis-node').forEach(n => {
+                n.classList.remove('is-focused');
+                n.removeAttribute('data-is-active');
+            });
             if (activeSvg) {
-                const defaultView = activeSvg.getAttribute('data-default-view') || '0 0 780 340';
-                animateViewBox(activeSvg, defaultView);
+                animateViewBox(activeSvg, defaultViewStr);
             }
             return;
         }
 
         // 1. Activate CSS Spotlight & Card Glow
-        if (cardEl) {
-            cardEl.setAttribute('data-active-node', targetNode);
-            cardEl.querySelectorAll('.vis-node').forEach(n => {
-                const isMatch = n.getAttribute('data-node') === targetNode;
-                n.classList.toggle('is-focused', isMatch);
-                if (isMatch) n.setAttribute('data-is-active', 'true');
-                else n.removeAttribute('data-is-active');
-            });
-        }
+        const normalizedTarget = String(targetNode).trim().toLowerCase();
+        cardEl.setAttribute('data-active-node', targetNode);
+        cardEl.querySelectorAll('.vis-node').forEach(n => {
+            const attr = (n.getAttribute('data-node') || '').trim().toLowerCase();
+            const isMatch = attr === normalizedTarget || attr === `node-${normalizedTarget}` || `node-${attr}` === normalizedTarget;
+            n.classList.toggle('is-focused', isMatch);
+            if (isMatch) n.setAttribute('data-is-active', 'true');
+            else n.removeAttribute('data-is-active');
+        });
 
         // 2. Drive ViewBox Camera Pan-and-Zoom
-        const activeSvg = window.innerWidth <= 768
-            ? (container.querySelector('svg.vis-mobile') || container.querySelector('svg'))
-            : (container.querySelector('svg.vis-desktop') || container.querySelector('svg'));
-
         if (activeSvg) {
-            if (!activeSvg.getAttribute('data-default-view')) {
-                activeSvg.setAttribute('data-default-view', activeSvg.getAttribute('viewBox') || '0 0 780 340');
-            }
-
-            const isMobile = window.innerWidth <= 768;
-            const defaultViewStr = activeSvg.getAttribute('data-default-view') || (isMobile ? '0 0 360 520' : '0 0 780 340');
-
-            if (!isMobile) {
-                // Desktop: Preserve full relationship map while CSS spotlights & lifts the active node
+            // Standalone Desktop Diagram: preserve full relationship map while CSS spotlights & lifts the active node
+            if (!isMobile && !isCompactDesktop) {
                 animateViewBox(activeSvg, defaultViewStr);
                 return;
             }
@@ -769,12 +769,23 @@ export const useMironLecture = ({
             const targetEl = findSvgNodeElement(activeSvg, targetNode);
             if (targetEl) {
                 try {
-                    const cacheKey = `${activeCue?.target || 'vis'}::${targetNode}::m`;
+                    const cacheKey = `${activeDiagramCue?.target || 'vis'}::${targetNode}::${isMobile ? 'm' : 'd'}`;
                     let b = bboxCacheRef.current.get(cacheKey);
                     if (!b) {
                         const rawBox = targetEl.getBBox();
                         if (rawBox && rawBox.width > 0 && rawBox.height > 0) {
-                            b = { x: rawBox.x, y: rawBox.y, width: rawBox.width, height: rawBox.height };
+                            let tx = 0;
+                            let ty = 0;
+                            if (targetEl.transform?.baseVal?.numberOfItems > 0) {
+                                for (let i = 0; i < targetEl.transform.baseVal.numberOfItems; i++) {
+                                    const item = targetEl.transform.baseVal.getItem(i);
+                                    if (item.type === 2) { // SVG_TRANSFORM_TRANSLATE
+                                        tx += item.matrix.e;
+                                        ty += item.matrix.f;
+                                    }
+                                }
+                            }
+                            b = { x: rawBox.x + tx, y: rawBox.y + ty, width: rawBox.width, height: rawBox.height };
                             bboxCacheRef.current.set(cacheKey, b);
                         } else {
                             b = rawBox;
@@ -782,10 +793,30 @@ export const useMironLecture = ({
                     }
 
                     if (b && b.width > 0 && b.height > 0) {
-                        // Mobile Portrait: Tight node isolation maximizing card size inside available frame
-                        const padX = 6;
-                        const padY = 6;
-                        const calcBox = `${(b.x - padX).toFixed(2)} ${(b.y - padY).toFixed(2)} ${(b.width + padX * 2).toFixed(2)} ${(b.height + padY * 2).toFixed(2)}`;
+                        const padX = isMobile ? 6 : Math.max(42, b.width * 0.48);
+                        const padY = isMobile ? 6 : Math.max(22, b.height * 0.16);
+                        let vx = b.x - padX;
+                        let vy = b.y - padY;
+                        let vw = b.width + padX * 2;
+                        let vh = b.height + padY * 2;
+
+                        if (!isMobile) {
+                            // Context-preserving desktop zoom clamped cleanly to diagram bounds
+                            const defParts = defaultViewStr.trim().split(/\s+/).map(Number);
+                            if (defParts.length === 4 && !defParts.some(isNaN)) {
+                                const [defX, defY, defW, defH] = defParts;
+                                const clampedLeft = Math.max(defX - 12, vx);
+                                const clampedRight = Math.min(defX + defW + 12, vx + vw);
+                                const clampedTop = Math.max(defY - 10, vy);
+                                const clampedBottom = Math.min(defY + defH + 10, vy + vh);
+                                vx = clampedLeft;
+                                vy = clampedTop;
+                                vw = Math.max(b.width + 24, clampedRight - clampedLeft);
+                                vh = Math.max(b.height + 20, clampedBottom - clampedTop);
+                            }
+                        }
+
+                        const calcBox = `${vx.toFixed(2)} ${vy.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`;
                         animateViewBox(activeSvg, calcBox);
                     } else {
                         const boxStr = targetEl.getAttribute('data-focus-box');
@@ -796,8 +827,7 @@ export const useMironLecture = ({
                 }
             }
         }
-    }, [activeNodeCue, activeCue, viewMode, isDualStage, activeDiagramCue, cinemaContainerRef]);
-
+    }, [activeNodeCue, activeCue, viewMode, isDualStage, activeDiagramCue, activeDiagramAsset, activeQuizData, activeCardData, cinemaContainerRef]);
     // Automatic Dual-Mode Switcher: Flips to anchor on block cue, snaps to cinema on visuals
     useEffect(() => {
         if (activeCue) {
