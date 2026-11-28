@@ -879,16 +879,22 @@ svg.vis-mobile,
     transform-origin: center;
 }
 .vis-card[data-active-node] .vis-node:not(.is-focused) {
-    opacity: 0.28;
-    filter: saturate(0.7);
+    opacity: 0.2;
+    filter: saturate(0.45);
 }
 .vis-card[data-active-node] .vis-node.is-focused {
     opacity: 1;
-    transform: scale(1.04);
-    filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.45));
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.72)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55)) brightness(1.08);
 }
 .theme-light .vis-card[data-active-node] .vis-node.is-focused {
-    filter: drop-shadow(0 0 8px rgba(2, 132, 199, 0.3));
+    filter: drop-shadow(0 0 14px rgba(2, 132, 199, 0.45)) drop-shadow(0 4px 10px rgba(15, 23, 42, 0.16));
+}
+@media (min-width: 769px) {
+    .ml-cinema-stage .ml-stage-diagram-pane.is-hero .vis-box,
+    .ml-cinema-stage .ml-stage-diagram-pane.is-hero .vis-box svg {
+        overflow: visible !important;
+    }
 }
 
 .ml-stage-image-pane .ml-visual-card-image {
@@ -2252,6 +2258,9 @@ mark.miron-active-sentence,
         height: 100%;
         max-width: none;
         overflow: hidden;
+    }
+    .ml-anchor-sub-visual .vis-box svg {
+        max-height: calc(100vh - 210px) !important;
     }
 
     /* Right Studio Sidebar */
