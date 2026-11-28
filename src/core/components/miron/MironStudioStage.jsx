@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { BookPageCanvas } from '@linkup-platform/sdk-core';
 import { motion } from 'motion/react';
 
@@ -26,6 +27,115 @@ import './MironQuizCard.css';
 import MironStageCard from './MironStageCard.jsx';
 import './MironStageCard.css';
 
+const MironPortalFlightCard = ({ flight, enableMotion, isLightTheme, onDone, parseBulletItem }) => {
+    const waapiRef = React.useRef(null);
+    const doneRef = React.useRef(false);
+
+    const finishOnce = React.useCallback(() => {
+        if (doneRef.current) return;
+        doneRef.current = true;
+        onDone?.(flight?.key);
+    }, [flight?.key, onDone]);
+
+    React.useEffect(() => {
+        doneRef.current = false;
+        if (!flight?.fromRect || !flight?.toRect) return;
+
+        const dx = flight.toRect.left - flight.fromRect.left;
+        const dy = flight.toRect.top - flight.fromRect.top;
+        const sx = Math.max(0.16, flight.toRect.width / Math.max(1, flight.fromRect.width));
+        const sy = Math.max(0.28, flight.toRect.height / Math.max(1, flight.fromRect.height));
+        const engineLabel = enableMotion ? 'motion/react (portal)' : 'native-waapi (fallback portal)';
+
+        console.log(
+            `🛫 [MironNotePipeline] Flying ${flight.key} via ${engineLabel} | delta=(${Math.round(dx)}px, ${Math.round(dy)}px) scale=(${sx.toFixed(2)}, ${sy.toFixed(2)})`
+        );
+
+        let anim = null;
+        if (!enableMotion && waapiRef.current && typeof waapiRef.current.animate === 'function') {
+            anim = waapiRef.current.animate(
+                [
+                    { transform: 'translate3d(0px, 0px, 0) scale(1, 1)', opacity: 1 },
+                    { transform: `translate3d(${(dx * 0.45).toFixed(1)}px, ${(dy * 0.45 - 16).toFixed(1)}px, 0) scale(1.03, 1.03)`, opacity: 1, offset: 0.42 },
+                    { transform: `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`, opacity: 0.88 }
+                ],
+                { duration: 540, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' }
+            );
+            anim.onfinish = finishOnce;
+        }
+
+        const safetyTimer = setTimeout(finishOnce, 640);
+        return () => {
+            clearTimeout(safetyTimer);
+            if (anim) {
+                try { anim.cancel(); } catch (e) {}
+            }
+        };
+    }, [flight?.key, flight?.fromRect, flight?.toRect, enableMotion, finishOnce]);
+
+    if (typeof document === 'undefined' || !flight?.fromRect || !flight?.toRect) return null;
+
+    const dx = flight.toRect.left - flight.fromRect.left;
+    const dy = flight.toRect.top - flight.fromRect.top;
+    const sx = Math.max(0.16, flight.toRect.width / Math.max(1, flight.fromRect.width));
+    const sy = Math.max(0.28, flight.toRect.height / Math.max(1, flight.fromRect.height));
+    const { glyph, content } = parseBulletItem(flight.text);
+
+    const cardBody = (
+        <>
+            <div className="ml-spotlight-badge-row">
+                <span className="ml-spotlight-eyebrow">
+                    <i className="fas fa-bolt"></i> KEY TAKEAWAY
+                </span>
+                <span className="ml-spotlight-index">#{flight.index + 1}</span>
+            </div>
+            <div className="ml-spotlight-body">
+                <span className={`ml-studio-bullet-glyph ${/^\d/.test(glyph) ? 'is-number' : ''}`}>{glyph}</span>
+                <span className="ml-spotlight-text">{content}</span>
+            </div>
+        </>
+    );
+
+    const baseStyle = {
+        left: `${flight.fromRect.left}px`,
+        top: `${flight.fromRect.top}px`,
+        width: `${flight.fromRect.width}px`,
+        height: `${flight.fromRect.height}px`
+    };
+
+    return createPortal(
+        <div className={`ml-portal-flight-layer ${isLightTheme ? 'theme-light' : ''}`}>
+            {enableMotion ? (
+                <motion.div
+                    key={`fly-${flight.key}`}
+                    className="ml-stage-spotlight-card ml-portal-flight-card"
+                    style={baseStyle}
+                    initial={{ x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1 }}
+                    animate={{
+                        x: [0, dx * 0.45, dx],
+                        y: [0, dy * 0.45 - 16, dy],
+                        scaleX: [1, 1.03, sx],
+                        scaleY: [1, 1.03, sy],
+                        opacity: [1, 1, 0.88]
+                    }}
+                    transition={{ duration: 0.54, times: [0, 0.42, 1], ease: [0.22, 1, 0.36, 1] }}
+                    onAnimationComplete={finishOnce}
+                >
+                    {cardBody}
+                </motion.div>
+            ) : (
+                <div
+                    ref={waapiRef}
+                    className="ml-stage-spotlight-card ml-portal-flight-card"
+                    style={baseStyle}
+                >
+                    {cardBody}
+                </div>
+            )}
+        </div>,
+        document.body
+    );
+};
 const MironStudioStage = ({
     isLoadingLesson,
     audioLesson,
@@ -43,6 +153,7 @@ const MironStudioStage = ({
     setDesktopSidebarTab,
     isDesktopViewport = true,
     enableMotion = true,
+    overlayRef,
     onSelectSectionItem,
     onStepSection,
     onReturnToToc,
@@ -76,6 +187,10 @@ const MironStudioStage = ({
         dockedBullets = [],
         justLandedNoteKey,
         dockDwellingNote,
+        inFlightNote,
+        setInFlightNote,
+        completeInFlightNote,
+        spotlightCardRef,
         activeQuizCue,
         activeQuizData,
         resumeFromQuiz,
@@ -157,6 +272,55 @@ const MironStudioStage = ({
             });
         }
     }, [activeBullets?.length, dockedBullets.length, setDesktopSidebarTab]);
+    // Resolve destination bounding rect on the frame after inFlightNote begins
+    React.useLayoutEffect(() => {
+        if (!inFlightNote || inFlightNote.toRect) return;
+
+        if (desktopNotesRef.current) {
+            desktopNotesRef.current.scrollTop = desktopNotesRef.current.scrollHeight;
+        }
+        if (mobileExpandedListRef.current) {
+            mobileExpandedListRef.current.scrollTop = mobileExpandedListRef.current.scrollHeight;
+        }
+
+        const rafId = requestAnimationFrame(() => {
+            const rootEl = overlayRef?.current || document;
+            const candidateSelectors = [
+                `[data-note-target="card:${inFlightNote.key}"]`,
+                !isDesktopViewport ? '[data-note-target="mobile-slim-pill"]' : null,
+                !isDesktopViewport ? '[data-note-target="mobile-chip"]' : null,
+                isDesktopViewport ? '[data-note-target="desktop-outline-tab"]' : null,
+                isDesktopViewport ? '[data-note-target="desktop-header-notes"]' : null
+            ].filter(Boolean);
+
+            let chosenSelector = null;
+            let chosenRect = null;
+
+            for (const sel of candidateSelectors) {
+                const el = rootEl.querySelector(sel);
+                if (el) {
+                    const r = el.getBoundingClientRect();
+                    if (r.width > 0 && r.height > 0) {
+                        chosenSelector = sel;
+                        chosenRect = { left: r.left, top: r.top, width: r.width, height: r.height };
+                        break;
+                    }
+                }
+            }
+
+            if (chosenRect) {
+                console.log(`📍 [MironNotePipeline] Target resolved: ${chosenSelector}`, chosenRect);
+                setInFlightNote?.(prev =>
+                    prev && prev.key === inFlightNote.key ? { ...prev, toRect: chosenRect } : prev
+                );
+            } else {
+                console.warn(`⚠️ [MironNotePipeline] No visible landing target found for ${inFlightNote.key} -> snap-docking`);
+                completeInFlightNote?.(inFlightNote.key);
+            }
+        });
+
+        return () => cancelAnimationFrame(rafId);
+    }, [inFlightNote, isDesktopViewport, overlayRef, setInFlightNote, completeInFlightNote]);
 
     const effectiveSections = chapterSections.length > 0
         ? chapterSections
@@ -382,12 +546,12 @@ const MironStudioStage = ({
                                     <MironMotionBoundary fallback={staticSpotlight}>
                                         <div className="ml-stage-spotlight-slot">
                                             <MotionDiv
+                                                ref={spotlightCardRef}
                                                 key={dwellingNote.key}
                                                 {...mProps({
-                                                    layoutId: `miron-note-${dwellingNote.key}`,
-                                                    initial: { opacity: 0, y: 18, scale: 0.94 },
+                                                    initial: { opacity: 0, y: 20, scale: 0.93 },
                                                     animate: { opacity: 1, y: 0, scale: 1 },
-                                                    transition: { type: 'spring', stiffness: 330, damping: 27, mass: 0.9 }
+                                                    transition: { type: 'spring', stiffness: 340, damping: 26, mass: 0.85 }
                                                 })}
                                                 className="ml-stage-spotlight-card"
                                                 onClick={(e) => {
@@ -465,10 +629,7 @@ const MironStudioStage = ({
                                             {isNotesCollapsed ? (
                                                 <MotionButton
                                                     type="button"
-                                                    {...mProps({
-                                                        layoutId: isChipTarget ? `miron-note-${justLandedNoteKey}` : undefined,
-                                                        transition: { type: 'spring', stiffness: 320, damping: 28 }
-                                                    })}
+                                                    data-note-target="mobile-chip"
                                                     className={`ml-mobile-note-chip ${justLandedNoteKey ? 'is-just-landed' : ''}`}
                                                     onClick={() => setIsNotesCollapsed(false)}
                                                     title="Show Live Takeaway"
@@ -503,31 +664,26 @@ const MironStudioStage = ({
                                                         {dockedBullets.map((bItem) => {
                                                             const item = parseBulletItem(bItem.text);
                                                             const isLanded = justLandedNoteKey === bItem.key;
+                                                            const isFlyingHere = inFlightNote?.key === bItem.key;
                                                             return (
-                                                                <MotionDiv
+                                                                <div
                                                                     key={bItem.key}
-                                                                    {...mProps({
-                                                                        layout: 'position',
-                                                                        layoutId: `miron-note-${bItem.key}`,
-                                                                        transition: { type: 'spring', stiffness: 320, damping: 28 }
-                                                                    })}
+                                                                    data-note-target={`card:${bItem.key}`}
+                                                                    style={isFlyingHere ? { opacity: 0 } : undefined}
                                                                     className={`ml-mobile-note-expanded-row ${isLanded ? 'is-just-landed' : ''}`}
                                                                 >
                                                                     <span className={`ml-studio-bullet-glyph ${/^\d/.test(item.glyph) ? 'is-number' : ''}`}>
                                                                         {item.glyph}
                                                                     </span>
                                                                     <span className="ml-mobile-note-text">{item.content}</span>
-                                                                </MotionDiv>
+                                                                </div>
                                                             );
                                                         })}
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <MotionDiv
-                                                    {...mProps({
-                                                        layoutId: isSlimTarget ? `miron-note-${justLandedNoteKey}` : undefined,
-                                                        transition: { type: 'spring', stiffness: 320, damping: 28 }
-                                                    })}
+                                                <div
+                                                    data-note-target="mobile-slim-pill"
                                                     className={`ml-mobile-note-pill ${justLandedNoteKey ? 'is-just-landed' : ''}`}
                                                     onClick={() => setIsMobileNotesExpanded(true)}
                                                 >
@@ -551,7 +707,7 @@ const MironStudioStage = ({
                                                             <i className="fas fa-minus"></i>
                                                         </button>
                                                     </div>
-                                                </MotionDiv>
+                                                </div>
                                             )}
                                         </div>
                                     </MironMotionBoundary>
@@ -728,21 +884,13 @@ const MironStudioStage = ({
                                 <div className="ml-sidebar-tabs">
                                     <button
                                         type="button"
+                                        data-note-target={desktopSidebarTab === 'outline' ? 'desktop-outline-tab' : undefined}
                                         className={`ml-sidebar-tab ${desktopSidebarTab === 'notes' ? 'active' : ''} ${desktopSidebarTab === 'outline' && justLandedNoteKey ? 'is-receiving-note' : ''}`}
                                         onClick={() => {
                                             userPinnedOutlineRef.current = false;
                                             setDesktopSidebarTab?.('notes');
                                         }}
                                     >
-                                        {enableMotion && desktopSidebarTab === 'outline' && justLandedNoteKey && (
-                                            <MotionSpan
-                                                {...mProps({
-                                                    layoutId: `miron-note-${justLandedNoteKey}`,
-                                                    transition: { type: 'spring', stiffness: 320, damping: 28 }
-                                                })}
-                                                className="ml-flight-landing-anchor"
-                                            />
-                                        )}
                                         <i className="fas fa-bolt"></i>
                                         <span>Takeaways</span>
                                         {dockedBullets.length > 0 && (
@@ -813,12 +961,14 @@ const MironStudioStage = ({
                                                 {dockedBullets.map((bItem) => {
                                                     const { glyph, content } = parseBulletItem(bItem.text);
                                                     const isLanded = justLandedNoteKey === bItem.key;
+                                                    const isFlyingHere = inFlightNote?.key === bItem.key;
                                                     return (
                                                         <MotionDiv
                                                             key={bItem.key}
+                                                            data-note-target={`card:${bItem.key}`}
+                                                            style={isFlyingHere ? { opacity: 0 } : undefined}
                                                             {...mProps({
                                                                 layout: 'position',
-                                                                layoutId: `miron-note-${bItem.key}`,
                                                                 transition: { type: 'spring', stiffness: 320, damping: 28 }
                                                             })}
                                                             className={`ml-sidebar-bullet-card ${isLanded ? 'is-just-landed' : ''}`}
@@ -895,6 +1045,13 @@ const MironStudioStage = ({
                         </aside>
                     )}
                     {/* SLIDE-UP CHAPTER OUTLINE SHEET */}
+                    <MironPortalFlightCard
+                        flight={inFlightNote}
+                        enableMotion={enableMotion}
+                        isLightTheme={Boolean(overlayRef?.current?.closest('.theme-light') || (typeof document !== 'undefined' && document.body.classList.contains('theme-light')))}
+                        onDone={completeInFlightNote}
+                        parseBulletItem={parseBulletItem}
+                    />
                     {isOutlineOpen && (
                         <div className="ml-outline-backdrop" onClick={() => setIsOutlineOpen && setIsOutlineOpen(false)}>
                             <div className="ml-outline-sheet" onClick={(e) => e.stopPropagation()}>
