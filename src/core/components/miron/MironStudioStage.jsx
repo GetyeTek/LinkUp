@@ -197,7 +197,8 @@ const MironStudioStage = ({
                             data-has-image={Boolean(activeImageAsset) ? "true" : "false"}
                             data-dual-stage={isDualStage ? "true" : "false"}
                             data-has-book={Boolean(activeBlockData && !isDualStage && !(activeDiagramAsset && activeImageAsset)) ? "true" : "false"}
-                            onClick={() => {
+                            onClick={(e) => {
+                                if (e.target.closest('button, a, input, select, textarea, [role="button"]')) return;
                                 if (stage === 'studio') {
                                     setIsChromeVisible(prev => {
                                         const next = !prev;
@@ -457,7 +458,7 @@ const MironStudioStage = ({
                                 </div>
                             </div>
 
-                            <div className="ml-anchor-sub-visual">
+                            <div className="ml-anchor-sub-visual" ref={cinemaContainerRef}>
                                 {activeAsset ? (
                                     activeAsset.asset_type === 'diagram_svg' ? (
                                         <div className="ml-visual-card-svg" dangerouslySetInnerHTML={{ __html: activeAsset.content_payload }} />
