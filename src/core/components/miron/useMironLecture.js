@@ -706,7 +706,9 @@ export const useMironLecture = ({
 
         prevBulletsTrackRef.current = { lessonId: lessonScopeId, count, time: currentTime };
 
-        if (!isSameLesson || count === 0 || deltaCount < 0) {
+        const isFreshStartWithSingleNote = !isSameLesson && count === 1 && currentTime <= 1.5;
+
+        if ((!isSameLesson && !isFreshStartWithSingleNote) || count === 0 || deltaCount < 0) {
             if (dwellTimerRef.current) {
                 clearTimeout(dwellTimerRef.current);
                 dwellTimerRef.current = null;
@@ -721,13 +723,15 @@ export const useMironLecture = ({
             return;
         }
 
-        if (deltaCount === 0) return;
+        if (deltaCount === 0 && !isFreshStartWithSingleNote) return;
 
+        const effectiveDelta = isFreshStartWithSingleNote ? 1 : deltaCount;
         console.log(
             `📝 [MironNotePipeline] Bullets updated: ${prev.count} -> ${count} | dt=${deltaTime.toFixed(2)}s | quiz=${Boolean(activeQuizData)} | card=${Boolean(activeCardData)}`
         );
 
-        if (deltaCount === 1 && !activeQuizData && !activeCardData) {
+        const isLiveNoteBurst = effectiveDelta >= 1 && (effectiveDelta === 1 || deltaTime < 2.2);
+        if (isLiveNoteBurst && !activeQuizData && !activeCardData) {
             const idx = count - 1;
             const text = activeBullets[idx];
             const noteKey = `${lessonScopeId}::n${idx}`;
@@ -746,8 +750,8 @@ export const useMironLecture = ({
                 launchDwellingNote('dwell-timer-2800ms');
             }, 2800);
         } else {
-            const skipReason = deltaCount > 1
-                ? `multi-jump (${deltaCount} notes)`
+            const skipReason = effectiveDelta > 1
+                ? `scrub-jump (${effectiveDelta} notes over ${deltaTime.toFixed(1)}s)`
                 : (activeQuizData ? 'quiz-active' : 'stage-card-active');
             console.log(`⏭️ [MironNotePipeline] Skipped stage spotlight (${skipReason}) -> docked directly`);
             if (dwellTimerRef.current) {
