@@ -170,6 +170,11 @@ export const useMironLecture = ({
     const [completedQuizTimes, setCompletedQuizTimes] = useState(new Set());
     const [ccEnabled, setCcEnabled] = useState(true);
     const [isNotesCollapsed, setIsNotesCollapsed] = useState(false);
+    const [dwellingNote, setDwellingNote] = useState(null);
+    const [justLandedNoteKey, setJustLandedNoteKey] = useState(null);
+    const prevBulletsTrackRef = useRef({ lessonId: null, count: 0, time: 0 });
+    const dwellTimerRef = useRef(null);
+    const landTimerRef = useRef(null);
 
     const audioRef = useRef(null);
     const progressBarRef = useRef(null);
@@ -620,7 +625,99 @@ export const useMironLecture = ({
         return null;
     }, [activeQuizCue, completedQuizTimes]);
 
-    // Auto-Pause Checkpoint Gate: pauses audio when an uncompleted quiz cue is reached
+        const lessonScopeId = audioLesson?.id || 'sim';
+
+    const triggerLandingPulse = (noteKey) => {
+        if (!noteKey) return;
+        setJustLandedNoteKey(noteKey);
+        if (landTimerRef.current) clearTimeout(landTimerRef.current);
+        landTimerRef.current = setTimeout(() => {
+            setJustLandedNoteKey(prev => (prev === noteKey ? null : prev));
+        }, 900);
+    };
+
+    const dockDwellingNote = () => {
+        if (dwellTimerRef.current) {
+            clearTimeout(dwellTimerRef.current);
+            dwellTimerRef.current = null;
+        }
+        setDwellingNote(prev => {
+            if (prev?.key) triggerLandingPulse(prev.key);
+            return null;
+        });
+    };
+
+    // Stage Spotlight Dwell & Physical Flight Trigger
+    useEffect(() => {
+        const prev = prevBulletsTrackRef.current;
+        const count = activeBullets.length;
+        const isSameLesson = prev.lessonId === lessonScopeId;
+        const deltaCount = count - prev.count;
+        const deltaTime = Math.abs(currentTime - prev.time);
+
+        prevBulletsTrackRef.current = { lessonId: lessonScopeId, count, time: currentTime };
+
+        if (!isSameLesson || count === 0 || deltaCount < 0) {
+            if (dwellTimerRef.current) {
+                clearTimeout(dwellTimerRef.current);
+                dwellTimerRef.current = null;
+            }
+            setDwellingNote(null);
+            setJustLandedNoteKey(null);
+            return;
+        }
+
+        // Only trigger stage spotlight on natural forward progression of a single bullet
+        if (deltaCount === 1 && deltaTime < 2.2 && !activeQuizData && !activeCardData) {
+            const idx = count - 1;
+            const text = activeBullets[idx];
+            const noteKey = `${lessonScopeId}::n${idx}`;
+
+            if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
+            setDwellingNote(prevDwell => {
+                if (prevDwell?.key && prevDwell.key !== noteKey) {
+                    triggerLandingPulse(prevDwell.key);
+                }
+                return { index: idx, text, key: noteKey };
+            });
+
+            dwellTimerRef.current = setTimeout(() => {
+                dwellTimerRef.current = null;
+                setDwellingNote(null);
+                triggerLandingPulse(noteKey);
+            }, 2800);
+        } else if (deltaCount > 1) {
+            if (dwellTimerRef.current) {
+                clearTimeout(dwellTimerRef.current);
+                dwellTimerRef.current = null;
+            }
+            setDwellingNote(null);
+        }
+    }, [activeBullets, lessonScopeId, currentTime, activeQuizData, activeCardData]);
+
+    useEffect(() => {
+        if (activeQuizData || activeCardData) {
+            dockDwellingNote();
+        }
+    }, [activeQuizData, activeCardData]);
+
+    useEffect(() => {
+        return () => {
+            if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
+            if (landTimerRef.current) clearTimeout(landTimerRef.current);
+        };
+    }, []);
+
+    const dockedBullets = useMemo(() => {
+        return activeBullets
+            .map((text, idx) => ({
+                index: idx,
+                text,
+                key: `${lessonScopeId}::n${idx}`
+            }))
+            .filter(item => !dwellingNote || item.key !== dwellingNote.key);
+    }, [activeBullets, lessonScopeId, dwellingNote]);
+// Auto-Pause Checkpoint Gate: pauses audio when an uncompleted quiz cue is reached
     useEffect(() => {
         if (activeQuizCue && activeQuizData && isPlaying) {
             const isCompleted = completedQuizTimes.has(activeQuizCue.time) ||
@@ -1252,6 +1349,10 @@ export const useMironLecture = ({
         activeBlockCue,
         activeBullets,
         latestBullet,
+        dwellingNote,
+        dockedBullets,
+        justLandedNoteKey,
+        dockDwellingNote,
         activeCue,
         activeDiagramAsset,
         activeImageAsset,
